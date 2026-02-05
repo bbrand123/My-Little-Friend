@@ -177,11 +177,18 @@
         .egg-container {
             cursor: pointer;
             transition: transform 0.1s ease;
+            background: transparent;
+            border: none;
+            padding: 10px;
+            border-radius: 20px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .egg-container:hover,
         .egg-container:focus {
             transform: scale(1.05);
+            background: rgba(255,255,255,0.2);
         }
 
         .egg-container:active {
@@ -375,6 +382,11 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .action-btn.cooldown {
+            pointer-events: none;
+            opacity: 0.7;
         }
 
         .action-btn.feed {
@@ -598,6 +610,104 @@
                 transition-duration: 0.01ms !important;
             }
         }
+
+        /* Child-friendly modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            max-width: 350px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease;
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: var(--color-text);
+            margin-bottom: 10px;
+        }
+
+        .modal-message {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modal-btn {
+            min-width: 100px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #FF6B6B, #EE5A5A);
+            color: white;
+        }
+
+        .modal-btn.cancel {
+            background: linear-gradient(135deg, #4ECDC4, #45B7AA);
+            color: white;
+        }
+
+        .modal-btn:hover,
+        .modal-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Progress bar color states */
+        .need-bar-fill.low {
+            background: linear-gradient(90deg, #FF5252, #F44336) !important;
+        }
+
+        .need-bar-fill.medium {
+            background: linear-gradient(90deg, #FFB74D, #FFA726) !important;
+        }
     </style>
 </head>
 <body>
@@ -728,6 +838,31 @@
                 const saved = localStorage.getItem('petCareBuddy');
                 if (saved) {
                     const parsed = JSON.parse(saved);
+
+                    // Validate saved data structure
+                    if (!parsed || typeof parsed !== 'object') {
+                        return null;
+                    }
+
+                    // Handle stuck 'hatching' phase - reset to egg
+                    if (parsed.phase === 'hatching') {
+                        parsed.phase = 'egg';
+                        parsed.eggTaps = 0;
+                    }
+
+                    // Validate pet data if in pet phase
+                    if (parsed.phase === 'pet') {
+                        if (!parsed.pet ||
+                            typeof parsed.pet.hunger !== 'number' ||
+                            typeof parsed.pet.cleanliness !== 'number' ||
+                            typeof parsed.pet.happiness !== 'number' ||
+                            !parsed.pet.type ||
+                            !PET_TYPES[parsed.pet.type]) {
+                            // Corrupted pet data, start fresh
+                            return null;
+                        }
+                    }
+
                     // Apply time-based decay for needs
                     if (parsed.pet && parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
@@ -744,6 +879,12 @@
                 }
             } catch (e) {
                 console.log('Could not load game:', e);
+                // Clear corrupted data
+                try {
+                    localStorage.removeItem('petCareBuddy');
+                } catch (clearError) {
+                    // Ignore clear errors
+                }
             }
             return null;
         }
@@ -923,6 +1064,13 @@
                     ${eyeStyle === 'arc' ?
                     `<path d="M33 38 Q38 30 43 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
                      <path d="M57 38 Q62 30 67 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>` :
+                    eyeStyle === 'sad' ?
+                    `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
+                     <ellipse cx="62" cy="39" rx="2" ry="5" fill="#333"/>
+                     <path d="M32 32 L42 35" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+                     <path d="M68 32 L58 35" stroke="#333" stroke-width="2" stroke-linecap="round"/>` :
                     `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
                      <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
                      <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
@@ -945,6 +1093,16 @@
         }
 
         function generateBunnySVG(color, eyeStyle, mouthPath, mood) {
+            // Bunny-specific mouth paths (adjusted for bunny face position)
+            let bunnyMouth = '';
+            if (mood === 'happy') {
+                bunnyMouth = '<path d="M46 56 L50 62 L54 56" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>';
+            } else if (mood === 'sad') {
+                bunnyMouth = '<path d="M46 60 Q50 55 54 60" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>';
+            } else {
+                bunnyMouth = '<path d="M46 58 L54 58" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>';
+            }
+
             return `
                 <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy bunny hopping with joy' : mood === 'sad' ? 'A sad bunny who needs love' : 'A calm bunny'}">
                     <!-- Body -->
@@ -962,10 +1120,10 @@
                     <!-- Nose -->
                     <ellipse cx="50" cy="52" rx="4" ry="3" fill="#FFB6C1"/>
                     <!-- Mouth -->
-                    <path d="M46 56 L50 60 L54 56" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    ${bunnyMouth}
                     <!-- Cheeks -->
-                    <circle cx="32" cy="52" r="6" fill="#FFB6C1" opacity="0.5"/>
-                    <circle cx="68" cy="52" r="6" fill="#FFB6C1" opacity="0.5"/>
+                    <circle cx="32" cy="52" r="6" fill="#FFB6C1" opacity="${mood === 'happy' ? '0.7' : '0.5'}"/>
+                    <circle cx="68" cy="52" r="6" fill="#FFB6C1" opacity="${mood === 'happy' ? '0.7' : '0.5'}"/>
                     <!-- Feet -->
                     <ellipse cx="35" cy="92" rx="10" ry="6" fill="${color}"/>
                     <ellipse cx="65" cy="92" rx="10" ry="6" fill="${color}"/>
@@ -1075,7 +1233,10 @@
 
         // ==================== RENDER FUNCTIONS ====================
 
-        function renderEggPhase() {
+        // Track if egg handlers are attached to prevent duplicates
+        let eggHandlersAttached = false;
+
+        function renderEggPhase(maintainFocus = false) {
             const content = document.getElementById('game-content');
             const crackLevel = Math.min(gameState.eggTaps, 3);
 
@@ -1083,7 +1244,7 @@
                 <div class="pet-area" role="region" aria-label="Egg hatching area">
                     <div class="sparkles" id="sparkles"></div>
                     <button class="egg-container" id="egg-button"
-                            aria-label="Tap the egg to help it hatch! Tapped ${gameState.eggTaps} of 5 times."
+                            aria-label="Tap the egg to help it hatch! Tapped ${gameState.eggTaps} of 5 times. ${5 - gameState.eggTaps} more taps needed."
                             aria-describedby="tap-hint">
                         ${generateEggSVG(crackLevel)}
                     </button>
@@ -1093,16 +1254,38 @@
             `;
 
             const eggButton = document.getElementById('egg-button');
-            eggButton.addEventListener('click', handleEggTap);
-            eggButton.addEventListener('keydown', (e) => {
+
+            // Use named function to allow proper removal if needed
+            function onEggClick(e) {
+                e.preventDefault();
+                handleEggTap();
+            }
+
+            function onEggKeydown(e) {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     handleEggTap();
                 }
-            });
+            }
+
+            eggButton.addEventListener('click', onEggClick);
+            eggButton.addEventListener('keydown', onEggKeydown);
+
+            // Maintain focus for keyboard users
+            if (maintainFocus) {
+                eggButton.focus();
+            }
         }
 
+        // Prevent rapid tapping issues
+        let eggTapCooldown = false;
+
         function handleEggTap() {
+            if (eggTapCooldown) return;
+
+            eggTapCooldown = true;
+            setTimeout(() => { eggTapCooldown = false; }, 200);
+
             gameState.eggTaps++;
             const eggButton = document.getElementById('egg-button');
             const sparkles = document.getElementById('sparkles');
@@ -1115,22 +1298,28 @@
             createSparkles(sparkles, 5);
 
             // Announce progress
-            announce(`Tap ${gameState.eggTaps} of 5. ${5 - gameState.eggTaps} more to hatch!`);
+            const remaining = 5 - gameState.eggTaps;
+            if (remaining > 0) {
+                announce(`Tap ${gameState.eggTaps} of 5. ${remaining} more to hatch!`);
+            }
 
             if (gameState.eggTaps >= 5) {
                 // Hatch the egg!
                 gameState.phase = 'hatching';
-                announce('The egg is hatching!', true);
+                announce('The egg is hatching! Here comes your pet!', true);
                 setTimeout(hatchPet, 1000);
             } else {
-                // Update egg display with more cracks
-                renderEggPhase();
+                // Update egg display with more cracks, maintain focus for keyboard users
+                renderEggPhase(true);
             }
 
             saveGame();
         }
 
         function hatchPet() {
+            // Reset egg tap cooldown
+            eggTapCooldown = false;
+
             gameState.pet = createPet();
             gameState.phase = 'pet';
             saveGame();
@@ -1241,7 +1430,22 @@
             startDecayTimer();
         }
 
+        // Track button cooldowns
+        let actionCooldown = false;
+
         function careAction(action) {
+            // Prevent rapid clicking
+            if (actionCooldown) return;
+
+            actionCooldown = true;
+            const buttons = document.querySelectorAll('.action-btn');
+            buttons.forEach(btn => btn.classList.add('cooldown'));
+
+            setTimeout(() => {
+                actionCooldown = false;
+                buttons.forEach(btn => btn.classList.remove('cooldown'));
+            }, 600);
+
             const pet = gameState.pet;
             const petData = PET_TYPES[pet.type];
             const petContainer = document.getElementById('pet-container');
@@ -1297,10 +1501,34 @@
         function updateNeedDisplays() {
             const pet = gameState.pet;
 
-            // Update bars
-            document.getElementById('hunger-bar').style.width = `${pet.hunger}%`;
-            document.getElementById('clean-bar').style.width = `${pet.cleanliness}%`;
-            document.getElementById('happy-bar').style.width = `${pet.happiness}%`;
+            // Helper to get color class based on level
+            function getColorClass(value) {
+                if (value <= 25) return 'low';
+                if (value <= 50) return 'medium';
+                return '';
+            }
+
+            // Update bars with widths and color classes
+            const hungerBar = document.getElementById('hunger-bar');
+            const cleanBar = document.getElementById('clean-bar');
+            const happyBar = document.getElementById('happy-bar');
+
+            hungerBar.style.width = `${pet.hunger}%`;
+            cleanBar.style.width = `${pet.cleanliness}%`;
+            happyBar.style.width = `${pet.happiness}%`;
+
+            // Update color classes
+            hungerBar.classList.remove('low', 'medium');
+            cleanBar.classList.remove('low', 'medium');
+            happyBar.classList.remove('low', 'medium');
+
+            const hungerClass = getColorClass(pet.hunger);
+            const cleanClass = getColorClass(pet.cleanliness);
+            const happyClass = getColorClass(pet.happiness);
+
+            if (hungerClass) hungerBar.classList.add(hungerClass);
+            if (cleanClass) cleanBar.classList.add(cleanClass);
+            if (happyClass) happyBar.classList.add(happyClass);
 
             // Update values
             document.getElementById('hunger-value').textContent = `${pet.hunger}%`;
@@ -1312,10 +1540,14 @@
             document.querySelector('[aria-label="Cleanliness level"]').setAttribute('aria-valuenow', pet.cleanliness);
             document.querySelector('[aria-label="Happiness level"]').setAttribute('aria-valuenow', pet.happiness);
 
-            // Update button labels
-            document.getElementById('feed-btn').setAttribute('aria-label', `Feed your pet. Current hunger: ${pet.hunger}%`);
-            document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Current cleanliness: ${pet.cleanliness}%`);
-            document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Current happiness: ${pet.happiness}%`);
+            // Update button labels with more descriptive text
+            const hungerDesc = pet.hunger <= 25 ? 'very low' : pet.hunger <= 50 ? 'low' : pet.hunger <= 75 ? 'good' : 'full';
+            const cleanDesc = pet.cleanliness <= 25 ? 'very dirty' : pet.cleanliness <= 50 ? 'needs washing' : pet.cleanliness <= 75 ? 'clean' : 'sparkly clean';
+            const happyDesc = pet.happiness <= 25 ? 'sad' : pet.happiness <= 50 ? 'bored' : pet.happiness <= 75 ? 'happy' : 'very happy';
+
+            document.getElementById('feed-btn').setAttribute('aria-label', `Feed your pet. Hunger level: ${pet.hunger}%, ${hungerDesc}`);
+            document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Cleanliness: ${pet.cleanliness}%, ${cleanDesc}`);
+            document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Happiness: ${pet.happiness}%, ${happyDesc}`);
         }
 
         function updatePetMood() {
@@ -1389,13 +1621,14 @@
         // ==================== DECAY TIMER ====================
 
         let decayInterval = null;
+        let lastDecayAnnouncement = 0;
 
         function startDecayTimer() {
             if (decayInterval) clearInterval(decayInterval);
 
             // Decrease needs every 30 seconds (gentle for young children)
             decayInterval = setInterval(() => {
-                if (gameState.phase === 'pet' && gameState.pet) {
+                if (gameState.phase === 'pet' && gameState.pet && !document.hidden) {
                     const pet = gameState.pet;
                     pet.hunger = clamp(pet.hunger - 1, 0, 100);
                     pet.cleanliness = clamp(pet.cleanliness - 1, 0, 100);
@@ -1406,40 +1639,182 @@
                     saveGame();
 
                     // Gentle reminders at low levels (no negative messages)
-                    const mood = getMood(pet);
-                    if (mood === 'sad') {
-                        const lowestNeed = Math.min(pet.hunger, pet.cleanliness, pet.happiness);
-                        if (lowestNeed <= 20) {
-                            let needName = '';
-                            if (pet.hunger === lowestNeed) needName = 'hungry';
-                            else if (pet.cleanliness === lowestNeed) needName = 'needs a bath';
-                            else needName = 'wants to play';
-                            announce(`Your pet is ${needName}! Can you help?`);
+                    // But don't spam - only announce every 2 minutes max
+                    const now = Date.now();
+                    if (now - lastDecayAnnouncement > 120000) {
+                        const mood = getMood(pet);
+                        if (mood === 'sad') {
+                            const lowestNeed = Math.min(pet.hunger, pet.cleanliness, pet.happiness);
+                            if (lowestNeed <= 20) {
+                                let needName = '';
+                                if (pet.hunger === lowestNeed) needName = 'hungry';
+                                else if (pet.cleanliness === lowestNeed) needName = 'needs a bath';
+                                else needName = 'wants to play';
+                                announce(`Your pet is ${needName}! Can you help?`);
+                                lastDecayAnnouncement = now;
+                            }
                         }
                     }
                 }
             }, 30000); // Every 30 seconds
         }
 
+        function stopDecayTimer() {
+            if (decayInterval) {
+                clearInterval(decayInterval);
+                decayInterval = null;
+            }
+        }
+
+        // ==================== VISIBILITY HANDLING ====================
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Page is hidden, save current state
+                saveGame();
+            } else {
+                // Page is visible again, apply any decay that occurred while away
+                if (gameState.phase === 'pet' && gameState.pet) {
+                    const saved = loadGame();
+                    if (saved && saved.pet) {
+                        gameState.pet.hunger = saved.pet.hunger;
+                        gameState.pet.cleanliness = saved.pet.cleanliness;
+                        gameState.pet.happiness = saved.pet.happiness;
+                        updateNeedDisplays();
+                        updatePetMood();
+                    }
+                }
+            }
+        });
+
+        // ==================== MODAL ====================
+
+        function showModal(title, message, icon, onConfirm, onCancel) {
+            // Remove any existing modal
+            const existingModal = document.querySelector('.modal-overlay');
+            if (existingModal) existingModal.remove();
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'modal-title');
+
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-icon" aria-hidden="true">${icon}</div>
+                    <h2 class="modal-title" id="modal-title">${title}</h2>
+                    <p class="modal-message">${message}</p>
+                    <div class="modal-buttons">
+                        <button class="modal-btn cancel" id="modal-cancel">
+                            No, Keep Pet
+                        </button>
+                        <button class="modal-btn confirm" id="modal-confirm">
+                            Yes, New Egg
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const confirmBtn = document.getElementById('modal-confirm');
+            const cancelBtn = document.getElementById('modal-cancel');
+
+            // Focus the cancel button (safer option for children)
+            cancelBtn.focus();
+
+            function closeModal() {
+                modal.remove();
+            }
+
+            confirmBtn.addEventListener('click', () => {
+                closeModal();
+                if (onConfirm) onConfirm();
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                closeModal();
+                if (onCancel) onCancel();
+            });
+
+            // Close on overlay click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                    if (onCancel) onCancel();
+                }
+            });
+
+            // Handle Escape key
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    if (onCancel) onCancel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            // Trap focus within modal
+            modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    const focusable = modal.querySelectorAll('button');
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            });
+
+            announce(title + '. ' + message);
+        }
+
         // ==================== NEW PET ====================
 
         function startNewPet() {
-            if (confirm('Start over with a new egg? Your current pet will say goodbye.')) {
-                gameState = {
-                    phase: 'egg',
-                    pet: null,
-                    eggTaps: 0,
-                    lastUpdate: Date.now()
-                };
-                saveGame();
-                announce('Starting fresh with a new egg!');
-                renderEggPhase();
-            }
+            showModal(
+                'New Pet?',
+                'Say bye-bye to your pet and get a new egg?',
+                '🥚',
+                () => {
+                    // Clear the decay timer
+                    if (decayInterval) {
+                        clearInterval(decayInterval);
+                        decayInterval = null;
+                    }
+
+                    gameState = {
+                        phase: 'egg',
+                        pet: null,
+                        eggTaps: 0,
+                        lastUpdate: Date.now()
+                    };
+                    saveGame();
+                    announce('Starting fresh with a new egg!', true);
+                    renderEggPhase();
+                },
+                () => {
+                    // User cancelled, focus back on the new pet button
+                    const newPetBtn = document.getElementById('new-pet-btn');
+                    if (newPetBtn) newPetBtn.focus();
+                }
+            );
         }
 
         // ==================== INITIALIZATION ====================
 
         function init() {
+            // Stop any existing timers
+            stopDecayTimer();
+
             const saved = loadGame();
             if (saved) {
                 gameState = saved;
@@ -1448,8 +1823,15 @@
             if (gameState.phase === 'pet' && gameState.pet) {
                 renderPetPhase();
                 const petData = PET_TYPES[gameState.pet.type];
-                announce(`Welcome back! Your ${petData.name} missed you!`);
+                const mood = getMood(gameState.pet);
+                const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
+                                     mood === 'sad' ? 'missed you and needs some care!' :
+                                     'is glad you\'re back!';
+                announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
             } else {
+                // Reset to egg phase if not in pet phase
+                gameState.phase = 'egg';
+                gameState.eggTaps = gameState.eggTaps || 0;
                 renderEggPhase();
                 announce('Welcome to Pet Care Buddy! Tap the egg to hatch your new pet!');
             }
@@ -1458,8 +1840,16 @@
         // Start the game when page loads
         document.addEventListener('DOMContentLoaded', init);
 
-        // Save on page unload
-        window.addEventListener('beforeunload', saveGame);
+        // Save and cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            saveGame();
+            stopDecayTimer();
+        });
+
+        // Also handle page hide for mobile browsers
+        window.addEventListener('pagehide', () => {
+            saveGame();
+        });
     </script>
 </body>
 </html>
