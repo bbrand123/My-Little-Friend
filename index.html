@@ -30,6 +30,7 @@
             --color-button-medicine: #F48FB1;
             --color-button-groom: #CE93D8;
             --color-button-exercise: #FFB74D;
+            --color-button-treat: #FF7EB3;
             --color-hunger: #FF7043;
             --color-clean: #29B6F6;
             --color-happy-bar: #66BB6A;
@@ -190,6 +191,17 @@
             25% { transform: scale(1.05) rotate(-5deg); }
             50% { transform: scale(1.08) rotate(0deg); }
             75% { transform: scale(1.05) rotate(5deg); }
+        }
+
+        .pet-container.treat-anim {
+            animation: treatBounce 0.8s ease;
+        }
+
+        @keyframes treatBounce {
+            0%, 100% { transform: scale(1) translateY(0); }
+            30% { transform: scale(1.1) translateY(-15px); }
+            50% { transform: scale(1.05) translateY(-5px); }
+            70% { transform: scale(1.12) translateY(-10px); }
         }
 
         .pet-container.exercise-anim {
@@ -454,6 +466,10 @@
 
         .action-btn.exercise {
             background: linear-gradient(135deg, var(--color-button-exercise), #FF9800);
+        }
+
+        .action-btn.treat {
+            background: linear-gradient(135deg, var(--color-button-treat), #FF4081);
         }
 
         .need-bar-fill.energy {
@@ -721,6 +737,28 @@
             100% {
                 opacity: 0;
                 transform: scale(0.8) translateY(-40px) translateX(-15px);
+            }
+        }
+
+        /* Treat particles */
+        .treat-particle {
+            position: absolute;
+            font-size: 1.4rem;
+            animation: treatFloat 1.4s ease-out forwards;
+        }
+
+        @keyframes treatFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(0) rotate(0deg);
+            }
+            25% {
+                opacity: 1;
+                transform: scale(1.3) translateY(-15px) rotate(15deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.6) translateY(-55px) rotate(-15deg);
             }
         }
 
@@ -1045,6 +1083,15 @@
             }
         };
 
+        const TREAT_TYPES = [
+            { name: 'Cookie', emoji: '🍪' },
+            { name: 'Cupcake', emoji: '🧁' },
+            { name: 'Ice Cream', emoji: '🍦' },
+            { name: 'Candy', emoji: '🍬' },
+            { name: 'Donut', emoji: '🍩' },
+            { name: 'Honey', emoji: '🍯' }
+        ];
+
         const FEEDBACK_MESSAGES = {
             feed: ['Yummy!', 'Delicious!', 'So tasty!', 'Nom nom!', 'Thank you!'],
             wash: ['So clean!', 'Sparkly!', 'Fresh!', 'Squeaky clean!', 'Shiny!'],
@@ -1052,7 +1099,8 @@
             sleep: ['So cozy!', 'Sweet dreams!', 'Zzz...', 'Night night!', 'Sleepy time!'],
             medicine: ['All better!', 'Feeling great!', 'So much better!', 'Healthy!', 'Happy again!'],
             groom: ['So fluffy!', 'Looking good!', 'Nice and tidy!', 'Beautiful!', 'Well groomed!'],
-            exercise: ['Great run!', 'I fetched it!', 'So much fun!', 'Let\'s go again!', 'What a workout!']
+            exercise: ['Great run!', 'I fetched it!', 'So much fun!', 'Let\'s go again!', 'What a workout!'],
+            treat: ['Yummy treat!', 'So special!', 'Best snack ever!', 'More please!', 'What a delight!']
         };
 
         const MOOD_MESSAGES = {
@@ -1763,6 +1811,10 @@
                             <span class="btn-icon" aria-hidden="true">🏃</span>
                             <span>Exercise</span>
                         </button>
+                        <button class="action-btn treat" id="treat-btn" aria-label="Give your pet a special treat for bonus happiness">
+                            <span class="btn-icon" aria-hidden="true">🍪</span>
+                            <span>Treat</span>
+                        </button>
                     </div>
                 </section>
 
@@ -1783,6 +1835,7 @@
             document.getElementById('medicine-btn').addEventListener('click', () => careAction('medicine'));
             document.getElementById('groom-btn').addEventListener('click', () => careAction('groom'));
             document.getElementById('exercise-btn').addEventListener('click', () => careAction('exercise'));
+            document.getElementById('treat-btn').addEventListener('click', () => careAction('treat'));
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
 
             // Start decay timer
@@ -1870,6 +1923,16 @@
                     createExerciseParticles(sparkles);
                     announce(`Exercised your pet! Happiness is now ${pet.happiness}% but energy dropped to ${pet.energy}%`);
                     break;
+                case 'treat':
+                    // Treats - special snacks that give bonus happiness
+                    const treat = randomFromArray(TREAT_TYPES);
+                    pet.happiness = clamp(pet.happiness + 25, 0, 100);
+                    pet.hunger = clamp(pet.hunger + 10, 0, 100);
+                    message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                    petContainer.classList.add('treat-anim');
+                    createTreatParticles(sparkles, treat.emoji);
+                    announce(`Gave your pet a ${treat.name}! Happiness is now ${pet.happiness}%`);
+                    break;
             }
 
             // Show feedback
@@ -1883,7 +1946,7 @@
 
             // Remove animation class
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim');
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim');
             }, 800);
 
             // Hide feedback
@@ -2106,6 +2169,21 @@
                 particle.style.animationDelay = `${i * 0.12}s`;
                 container.appendChild(particle);
                 setTimeout(() => particle.remove(), 1600);
+            }
+        }
+
+        function createTreatParticles(container, treatEmoji) {
+            // Treat symbols - the chosen treat plus sparkles, stars, hearts
+            const symbols = [treatEmoji, '✨', '⭐', '💖', treatEmoji, '🌟'];
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'treat-particle';
+                particle.textContent = symbols[i % symbols.length];
+                particle.style.left = `${15 + Math.random() * 70}%`;
+                particle.style.top = `${20 + Math.random() * 45}%`;
+                particle.style.animationDelay = `${i * 0.12}s`;
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1700);
             }
         }
 
