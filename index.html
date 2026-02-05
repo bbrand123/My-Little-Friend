@@ -29,6 +29,7 @@
             --color-button-sleep: #9575CD;
             --color-button-medicine: #F48FB1;
             --color-button-groom: #CE93D8;
+            --color-button-exercise: #FFB74D;
             --color-hunger: #FF7043;
             --color-clean: #29B6F6;
             --color-happy-bar: #66BB6A;
@@ -189,6 +190,19 @@
             25% { transform: scale(1.05) rotate(-5deg); }
             50% { transform: scale(1.08) rotate(0deg); }
             75% { transform: scale(1.05) rotate(5deg); }
+        }
+
+        .pet-container.exercise-anim {
+            animation: exerciseRun 0.8s ease;
+        }
+
+        @keyframes exerciseRun {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-15px) translateY(-5px); }
+            40% { transform: translateX(15px) translateY(-8px); }
+            60% { transform: translateX(-10px) translateY(-3px); }
+            80% { transform: translateX(10px) translateY(-5px); }
+            100% { transform: translateX(0); }
         }
 
         /* Pet SVG Styles */
@@ -438,6 +452,10 @@
             background: linear-gradient(135deg, var(--color-button-groom), #AB47BC);
         }
 
+        .action-btn.exercise {
+            background: linear-gradient(135deg, var(--color-button-exercise), #FF9800);
+        }
+
         .need-bar-fill.energy {
             background: linear-gradient(90deg, var(--color-energy), #FFC107);
         }
@@ -682,6 +700,27 @@
             100% {
                 opacity: 0;
                 transform: scale(0.8) translateY(-45px) rotate(-10deg);
+            }
+        }
+
+        .exercise-particle {
+            position: absolute;
+            font-size: 1.3rem;
+            animation: exerciseFloat 1.3s ease-out forwards;
+        }
+
+        @keyframes exerciseFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(0) translateX(0);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-10px) translateX(10px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-40px) translateX(-15px);
             }
         }
 
@@ -1012,7 +1051,8 @@
             play: ['So fun!', 'Wheee!', 'Again!', 'Yay!', 'Love it!'],
             sleep: ['So cozy!', 'Sweet dreams!', 'Zzz...', 'Night night!', 'Sleepy time!'],
             medicine: ['All better!', 'Feeling great!', 'So much better!', 'Healthy!', 'Happy again!'],
-            groom: ['So fluffy!', 'Looking good!', 'Nice and tidy!', 'Beautiful!', 'Well groomed!']
+            groom: ['So fluffy!', 'Looking good!', 'Nice and tidy!', 'Beautiful!', 'Well groomed!'],
+            exercise: ['Great run!', 'I fetched it!', 'So much fun!', 'Let\'s go again!', 'What a workout!']
         };
 
         const MOOD_MESSAGES = {
@@ -1719,6 +1759,10 @@
                             <span class="btn-icon" aria-hidden="true">✂️</span>
                             <span>Groom</span>
                         </button>
+                        <button class="action-btn exercise" id="exercise-btn" aria-label="Exercise your pet - take a walk or play fetch">
+                            <span class="btn-icon" aria-hidden="true">🏃</span>
+                            <span>Exercise</span>
+                        </button>
                     </div>
                 </section>
 
@@ -1738,6 +1782,7 @@
             document.getElementById('sleep-btn').addEventListener('click', () => careAction('sleep'));
             document.getElementById('medicine-btn').addEventListener('click', () => careAction('medicine'));
             document.getElementById('groom-btn').addEventListener('click', () => careAction('groom'));
+            document.getElementById('exercise-btn').addEventListener('click', () => careAction('exercise'));
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
 
             // Start decay timer
@@ -1815,6 +1860,16 @@
                     createGroomParticles(sparkles);
                     announce(`Groomed your pet! Looking beautiful and feeling happy!`);
                     break;
+                case 'exercise':
+                    // Exercise - take walks or play fetch
+                    pet.happiness = clamp(pet.happiness + 20, 0, 100);
+                    pet.energy = clamp(pet.energy - 10, 0, 100);
+                    pet.hunger = clamp(pet.hunger - 5, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.exercise);
+                    petContainer.classList.add('exercise-anim');
+                    createExerciseParticles(sparkles);
+                    announce(`Exercised your pet! Happiness is now ${pet.happiness}% but energy dropped to ${pet.energy}%`);
+                    break;
             }
 
             // Show feedback
@@ -1828,7 +1883,7 @@
 
             // Remove animation class
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim');
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim');
             }, 800);
 
             // Hide feedback
@@ -1907,6 +1962,10 @@
             // Update groom button - grooming helps cleanliness and happiness
             const groomDesc = pet.cleanliness <= 50 ? 'could use some grooming' : 'looking good';
             document.getElementById('groom-btn').setAttribute('aria-label', `Groom your pet - brush fur and trim nails. Cleanliness: ${pet.cleanliness}%, ${groomDesc}`);
+
+            // Update exercise button - exercise boosts happiness but uses energy
+            const exerciseDesc = pet.energy <= 25 ? 'too tired to exercise' : pet.happiness <= 50 ? 'needs some exercise' : 'enjoying activities';
+            document.getElementById('exercise-btn').setAttribute('aria-label', `Exercise your pet - take a walk or play fetch. Happiness: ${pet.happiness}%, ${exerciseDesc}`);
         }
 
         function updatePetMood() {
@@ -2030,6 +2089,21 @@
                 particle.style.left = `${20 + Math.random() * 60}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.15}s`;
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1600);
+            }
+        }
+
+        function createExerciseParticles(container) {
+            // Exercise symbols - running, ball, paw prints, fetch stick
+            const exerciseSymbols = ['🎾', '🦴', '🐾', '💨', '⭐', '🏃'];
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'exercise-particle';
+                particle.textContent = exerciseSymbols[i % exerciseSymbols.length];
+                particle.style.left = `${15 + Math.random() * 70}%`;
+                particle.style.top = `${25 + Math.random() * 40}%`;
+                particle.style.animationDelay = `${i * 0.12}s`;
                 container.appendChild(particle);
                 setTimeout(() => particle.remove(), 1600);
             }
