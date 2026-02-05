@@ -93,7 +93,7 @@
             background: white;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            padding: 30px;
+            padding: 20px;
             max-width: 500px;
             width: 100%;
             text-align: center;
@@ -101,23 +101,23 @@
 
         /* Header */
         .game-header {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .game-title {
-            font-size: 2rem;
+            font-size: 1.8rem;
             color: var(--color-primary);
             text-shadow: 2px 2px 0 var(--color-accent);
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         /* Pet Display Area */
         .pet-area {
             background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
             border-radius: var(--radius);
-            padding: 30px;
-            margin: 20px 0;
-            min-height: 250px;
+            padding: 20px 20px 25px;
+            margin: 8px 0;
+            min-height: 220px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -133,7 +133,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 40px;
+            height: 30px;
             background: linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
             border-radius: 0 0 var(--radius) var(--radius);
         }
@@ -303,143 +303,144 @@
 
         /* Pet Name Display */
         .pet-name {
-            font-size: 1.8rem;
+            font-size: 1.4rem;
             color: var(--color-primary);
             font-weight: bold;
-            margin-top: 15px;
+            margin-top: 8px;
             text-shadow: 1px 1px 0 var(--color-accent);
         }
 
         .pet-mood {
-            font-size: 1.2rem;
+            font-size: 0.95rem;
             color: var(--color-text);
-            margin-top: 5px;
+            margin-top: 2px;
         }
 
-        /* Needs Section */
+        /* Needs Section - Compact Circular Indicators */
         .needs-section {
-            margin: 25px 0;
+            margin: 10px 0 5px;
         }
 
-        .needs-title {
-            font-size: 1.3rem;
-            color: var(--color-text);
-            margin-bottom: 15px;
-        }
-
-        .need-bar-container {
-            margin: 15px 0;
-            text-align: left;
-        }
-
-        .need-label {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
-
-        .need-icon {
-            font-size: 1.5rem;
-            margin-right: 8px;
-        }
-
-        .need-label-text {
-            display: flex;
-            align-items: center;
-        }
-
-        .need-value {
-            font-size: 1rem;
-        }
-
-        .need-bar {
-            width: 100%;
-            height: 25px;
-            background: #E0E0E0;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .need-bar-fill {
-            height: 100%;
-            border-radius: 15px;
-            transition: width 0.5s ease, background-color 0.3s ease;
-            position: relative;
-        }
-
-        .need-bar-fill::after {
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 5px;
-            right: 5px;
-            height: 8px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 10px;
-        }
-
-        .need-bar-fill.hunger {
-            background: linear-gradient(90deg, var(--color-hunger), #FF5722);
-        }
-
-        .need-bar-fill.clean {
-            background: linear-gradient(90deg, var(--color-clean), #0288D1);
-        }
-
-        .need-bar-fill.happy {
-            background: linear-gradient(90deg, var(--color-happy-bar), #43A047);
-        }
-
-        /* Action Buttons */
-        .actions-section {
-            margin-top: 25px;
-        }
-
-        .actions-title {
-            font-size: 1.3rem;
-            color: var(--color-text);
-            margin-bottom: 15px;
-        }
-
-        .action-buttons {
+        .needs-row {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .need-bubble {
+            position: relative;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            transition: transform 0.2s ease;
+        }
+
+        .need-bubble:hover {
+            transform: scale(1.1);
+        }
+
+        .need-bubble-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(var(--ring-color) calc(var(--progress) * 1%), #e0e0e0 0);
+            mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
+            transition: background 0.5s ease;
+        }
+
+        .need-bubble-icon {
+            font-size: 1.5rem;
+            z-index: 1;
+            line-height: 1;
+        }
+
+        .need-bubble-value {
+            position: absolute;
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: var(--color-text);
+            white-space: nowrap;
+        }
+
+        .need-bubble.low .need-bubble-icon {
+            animation: needPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes needPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        /* Action Buttons - Horizontal Scrolling Strip */
+        .actions-section {
+            margin-top: 10px;
+        }
+
+        .action-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 8px 4px 12px;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,0.15) transparent;
+        }
+
+        .action-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .action-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .action-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 4px;
         }
 
         .action-btn {
-            min-width: 100px;
-            min-height: 100px;
+            min-width: 68px;
+            min-height: 68px;
+            width: 68px;
+            height: 68px;
+            flex-shrink: 0;
             border: none;
-            border-radius: 20px;
-            font-size: 1.1rem;
+            border-radius: 18px;
+            font-size: 0.7rem;
             font-weight: bold;
             cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 3px;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.18);
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
             font-family: inherit;
+            scroll-snap-align: start;
         }
 
         .action-btn:hover,
         .action-btn:focus {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 5px 12px rgba(0,0,0,0.25);
         }
 
         .action-btn:active {
-            transform: translateY(0);
+            transform: translateY(0) scale(0.97);
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
@@ -490,22 +491,19 @@
             background: linear-gradient(135deg, var(--color-button-pet), #E88B73);
         }
 
-        .need-bar-fill.energy {
-            background: linear-gradient(90deg, var(--color-energy), #FFC107);
-        }
-
         .btn-icon {
-            font-size: 2.5rem;
+            font-size: 1.6rem;
+            line-height: 1;
         }
 
         /* Feedback Messages */
         .feedback-area {
-            min-height: 40px;
-            margin: 20px 0 10px;
+            min-height: 28px;
+            margin: 6px 0 4px;
         }
 
         .feedback-message {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             color: var(--color-happy);
             font-weight: bold;
             opacity: 0;
@@ -525,24 +523,24 @@
 
         /* New Pet Button */
         .new-pet-btn {
-            margin-top: 20px;
-            padding: 15px 30px;
-            font-size: 1rem;
+            margin-top: 8px;
+            padding: 10px 22px;
+            font-size: 0.85rem;
             background: linear-gradient(135deg, #9C27B0, #7B1FA2);
             color: white;
             border: none;
-            border-radius: 15px;
+            border-radius: 12px;
             cursor: pointer;
             font-family: inherit;
             font-weight: bold;
-            box-shadow: var(--shadow);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             transition: all 0.2s ease;
         }
 
         .new-pet-btn:hover,
         .new-pet-btn:focus {
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
         /* Screen Reader Only */
@@ -899,7 +897,7 @@
         /* Responsive Design */
         @media (max-width: 500px) {
             .game-container {
-                padding: 20px;
+                padding: 15px;
                 border-radius: 15px;
             }
 
@@ -908,8 +906,8 @@
             }
 
             .pet-area {
-                padding: 20px;
-                min-height: 200px;
+                padding: 15px;
+                min-height: 180px;
             }
 
             .pet-svg {
@@ -917,25 +915,56 @@
                 height: 120px;
             }
 
+            .need-bubble {
+                width: 50px;
+                height: 50px;
+            }
+
+            .need-bubble-icon {
+                font-size: 1.3rem;
+            }
+
+            .need-bubble-value {
+                font-size: 0.6rem;
+            }
+
             .action-btn {
-                min-width: 90px;
-                min-height: 90px;
+                min-width: 60px;
+                min-height: 60px;
+                width: 60px;
+                height: 60px;
+                border-radius: 15px;
             }
 
             .btn-icon {
-                font-size: 2rem;
+                font-size: 1.4rem;
             }
         }
 
         @media (max-width: 350px) {
-            .action-buttons {
-                gap: 10px;
+            .needs-row {
+                gap: 8px;
+            }
+
+            .need-bubble {
+                width: 44px;
+                height: 44px;
+            }
+
+            .need-bubble-icon {
+                font-size: 1.1rem;
             }
 
             .action-btn {
-                min-width: 80px;
-                min-height: 80px;
-                font-size: 1rem;
+                min-width: 54px;
+                min-height: 54px;
+                width: 54px;
+                height: 54px;
+                font-size: 0.6rem;
+            }
+
+            .btn-icon {
+                font-size: 1.2rem;
             }
         }
 
@@ -950,7 +979,7 @@
                 border: 3px solid #000000;
             }
 
-            .need-bar {
+            .need-bubble {
                 border: 2px solid #000000;
             }
         }
@@ -1053,14 +1082,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        /* Progress bar color states */
-        .need-bar-fill.low {
-            background: linear-gradient(90deg, #FF5252, #F44336) !important;
-        }
-
-        .need-bar-fill.medium {
-            background: linear-gradient(90deg, #FFB74D, #FFA726) !important;
-        }
     </style>
 </head>
 <body>
@@ -1775,68 +1796,44 @@
                 </div>
 
                 <section class="needs-section" aria-label="Pet needs">
-                    <h2 class="needs-title">How is your pet doing?</h2>
-
-                    <div class="need-bar-container">
-                        <div class="need-label">
-                            <span class="need-label-text">
-                                <span class="need-icon" aria-hidden="true">🍎</span>
-                                <span>Hunger</span>
-                            </span>
-                            <span class="need-value" id="hunger-value">${pet.hunger}%</span>
+                    <div class="needs-row">
+                        <div class="need-bubble ${pet.hunger <= 25 ? 'low' : ''}" id="hunger-bubble"
+                             role="progressbar" aria-label="Hunger level" aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100"
+                             style="--progress: ${pet.hunger}; --ring-color: var(--color-hunger);">
+                            <div class="need-bubble-ring"></div>
+                            <span class="need-bubble-icon" aria-hidden="true">🍎</span>
+                            <span class="need-bubble-value" id="hunger-value">${pet.hunger}%</span>
                         </div>
-                        <div class="need-bar" role="progressbar" aria-label="Hunger level"
-                             aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="need-bar-fill hunger" id="hunger-bar" style="width: ${pet.hunger}%"></div>
+                        <div class="need-bubble ${pet.cleanliness <= 25 ? 'low' : ''}" id="clean-bubble"
+                             role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100"
+                             style="--progress: ${pet.cleanliness}; --ring-color: var(--color-clean);">
+                            <div class="need-bubble-ring"></div>
+                            <span class="need-bubble-icon" aria-hidden="true">🛁</span>
+                            <span class="need-bubble-value" id="clean-value">${pet.cleanliness}%</span>
                         </div>
-                    </div>
-
-                    <div class="need-bar-container">
-                        <div class="need-label">
-                            <span class="need-label-text">
-                                <span class="need-icon" aria-hidden="true">🛁</span>
-                                <span>Cleanliness</span>
-                            </span>
-                            <span class="need-value" id="clean-value">${pet.cleanliness}%</span>
+                        <div class="need-bubble ${pet.happiness <= 25 ? 'low' : ''}" id="happy-bubble"
+                             role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100"
+                             style="--progress: ${pet.happiness}; --ring-color: var(--color-happy-bar);">
+                            <div class="need-bubble-ring"></div>
+                            <span class="need-bubble-icon" aria-hidden="true">💖</span>
+                            <span class="need-bubble-value" id="happy-value">${pet.happiness}%</span>
                         </div>
-                        <div class="need-bar" role="progressbar" aria-label="Cleanliness level"
-                             aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="need-bar-fill clean" id="clean-bar" style="width: ${pet.cleanliness}%"></div>
-                        </div>
-                    </div>
-
-                    <div class="need-bar-container">
-                        <div class="need-label">
-                            <span class="need-label-text">
-                                <span class="need-icon" aria-hidden="true">💖</span>
-                                <span>Happiness</span>
-                            </span>
-                            <span class="need-value" id="happy-value">${pet.happiness}%</span>
-                        </div>
-                        <div class="need-bar" role="progressbar" aria-label="Happiness level"
-                             aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="need-bar-fill happy" id="happy-bar" style="width: ${pet.happiness}%"></div>
-                        </div>
-                    </div>
-
-                    <div class="need-bar-container">
-                        <div class="need-label">
-                            <span class="need-label-text">
-                                <span class="need-icon" aria-hidden="true">😴</span>
-                                <span>Energy</span>
-                            </span>
-                            <span class="need-value" id="energy-value">${pet.energy}%</span>
-                        </div>
-                        <div class="need-bar" role="progressbar" aria-label="Energy level"
-                             aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="need-bar-fill energy" id="energy-bar" style="width: ${pet.energy}%"></div>
+                        <div class="need-bubble ${pet.energy <= 25 ? 'low' : ''}" id="energy-bubble"
+                             role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100"
+                             style="--progress: ${pet.energy}; --ring-color: var(--color-energy);">
+                            <div class="need-bubble-ring"></div>
+                            <span class="need-bubble-icon" aria-hidden="true">😴</span>
+                            <span class="need-bubble-value" id="energy-value">${pet.energy}%</span>
                         </div>
                     </div>
                 </section>
 
+                <div class="feedback-area">
+                    <p class="feedback-message" id="feedback" aria-live="polite"></p>
+                </div>
+
                 <section class="actions-section" aria-label="Care actions">
-                    <h2 class="actions-title">Take care of your pet!</h2>
-                    <div class="action-buttons" role="group" aria-label="Pet care buttons">
+                    <div class="action-scroll" role="group" aria-label="Pet care buttons">
                         <button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%">
                             <span class="btn-icon" aria-hidden="true">🍎</span>
                             <span>Feed</span>
@@ -1852,6 +1849,10 @@
                         <button class="action-btn sleep" id="sleep-btn" aria-label="Put your pet to sleep. Current energy: ${pet.energy}%">
                             <span class="btn-icon" aria-hidden="true">🛏️</span>
                             <span>Sleep</span>
+                        </button>
+                        <button class="action-btn pet-cuddle" id="pet-btn" aria-label="Pet and cuddle your pet. Current happiness: ${pet.happiness}%">
+                            <span class="btn-icon" aria-hidden="true">🤗</span>
+                            <span>Pet</span>
                         </button>
                         <button class="action-btn medicine" id="medicine-btn" aria-label="Give medicine to help your pet feel better">
                             <span class="btn-icon" aria-hidden="true">🩹</span>
@@ -1869,16 +1870,8 @@
                             <span class="btn-icon" aria-hidden="true">🍪</span>
                             <span>Treat</span>
                         </button>
-                        <button class="action-btn pet-cuddle" id="pet-btn" aria-label="Pet and cuddle your pet. Current happiness: ${pet.happiness}%">
-                            <span class="btn-icon" aria-hidden="true">🤗</span>
-                            <span>Pet</span>
-                        </button>
                     </div>
                 </section>
-
-                <div class="feedback-area">
-                    <p class="feedback-message" id="feedback" aria-live="polite"></p>
-                </div>
 
                 <button class="new-pet-btn" id="new-pet-btn" aria-label="Start over with a new egg">
                     🥚 New Pet
@@ -2043,51 +2036,30 @@
         function updateNeedDisplays() {
             const pet = gameState.pet;
 
-            // Helper to get color class based on level
-            function getColorClass(value) {
-                if (value <= 25) return 'low';
-                if (value <= 50) return 'medium';
-                return '';
+            // Helper to update a bubble indicator
+            function updateBubble(id, value) {
+                const bubble = document.getElementById(id);
+                if (!bubble) return;
+                bubble.style.setProperty('--progress', value);
+                if (value <= 25) {
+                    bubble.classList.add('low');
+                } else {
+                    bubble.classList.remove('low');
+                }
+                bubble.setAttribute('aria-valuenow', value);
             }
 
-            // Update bars with widths and color classes
-            const hungerBar = document.getElementById('hunger-bar');
-            const cleanBar = document.getElementById('clean-bar');
-            const happyBar = document.getElementById('happy-bar');
-            const energyBar = document.getElementById('energy-bar');
-
-            hungerBar.style.width = `${pet.hunger}%`;
-            cleanBar.style.width = `${pet.cleanliness}%`;
-            happyBar.style.width = `${pet.happiness}%`;
-            energyBar.style.width = `${pet.energy}%`;
-
-            // Update color classes
-            hungerBar.classList.remove('low', 'medium');
-            cleanBar.classList.remove('low', 'medium');
-            happyBar.classList.remove('low', 'medium');
-            energyBar.classList.remove('low', 'medium');
-
-            const hungerClass = getColorClass(pet.hunger);
-            const cleanClass = getColorClass(pet.cleanliness);
-            const happyClass = getColorClass(pet.happiness);
-            const energyClass = getColorClass(pet.energy);
-
-            if (hungerClass) hungerBar.classList.add(hungerClass);
-            if (cleanClass) cleanBar.classList.add(cleanClass);
-            if (happyClass) happyBar.classList.add(happyClass);
-            if (energyClass) energyBar.classList.add(energyClass);
+            // Update circular indicators
+            updateBubble('hunger-bubble', pet.hunger);
+            updateBubble('clean-bubble', pet.cleanliness);
+            updateBubble('happy-bubble', pet.happiness);
+            updateBubble('energy-bubble', pet.energy);
 
             // Update values
             document.getElementById('hunger-value').textContent = `${pet.hunger}%`;
             document.getElementById('clean-value').textContent = `${pet.cleanliness}%`;
             document.getElementById('happy-value').textContent = `${pet.happiness}%`;
             document.getElementById('energy-value').textContent = `${pet.energy}%`;
-
-            // Update ARIA
-            document.querySelector('[aria-label="Hunger level"]').setAttribute('aria-valuenow', pet.hunger);
-            document.querySelector('[aria-label="Cleanliness level"]').setAttribute('aria-valuenow', pet.cleanliness);
-            document.querySelector('[aria-label="Happiness level"]').setAttribute('aria-valuenow', pet.happiness);
-            document.querySelector('[aria-label="Energy level"]').setAttribute('aria-valuenow', pet.energy);
 
             // Update button labels with more descriptive text
             const hungerDesc = pet.hunger <= 25 ? 'very low' : pet.hunger <= 50 ? 'low' : pet.hunger <= 75 ? 'good' : 'full';
