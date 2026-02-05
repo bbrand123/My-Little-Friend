@@ -170,6 +170,12 @@
             opacity: 0.4;
         }
 
+        /* Hide default ::before decor when room system is active */
+        .pet-area[class*="room-"]::before {
+            content: '';
+            display: none;
+        }
+
         /* Floating clouds */
         .cloud {
             position: absolute;
@@ -951,6 +957,120 @@
 
         .pet-area.sunrise {
             background: linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #98FB98 100%);
+        }
+
+        /* ==================== ROOM NAVIGATION ==================== */
+
+        .room-nav {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            padding: 8px 4px;
+            margin: 4px 0;
+            flex-wrap: wrap;
+        }
+
+        .room-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 6px 10px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.85);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            min-width: 56px;
+        }
+
+        .room-btn:hover, .room-btn:focus-visible {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            border-color: var(--primary);
+        }
+
+        .room-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(108, 99, 255, 0.4);
+        }
+
+        .room-btn-icon {
+            font-size: 1.3rem;
+            line-height: 1;
+        }
+
+        .room-btn-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Room-specific ground styles */
+        .pet-area.room-bedroom::after {
+            background: linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
+        }
+        .pet-area.room-kitchen::after {
+            background: linear-gradient(180deg, #BDBDBD 0%, #9E9E9E 100%);
+        }
+        .pet-area.room-bathroom::after {
+            background: linear-gradient(180deg, #80DEEA 0%, #4DD0E1 100%);
+        }
+        .pet-area.room-backyard::after {
+            background: linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
+        }
+        .pet-area.room-park::after {
+            background: linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
+        }
+
+        /* Room-specific decor */
+        .room-decor {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            font-size: 0.7rem;
+            letter-spacing: 16px;
+            text-align: center;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        /* Room label */
+        .room-label {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            background: rgba(255,255,255,0.7);
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .pet-area.nighttime .room-label {
+            background: rgba(0,0,0,0.4);
+            color: #E0E0E0;
+        }
+
+        @media (max-width: 400px) {
+            .room-btn {
+                min-width: 48px;
+                padding: 5px 7px;
+            }
+            .room-btn-icon {
+                font-size: 1.1rem;
+            }
+            .room-btn-label {
+                font-size: 0.5rem;
+            }
         }
 
         /* Stars overlay for night */
@@ -2796,6 +2916,73 @@
             sad: ['needs some love.', 'misses you.', 'wants attention.']
         };
 
+        // ==================== ROOMS ====================
+
+        const ROOMS = {
+            bedroom: {
+                name: 'Bedroom',
+                icon: '🛏️',
+                isOutdoor: false,
+                ground: { color1: '#8D6E63', color2: '#6D4C41' },
+                decorEmoji: '🛏️ 🧸 🌙',
+                nightDecorEmoji: '🛏️ 🧸 💤',
+                bgDay: 'linear-gradient(180deg, #E8D5B7 0%, #F5E6CC 50%, #DCC8A0 100%)',
+                bgNight: 'linear-gradient(180deg, #3E2723 0%, #4E342E 50%, #5D4037 100%)',
+                bgSunset: 'linear-gradient(180deg, #D7CCC8 0%, #EFEBE9 50%, #DCC8A0 100%)',
+                bgSunrise: 'linear-gradient(180deg, #FFF3E0 0%, #FFE0B2 50%, #DCC8A0 100%)'
+            },
+            kitchen: {
+                name: 'Kitchen',
+                icon: '🍳',
+                isOutdoor: false,
+                ground: { color1: '#BDBDBD', color2: '#9E9E9E' },
+                decorEmoji: '🍳 🧁 🍎',
+                nightDecorEmoji: '🍳 🧁 🍪',
+                bgDay: 'linear-gradient(180deg, #FFF9C4 0%, #FFFDE7 50%, #FFF59D 100%)',
+                bgNight: 'linear-gradient(180deg, #33302A 0%, #3E3A32 50%, #4A4538 100%)',
+                bgSunset: 'linear-gradient(180deg, #FFE0B2 0%, #FFF8E1 50%, #FFF59D 100%)',
+                bgSunrise: 'linear-gradient(180deg, #FFF8E1 0%, #FFFDE7 50%, #FFF59D 100%)'
+            },
+            bathroom: {
+                name: 'Bathroom',
+                icon: '🛁',
+                isOutdoor: false,
+                ground: { color1: '#80DEEA', color2: '#4DD0E1' },
+                decorEmoji: '🛁 🧴 🫧',
+                nightDecorEmoji: '🛁 🧴 🌊',
+                bgDay: 'linear-gradient(180deg, #E0F7FA 0%, #B2EBF2 50%, #80DEEA 100%)',
+                bgNight: 'linear-gradient(180deg, #1A3A3A 0%, #1E4D4D 50%, #1B3F3F 100%)',
+                bgSunset: 'linear-gradient(180deg, #B2EBF2 0%, #E0F7FA 50%, #80DEEA 100%)',
+                bgSunrise: 'linear-gradient(180deg, #E0F7FA 0%, #B2EBF2 50%, #80DEEA 100%)'
+            },
+            backyard: {
+                name: 'Backyard',
+                icon: '🏡',
+                isOutdoor: true,
+                ground: { color1: '#7CB342', color2: '#558B2F' },
+                decorEmoji: '🌻 🦋 🌿',
+                nightDecorEmoji: '🌿 🦗 🌿',
+                bgDay: 'linear-gradient(180deg, #87CEEB 0%, #98FB98 100%)',
+                bgNight: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+                bgSunset: 'linear-gradient(180deg, #FF7E5F 0%, #FEB47B 50%, #98FB98 100%)',
+                bgSunrise: 'linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #98FB98 100%)'
+            },
+            park: {
+                name: 'Park',
+                icon: '🌳',
+                isOutdoor: true,
+                ground: { color1: '#66BB6A', color2: '#43A047' },
+                decorEmoji: '🌳 🌺 🦆',
+                nightDecorEmoji: '🌳 🍃 🦉',
+                bgDay: 'linear-gradient(180deg, #64B5F6 0%, #81C784 100%)',
+                bgNight: 'linear-gradient(180deg, #0D1B2A 0%, #1B2838 50%, #1A472A 100%)',
+                bgSunset: 'linear-gradient(180deg, #FF8A65 0%, #FFB74D 50%, #81C784 100%)',
+                bgSunrise: 'linear-gradient(180deg, #FFCCBC 0%, #FFE0B2 50%, #81C784 100%)'
+            }
+        };
+
+        const ROOM_IDS = Object.keys(ROOMS);
+
         // ==================== GAME STATE ====================
 
         let gameState = {
@@ -2803,7 +2990,8 @@
             pet: null,
             eggTaps: 0,
             lastUpdate: Date.now(),
-            timeOfDay: 'day' // 'day', 'sunset', 'night', 'sunrise'
+            timeOfDay: 'day', // 'day', 'sunset', 'night', 'sunrise'
+            currentRoom: 'bedroom' // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park'
         };
 
         // ==================== UTILITY FUNCTIONS ====================
@@ -2884,6 +3072,11 @@
                         if (typeof parsed.pet.energy !== 'number') {
                             parsed.pet.energy = 70;
                         }
+                    }
+
+                    // Add currentRoom if missing (for existing saves)
+                    if (!parsed.currentRoom || !ROOMS[parsed.currentRoom]) {
+                        parsed.currentRoom = 'bedroom';
                     }
 
                     // Update time of day
@@ -2973,6 +3166,96 @@
                 stars += `<div class="star" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation-delay: ${delay}s;"></div>`;
             }
             return stars;
+        }
+
+        // ==================== ROOM FUNCTIONS ====================
+
+        function getRoomBackground(roomId, timeOfDay) {
+            const room = ROOMS[roomId];
+            if (!room) return ROOMS.bedroom.bgDay;
+            switch (timeOfDay) {
+                case 'night': return room.bgNight;
+                case 'sunset': return room.bgSunset;
+                case 'sunrise': return room.bgSunrise;
+                default: return room.bgDay;
+            }
+        }
+
+        function getRoomDecor(roomId, timeOfDay) {
+            const room = ROOMS[roomId];
+            if (!room) return '🌸 🌼 🌷';
+            return timeOfDay === 'night' ? room.nightDecorEmoji : room.decorEmoji;
+        }
+
+        function generateRoomNavHTML(currentRoom) {
+            let html = '<nav class="room-nav" role="navigation" aria-label="Room navigation">';
+            for (const id of ROOM_IDS) {
+                const room = ROOMS[id];
+                const isActive = id === currentRoom;
+                html += `<button class="room-btn${isActive ? ' active' : ''}" data-room="${id}"
+                    aria-label="Go to ${room.name}" aria-pressed="${isActive}"
+                    ${isActive ? 'aria-current="true"' : ''}>
+                    <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
+                    <span class="room-btn-label">${room.name}</span>
+                </button>`;
+            }
+            html += '</nav>';
+            return html;
+        }
+
+        function switchRoom(roomId) {
+            if (!ROOMS[roomId] || roomId === gameState.currentRoom) return;
+
+            gameState.currentRoom = roomId;
+            saveGame();
+
+            const room = ROOMS[roomId];
+            const petArea = document.querySelector('.pet-area');
+
+            if (petArea) {
+                // Update room class
+                ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
+                petArea.classList.add('room-' + roomId);
+
+                // Update background
+                petArea.style.background = getRoomBackground(roomId, gameState.timeOfDay);
+
+                // Update room decor
+                const decor = petArea.querySelector('.room-decor');
+                if (decor) {
+                    decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
+                }
+
+                // Update room label
+                const label = petArea.querySelector('.room-label');
+                if (label) {
+                    label.textContent = room.icon + ' ' + room.name;
+                }
+
+                // Show/hide outdoor elements based on room type
+                const isOutdoor = room.isOutdoor;
+                petArea.querySelectorAll('.cloud').forEach(c => c.style.display = isOutdoor ? '' : 'none');
+                const sun = petArea.querySelector('.sun');
+                if (sun) sun.style.display = isOutdoor ? '' : 'none';
+                const starsOverlay = petArea.querySelector('.stars-overlay');
+                if (starsOverlay) starsOverlay.style.display = isOutdoor ? '' : 'none';
+                const moon = petArea.querySelector('.moon');
+                if (moon) moon.style.display = isOutdoor ? '' : 'none';
+            }
+
+            // Update nav buttons
+            document.querySelectorAll('.room-btn').forEach(btn => {
+                const isActive = btn.dataset.room === roomId;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-pressed', isActive);
+                if (isActive) {
+                    btn.setAttribute('aria-current', 'true');
+                } else {
+                    btn.removeAttribute('aria-current');
+                }
+            });
+
+            announce(`Moved to the ${room.name}!`);
         }
 
         // ==================== SVG GENERATION ====================
@@ -3453,14 +3736,23 @@
             const timeIcon = getTimeIcon(timeOfDay);
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
 
-            // Generate celestial elements
+            // Current room
+            const currentRoom = gameState.currentRoom || 'bedroom';
+            const room = ROOMS[currentRoom];
+            const isOutdoor = room.isOutdoor;
+            const roomBg = getRoomBackground(currentRoom, timeOfDay);
+            const roomDecor = getRoomDecor(currentRoom, timeOfDay);
+
+            // Generate celestial elements (only for outdoor rooms)
             let celestialHTML = '';
-            if (timeOfDay === 'night') {
-                celestialHTML = `<div class="stars-overlay">${generateStarsHTML()}</div><div class="moon"></div>`;
-            } else if (timeOfDay === 'day') {
-                celestialHTML = `<div class="sun"></div><div class="cloud" style="top:12px;left:-30px;">☁️</div><div class="cloud" style="top:35px;left:20%;">☁️</div>`;
-            } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
-                celestialHTML = `<div class="cloud" style="top:18px;left:10%;">☁️</div>`;
+            if (isOutdoor) {
+                if (timeOfDay === 'night') {
+                    celestialHTML = `<div class="stars-overlay">${generateStarsHTML()}</div><div class="moon"></div>`;
+                } else if (timeOfDay === 'day') {
+                    celestialHTML = `<div class="sun"></div><div class="cloud" style="top:12px;left:-30px;">☁️</div><div class="cloud" style="top:35px;left:20%;">☁️</div>`;
+                } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
+                    celestialHTML = `<div class="cloud" style="top:18px;left:10%;">☁️</div>`;
+                }
             }
 
             // Helper: need bubble class based on level
@@ -3474,8 +3766,10 @@
             const petDisplayName = escapeHTML(pet.name || petData.name);
 
             content.innerHTML = `
-                <div class="pet-area ${timeClass}" role="region" aria-label="Your pet ${petDisplayName}">
+                ${generateRoomNavHTML(currentRoom)}
+                <div class="pet-area ${timeClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
                     ${celestialHTML}
+                    <div class="room-label">${room.icon} ${room.name}</div>
                     <div class="time-indicator" aria-label="Time: ${timeOfDay}">${timeIcon}</div>
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
@@ -3489,6 +3783,7 @@
                         </div>
                     </div>
                     <p class="pet-mood" id="pet-mood" aria-live="polite">${petDisplayName} ${moodMessage}</p>
+                    <div class="room-decor" aria-hidden="true">${roomDecor}</div>
                 </div>
 
                 <section class="needs-section" aria-label="Pet needs">
@@ -3607,6 +3902,11 @@
             document.getElementById('pet-btn').addEventListener('click', () => careAction('cuddle'));
             document.getElementById('minigames-btn').addEventListener('click', openMiniGamesMenu);
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
+
+            // Room navigation event listeners
+            document.querySelectorAll('.room-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchRoom(btn.dataset.room));
+            });
 
             // Make pet directly pettable by clicking/touching the pet SVG
             const petContainer = document.getElementById('pet-container');
@@ -6104,16 +6404,28 @@
 
             const timeOfDay = gameState.timeOfDay;
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
+            const currentRoom = gameState.currentRoom || 'bedroom';
+            const room = ROOMS[currentRoom];
+            const isOutdoor = room ? room.isOutdoor : false;
 
             // Update class
             petArea.classList.remove('daytime', 'nighttime', 'sunset', 'sunrise');
             petArea.classList.add(timeClass);
+
+            // Update room background for new time of day
+            petArea.style.background = getRoomBackground(currentRoom, timeOfDay);
 
             // Update time indicator
             const timeIndicator = petArea.querySelector('.time-indicator');
             if (timeIndicator) {
                 timeIndicator.textContent = getTimeIcon(timeOfDay);
                 timeIndicator.setAttribute('aria-label', `Time: ${timeOfDay}`);
+            }
+
+            // Update room decor for time of day
+            const decor = petArea.querySelector('.room-decor');
+            if (decor) {
+                decor.textContent = getRoomDecor(currentRoom, timeOfDay);
             }
 
             // Update celestial elements - remove all existing ones first
@@ -6126,37 +6438,40 @@
             if (existingMoon) existingMoon.remove();
             if (existingSun) existingSun.remove();
 
-            if (timeOfDay === 'night') {
-                const starsOverlay = document.createElement('div');
-                starsOverlay.className = 'stars-overlay';
-                starsOverlay.innerHTML = generateStarsHTML();
-                petArea.insertBefore(starsOverlay, petArea.firstChild);
+            // Only add celestial elements for outdoor rooms
+            if (isOutdoor) {
+                if (timeOfDay === 'night') {
+                    const starsOverlay = document.createElement('div');
+                    starsOverlay.className = 'stars-overlay';
+                    starsOverlay.innerHTML = generateStarsHTML();
+                    petArea.insertBefore(starsOverlay, petArea.firstChild);
 
-                const moon = document.createElement('div');
-                moon.className = 'moon';
-                petArea.insertBefore(moon, petArea.children[1]);
-            } else if (timeOfDay === 'day') {
-                const sun = document.createElement('div');
-                sun.className = 'sun';
-                petArea.insertBefore(sun, petArea.firstChild);
+                    const moon = document.createElement('div');
+                    moon.className = 'moon';
+                    petArea.insertBefore(moon, petArea.children[1]);
+                } else if (timeOfDay === 'day') {
+                    const sun = document.createElement('div');
+                    sun.className = 'sun';
+                    petArea.insertBefore(sun, petArea.firstChild);
 
-                const cloud1 = document.createElement('div');
-                cloud1.className = 'cloud';
-                cloud1.style.cssText = 'top:12px;left:-30px;';
-                cloud1.textContent = '☁️';
-                petArea.appendChild(cloud1);
+                    const cloud1 = document.createElement('div');
+                    cloud1.className = 'cloud';
+                    cloud1.style.cssText = 'top:12px;left:-30px;';
+                    cloud1.textContent = '☁️';
+                    petArea.appendChild(cloud1);
 
-                const cloud2 = document.createElement('div');
-                cloud2.className = 'cloud';
-                cloud2.style.cssText = 'top:35px;left:20%;';
-                cloud2.textContent = '☁️';
-                petArea.appendChild(cloud2);
-            } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
-                const cloud = document.createElement('div');
-                cloud.className = 'cloud';
-                cloud.style.cssText = 'top:18px;left:10%;';
-                cloud.textContent = '☁️';
-                petArea.appendChild(cloud);
+                    const cloud2 = document.createElement('div');
+                    cloud2.className = 'cloud';
+                    cloud2.style.cssText = 'top:35px;left:20%;';
+                    cloud2.textContent = '☁️';
+                    petArea.appendChild(cloud2);
+                } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
+                    const cloud = document.createElement('div');
+                    cloud.className = 'cloud';
+                    cloud.style.cssText = 'top:18px;left:10%;';
+                    cloud.textContent = '☁️';
+                    petArea.appendChild(cloud);
+                }
             }
         }
 
@@ -6312,7 +6627,8 @@
                         pet: null,
                         eggTaps: 0,
                         lastUpdate: Date.now(),
-                        timeOfDay: getTimeOfDay()
+                        timeOfDay: getTimeOfDay(),
+                        currentRoom: 'bedroom'
                     };
                     saveGame();
                     announce('Starting fresh with a new egg!', true);
