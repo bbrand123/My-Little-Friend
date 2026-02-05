@@ -1429,6 +1429,230 @@
             transition: left 0.6s ease-out, opacity 0.3s;
         }
 
+        /* Hide and Seek Mini-Game */
+        .hideseek-game-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .hideseek-game {
+            background: white;
+            border-radius: 25px;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease;
+        }
+
+        .hideseek-game-title {
+            font-size: 1.3rem;
+            color: var(--color-text);
+            margin-bottom: 5px;
+        }
+
+        .hideseek-game-score {
+            font-size: 0.85rem;
+            color: #FF6D00;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .hideseek-game-timer {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .hideseek-field {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            border-radius: 18px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #E8F5E9 0%, #C8E6C9 30%, #A5D6A7 60%, #81C784 100%);
+            margin-bottom: 12px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .hideseek-hiding-spot {
+            position: absolute;
+            font-size: 2.2rem;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            z-index: 3;
+            filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.15));
+        }
+
+        .hideseek-hiding-spot:hover {
+            transform: scale(1.15);
+        }
+
+        .hideseek-hiding-spot:active {
+            transform: scale(0.95);
+        }
+
+        .hideseek-hiding-spot.searched {
+            opacity: 0.4;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .hideseek-hiding-spot.found {
+            animation: hideseekFound 0.6s ease forwards;
+        }
+
+        @keyframes hideseekFound {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.3) rotate(-5deg); }
+            60% { transform: scale(1.1) rotate(3deg); }
+            100% { transform: scale(1); }
+        }
+
+        .hideseek-treat {
+            position: absolute;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 5;
+            animation: hideseekTreatPop 0.5s ease forwards;
+        }
+
+        @keyframes hideseekTreatPop {
+            0% { opacity: 0; transform: scale(0) translateY(0); }
+            50% { opacity: 1; transform: scale(1.3) translateY(-10px); }
+            100% { opacity: 1; transform: scale(1) translateY(-5px); }
+        }
+
+        .hideseek-treat.collected {
+            animation: hideseekTreatCollect 0.6s ease forwards;
+        }
+
+        @keyframes hideseekTreatCollect {
+            0% { opacity: 1; transform: scale(1) translateY(-5px); }
+            100% { opacity: 0; transform: scale(0.3) translateY(-50px); }
+        }
+
+        .hideseek-miss {
+            position: absolute;
+            font-size: 1.2rem;
+            pointer-events: none;
+            z-index: 5;
+            animation: hideseekMiss 0.7s ease forwards;
+        }
+
+        @keyframes hideseekMiss {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+
+        .hideseek-pet {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            pointer-events: none;
+            transition: left 0.5s ease, bottom 0.5s ease;
+        }
+
+        .hideseek-pet svg {
+            width: 55px;
+            height: 55px;
+        }
+
+        .hideseek-pet.celebrating {
+            animation: hideseekCelebrate 0.5s ease;
+        }
+
+        @keyframes hideseekCelebrate {
+            0% { transform: translateX(-50%) translateY(0); }
+            25% { transform: translateX(-50%) translateY(-8px); }
+            50% { transform: translateX(-50%) translateY(0); }
+            75% { transform: translateX(-50%) translateY(-5px); }
+            100% { transform: translateX(-50%) translateY(0); }
+        }
+
+        .hideseek-instruction {
+            font-size: 1rem;
+            color: var(--color-text);
+            margin-bottom: 10px;
+            min-height: 1.4em;
+        }
+
+        .hideseek-instruction.highlight {
+            color: #FF6D00;
+            font-weight: bold;
+            animation: feedbackPop 0.4s ease;
+        }
+
+        .hideseek-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .hideseek-done-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #e0e0e0, #bdbdbd);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .hideseek-done-btn:hover,
+        .hideseek-done-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
+        .hideseek-reward {
+            position: absolute;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #FF6D00;
+            animation: fetchRewardFloat 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hideseek-progress {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .hideseek-progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #E0E0E0;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+
+        .hideseek-progress-dot.found {
+            background: #FF6D00;
+            transform: scale(1.2);
+        }
+
         /* Child-friendly modal */
         .modal-overlay {
             position: fixed;
@@ -2739,8 +2963,8 @@
         // ==================== MINI GAMES ====================
 
         const MINI_GAMES = [
-            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' }
-            // More mini games can be added here in the future
+            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' },
+            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen!' }
         ];
 
         function openMiniGamesMenu() {
@@ -2812,6 +3036,9 @@
             switch (gameId) {
                 case 'fetch':
                     startFetchGame();
+                    break;
+                case 'hideseek':
+                    startHideSeekGame();
                     break;
             }
         }
@@ -3053,6 +3280,361 @@
             }
 
             fetchState = null;
+        }
+
+        // ==================== HIDE & SEEK MINI-GAME ====================
+
+        let hideSeekState = null;
+
+        const HIDESEEK_OBJECTS = [
+            { emoji: '🌳', name: 'tree' },
+            { emoji: '🪨', name: 'rock' },
+            { emoji: '🌻', name: 'sunflower' },
+            { emoji: '🍄', name: 'mushroom' },
+            { emoji: '🪵', name: 'log' },
+            { emoji: '🌿', name: 'bush' },
+            { emoji: '🏠', name: 'house' },
+            { emoji: '📦', name: 'box' },
+            { emoji: '🪣', name: 'bucket' },
+            { emoji: '🧺', name: 'basket' },
+            { emoji: '🎪', name: 'tent' },
+            { emoji: '🪴', name: 'plant' }
+        ];
+
+        const HIDESEEK_TREATS = ['🍪', '🦴', '🧀', '🥕', '🍎', '🐟'];
+
+        function startHideSeekGame() {
+            const totalTreats = 5;
+            const spotCount = 8;
+
+            // Pick random hiding spots from available objects
+            const shuffled = [...HIDESEEK_OBJECTS].sort(() => Math.random() - 0.5);
+            const spots = shuffled.slice(0, spotCount);
+
+            // Assign positions that don't overlap
+            const positions = generateHideSeekPositions(spotCount);
+
+            // Pick which spots have treats hidden under them
+            const treatIndices = [];
+            const indexPool = Array.from({ length: spotCount }, (_, i) => i);
+            indexPool.sort(() => Math.random() - 0.5);
+            for (let i = 0; i < totalTreats; i++) {
+                treatIndices.push(indexPool[i]);
+            }
+
+            // Pick a random treat emoji for this round
+            const treatEmoji = HIDESEEK_TREATS[Math.floor(Math.random() * HIDESEEK_TREATS.length)];
+
+            hideSeekState = {
+                score: 0,
+                totalTreats: totalTreats,
+                treatsFound: 0,
+                spots: spots.map((obj, i) => ({
+                    ...obj,
+                    x: positions[i].x,
+                    y: positions[i].y,
+                    hasTreat: treatIndices.includes(i),
+                    searched: false
+                })),
+                treatEmoji: treatEmoji,
+                timeLeft: 30,
+                timerId: null,
+                phase: 'playing' // 'playing', 'finished'
+            };
+
+            renderHideSeekGame();
+            startHideSeekTimer();
+            announce(`Hide and Seek started! Find ${totalTreats} hidden treats! Tap the objects to search under them.`);
+        }
+
+        function generateHideSeekPositions(count) {
+            const positions = [];
+            const minDist = 18;
+
+            for (let i = 0; i < count; i++) {
+                let attempts = 0;
+                let pos;
+                do {
+                    pos = {
+                        x: 8 + Math.random() * 72,
+                        y: 5 + Math.random() * 65
+                    };
+                    attempts++;
+                } while (
+                    attempts < 50 &&
+                    positions.some(p => Math.hypot(p.x - pos.x, p.y - pos.y) < minDist)
+                );
+                positions.push(pos);
+            }
+            return positions;
+        }
+
+        function renderHideSeekGame() {
+            const existing = document.querySelector('.hideseek-game-overlay');
+            if (existing) existing.remove();
+
+            const pet = gameState.pet;
+            const petData = PET_TYPES[pet.type];
+            const mood = getMood(pet);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'hideseek-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Hide and Seek mini game');
+
+            let spotsHTML = '';
+            hideSeekState.spots.forEach((spot, i) => {
+                spotsHTML += `<div class="hideseek-hiding-spot" data-index="${i}"
+                    style="left: ${spot.x}%; top: ${spot.y}%;"
+                    role="button" tabindex="0"
+                    aria-label="Search under the ${spot.name}">${spot.emoji}</div>`;
+            });
+
+            let progressDots = '';
+            for (let i = 0; i < hideSeekState.totalTreats; i++) {
+                progressDots += `<div class="hideseek-progress-dot" id="hideseek-dot-${i}"></div>`;
+            }
+
+            overlay.innerHTML = `
+                <div class="hideseek-game">
+                    <h2 class="hideseek-game-title">${hideSeekState.treatEmoji} Hide & Seek!</h2>
+                    <p class="hideseek-game-score" id="hideseek-score">Found: ${hideSeekState.treatsFound} / ${hideSeekState.totalTreats}</p>
+                    <div class="hideseek-progress" id="hideseek-progress">${progressDots}</div>
+                    <p class="hideseek-game-timer" id="hideseek-timer">Time: ${hideSeekState.timeLeft}s</p>
+                    <div class="hideseek-field" id="hideseek-field">
+                        ${spotsHTML}
+                        <div class="hideseek-pet" id="hideseek-pet">
+                            ${generatePetSVG(pet, mood)}
+                        </div>
+                    </div>
+                    <p class="hideseek-instruction" id="hideseek-instruction">Tap objects to find the hidden treats!</p>
+                    <div class="hideseek-buttons">
+                        <button class="hideseek-done-btn" id="hideseek-done-btn">Done</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Event listeners for each hiding spot
+            overlay.querySelectorAll('.hideseek-hiding-spot').forEach(el => {
+                el.addEventListener('click', () => handleHideSeekTap(parseInt(el.dataset.index)));
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleHideSeekTap(parseInt(el.dataset.index));
+                    }
+                });
+            });
+
+            const doneBtn = overlay.querySelector('#hideseek-done-btn');
+            doneBtn.addEventListener('click', () => endHideSeekGame());
+
+            // Escape to exit
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    endHideSeekGame();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            // Focus the first hiding spot
+            const firstSpot = overlay.querySelector('.hideseek-hiding-spot');
+            if (firstSpot) firstSpot.focus();
+        }
+
+        function startHideSeekTimer() {
+            if (hideSeekState.timerId) clearInterval(hideSeekState.timerId);
+
+            hideSeekState.timerId = setInterval(() => {
+                if (!hideSeekState || hideSeekState.phase !== 'playing') return;
+
+                hideSeekState.timeLeft--;
+                const timerEl = document.getElementById('hideseek-timer');
+                if (timerEl) timerEl.textContent = `Time: ${hideSeekState.timeLeft}s`;
+
+                if (hideSeekState.timeLeft <= 5 && timerEl) {
+                    timerEl.style.color = '#F44336';
+                    timerEl.style.fontWeight = 'bold';
+                }
+
+                if (hideSeekState.timeLeft <= 0) {
+                    hideSeekState.phase = 'finished';
+                    clearInterval(hideSeekState.timerId);
+                    finishHideSeekRound();
+                }
+            }, 1000);
+        }
+
+        function handleHideSeekTap(index) {
+            if (!hideSeekState || hideSeekState.phase !== 'playing') return;
+
+            const spot = hideSeekState.spots[index];
+            if (spot.searched) return;
+
+            spot.searched = true;
+
+            const spotEl = document.querySelectorAll('.hideseek-hiding-spot')[index];
+            const field = document.getElementById('hideseek-field');
+            const instruction = document.getElementById('hideseek-instruction');
+            const petEl = document.getElementById('hideseek-pet');
+
+            // Move pet toward the tapped spot
+            if (petEl) {
+                petEl.style.left = spot.x + '%';
+                petEl.style.bottom = (80 - spot.y) + '%';
+            }
+
+            if (spot.hasTreat) {
+                // Found a treat!
+                hideSeekState.treatsFound++;
+                hideSeekState.score++;
+
+                spotEl.classList.add('found');
+
+                // Show treat emoji popping up
+                const treat = document.createElement('div');
+                treat.className = 'hideseek-treat';
+                treat.textContent = hideSeekState.treatEmoji;
+                treat.style.left = spot.x + '%';
+                treat.style.top = spot.y + '%';
+                field.appendChild(treat);
+
+                // Collect animation
+                setTimeout(() => treat.classList.add('collected'), 400);
+                setTimeout(() => treat.remove(), 1000);
+
+                // Show reward float
+                const reward = document.createElement('div');
+                reward.className = 'hideseek-reward';
+                reward.textContent = `+1 ${hideSeekState.treatEmoji}`;
+                reward.style.left = spot.x + '%';
+                reward.style.top = (spot.y - 5) + '%';
+                field.appendChild(reward);
+                setTimeout(() => reward.remove(), 1000);
+
+                // Update score
+                const scoreEl = document.getElementById('hideseek-score');
+                if (scoreEl) scoreEl.textContent = `Found: ${hideSeekState.treatsFound} / ${hideSeekState.totalTreats}`;
+
+                // Update progress dots
+                const dot = document.getElementById(`hideseek-dot-${hideSeekState.treatsFound - 1}`);
+                if (dot) dot.classList.add('found');
+
+                // Pet celebrates
+                if (petEl) {
+                    petEl.classList.add('celebrating');
+                    setTimeout(() => petEl.classList.remove('celebrating'), 500);
+                }
+
+                instruction.textContent = `Found a treat! ${hideSeekState.treatEmoji}`;
+                instruction.className = 'hideseek-instruction highlight';
+
+                announce(`Found a treat! ${hideSeekState.treatsFound} of ${hideSeekState.totalTreats} found.`);
+
+                // Mark spot as searched visually after animation
+                setTimeout(() => spotEl.classList.add('searched'), 600);
+
+                // Check if all treats found
+                if (hideSeekState.treatsFound >= hideSeekState.totalTreats) {
+                    hideSeekState.phase = 'finished';
+                    clearInterval(hideSeekState.timerId);
+                    setTimeout(() => finishHideSeekRound(), 800);
+                }
+            } else {
+                // No treat here
+                spotEl.classList.add('searched');
+
+                const miss = document.createElement('div');
+                miss.className = 'hideseek-miss';
+                miss.textContent = '❌';
+                miss.style.left = spot.x + '%';
+                miss.style.top = spot.y + '%';
+                field.appendChild(miss);
+                setTimeout(() => miss.remove(), 700);
+
+                instruction.textContent = 'Nothing here... keep looking!';
+                instruction.className = 'hideseek-instruction';
+
+                announce('Nothing under this one. Keep searching!');
+            }
+        }
+
+        function finishHideSeekRound() {
+            const instruction = document.getElementById('hideseek-instruction');
+            const allFound = hideSeekState.treatsFound >= hideSeekState.totalTreats;
+
+            if (allFound) {
+                if (instruction) {
+                    instruction.textContent = `Amazing! Found all ${hideSeekState.totalTreats} treats! ${hideSeekState.treatEmoji}`;
+                    instruction.className = 'hideseek-instruction highlight';
+                }
+                announce(`Fantastic! All ${hideSeekState.totalTreats} treats found!`);
+            } else {
+                if (instruction) {
+                    instruction.textContent = `Time's up! Found ${hideSeekState.treatsFound} of ${hideSeekState.totalTreats} treats.`;
+                    instruction.className = 'hideseek-instruction';
+                }
+                announce(`Time is up! Found ${hideSeekState.treatsFound} of ${hideSeekState.totalTreats} treats.`);
+            }
+
+            // Reveal unfound treats
+            hideSeekState.spots.forEach((spot, i) => {
+                if (spot.hasTreat && !spot.searched) {
+                    const spotEl = document.querySelectorAll('.hideseek-hiding-spot')[i];
+                    if (spotEl) {
+                        spotEl.classList.add('searched');
+                        const field = document.getElementById('hideseek-field');
+                        const reveal = document.createElement('div');
+                        reveal.className = 'hideseek-treat';
+                        reveal.textContent = hideSeekState.treatEmoji;
+                        reveal.style.left = spot.x + '%';
+                        reveal.style.top = spot.y + '%';
+                        reveal.style.opacity = '0.5';
+                        field.appendChild(reveal);
+                    }
+                }
+            });
+
+            // Disable all spots
+            document.querySelectorAll('.hideseek-hiding-spot').forEach(el => {
+                el.style.pointerEvents = 'none';
+            });
+        }
+
+        function endHideSeekGame() {
+            if (hideSeekState && hideSeekState.timerId) {
+                clearInterval(hideSeekState.timerId);
+            }
+
+            const overlay = document.querySelector('.hideseek-game-overlay');
+            if (overlay) overlay.remove();
+
+            // Apply rewards based on treats found
+            if (hideSeekState && hideSeekState.treatsFound > 0 && gameState.pet) {
+                const bonus = Math.min(hideSeekState.treatsFound * 6, 30);
+                gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
+                gameState.pet.hunger = clamp(gameState.pet.hunger + Math.min(hideSeekState.treatsFound * 2, 10), 0, 100);
+
+                const petData = PET_TYPES[gameState.pet.type];
+                const feedback = document.getElementById('feedback');
+                if (feedback) {
+                    feedback.textContent = `${petData.emoji} Loved finding treats! (${hideSeekState.treatsFound} found)`;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                }
+
+                updateNeedDisplays();
+                updatePetMood();
+                saveGame();
+
+                announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}!`);
+            }
+
+            hideSeekState = null;
         }
 
         // ==================== DECAY TIMER ====================
