@@ -388,12 +388,6 @@
             z-index: 2;
         }
 
-        .pet-name-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
         .pet-name {
             font-size: 1.4rem;
             color: var(--color-primary);
@@ -440,6 +434,8 @@
             font-size: 0.95rem;
             color: var(--color-text);
             margin-top: 2px;
+            z-index: 2;
+            position: relative;
         }
 
         /* Needs Section - Compact Circular Indicators */
@@ -1805,9 +1801,6 @@
 
         // ==================== RENDER FUNCTIONS ====================
 
-        // Track if egg handlers are attached to prevent duplicates
-        let eggHandlersAttached = false;
-
         function renderEggPhase(maintainFocus = false) {
             const content = document.getElementById('game-content');
             const crackLevel = Math.min(gameState.eggTaps, 3);
@@ -2498,10 +2491,11 @@
                 timeIndicator.setAttribute('aria-label', `Time: ${timeOfDay}`);
             }
 
-            // Update celestial elements
+            // Update celestial elements - remove all existing ones first
             const existingStars = petArea.querySelector('.stars-overlay');
             const existingMoon = petArea.querySelector('.moon');
             const existingSun = petArea.querySelector('.sun');
+            petArea.querySelectorAll('.cloud').forEach(c => c.remove());
 
             if (existingStars) existingStars.remove();
             if (existingMoon) existingMoon.remove();
@@ -2520,6 +2514,24 @@
                 const sun = document.createElement('div');
                 sun.className = 'sun';
                 petArea.insertBefore(sun, petArea.firstChild);
+
+                const cloud1 = document.createElement('div');
+                cloud1.className = 'cloud';
+                cloud1.style.cssText = 'top:12px;left:-30px;';
+                cloud1.textContent = '☁️';
+                petArea.appendChild(cloud1);
+
+                const cloud2 = document.createElement('div');
+                cloud2.className = 'cloud';
+                cloud2.style.cssText = 'top:35px;left:20%;';
+                cloud2.textContent = '☁️';
+                petArea.appendChild(cloud2);
+            } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.style.cssText = 'top:18px;left:10%;';
+                cloud.textContent = '☁️';
+                petArea.appendChild(cloud);
             }
         }
 
@@ -2545,6 +2557,7 @@
                         gameState.pet.hunger = saved.pet.hunger;
                         gameState.pet.cleanliness = saved.pet.cleanliness;
                         gameState.pet.happiness = saved.pet.happiness;
+                        gameState.pet.energy = saved.pet.energy;
                         updateNeedDisplays();
                         updatePetMood();
                     }
@@ -2589,7 +2602,17 @@
             // Focus the cancel button (safer option for children)
             cancelBtn.focus();
 
+            // Handle Escape key
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    if (onCancel) onCancel();
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
             function closeModal() {
+                document.removeEventListener('keydown', handleEscape);
                 modal.remove();
             }
 
@@ -2610,16 +2633,6 @@
                     if (onCancel) onCancel();
                 }
             });
-
-            // Handle Escape key
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeModal();
-                    if (onCancel) onCancel();
-                    document.removeEventListener('keydown', handleEscape);
-                }
-            }
-            document.addEventListener('keydown', handleEscape);
 
             // Trap focus within modal
             modal.addEventListener('keydown', (e) => {
