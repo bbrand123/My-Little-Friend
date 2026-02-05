@@ -2035,6 +2035,238 @@
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
         }
 
+        /* Simon Says Mini-Game */
+        .simonsays-game-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .simonsays-game {
+            background: white;
+            border-radius: 25px;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease;
+        }
+
+        .simonsays-game-title {
+            font-size: 1.3rem;
+            color: var(--color-text);
+            margin-bottom: 5px;
+        }
+
+        .simonsays-game-score {
+            font-size: 0.85rem;
+            color: #FF7043;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .simonsays-game-round {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .simonsays-board {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: #333;
+            padding: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .simonsays-pad-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .simonsays-pad {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            border: none;
+            cursor: pointer;
+            transition: filter 0.1s ease, transform 0.1s ease;
+            padding: 0;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+
+        .simonsays-pad:focus {
+            outline: 3px solid white;
+            outline-offset: -3px;
+            z-index: 2;
+        }
+
+        .simonsays-pad[data-color="green"] {
+            top: 0;
+            left: 0;
+            background: #4CAF50;
+            border-radius: 100% 0 0 0;
+        }
+
+        .simonsays-pad[data-color="red"] {
+            top: 0;
+            right: 0;
+            background: #F44336;
+            border-radius: 0 100% 0 0;
+        }
+
+        .simonsays-pad[data-color="yellow"] {
+            bottom: 0;
+            left: 0;
+            background: #FFEB3B;
+            border-radius: 0 0 0 100%;
+        }
+
+        .simonsays-pad[data-color="blue"] {
+            bottom: 0;
+            right: 0;
+            background: #2196F3;
+            border-radius: 0 0 100% 0;
+        }
+
+        .simonsays-pad.lit {
+            filter: brightness(1.6);
+            transform: scale(1.03);
+            z-index: 1;
+        }
+
+        .simonsays-pad.disabled {
+            cursor: not-allowed;
+            filter: brightness(0.6);
+        }
+
+        .simonsays-pad:not(.disabled):hover {
+            filter: brightness(1.2);
+        }
+
+        .simonsays-pad:not(.disabled):active {
+            filter: brightness(1.5);
+            transform: scale(0.97);
+        }
+
+        .simonsays-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #333;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        .simonsays-center-pet svg {
+            width: 45px;
+            height: 45px;
+        }
+
+        .simonsays-center-pet.bouncing {
+            animation: simonBounce 0.4s ease;
+        }
+
+        @keyframes simonBounce {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.15); }
+            60% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+
+        .simonsays-instruction {
+            font-size: 1rem;
+            color: var(--color-text);
+            margin-bottom: 10px;
+            min-height: 1.4em;
+        }
+
+        .simonsays-instruction.highlight {
+            color: #FF7043;
+            font-weight: bold;
+            animation: feedbackPop 0.4s ease;
+        }
+
+        .simonsays-instruction.watching {
+            color: #9575CD;
+            font-weight: bold;
+        }
+
+        .simonsays-instruction.your-turn {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .simonsays-instruction.wrong {
+            color: #F44336;
+            font-weight: bold;
+        }
+
+        .simonsays-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .simonsays-done-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #e0e0e0, #bdbdbd);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .simonsays-done-btn:hover,
+        .simonsays-done-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
+        .simonsays-streak {
+            position: absolute;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #FF7043;
+            animation: fetchRewardFloat 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+
         /* Child-friendly modal */
         .modal-overlay {
             position: fixed;
@@ -3348,7 +3580,8 @@
             { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' },
             { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen!' },
             { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time!' },
-            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs!' }
+            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs!' },
+            { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds!' }
         ];
 
         function openMiniGamesMenu() {
@@ -3429,6 +3662,9 @@
                     break;
                 case 'matching':
                     startMatchingGame();
+                    break;
+                case 'simonsays':
+                    startSimonSaysGame();
                     break;
             }
         }
@@ -4622,6 +4858,340 @@
             }
 
             matchingState = null;
+        }
+
+        // ==================== SIMON SAYS MINI-GAME ====================
+
+        const SIMON_COLORS = ['green', 'red', 'yellow', 'blue'];
+        const SIMON_ICONS = { green: '🟢', red: '🔴', yellow: '🟡', blue: '🔵' };
+        const SIMON_FREQUENCIES = { green: 392, red: 523.25, yellow: 659.25, blue: 783.99 };
+
+        let simonState = null;
+        let simonAudioCtx = null;
+
+        function simonPlayTone(color, duration) {
+            try {
+                if (!simonAudioCtx) {
+                    simonAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = simonAudioCtx.createOscillator();
+                const gain = simonAudioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = SIMON_FREQUENCIES[color];
+                gain.gain.value = 0.3;
+                gain.gain.exponentialRampToValueAtTime(0.001, simonAudioCtx.currentTime + duration / 1000);
+                osc.connect(gain);
+                gain.connect(simonAudioCtx.destination);
+                osc.start();
+                osc.stop(simonAudioCtx.currentTime + duration / 1000);
+            } catch (e) {
+                // Audio not supported — game works visually without it
+            }
+        }
+
+        function simonPlayErrorTone() {
+            try {
+                if (!simonAudioCtx) {
+                    simonAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = simonAudioCtx.createOscillator();
+                const gain = simonAudioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.value = 150;
+                gain.gain.value = 0.25;
+                gain.gain.exponentialRampToValueAtTime(0.001, simonAudioCtx.currentTime + 0.6);
+                osc.connect(gain);
+                gain.connect(simonAudioCtx.destination);
+                osc.start();
+                osc.stop(simonAudioCtx.currentTime + 0.6);
+            } catch (e) {
+                // Audio not supported
+            }
+        }
+
+        function startSimonSaysGame() {
+            if (!gameState.pet) return;
+
+            const existing = document.querySelector('.simonsays-game-overlay');
+            if (existing) existing.remove();
+
+            simonState = {
+                pattern: [],
+                playerIndex: 0,
+                round: 0,
+                score: 0,
+                highestRound: 0,
+                phase: 'watching', // 'watching', 'playing', 'gameover'
+                playbackIndex: 0,
+                playbackTimer: null,
+                active: true
+            };
+
+            renderSimonSaysGame();
+            setTimeout(() => simonNextRound(), 800);
+
+            announce('Simon Says! Watch the pattern, then repeat it!');
+        }
+
+        function renderSimonSaysGame() {
+            const overlay = document.createElement('div');
+            overlay.className = 'simonsays-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Simon Says mini-game');
+
+            const pet = gameState.pet;
+            const mood = getMood(pet);
+            const petSVG = generatePetSVG(pet, mood);
+
+            overlay.innerHTML = `
+                <div class="simonsays-game">
+                    <h2 class="simonsays-game-title">🎵 Simon Says!</h2>
+                    <p class="simonsays-game-score" id="simon-score" aria-live="polite">Score: 0</p>
+                    <p class="simonsays-game-round" id="simon-round">Round: 1</p>
+                    <div class="simonsays-board">
+                        <div class="simonsays-pad-container">
+                            <button class="simonsays-pad disabled" data-color="green" aria-label="Green pad"></button>
+                            <button class="simonsays-pad disabled" data-color="red" aria-label="Red pad"></button>
+                            <button class="simonsays-pad disabled" data-color="yellow" aria-label="Yellow pad"></button>
+                            <button class="simonsays-pad disabled" data-color="blue" aria-label="Blue pad"></button>
+                        </div>
+                        <div class="simonsays-center">
+                            <div class="simonsays-center-pet" id="simon-pet">${petSVG}</div>
+                        </div>
+                    </div>
+                    <p class="simonsays-instruction watching" id="simon-instruction">Watch the pattern...</p>
+                    <div class="simonsays-buttons">
+                        <button class="simonsays-done-btn" id="simon-done" aria-label="Stop playing Simon Says">Done</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Pad click listeners
+            overlay.querySelectorAll('.simonsays-pad').forEach(pad => {
+                pad.addEventListener('click', () => {
+                    if (!simonState || simonState.phase !== 'playing') return;
+                    const color = pad.getAttribute('data-color');
+                    simonHandleInput(color);
+                });
+            });
+
+            // Done button
+            overlay.querySelector('#simon-done').addEventListener('click', () => endSimonSaysGame());
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) endSimonSaysGame();
+            });
+
+            // Escape to close
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    endSimonSaysGame();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+            simonState._handleEscape = handleEscape;
+
+            // Focus done button
+            overlay.querySelector('#simon-done').focus();
+        }
+
+        function simonNextRound() {
+            if (!simonState || !simonState.active) return;
+
+            simonState.round++;
+            simonState.playerIndex = 0;
+            simonState.phase = 'watching';
+
+            // Add a new random color to the pattern
+            const nextColor = SIMON_COLORS[Math.floor(Math.random() * SIMON_COLORS.length)];
+            simonState.pattern.push(nextColor);
+
+            // Update round display
+            const roundEl = document.getElementById('simon-round');
+            if (roundEl) roundEl.textContent = `Round: ${simonState.round}`;
+
+            // Update instruction
+            const instruction = document.getElementById('simon-instruction');
+            if (instruction) {
+                instruction.textContent = 'Watch the pattern...';
+                instruction.className = 'simonsays-instruction watching';
+            }
+
+            // Disable pads during playback
+            simonSetPadsDisabled(true);
+
+            // Play the pattern
+            simonState.playbackIndex = 0;
+            const speed = Math.max(350, 600 - simonState.round * 25);
+
+            setTimeout(() => simonPlayPattern(speed), 400);
+        }
+
+        function simonPlayPattern(speed) {
+            if (!simonState || !simonState.active || simonState.phase !== 'watching') return;
+
+            const idx = simonState.playbackIndex;
+            if (idx >= simonState.pattern.length) {
+                // Pattern playback done — player's turn
+                simonState.phase = 'playing';
+                simonState.playerIndex = 0;
+                simonSetPadsDisabled(false);
+
+                const instruction = document.getElementById('simon-instruction');
+                if (instruction) {
+                    instruction.textContent = 'Your turn! Repeat the pattern!';
+                    instruction.className = 'simonsays-instruction your-turn';
+                }
+                announce('Your turn! Repeat the pattern.');
+                return;
+            }
+
+            const color = simonState.pattern[idx];
+            simonLightPad(color, speed * 0.7);
+            simonPlayTone(color, speed * 0.7);
+
+            simonState.playbackIndex++;
+            simonState.playbackTimer = setTimeout(() => simonPlayPattern(speed), speed);
+        }
+
+        function simonLightPad(color, duration) {
+            const pad = document.querySelector(`.simonsays-pad[data-color="${color}"]`);
+            if (!pad) return;
+
+            pad.classList.add('lit');
+            setTimeout(() => pad.classList.remove('lit'), duration);
+        }
+
+        function simonSetPadsDisabled(disabled) {
+            document.querySelectorAll('.simonsays-pad').forEach(pad => {
+                if (disabled) {
+                    pad.classList.add('disabled');
+                } else {
+                    pad.classList.remove('disabled');
+                }
+            });
+        }
+
+        function simonHandleInput(color) {
+            if (!simonState || simonState.phase !== 'playing') return;
+
+            const expected = simonState.pattern[simonState.playerIndex];
+
+            // Light the pad and play the tone regardless
+            simonLightPad(color, 250);
+            simonPlayTone(color, 250);
+
+            if (color === expected) {
+                // Correct!
+                simonState.playerIndex++;
+                simonState.score++;
+
+                // Update score
+                const scoreEl = document.getElementById('simon-score');
+                if (scoreEl) scoreEl.textContent = `Score: ${simonState.score}`;
+
+                // Pet bounces on correct input
+                const petEl = document.getElementById('simon-pet');
+                if (petEl) {
+                    petEl.classList.add('bouncing');
+                    setTimeout(() => petEl.classList.remove('bouncing'), 400);
+                }
+
+                // Check if player completed the full pattern
+                if (simonState.playerIndex >= simonState.pattern.length) {
+                    simonState.highestRound = simonState.round;
+                    simonState.phase = 'watching';
+                    simonSetPadsDisabled(true);
+
+                    const instruction = document.getElementById('simon-instruction');
+                    if (instruction) {
+                        const messages = ['Great job!', 'Well done!', 'Awesome!', 'Perfect!', 'Amazing!', 'Super!'];
+                        instruction.textContent = randomFromArray(messages);
+                        instruction.className = 'simonsays-instruction highlight';
+                    }
+
+                    announce(`Round ${simonState.round} complete!`);
+
+                    // Next round after a brief pause
+                    setTimeout(() => simonNextRound(), 1000);
+                }
+            } else {
+                // Wrong!
+                simonState.phase = 'gameover';
+                simonPlayErrorTone();
+                simonSetPadsDisabled(true);
+
+                // Flash all pads to indicate error
+                document.querySelectorAll('.simonsays-pad').forEach(pad => {
+                    pad.classList.add('lit');
+                    setTimeout(() => pad.classList.remove('lit'), 500);
+                });
+
+                const instruction = document.getElementById('simon-instruction');
+                if (instruction) {
+                    const round = simonState.highestRound || (simonState.round - 1);
+                    let message = `Oops! You reached round ${simonState.round}! `;
+                    if (round >= 8) message += 'Incredible memory!';
+                    else if (round >= 5) message += 'Great job!';
+                    else if (round >= 3) message += 'Nice try!';
+                    else message += 'Keep practicing!';
+                    instruction.textContent = message;
+                    instruction.className = 'simonsays-instruction wrong';
+                }
+
+                announce(`Game over! You reached round ${simonState.round}.`);
+
+                // Auto-end after showing result
+                setTimeout(() => endSimonSaysGame(), 2500);
+            }
+        }
+
+        function endSimonSaysGame() {
+            if (simonState && simonState.playbackTimer) clearTimeout(simonState.playbackTimer);
+
+            if (simonState && simonState._handleEscape) {
+                document.removeEventListener('keydown', simonState._handleEscape);
+            }
+
+            const overlay = document.querySelector('.simonsays-game-overlay');
+            if (overlay) overlay.remove();
+
+            // Apply rewards based on rounds completed
+            if (simonState && simonState.score > 0 && gameState.pet) {
+                const roundsCompleted = simonState.highestRound;
+                const happinessBonus = Math.min(roundsCompleted * 4, 30);
+                const energyCost = Math.min(roundsCompleted * 2, 10);
+
+                gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
+
+                const petData = PET_TYPES[gameState.pet.type];
+                const feedback = document.getElementById('feedback');
+                if (feedback) {
+                    feedback.textContent = `${petData.emoji} Loved Simon Says! (Round ${simonState.highestRound})`;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                }
+
+                updateNeedDisplays();
+                updatePetMood();
+                saveGame();
+
+                announce(`Simon Says over! Reached round ${simonState.highestRound}! Happiness +${happinessBonus}!`);
+            }
+
+            // Clean up audio context
+            if (simonAudioCtx) {
+                try { simonAudioCtx.close(); } catch (e) {}
+                simonAudioCtx = null;
+            }
+
+            simonState = null;
         }
 
         // ==================== DECAY TIMER ====================
