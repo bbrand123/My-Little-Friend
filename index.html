@@ -1923,7 +1923,7 @@
                     createExerciseParticles(sparkles);
                     announce(`Exercised your pet! Happiness is now ${pet.happiness}% but energy dropped to ${pet.energy}%`);
                     break;
-                case 'treat':
+                case 'treat': {
                     // Treats - special snacks that give bonus happiness
                     const treat = randomFromArray(TREAT_TYPES);
                     pet.happiness = clamp(pet.happiness + 25, 0, 100);
@@ -1933,6 +1933,7 @@
                     createTreatParticles(sparkles, treat.emoji);
                     announce(`Gave your pet a ${treat.name}! Happiness is now ${pet.happiness}%`);
                     break;
+                }
             }
 
             // Show feedback
