@@ -31,6 +31,7 @@
             --color-button-groom: #CE93D8;
             --color-button-exercise: #FFB74D;
             --color-button-treat: #FF7EB3;
+            --color-button-pet: #FFB4A2;
             --color-hunger: #FF7043;
             --color-clean: #29B6F6;
             --color-happy-bar: #66BB6A;
@@ -202,6 +203,19 @@
             30% { transform: scale(1.1) translateY(-15px); }
             50% { transform: scale(1.05) translateY(-5px); }
             70% { transform: scale(1.12) translateY(-10px); }
+        }
+
+        .pet-container.cuddle-anim {
+            animation: cuddleNuzzle 0.8s ease;
+        }
+
+        @keyframes cuddleNuzzle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            15% { transform: scale(1.08) rotate(-3deg); }
+            30% { transform: scale(1.12) rotate(2deg); }
+            45% { transform: scale(1.1) rotate(-2deg); }
+            60% { transform: scale(1.12) rotate(1deg); }
+            75% { transform: scale(1.08) rotate(-1deg); }
         }
 
         .pet-container.exercise-anim {
@@ -470,6 +484,10 @@
 
         .action-btn.treat {
             background: linear-gradient(135deg, var(--color-button-treat), #FF4081);
+        }
+
+        .action-btn.pet-cuddle {
+            background: linear-gradient(135deg, var(--color-button-pet), #E88B73);
         }
 
         .need-bar-fill.energy {
@@ -760,6 +778,41 @@
                 opacity: 0;
                 transform: scale(0.6) translateY(-55px) rotate(-15deg);
             }
+        }
+
+        /* Cuddle/petting particles */
+        .cuddle-particle {
+            position: absolute;
+            font-size: 1.4rem;
+            animation: cuddleFloat 1.4s ease-out forwards;
+        }
+
+        @keyframes cuddleFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(0) rotate(0deg);
+            }
+            20% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-10px) rotate(-10deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.4) translateY(-25px) rotate(5deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-55px) rotate(-5deg);
+            }
+        }
+
+        /* Pettable pet area cursor */
+        .pet-container.pettable {
+            cursor: pointer;
+        }
+
+        .pet-container.pettable:hover {
+            filter: brightness(1.05);
         }
 
         /* Day/Night cycle styles */
@@ -1100,7 +1153,8 @@
             medicine: ['All better!', 'Feeling great!', 'So much better!', 'Healthy!', 'Happy again!'],
             groom: ['So fluffy!', 'Looking good!', 'Nice and tidy!', 'Beautiful!', 'Well groomed!'],
             exercise: ['Great run!', 'I fetched it!', 'So much fun!', 'Let\'s go again!', 'What a workout!'],
-            treat: ['Yummy treat!', 'So special!', 'Best snack ever!', 'More please!', 'What a delight!']
+            treat: ['Yummy treat!', 'So special!', 'Best snack ever!', 'More please!', 'What a delight!'],
+            cuddle: ['So cozy!', 'Loves cuddles!', 'Purr purr!', 'Snuggle time!', 'More pets please!']
         };
 
         const MOOD_MESSAGES = {
@@ -1815,6 +1869,10 @@
                             <span class="btn-icon" aria-hidden="true">🍪</span>
                             <span>Treat</span>
                         </button>
+                        <button class="action-btn pet-cuddle" id="pet-btn" aria-label="Pet and cuddle your pet. Current happiness: ${pet.happiness}%">
+                            <span class="btn-icon" aria-hidden="true">🤗</span>
+                            <span>Pet</span>
+                        </button>
                     </div>
                 </section>
 
@@ -1836,7 +1894,22 @@
             document.getElementById('groom-btn').addEventListener('click', () => careAction('groom'));
             document.getElementById('exercise-btn').addEventListener('click', () => careAction('exercise'));
             document.getElementById('treat-btn').addEventListener('click', () => careAction('treat'));
+            document.getElementById('pet-btn').addEventListener('click', () => careAction('cuddle'));
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
+
+            // Make pet directly pettable by clicking/touching the pet SVG
+            const petContainer = document.getElementById('pet-container');
+            petContainer.classList.add('pettable');
+            petContainer.setAttribute('role', 'button');
+            petContainer.setAttribute('tabindex', '0');
+            petContainer.setAttribute('aria-label', 'Click or tap your pet to give it cuddles!');
+            petContainer.addEventListener('click', () => careAction('cuddle'));
+            petContainer.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    careAction('cuddle');
+                }
+            });
 
             // Start decay timer
             startDecayTimer();
@@ -1934,6 +2007,15 @@
                     announce(`Gave your pet a ${treat.name}! Happiness is now ${pet.happiness}%`);
                     break;
                 }
+                case 'cuddle':
+                    // Petting/Cuddling - direct affection boosts happiness and energy
+                    pet.happiness = clamp(pet.happiness + 15, 0, 100);
+                    pet.energy = clamp(pet.energy + 5, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
+                    petContainer.classList.add('cuddle-anim');
+                    createCuddleParticles(sparkles);
+                    announce(`You pet and cuddled your pet! Happiness is now ${pet.happiness}%`);
+                    break;
             }
 
             // Show feedback
@@ -1947,7 +2029,7 @@
 
             // Remove animation class
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim');
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim');
             }, 800);
 
             // Hide feedback
@@ -2030,6 +2112,10 @@
             // Update exercise button - exercise boosts happiness but uses energy
             const exerciseDesc = pet.energy <= 25 ? 'too tired to exercise' : pet.happiness <= 50 ? 'needs some exercise' : 'enjoying activities';
             document.getElementById('exercise-btn').setAttribute('aria-label', `Exercise your pet - take a walk or play fetch. Happiness: ${pet.happiness}%, ${exerciseDesc}`);
+
+            // Update pet/cuddle button - petting gives affection
+            const cuddleDesc = pet.happiness <= 50 ? 'wants cuddles' : 'loves your attention';
+            document.getElementById('pet-btn').setAttribute('aria-label', `Pet and cuddle your pet. Happiness: ${pet.happiness}%, ${cuddleDesc}`);
         }
 
         function updatePetMood() {
@@ -2183,6 +2269,21 @@
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${20 + Math.random() * 45}%`;
                 particle.style.animationDelay = `${i * 0.12}s`;
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1700);
+            }
+        }
+
+        function createCuddleParticles(container) {
+            // Cuddle symbols - hearts, sparkles, warm emojis
+            const cuddleSymbols = ['💕', '💗', '✨', '🥰', '💖', '💛'];
+            for (let i = 0; i < 7; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'cuddle-particle';
+                particle.textContent = cuddleSymbols[i % cuddleSymbols.length];
+                particle.style.left = `${15 + Math.random() * 70}%`;
+                particle.style.top = `${20 + Math.random() * 45}%`;
+                particle.style.animationDelay = `${i * 0.1}s`;
                 container.appendChild(particle);
                 setTimeout(() => particle.remove(), 1700);
             }
