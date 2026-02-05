@@ -2816,6 +2816,12 @@
             return Math.max(min, Math.min(max, value));
         }
 
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         // Dynamic color for need rings: green when high, yellow, orange, red when low
         function getNeedColor(value) {
             if (value > 65) return '#66BB6A';
@@ -2840,6 +2846,9 @@
                 localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
             } catch (e) {
                 console.log('Could not save game:', e);
+                if (e.name === 'QuotaExceededError' || e.code === 22) {
+                    showToast('Storage full! Progress may not be saved.', '#EF5350');
+                }
             }
         }
 
@@ -3462,7 +3471,7 @@
                 return '';
             }
 
-            const petDisplayName = pet.name || petData.name;
+            const petDisplayName = escapeHTML(pet.name || petData.name);
 
             content.innerHTML = `
                 <div class="pet-area ${timeClass}" role="region" aria-label="Your pet ${petDisplayName}">
@@ -4122,7 +4131,8 @@
                 ballX: 50,
                 ballY: 160,
                 petX: 45,
-                targetX: 0
+                targetX: 0,
+                _timeouts: []
             };
 
             renderFetchGame();
@@ -4188,10 +4198,10 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     endFetchGame();
-                    document.removeEventListener('keydown', handleEscape);
                 }
             }
             document.addEventListener('keydown', handleEscape);
+            fetchState._handleEscape = handleEscape;
 
             throwBtn.focus();
         }
@@ -4234,25 +4244,28 @@
             }
 
             // Phase 2: Ball drops down to ground
-            setTimeout(() => {
+            fetchState._timeouts.push(setTimeout(() => {
+                if (!fetchState) return;
                 ball.style.transition = 'top 0.35s cubic-bezier(0.55, 0, 1, 0.45)';
                 ball.style.top = '155px';
                 if (shadow) {
                     shadow.style.opacity = '0.15';
                 }
-            }, 700);
+            }, 700));
 
             // Phase 3: Pet runs to fetch the ball
-            setTimeout(() => {
+            fetchState._timeouts.push(setTimeout(() => {
+                if (!fetchState) return;
                 fetchState.phase = 'fetching';
                 instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Running to get it!`;
 
                 pet.classList.add('running');
                 pet.style.left = (targetX - 5) + '%';
-            }, 1100);
+            }, 1100));
 
             // Phase 4: Pet reaches ball
-            setTimeout(() => {
+            fetchState._timeouts.push(setTimeout(() => {
+                if (!fetchState) return;
                 // Hide the ball (pet picked it up)
                 ball.style.opacity = '0';
                 ball.style.transition = 'opacity 0.15s';
@@ -4262,10 +4275,11 @@
 
                 // Show a reward particle
                 showFetchReward(field, targetX);
-            }, 2000);
+            }, 2000));
 
             // Phase 5: Pet returns to start
-            setTimeout(() => {
+            fetchState._timeouts.push(setTimeout(() => {
+                if (!fetchState) return;
                 fetchState.phase = 'returning';
                 instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Bringing it back!`;
                 instruction.className = 'fetch-instruction';
@@ -4273,10 +4287,11 @@
                 pet.classList.remove('running');
                 pet.classList.add('returning');
                 pet.style.left = '45%';
-            }, 2400);
+            }, 2400));
 
             // Phase 6: Complete - pet is back, ready for another throw
-            setTimeout(() => {
+            fetchState._timeouts.push(setTimeout(() => {
+                if (!fetchState) return;
                 fetchState.score++;
                 fetchState.phase = 'ready';
 
@@ -4306,7 +4321,7 @@
                 if (throwBtn) throwBtn.disabled = false;
 
                 announce(`Great fetch! Score: ${fetchState.score}. Throw again!`);
-            }, 3400);
+            }, 3400));
         }
 
         function showFetchReward(container, xPercent) {
@@ -4320,6 +4335,13 @@
         }
 
         function endFetchGame() {
+            if (fetchState && fetchState._handleEscape) {
+                document.removeEventListener('keydown', fetchState._handleEscape);
+            }
+            if (fetchState && fetchState._timeouts) {
+                fetchState._timeouts.forEach(id => clearTimeout(id));
+            }
+
             const overlay = document.querySelector('.fetch-game-overlay');
             if (overlay) overlay.remove();
 
@@ -4503,10 +4525,10 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     endHideSeekGame();
-                    document.removeEventListener('keydown', handleEscape);
                 }
             }
             document.addEventListener('keydown', handleEscape);
+            hideSeekState._handleEscape = handleEscape;
 
             // Focus the first hiding spot
             const firstSpot = overlay.querySelector('.hideseek-hiding-spot');
@@ -4673,6 +4695,10 @@
         }
 
         function endHideSeekGame() {
+            if (hideSeekState && hideSeekState._handleEscape) {
+                document.removeEventListener('keydown', hideSeekState._handleEscape);
+            }
+
             if (hideSeekState && hideSeekState.timerId) {
                 clearInterval(hideSeekState.timerId);
             }
@@ -4782,7 +4808,6 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     endBubblePopGame();
-                    document.removeEventListener('keydown', handleEscape);
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -5088,7 +5113,8 @@
                 matchesFound: 0,
                 totalPairs: 6,
                 moves: 0,
-                locked: false
+                locked: false,
+                _timeouts: []
             };
 
             renderMatchingGame();
@@ -5151,7 +5177,6 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     endMatchingGame();
-                    document.removeEventListener('keydown', handleEscape);
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -5216,11 +5241,11 @@
 
                     // Check if game is complete
                     if (matchingState.matchesFound === matchingState.totalPairs) {
-                        setTimeout(() => finishMatchingGame(), 600);
+                        matchingState._timeouts.push(setTimeout(() => finishMatchingGame(), 600));
                     }
                 } else {
                     // No match - flip back after a delay
-                    setTimeout(() => {
+                    matchingState._timeouts.push(setTimeout(() => {
                         if (!matchingState) return;
                         card1.flipped = false;
                         card2.flipped = false;
@@ -5238,7 +5263,7 @@
 
                         matchingState.flippedCards = [];
                         matchingState.locked = false;
-                    }, 800);
+                    }, 800));
                 }
             }
         }
@@ -5265,12 +5290,15 @@
                 }, i * 80);
             });
 
-            setTimeout(() => endMatchingGame(), 2500);
+            matchingState._timeouts.push(setTimeout(() => endMatchingGame(), 2500));
         }
 
         function endMatchingGame() {
             if (matchingState && matchingState._handleEscape) {
                 document.removeEventListener('keydown', matchingState._handleEscape);
+            }
+            if (matchingState && matchingState._timeouts) {
+                matchingState._timeouts.forEach(id => clearTimeout(id));
             }
 
             const overlay = document.querySelector('.matching-game-overlay');
@@ -5432,7 +5460,6 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     endSimonSaysGame();
-                    document.removeEventListener('keydown', handleEscape);
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -5771,7 +5798,6 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     endColoringGame();
-                    document.removeEventListener('keydown', handleEscape);
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -6253,6 +6279,17 @@
             announce(title + '. ' + message);
         }
 
+        // ==================== MINI-GAME CLEANUP ====================
+
+        function cleanupAllMiniGames() {
+            if (fetchState) endFetchGame();
+            if (hideSeekState) endHideSeekGame();
+            if (bubblePopState) endBubblePopGame();
+            if (matchingState) endMatchingGame();
+            if (simonState) endSimonSaysGame();
+            if (coloringState) endColoringGame();
+        }
+
         // ==================== NEW PET ====================
 
         function startNewPet() {
@@ -6261,6 +6298,9 @@
                 'Say bye-bye to your pet and get a new egg?',
                 '🥚',
                 () => {
+                    // Clean up any active mini-games
+                    cleanupAllMiniGames();
+
                     // Clear the decay timer
                     if (decayInterval) {
                         clearInterval(decayInterval);
