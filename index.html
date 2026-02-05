@@ -1845,6 +1845,11 @@
             document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Cleanliness: ${pet.cleanliness}%, ${cleanDesc}`);
             document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Happiness: ${pet.happiness}%, ${happyDesc}`);
             document.getElementById('sleep-btn').setAttribute('aria-label', `Put your pet to sleep. Energy: ${pet.energy}%, ${energyDesc}`);
+
+            // Update medicine button with overall wellness description
+            const avgWellness = Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
+            const wellnessDesc = avgWellness <= 25 ? 'not feeling well' : avgWellness <= 50 ? 'could feel better' : avgWellness <= 75 ? 'feeling good' : 'feeling great';
+            document.getElementById('medicine-btn').setAttribute('aria-label', `Give medicine to help your pet feel better. Pet is ${wellnessDesc}`);
         }
 
         function updatePetMood() {
