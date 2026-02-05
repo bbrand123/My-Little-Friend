@@ -27,6 +27,7 @@
             --color-button-wash: #4FC3F7;
             --color-button-play: #AED581;
             --color-button-sleep: #9575CD;
+            --color-button-medicine: #F48FB1;
             --color-hunger: #FF7043;
             --color-clean: #29B6F6;
             --color-happy-bar: #66BB6A;
@@ -417,6 +418,10 @@
             background: linear-gradient(135deg, var(--color-button-sleep), #7E57C2);
         }
 
+        .action-btn.medicine {
+            background: linear-gradient(135deg, var(--color-button-medicine), #EC407A);
+        }
+
         .need-bar-fill.energy {
             background: linear-gradient(90deg, var(--color-energy), #FFC107);
         }
@@ -607,6 +612,39 @@
                 opacity: 0;
                 transform: scale(0.5) rotate(360deg);
             }
+        }
+
+        /* Medicine healing particles */
+        .medicine-particle {
+            position: absolute;
+            font-size: 1.3rem;
+            animation: medicineFloat 1.3s ease-out forwards;
+        }
+
+        @keyframes medicineFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-20px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-50px);
+            }
+        }
+
+        .pet-container.heal-anim {
+            animation: healPulse 0.8s ease;
+        }
+
+        @keyframes healPulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            25% { transform: scale(1.05); filter: brightness(1.1) hue-rotate(10deg); }
+            50% { transform: scale(1.08); filter: brightness(1.2) hue-rotate(0deg); }
+            75% { transform: scale(1.05); filter: brightness(1.1) hue-rotate(-10deg); }
         }
 
         /* Day/Night cycle styles */
@@ -934,7 +972,8 @@
             feed: ['Yummy!', 'Delicious!', 'So tasty!', 'Nom nom!', 'Thank you!'],
             wash: ['So clean!', 'Sparkly!', 'Fresh!', 'Squeaky clean!', 'Shiny!'],
             play: ['So fun!', 'Wheee!', 'Again!', 'Yay!', 'Love it!'],
-            sleep: ['So cozy!', 'Sweet dreams!', 'Zzz...', 'Night night!', 'Sleepy time!']
+            sleep: ['So cozy!', 'Sweet dreams!', 'Zzz...', 'Night night!', 'Sleepy time!'],
+            medicine: ['All better!', 'Feeling great!', 'So much better!', 'Healthy!', 'Happy again!']
         };
 
         const MOOD_MESSAGES = {
@@ -1633,6 +1672,10 @@
                             <span class="btn-icon" aria-hidden="true">🛏️</span>
                             <span>Sleep</span>
                         </button>
+                        <button class="action-btn medicine" id="medicine-btn" aria-label="Give medicine to help your pet feel better">
+                            <span class="btn-icon" aria-hidden="true">🩹</span>
+                            <span>Medicine</span>
+                        </button>
                     </div>
                 </section>
 
@@ -1650,6 +1693,7 @@
             document.getElementById('wash-btn').addEventListener('click', () => careAction('wash'));
             document.getElementById('play-btn').addEventListener('click', () => careAction('play'));
             document.getElementById('sleep-btn').addEventListener('click', () => careAction('sleep'));
+            document.getElementById('medicine-btn').addEventListener('click', () => careAction('medicine'));
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
 
             // Start decay timer
@@ -1707,6 +1751,17 @@
                     createZzz(sparkles);
                     announce(`Your pet had a nice nap! Energy is now ${pet.energy}%`);
                     break;
+                case 'medicine':
+                    // Medicine gives a gentle boost to all stats - helps pet feel better
+                    pet.hunger = clamp(pet.hunger + 10, 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness + 10, 0, 100);
+                    pet.happiness = clamp(pet.happiness + 15, 0, 100);
+                    pet.energy = clamp(pet.energy + 10, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.medicine);
+                    petContainer.classList.add('heal-anim');
+                    createMedicineParticles(sparkles);
+                    announce(`You gave your pet medicine! Your pet feels much better now!`);
+                    break;
             }
 
             // Show feedback
@@ -1720,7 +1775,7 @@
 
             // Remove animation class
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim');
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim');
             }, 800);
 
             // Hide feedback
@@ -1790,6 +1845,11 @@
             document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Cleanliness: ${pet.cleanliness}%, ${cleanDesc}`);
             document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Happiness: ${pet.happiness}%, ${happyDesc}`);
             document.getElementById('sleep-btn').setAttribute('aria-label', `Put your pet to sleep. Energy: ${pet.energy}%, ${energyDesc}`);
+
+            // Update medicine button with overall wellness description
+            const avgWellness = Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
+            const wellnessDesc = avgWellness <= 25 ? 'not feeling well' : avgWellness <= 50 ? 'could feel better' : avgWellness <= 75 ? 'feeling good' : 'feeling great';
+            document.getElementById('medicine-btn').setAttribute('aria-label', `Give medicine to help your pet feel better. Pet is ${wellnessDesc}`);
         }
 
         function updatePetMood() {
@@ -1885,6 +1945,21 @@
                 star.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(star);
                 setTimeout(() => star.remove(), 1500);
+            }
+        }
+
+        function createMedicineParticles(container) {
+            // Gentle, friendly healing symbols - bandaids, hearts, sparkles, rainbows
+            const healingSymbols = ['🩹', '💕', '✨', '🌈', '💖', '⭐'];
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'medicine-particle';
+                particle.textContent = healingSymbols[i % healingSymbols.length];
+                particle.style.left = `${20 + Math.random() * 60}%`;
+                particle.style.top = `${25 + Math.random() * 40}%`;
+                particle.style.animationDelay = `${i * 0.15}s`;
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1600);
             }
         }
 
