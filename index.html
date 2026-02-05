@@ -1121,6 +1121,314 @@
             }
         }
 
+        /* Mini Games Button */
+        .action-btn.mini-games {
+            background: linear-gradient(135deg, #7C4DFF, #536DFE);
+        }
+
+        /* Mini Games Menu Modal */
+        .minigame-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .minigame-menu {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease;
+        }
+
+        .minigame-menu-title {
+            font-size: 1.5rem;
+            color: var(--color-text);
+            margin-bottom: 5px;
+        }
+
+        .minigame-menu-subtitle {
+            font-size: 0.85rem;
+            color: #999;
+            margin-bottom: 18px;
+        }
+
+        .minigame-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+
+        .minigame-card {
+            width: 100px;
+            padding: 14px 8px;
+            border: 2.5px solid #e0e0e0;
+            border-radius: 18px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .minigame-card:hover,
+        .minigame-card:focus {
+            border-color: #7C4DFF;
+            background: #F3E5F5;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(124,77,255,0.2);
+        }
+
+        .minigame-card-icon {
+            font-size: 2rem;
+        }
+
+        .minigame-card-name {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--color-text);
+        }
+
+        .minigame-close-btn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #e0e0e0, #bdbdbd);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .minigame-close-btn:hover,
+        .minigame-close-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
+        /* Fetch Mini-Game */
+        .fetch-game-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .fetch-game {
+            background: white;
+            border-radius: 25px;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease;
+        }
+
+        .fetch-game-title {
+            font-size: 1.3rem;
+            color: var(--color-text);
+            margin-bottom: 5px;
+        }
+
+        .fetch-game-score {
+            font-size: 0.85rem;
+            color: #7C4DFF;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .fetch-field {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            border-radius: 18px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #87CEEB 0%, #87CEEB 55%, #7CB342 55%, #558B2F 100%);
+            margin-bottom: 12px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .fetch-field-clouds {
+            position: absolute;
+            top: 8px;
+            left: 0;
+            right: 0;
+            font-size: 1.2rem;
+            opacity: 0.5;
+            pointer-events: none;
+            letter-spacing: 30px;
+            text-align: center;
+        }
+
+        .fetch-field-flowers {
+            position: absolute;
+            bottom: 28px;
+            left: 0;
+            right: 0;
+            font-size: 0.6rem;
+            letter-spacing: 20px;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0.7;
+            z-index: 1;
+        }
+
+        .fetch-ball {
+            position: absolute;
+            font-size: 1.8rem;
+            z-index: 5;
+            transition: none;
+            pointer-events: none;
+        }
+
+        .fetch-ball.thrown {
+            transition: left 0.6s ease-out, top 0.6s ease-out;
+        }
+
+        .fetch-ball.arc {
+            transition: left 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+
+        .fetch-pet {
+            position: absolute;
+            bottom: 10px;
+            z-index: 3;
+            transition: left 0.6s ease-in-out;
+        }
+
+        .fetch-pet svg {
+            width: 70px;
+            height: 70px;
+        }
+
+        .fetch-pet.running {
+            transition: left 0.8s ease-in-out;
+        }
+
+        .fetch-pet.returning {
+            transition: left 1.0s ease-in-out;
+        }
+
+        .fetch-instruction {
+            font-size: 1rem;
+            color: var(--color-text);
+            margin-bottom: 10px;
+            min-height: 1.4em;
+        }
+
+        .fetch-instruction.highlight {
+            color: #7C4DFF;
+            font-weight: bold;
+            animation: feedbackPop 0.4s ease;
+        }
+
+        .fetch-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .fetch-throw-btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #7C4DFF, #536DFE);
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 8px rgba(124,77,255,0.3);
+        }
+
+        .fetch-throw-btn:hover:not(:disabled),
+        .fetch-throw-btn:focus:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(124,77,255,0.4);
+        }
+
+        .fetch-throw-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .fetch-done-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #e0e0e0, #bdbdbd);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .fetch-done-btn:hover,
+        .fetch-done-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
+        .fetch-reward {
+            position: absolute;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #7C4DFF;
+            animation: fetchRewardFloat 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes fetchRewardFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+        }
+
+        .fetch-ball-shadow {
+            position: absolute;
+            width: 18px;
+            height: 6px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 50%;
+            z-index: 2;
+            pointer-events: none;
+            transition: left 0.6s ease-out, opacity 0.3s;
+        }
+
         /* Child-friendly modal */
         .modal-overlay {
             position: fixed;
@@ -2024,6 +2332,10 @@
                             <span class="btn-icon" aria-hidden="true">🍪</span>
                             <span>Treat</span>
                         </button>
+                        <button class="action-btn mini-games" id="minigames-btn" aria-label="Open mini games to play with your pet">
+                            <span class="btn-icon" aria-hidden="true">🎮</span>
+                            <span>Games</span>
+                        </button>
                     </div>
                 </section>
 
@@ -2042,6 +2354,7 @@
             document.getElementById('exercise-btn').addEventListener('click', () => careAction('exercise'));
             document.getElementById('treat-btn').addEventListener('click', () => careAction('treat'));
             document.getElementById('pet-btn').addEventListener('click', () => careAction('cuddle'));
+            document.getElementById('minigames-btn').addEventListener('click', openMiniGamesMenu);
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
 
             // Make pet directly pettable by clicking/touching the pet SVG
@@ -2421,6 +2734,325 @@
                 container.appendChild(particle);
                 setTimeout(() => particle.remove(), 1700);
             }
+        }
+
+        // ==================== MINI GAMES ====================
+
+        const MINI_GAMES = [
+            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' }
+            // More mini games can be added here in the future
+        ];
+
+        function openMiniGamesMenu() {
+            // Remove any existing menu
+            const existing = document.querySelector('.minigame-menu-overlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.className = 'minigame-menu-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'minigame-menu-title');
+
+            let cardsHTML = '';
+            MINI_GAMES.forEach(game => {
+                cardsHTML += `
+                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name} - ${game.description}">
+                        <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
+                        <span class="minigame-card-name">${game.name}</span>
+                    </button>
+                `;
+            });
+
+            overlay.innerHTML = `
+                <div class="minigame-menu">
+                    <h2 class="minigame-menu-title" id="minigame-menu-title">🎮 Mini Games</h2>
+                    <p class="minigame-menu-subtitle">Pick a game to play with your pet!</p>
+                    <div class="minigame-list">
+                        ${cardsHTML}
+                    </div>
+                    <button class="minigame-close-btn" id="minigame-close">Back</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Event listeners
+            overlay.querySelector('#minigame-close').addEventListener('click', () => overlay.remove());
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.remove();
+            });
+
+            // Game card listeners
+            overlay.querySelectorAll('.minigame-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const gameId = card.getAttribute('data-game');
+                    overlay.remove();
+                    startMiniGame(gameId);
+                });
+            });
+
+            // Escape to close
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    overlay.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            // Focus first game card
+            const firstCard = overlay.querySelector('.minigame-card');
+            if (firstCard) firstCard.focus();
+
+            announce('Mini Games menu opened. Pick a game to play!');
+        }
+
+        function startMiniGame(gameId) {
+            switch (gameId) {
+                case 'fetch':
+                    startFetchGame();
+                    break;
+            }
+        }
+
+        // ==================== FETCH MINI-GAME ====================
+
+        let fetchState = null;
+
+        function startFetchGame() {
+            fetchState = {
+                score: 0,
+                phase: 'ready', // 'ready', 'thrown', 'fetching', 'returning'
+                ballX: 50,
+                ballY: 160,
+                petX: 45,
+                targetX: 0
+            };
+
+            renderFetchGame();
+            announce('Fetch game started! Tap the field to throw the ball!');
+        }
+
+        function renderFetchGame() {
+            // Remove any existing game
+            const existing = document.querySelector('.fetch-game-overlay');
+            if (existing) existing.remove();
+
+            const pet = gameState.pet;
+            const petData = PET_TYPES[pet.type];
+            const mood = getMood(pet);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'fetch-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Fetch mini game');
+
+            overlay.innerHTML = `
+                <div class="fetch-game">
+                    <h2 class="fetch-game-title">🎾 Fetch!</h2>
+                    <p class="fetch-game-score" id="fetch-score">Fetched: ${fetchState.score}</p>
+                    <div class="fetch-field" id="fetch-field" role="button" aria-label="Tap to throw the ball" tabindex="0">
+                        <div class="fetch-field-clouds">☁️ ☁️</div>
+                        <div class="fetch-field-flowers">🌸 🌼 🌷 🌻</div>
+                        <div class="fetch-ball" id="fetch-ball" style="left: ${fetchState.ballX}%; top: ${fetchState.ballY}px;">🎾</div>
+                        <div class="fetch-ball-shadow" id="fetch-ball-shadow" style="left: ${fetchState.ballX}%; top: 185px;"></div>
+                        <div class="fetch-pet" id="fetch-pet" style="left: ${fetchState.petX}%;">
+                            ${generatePetSVG(pet, mood)}
+                        </div>
+                    </div>
+                    <p class="fetch-instruction" id="fetch-instruction">Tap the field to throw the ball!</p>
+                    <div class="fetch-buttons">
+                        <button class="fetch-throw-btn" id="fetch-throw-btn">🎾 Throw!</button>
+                        <button class="fetch-done-btn" id="fetch-done-btn">Done</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Event listeners
+            const field = overlay.querySelector('#fetch-field');
+            const throwBtn = overlay.querySelector('#fetch-throw-btn');
+            const doneBtn = overlay.querySelector('#fetch-done-btn');
+
+            field.addEventListener('click', (e) => handleFetchThrow(e));
+            field.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleFetchThrow(e);
+                }
+            });
+
+            throwBtn.addEventListener('click', (e) => handleFetchThrow(e));
+
+            doneBtn.addEventListener('click', () => endFetchGame());
+
+            // Escape to exit
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    endFetchGame();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            throwBtn.focus();
+        }
+
+        function handleFetchThrow(e) {
+            if (!fetchState || fetchState.phase !== 'ready') return;
+
+            fetchState.phase = 'thrown';
+
+            const field = document.getElementById('fetch-field');
+            const ball = document.getElementById('fetch-ball');
+            const shadow = document.getElementById('fetch-ball-shadow');
+            const pet = document.getElementById('fetch-pet');
+            const instruction = document.getElementById('fetch-instruction');
+            const throwBtn = document.getElementById('fetch-throw-btn');
+
+            if (throwBtn) throwBtn.disabled = true;
+
+            // Calculate where the ball lands (random position on the right side)
+            const targetX = 60 + Math.random() * 25;
+            fetchState.targetX = targetX;
+
+            // Animate ball flying to the right with an arc
+            instruction.textContent = 'Nice throw!';
+            instruction.className = 'fetch-instruction highlight';
+
+            // Ball arc animation - first goes up, then lands
+            ball.style.transition = 'none';
+            ball.offsetHeight; // force reflow
+
+            // Phase 1: Ball arcs up and to the right
+            ball.classList.add('arc');
+            ball.style.left = targetX + '%';
+            ball.style.top = '60px';
+
+            if (shadow) {
+                shadow.style.transition = 'left 0.8s ease-out, opacity 0.3s';
+                shadow.style.left = targetX + '%';
+                shadow.style.opacity = '0.05';
+            }
+
+            // Phase 2: Ball drops down to ground
+            setTimeout(() => {
+                ball.style.transition = 'top 0.35s cubic-bezier(0.55, 0, 1, 0.45)';
+                ball.style.top = '155px';
+                if (shadow) {
+                    shadow.style.opacity = '0.15';
+                }
+            }, 700);
+
+            // Phase 3: Pet runs to fetch the ball
+            setTimeout(() => {
+                fetchState.phase = 'fetching';
+                instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Running to get it!`;
+
+                pet.classList.add('running');
+                pet.style.left = (targetX - 5) + '%';
+            }, 1100);
+
+            // Phase 4: Pet reaches ball
+            setTimeout(() => {
+                // Hide the ball (pet picked it up)
+                ball.style.opacity = '0';
+                ball.style.transition = 'opacity 0.15s';
+
+                instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Got it!`;
+                instruction.className = 'fetch-instruction highlight';
+
+                // Show a reward particle
+                showFetchReward(field, targetX);
+            }, 2000);
+
+            // Phase 5: Pet returns to start
+            setTimeout(() => {
+                fetchState.phase = 'returning';
+                instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Bringing it back!`;
+                instruction.className = 'fetch-instruction';
+
+                pet.classList.remove('running');
+                pet.classList.add('returning');
+                pet.style.left = '45%';
+            }, 2400);
+
+            // Phase 6: Complete - pet is back, ready for another throw
+            setTimeout(() => {
+                fetchState.score++;
+                fetchState.phase = 'ready';
+
+                // Update score display
+                const scoreEl = document.getElementById('fetch-score');
+                if (scoreEl) scoreEl.textContent = `Fetched: ${fetchState.score}`;
+
+                // Reset ball position
+                ball.style.transition = 'none';
+                ball.style.left = '50%';
+                ball.style.top = '160px';
+                ball.style.opacity = '1';
+
+                if (shadow) {
+                    shadow.style.transition = 'none';
+                    shadow.style.left = '50%';
+                    shadow.style.opacity = '0.15';
+                }
+
+                pet.classList.remove('returning');
+                pet.style.transition = 'none';
+                pet.style.left = '45%';
+
+                instruction.textContent = 'Throw again! Tap the field!';
+                instruction.className = 'fetch-instruction highlight';
+
+                if (throwBtn) throwBtn.disabled = false;
+
+                announce(`Great fetch! Score: ${fetchState.score}. Throw again!`);
+            }, 3400);
+        }
+
+        function showFetchReward(container, xPercent) {
+            const reward = document.createElement('div');
+            reward.className = 'fetch-reward';
+            reward.textContent = '+1 🎾';
+            reward.style.left = xPercent + '%';
+            reward.style.top = '120px';
+            container.appendChild(reward);
+            setTimeout(() => reward.remove(), 1000);
+        }
+
+        function endFetchGame() {
+            const overlay = document.querySelector('.fetch-game-overlay');
+            if (overlay) overlay.remove();
+
+            // Apply rewards based on score
+            if (fetchState && fetchState.score > 0 && gameState.pet) {
+                const bonus = Math.min(fetchState.score * 5, 30);
+                gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy - Math.min(fetchState.score * 2, 10), 0, 100);
+                gameState.pet.hunger = clamp(gameState.pet.hunger - Math.min(fetchState.score, 5), 0, 100);
+
+                // Show feedback on main screen
+                const petData = PET_TYPES[gameState.pet.type];
+                const feedback = document.getElementById('feedback');
+                if (feedback) {
+                    feedback.textContent = `${petData.emoji} Loved playing fetch! (${fetchState.score} catches)`;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                }
+
+                // Update displays
+                updateNeedDisplays();
+                updatePetMood();
+                saveGame();
+
+                announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}!`);
+            }
+
+            fetchState = null;
         }
 
         // ==================== DECAY TIMER ====================
