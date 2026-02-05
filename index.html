@@ -1864,6 +1864,177 @@
             z-index: 10;
         }
 
+        /* Matching Mini-Game */
+        .matching-game-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .matching-game {
+            background: white;
+            border-radius: 25px;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s ease;
+        }
+
+        .matching-game-title {
+            font-size: 1.3rem;
+            color: var(--color-text);
+            margin-bottom: 5px;
+        }
+
+        .matching-game-score {
+            font-size: 0.85rem;
+            color: #AB47BC;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .matching-game-moves {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .matching-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 12px;
+            background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 50%, #CE93D8 100%);
+            border-radius: 18px;
+            margin-bottom: 12px;
+        }
+
+        .matching-card {
+            aspect-ratio: 1;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            perspective: 400px;
+            background: transparent;
+            padding: 0;
+            font-family: inherit;
+        }
+
+        .matching-card:focus {
+            outline: 3px solid #AB47BC;
+            outline-offset: 2px;
+        }
+
+        .matching-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.4s ease;
+            transform-style: preserve-3d;
+            border-radius: 12px;
+        }
+
+        .matching-card.flipped .matching-card-inner,
+        .matching-card.matched .matching-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .matching-card-front,
+        .matching-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+        }
+
+        .matching-card-front {
+            background: linear-gradient(135deg, #7E57C2, #AB47BC);
+            color: white;
+            box-shadow: 0 3px 8px rgba(126,87,194,0.3);
+        }
+
+        .matching-card-back {
+            background: white;
+            transform: rotateY(180deg);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            border: 2px solid #E1BEE7;
+        }
+
+        .matching-card.matched .matching-card-back {
+            background: #F3E5F5;
+            border-color: #AB47BC;
+        }
+
+        .matching-card.matched {
+            pointer-events: none;
+        }
+
+        .matching-card.celebrating {
+            animation: matchCelebrate 0.5s ease;
+        }
+
+        @keyframes matchCelebrate {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.1) rotate(-3deg); }
+            60% { transform: scale(1.05) rotate(3deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        .matching-instruction {
+            font-size: 1rem;
+            color: var(--color-text);
+            margin-bottom: 10px;
+            min-height: 1.4em;
+        }
+
+        .matching-instruction.highlight {
+            color: #AB47BC;
+            font-weight: bold;
+            animation: feedbackPop 0.4s ease;
+        }
+
+        .matching-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .matching-done-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #e0e0e0, #bdbdbd);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .matching-done-btn:hover,
+        .matching-done-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
         /* Child-friendly modal */
         .modal-overlay {
             position: fixed;
@@ -3176,7 +3347,8 @@
         const MINI_GAMES = [
             { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' },
             { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen!' },
-            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time!' }
+            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time!' },
+            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs!' }
         ];
 
         function openMiniGamesMenu() {
@@ -3254,6 +3426,9 @@
                     break;
                 case 'bubblepop':
                     startBubblePopGame();
+                    break;
+                case 'matching':
+                    startMatchingGame();
                     break;
             }
         }
@@ -4189,6 +4364,264 @@
             }
 
             bubblePopState = null;
+        }
+
+        // ==================== MATCHING MINI-GAME ====================
+
+        const MATCHING_ITEMS = [
+            { emoji: '🍎', name: 'Apple' },
+            { emoji: '🥕', name: 'Carrot' },
+            { emoji: '🍌', name: 'Banana' },
+            { emoji: '🧀', name: 'Cheese' },
+            { emoji: '🦴', name: 'Bone' },
+            { emoji: '🐟', name: 'Fish' },
+            { emoji: '🎀', name: 'Bow' },
+            { emoji: '🧸', name: 'Teddy' },
+            { emoji: '⭐', name: 'Star' },
+            { emoji: '🎾', name: 'Ball' },
+            { emoji: '🌸', name: 'Flower' },
+            { emoji: '🍖', name: 'Meat' }
+        ];
+
+        let matchingState = null;
+
+        function startMatchingGame() {
+            if (!gameState.pet) return;
+
+            const existing = document.querySelector('.matching-game-overlay');
+            if (existing) existing.remove();
+
+            // Pick 6 random items to make 12 cards (6 pairs)
+            const shuffledItems = [...MATCHING_ITEMS].sort(() => Math.random() - 0.5);
+            const selected = shuffledItems.slice(0, 6);
+            const cards = [...selected, ...selected]
+                .sort(() => Math.random() - 0.5)
+                .map((item, index) => ({
+                    id: index,
+                    emoji: item.emoji,
+                    name: item.name,
+                    flipped: false,
+                    matched: false
+                }));
+
+            matchingState = {
+                cards: cards,
+                flippedCards: [],
+                matchesFound: 0,
+                totalPairs: 6,
+                moves: 0,
+                locked: false
+            };
+
+            renderMatchingGame();
+            announce('Matching game started! Flip cards to find matching pairs!');
+        }
+
+        function renderMatchingGame() {
+            const overlay = document.createElement('div');
+            overlay.className = 'matching-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Matching mini-game');
+
+            let cardsHTML = '';
+            matchingState.cards.forEach((card, i) => {
+                cardsHTML += `
+                    <button class="matching-card" data-index="${i}" aria-label="Card ${i + 1} - tap to flip">
+                        <div class="matching-card-inner">
+                            <div class="matching-card-front">❓</div>
+                            <div class="matching-card-back">${card.emoji}</div>
+                        </div>
+                    </button>
+                `;
+            });
+
+            overlay.innerHTML = `
+                <div class="matching-game">
+                    <h2 class="matching-game-title">🃏 Matching Game!</h2>
+                    <p class="matching-game-score" id="matching-score" aria-live="polite">Pairs found: 0 / 6</p>
+                    <p class="matching-game-moves" id="matching-moves">Moves: 0</p>
+                    <div class="matching-grid" id="matching-grid">
+                        ${cardsHTML}
+                    </div>
+                    <p class="matching-instruction" id="matching-instruction">Flip two cards to find a match!</p>
+                    <div class="matching-buttons">
+                        <button class="matching-done-btn" id="matching-done" aria-label="Stop playing Matching Game">Done</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Card click listeners
+            overlay.querySelectorAll('.matching-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const index = parseInt(card.getAttribute('data-index'));
+                    flipMatchingCard(index);
+                });
+            });
+
+            // Done button
+            overlay.querySelector('#matching-done').addEventListener('click', () => endMatchingGame());
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) endMatchingGame();
+            });
+
+            // Escape to close
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    endMatchingGame();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+            matchingState._handleEscape = handleEscape;
+
+            // Focus first card
+            const firstCard = overlay.querySelector('.matching-card');
+            if (firstCard) firstCard.focus();
+        }
+
+        function flipMatchingCard(index) {
+            if (!matchingState || matchingState.locked) return;
+
+            const card = matchingState.cards[index];
+            if (card.flipped || card.matched) return;
+
+            // Flip the card
+            card.flipped = true;
+            matchingState.flippedCards.push(index);
+
+            const cardEl = document.querySelector(`.matching-card[data-index="${index}"]`);
+            if (cardEl) cardEl.classList.add('flipped');
+
+            // Check if two cards are flipped
+            if (matchingState.flippedCards.length === 2) {
+                matchingState.moves++;
+                matchingState.locked = true;
+
+                const movesEl = document.getElementById('matching-moves');
+                if (movesEl) movesEl.textContent = `Moves: ${matchingState.moves}`;
+
+                const [first, second] = matchingState.flippedCards;
+                const card1 = matchingState.cards[first];
+                const card2 = matchingState.cards[second];
+
+                if (card1.emoji === card2.emoji) {
+                    // Match found!
+                    card1.matched = true;
+                    card2.matched = true;
+                    matchingState.matchesFound++;
+
+                    const scoreEl = document.getElementById('matching-score');
+                    if (scoreEl) scoreEl.textContent = `Pairs found: ${matchingState.matchesFound} / ${matchingState.totalPairs}`;
+
+                    // Mark cards as matched visually
+                    const el1 = document.querySelector(`.matching-card[data-index="${first}"]`);
+                    const el2 = document.querySelector(`.matching-card[data-index="${second}"]`);
+                    if (el1) el1.classList.add('matched');
+                    if (el2) el2.classList.add('matched');
+
+                    // Show encouraging message
+                    const instruction = document.getElementById('matching-instruction');
+                    if (instruction) {
+                        const messages = ['Great match!', 'You found one!', 'Awesome!', 'Well done!', 'Nice pair!', 'Super!'];
+                        instruction.textContent = randomFromArray(messages);
+                        instruction.classList.add('highlight');
+                        setTimeout(() => instruction.classList.remove('highlight'), 500);
+                    }
+
+                    matchingState.flippedCards = [];
+                    matchingState.locked = false;
+
+                    // Check if game is complete
+                    if (matchingState.matchesFound === matchingState.totalPairs) {
+                        setTimeout(() => finishMatchingGame(), 600);
+                    }
+                } else {
+                    // No match - flip back after a delay
+                    setTimeout(() => {
+                        if (!matchingState) return;
+                        card1.flipped = false;
+                        card2.flipped = false;
+
+                        const el1 = document.querySelector(`.matching-card[data-index="${first}"]`);
+                        const el2 = document.querySelector(`.matching-card[data-index="${second}"]`);
+                        if (el1) el1.classList.remove('flipped');
+                        if (el2) el2.classList.remove('flipped');
+
+                        const instruction = document.getElementById('matching-instruction');
+                        if (instruction) {
+                            const messages = ['Try again!', 'Keep looking!', 'Almost!', 'Not quite!', 'So close!'];
+                            instruction.textContent = randomFromArray(messages);
+                        }
+
+                        matchingState.flippedCards = [];
+                        matchingState.locked = false;
+                    }, 800);
+                }
+            }
+        }
+
+        function finishMatchingGame() {
+            if (!matchingState) return;
+
+            const instruction = document.getElementById('matching-instruction');
+            if (instruction) {
+                const moves = matchingState.moves;
+                let message = '🎉 You matched them all! ';
+                if (moves <= 8) message += 'Amazing memory!';
+                else if (moves <= 12) message += 'Great job!';
+                else if (moves <= 18) message += 'Well done!';
+                else message += 'You did it!';
+                instruction.textContent = message;
+                instruction.classList.add('highlight');
+            }
+
+            // Celebrate animation on all cards
+            document.querySelectorAll('.matching-card.matched').forEach((card, i) => {
+                setTimeout(() => {
+                    card.classList.add('celebrating');
+                }, i * 80);
+            });
+
+            setTimeout(() => endMatchingGame(), 2500);
+        }
+
+        function endMatchingGame() {
+            if (matchingState && matchingState._handleEscape) {
+                document.removeEventListener('keydown', matchingState._handleEscape);
+            }
+
+            const overlay = document.querySelector('.matching-game-overlay');
+            if (overlay) overlay.remove();
+
+            // Apply rewards based on performance
+            if (matchingState && matchingState.matchesFound > 0 && gameState.pet) {
+                const happinessBonus = Math.min(matchingState.matchesFound * 5, 30);
+                const energyCost = Math.min(matchingState.moves, 10);
+
+                gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
+
+                const petData = PET_TYPES[gameState.pet.type];
+                const feedback = document.getElementById('feedback');
+                if (feedback) {
+                    feedback.textContent = `${petData.emoji} Loved matching! (${matchingState.matchesFound} pairs found)`;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                }
+
+                updateNeedDisplays();
+                updatePetMood();
+                saveGame();
+
+                announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}!`);
+            }
+
+            matchingState = null;
         }
 
         // ==================== DECAY TIMER ====================
