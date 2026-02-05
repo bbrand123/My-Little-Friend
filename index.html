@@ -28,6 +28,7 @@
             --color-button-play: #AED581;
             --color-button-sleep: #9575CD;
             --color-button-medicine: #F48FB1;
+            --color-button-groom: #CE93D8;
             --color-hunger: #FF7043;
             --color-clean: #29B6F6;
             --color-happy-bar: #66BB6A;
@@ -157,6 +158,10 @@
             animation: sleepBob 0.8s ease;
         }
 
+        .pet-container.groom-anim {
+            animation: groomPreen 0.8s ease;
+        }
+
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-30px); }
@@ -177,6 +182,13 @@
             0%, 100% { transform: translateY(0) rotate(0deg); }
             25% { transform: translateY(-5px) rotate(-3deg); }
             75% { transform: translateY(-5px) rotate(3deg); }
+        }
+
+        @keyframes groomPreen {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(-5deg); }
+            50% { transform: scale(1.08) rotate(0deg); }
+            75% { transform: scale(1.05) rotate(5deg); }
         }
 
         /* Pet SVG Styles */
@@ -422,6 +434,10 @@
             background: linear-gradient(135deg, var(--color-button-medicine), #EC407A);
         }
 
+        .action-btn.groom {
+            background: linear-gradient(135deg, var(--color-button-groom), #AB47BC);
+        }
+
         .need-bar-fill.energy {
             background: linear-gradient(90deg, var(--color-energy), #FFC107);
         }
@@ -645,6 +661,28 @@
             25% { transform: scale(1.05); filter: brightness(1.1) hue-rotate(10deg); }
             50% { transform: scale(1.08); filter: brightness(1.2) hue-rotate(0deg); }
             75% { transform: scale(1.05); filter: brightness(1.1) hue-rotate(-10deg); }
+        }
+
+        /* Grooming particles */
+        .groom-particle {
+            position: absolute;
+            font-size: 1.3rem;
+            animation: groomFloat 1.3s ease-out forwards;
+        }
+
+        @keyframes groomFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(0) rotate(0deg);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-15px) rotate(10deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-45px) rotate(-10deg);
+            }
         }
 
         /* Day/Night cycle styles */
@@ -973,7 +1011,8 @@
             wash: ['So clean!', 'Sparkly!', 'Fresh!', 'Squeaky clean!', 'Shiny!'],
             play: ['So fun!', 'Wheee!', 'Again!', 'Yay!', 'Love it!'],
             sleep: ['So cozy!', 'Sweet dreams!', 'Zzz...', 'Night night!', 'Sleepy time!'],
-            medicine: ['All better!', 'Feeling great!', 'So much better!', 'Healthy!', 'Happy again!']
+            medicine: ['All better!', 'Feeling great!', 'So much better!', 'Healthy!', 'Happy again!'],
+            groom: ['So fluffy!', 'Looking good!', 'Nice and tidy!', 'Beautiful!', 'Well groomed!']
         };
 
         const MOOD_MESSAGES = {
@@ -1676,6 +1715,10 @@
                             <span class="btn-icon" aria-hidden="true">🩹</span>
                             <span>Medicine</span>
                         </button>
+                        <button class="action-btn groom" id="groom-btn" aria-label="Groom your pet - brush fur and trim nails">
+                            <span class="btn-icon" aria-hidden="true">✂️</span>
+                            <span>Groom</span>
+                        </button>
                     </div>
                 </section>
 
@@ -1694,6 +1737,7 @@
             document.getElementById('play-btn').addEventListener('click', () => careAction('play'));
             document.getElementById('sleep-btn').addEventListener('click', () => careAction('sleep'));
             document.getElementById('medicine-btn').addEventListener('click', () => careAction('medicine'));
+            document.getElementById('groom-btn').addEventListener('click', () => careAction('groom'));
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
 
             // Start decay timer
@@ -1762,6 +1806,15 @@
                     createMedicineParticles(sparkles);
                     announce(`You gave your pet medicine! Your pet feels much better now!`);
                     break;
+                case 'groom':
+                    // Grooming - brush fur/feathers and trim nails
+                    pet.cleanliness = clamp(pet.cleanliness + 15, 0, 100);
+                    pet.happiness = clamp(pet.happiness + 10, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.groom);
+                    petContainer.classList.add('groom-anim');
+                    createGroomParticles(sparkles);
+                    announce(`Groomed your pet! Looking beautiful and feeling happy!`);
+                    break;
             }
 
             // Show feedback
@@ -1775,7 +1828,7 @@
 
             // Remove animation class
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim');
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim');
             }, 800);
 
             // Hide feedback
@@ -1850,6 +1903,10 @@
             const avgWellness = Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
             const wellnessDesc = avgWellness <= 25 ? 'not feeling well' : avgWellness <= 50 ? 'could feel better' : avgWellness <= 75 ? 'feeling good' : 'feeling great';
             document.getElementById('medicine-btn').setAttribute('aria-label', `Give medicine to help your pet feel better. Pet is ${wellnessDesc}`);
+
+            // Update groom button - grooming helps cleanliness and happiness
+            const groomDesc = pet.cleanliness <= 50 ? 'could use some grooming' : 'looking good';
+            document.getElementById('groom-btn').setAttribute('aria-label', `Groom your pet - brush fur and trim nails. Cleanliness: ${pet.cleanliness}%, ${groomDesc}`);
         }
 
         function updatePetMood() {
@@ -1955,6 +2012,21 @@
                 const particle = document.createElement('div');
                 particle.className = 'medicine-particle';
                 particle.textContent = healingSymbols[i % healingSymbols.length];
+                particle.style.left = `${20 + Math.random() * 60}%`;
+                particle.style.top = `${25 + Math.random() * 40}%`;
+                particle.style.animationDelay = `${i * 0.15}s`;
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1600);
+            }
+        }
+
+        function createGroomParticles(container) {
+            // Grooming symbols - scissors, sparkles, nail care, bow, hearts
+            const groomSymbols = ['✂️', '✨', '💫', '💅', '🎀', '💜'];
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'groom-particle';
+                particle.textContent = groomSymbols[i % groomSymbols.length];
                 particle.style.left = `${20 + Math.random() * 60}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.15}s`;
