@@ -92,11 +92,12 @@
         .game-container {
             background: white;
             border-radius: var(--radius);
-            box-shadow: var(--shadow);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
             padding: 20px;
             max-width: 500px;
             width: 100%;
             text-align: center;
+            border: 2px solid rgba(255, 107, 107, 0.15);
         }
 
         /* Header */
@@ -109,6 +110,17 @@
             color: var(--color-primary);
             text-shadow: 2px 2px 0 var(--color-accent);
             margin-bottom: 5px;
+            letter-spacing: 0.02em;
+        }
+
+        .game-title::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-accent), var(--color-secondary));
+            border-radius: 3px;
+            margin: 6px auto 0;
         }
 
         /* Pet Display Area */
@@ -124,18 +136,60 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            transition: background 2s ease;
         }
 
-        /* Ground */
+        /* Ground with grass texture */
         .pet-area::after {
             content: '';
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 30px;
+            height: 35px;
             background: linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
             border-radius: 0 0 var(--radius) var(--radius);
+        }
+
+        .pet-area::before {
+            content: '🌸 🌼 🌷';
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            font-size: 0.7rem;
+            letter-spacing: 16px;
+            text-align: center;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .pet-area.nighttime::before {
+            content: '🌿 🍃 🌿';
+            opacity: 0.4;
+        }
+
+        /* Floating clouds */
+        .cloud {
+            position: absolute;
+            z-index: 0;
+            opacity: 0.7;
+            font-size: 1.6rem;
+            animation: cloudDrift 20s linear infinite;
+            pointer-events: none;
+        }
+
+        .cloud:nth-child(2) {
+            animation-duration: 28s;
+            animation-delay: -8s;
+            font-size: 1.2rem;
+            opacity: 0.5;
+        }
+
+        @keyframes cloudDrift {
+            0% { transform: translateX(-40px); }
+            100% { transform: translateX(calc(100% + 40px)); }
         }
 
         /* Pet Container */
@@ -296,18 +350,90 @@
             animation: pulse 1.5s ease-in-out infinite;
         }
 
+        /* Egg progress dots */
+        .egg-progress {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .egg-progress-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.1);
+            border: 2px solid rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .egg-progress-dot.filled {
+            background: var(--color-accent);
+            border-color: #F5C518;
+            box-shadow: 0 0 6px rgba(255, 230, 109, 0.6);
+            transform: scale(1.15);
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
 
         /* Pet Name Display */
+        .pet-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            z-index: 2;
+        }
+
+        .pet-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .pet-name {
             font-size: 1.4rem;
             color: var(--color-primary);
             font-weight: bold;
             margin-top: 8px;
             text-shadow: 1px 1px 0 var(--color-accent);
+        }
+
+        .mood-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-top: 6px;
+            letter-spacing: 0.03em;
+        }
+
+        .mood-badge.happy {
+            background: rgba(149, 232, 111, 0.25);
+            color: #4CAF50;
+            border: 1.5px solid rgba(149, 232, 111, 0.5);
+        }
+
+        .mood-badge.neutral {
+            background: rgba(255, 179, 71, 0.25);
+            color: #F57C00;
+            border: 1.5px solid rgba(255, 179, 71, 0.5);
+        }
+
+        .mood-badge.sad {
+            background: rgba(255, 107, 107, 0.25);
+            color: #E53935;
+            border: 1.5px solid rgba(255, 107, 107, 0.5);
+        }
+
+        .mood-badge-emoji {
+            font-size: 0.85rem;
         }
 
         .pet-mood {
@@ -319,6 +445,7 @@
         /* Needs Section - Compact Circular Indicators */
         .needs-section {
             margin: 10px 0 5px;
+            padding-bottom: 14px;
         }
 
         .needs-row {
@@ -370,6 +497,18 @@
             white-space: nowrap;
         }
 
+        .need-bubble-label {
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.55rem;
+            color: #888;
+            white-space: nowrap;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
         .need-bubble.low .need-bubble-icon {
             animation: needPulse 1.5s ease-in-out infinite;
         }
@@ -387,26 +526,9 @@
         .action-scroll {
             display: flex;
             gap: 10px;
-            overflow-x: auto;
-            overflow-y: hidden;
             padding: 8px 4px 12px;
-            scroll-snap-type: x proximity;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(0,0,0,0.15) transparent;
-        }
-
-        .action-scroll::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .action-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .action-scroll::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.15);
-            border-radius: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .action-btn {
@@ -430,7 +552,6 @@
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
             font-family: inherit;
-            scroll-snap-align: start;
         }
 
         .action-btn:hover,
@@ -521,26 +642,27 @@
             100% { transform: scale(1); }
         }
 
-        /* New Pet Button */
+        /* New Pet Button - subtle to reduce accidental clicks */
         .new-pet-btn {
-            margin-top: 8px;
-            padding: 10px 22px;
-            font-size: 0.85rem;
-            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
-            color: white;
-            border: none;
-            border-radius: 12px;
+            margin-top: 12px;
+            padding: 8px 18px;
+            font-size: 0.75rem;
+            background: transparent;
+            color: #999;
+            border: 1.5px dashed #ccc;
+            border-radius: 10px;
             cursor: pointer;
             font-family: inherit;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-weight: 600;
             transition: all 0.2s ease;
         }
 
         .new-pet-btn:hover,
         .new-pet-btn:focus {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            color: #7B1FA2;
+            border-color: #9C27B0;
+            background: rgba(156, 39, 176, 0.06);
+            transform: translateY(-1px);
         }
 
         /* Screen Reader Only */
@@ -942,6 +1064,16 @@
         }
 
         @media (max-width: 350px) {
+            .action-scroll {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                justify-content: flex-start;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0,0,0,0.15) transparent;
+            }
+
             .needs-row {
                 gap: 8px;
             }
@@ -1202,6 +1334,14 @@
 
         function clamp(value, min, max) {
             return Math.max(min, Math.min(max, value));
+        }
+
+        // Dynamic color for need rings: green when high, yellow, orange, red when low
+        function getNeedColor(value) {
+            if (value > 65) return '#66BB6A';
+            if (value > 45) return '#FDD835';
+            if (value > 25) return '#FFA726';
+            return '#EF5350';
         }
 
         function announce(message, assertive = false) {
@@ -1672,6 +1812,12 @@
             const content = document.getElementById('game-content');
             const crackLevel = Math.min(gameState.eggTaps, 3);
 
+            // Generate progress dots
+            let progressDots = '';
+            for (let i = 0; i < 5; i++) {
+                progressDots += `<div class="egg-progress-dot ${i < gameState.eggTaps ? 'filled' : ''}" aria-hidden="true"></div>`;
+            }
+
             content.innerHTML = `
                 <div class="pet-area" role="region" aria-label="Egg hatching area">
                     <div class="sparkles" id="sparkles"></div>
@@ -1681,6 +1827,9 @@
                         ${generateEggSVG(crackLevel)}
                     </button>
                     <p class="hatch-message" aria-live="polite">A mystery pet is inside!</p>
+                    <div class="egg-progress" role="progressbar" aria-valuenow="${gameState.eggTaps}" aria-valuemin="0" aria-valuemax="5" aria-label="Hatching progress: ${gameState.eggTaps} of 5 taps">
+                        ${progressDots}
+                    </div>
                     <p class="tap-hint" id="tap-hint">Tap the egg to hatch it!</p>
                 </div>
             `;
@@ -1780,7 +1929,9 @@
             if (timeOfDay === 'night') {
                 celestialHTML = `<div class="stars-overlay">${generateStarsHTML()}</div><div class="moon"></div>`;
             } else if (timeOfDay === 'day') {
-                celestialHTML = `<div class="sun"></div>`;
+                celestialHTML = `<div class="sun"></div><div class="cloud" style="top:12px;left:-30px;">☁️</div><div class="cloud" style="top:35px;left:20%;">☁️</div>`;
+            } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
+                celestialHTML = `<div class="cloud" style="top:18px;left:10%;">☁️</div>`;
             }
 
             content.innerHTML = `
@@ -1791,7 +1942,13 @@
                     <div class="pet-container" id="pet-container">
                         ${generatePetSVG(pet, mood)}
                     </div>
-                    <p class="pet-name">${petData.emoji} ${petData.name}</p>
+                    <div class="pet-info">
+                        <p class="pet-name">${petData.emoji} ${petData.name}</p>
+                        <div class="mood-badge ${mood}" id="mood-badge">
+                            <span class="mood-badge-emoji">${mood === 'happy' ? '😊' : mood === 'neutral' ? '😐' : '😢'}</span>
+                            <span>${mood === 'happy' ? 'Happy' : mood === 'neutral' ? 'Okay' : 'Sad'}</span>
+                        </div>
+                    </div>
                     <p class="pet-mood" id="pet-mood" aria-live="polite">Your pet ${moodMessage}</p>
                 </div>
 
@@ -1799,31 +1956,35 @@
                     <div class="needs-row">
                         <div class="need-bubble ${pet.hunger <= 25 ? 'low' : ''}" id="hunger-bubble"
                              role="progressbar" aria-label="Hunger level" aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100"
-                             style="--progress: ${pet.hunger}; --ring-color: var(--color-hunger);">
+                             style="--progress: ${pet.hunger}; --ring-color: ${getNeedColor(pet.hunger)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🍎</span>
                             <span class="need-bubble-value" id="hunger-value">${pet.hunger}%</span>
+                            <span class="need-bubble-label" aria-hidden="true">Food</span>
                         </div>
                         <div class="need-bubble ${pet.cleanliness <= 25 ? 'low' : ''}" id="clean-bubble"
                              role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100"
-                             style="--progress: ${pet.cleanliness}; --ring-color: var(--color-clean);">
+                             style="--progress: ${pet.cleanliness}; --ring-color: ${getNeedColor(pet.cleanliness)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🛁</span>
                             <span class="need-bubble-value" id="clean-value">${pet.cleanliness}%</span>
+                            <span class="need-bubble-label" aria-hidden="true">Bath</span>
                         </div>
                         <div class="need-bubble ${pet.happiness <= 25 ? 'low' : ''}" id="happy-bubble"
                              role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100"
-                             style="--progress: ${pet.happiness}; --ring-color: var(--color-happy-bar);">
+                             style="--progress: ${pet.happiness}; --ring-color: ${getNeedColor(pet.happiness)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">💖</span>
                             <span class="need-bubble-value" id="happy-value">${pet.happiness}%</span>
+                            <span class="need-bubble-label" aria-hidden="true">Happy</span>
                         </div>
                         <div class="need-bubble ${pet.energy <= 25 ? 'low' : ''}" id="energy-bubble"
                              role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100"
-                             style="--progress: ${pet.energy}; --ring-color: var(--color-energy);">
+                             style="--progress: ${pet.energy}; --ring-color: ${getNeedColor(pet.energy)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">😴</span>
                             <span class="need-bubble-value" id="energy-value">${pet.energy}%</span>
+                            <span class="need-bubble-label" aria-hidden="true">Energy</span>
                         </div>
                     </div>
                 </section>
@@ -2041,6 +2202,7 @@
                 const bubble = document.getElementById(id);
                 if (!bubble) return;
                 bubble.style.setProperty('--progress', value);
+                bubble.style.setProperty('--ring-color', getNeedColor(value));
                 if (value <= 25) {
                     bubble.classList.add('low');
                 } else {
@@ -2102,6 +2264,13 @@
 
             // Update mood text
             document.getElementById('pet-mood').textContent = `Your pet ${moodMessage}`;
+
+            // Update mood badge
+            const badge = document.getElementById('mood-badge');
+            if (badge) {
+                badge.className = `mood-badge ${mood}`;
+                badge.innerHTML = `<span class="mood-badge-emoji">${mood === 'happy' ? '😊' : mood === 'neutral' ? '😐' : '😢'}</span><span>${mood === 'happy' ? 'Happy' : mood === 'neutral' ? 'Okay' : 'Sad'}</span>`;
+            }
         }
 
         // ==================== PARTICLE EFFECTS ====================
