@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Care Buddy - Virtual Pet Game for Kids</title>
+    <style>
+        /* CSS Reset and Base Styles */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Bright, cheerful color palette with high contrast */
+            --color-bg: #FFF8E7;
+            --color-primary: #FF6B6B;
+            --color-secondary: #4ECDC4;
+            --color-accent: #FFE66D;
+            --color-happy: #95E86F;
+            --color-neutral: #FFB347;
+            --color-sad: #FF6B6B;
+            --color-text: #2D3436;
+            --color-text-light: #FFFFFF;
+            --color-button-feed: #FF8C42;
+            --color-button-wash: #4FC3F7;
+            --color-button-play: #AED581;
+            --color-hunger: #FF7043;
+            --color-clean: #29B6F6;
+            --color-happy-bar: #66BB6A;
+            --shadow: 0 4px 15px rgba(0,0,0,0.15);
+            --radius: 20px;
+            --focus-outline: 4px solid #6C63FF;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard', 'Arial Rounded MT Bold', sans-serif;
+            background: linear-gradient(135deg, var(--color-bg) 0%, #FFE4E1 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--color-text);
+            line-height: 1.4;
+        }
+
+        /* Skip link for keyboard users */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--color-primary);
+            color: white;
+            padding: 10px 20px;
+            z-index: 100;
+            border-radius: 0 0 10px 0;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .skip-link:focus {
+            top: 0;
+            outline: var(--focus-outline);
+        }
+
+        /* Focus styles for accessibility */
+        *:focus {
+            outline: var(--focus-outline);
+            outline-offset: 3px;
+        }
+
+        *:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        *:focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 3px;
+        }
+
+        /* Main Game Container */
+        .game-container {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Header */
+        .game-header {
+            margin-bottom: 20px;
+        }
+
+        .game-title {
+            font-size: 2rem;
+            color: var(--color-primary);
+            text-shadow: 2px 2px 0 var(--color-accent);
+            margin-bottom: 10px;
+        }
+
+        /* Pet Display Area */
+        .pet-area {
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            border-radius: var(--radius);
+            padding: 30px;
+            margin: 20px 0;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Ground */
+        .pet-area::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
+            border-radius: 0 0 var(--radius) var(--radius);
+        }
+
+        /* Pet Container */
+        .pet-container {
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s ease;
+        }
+
+        .pet-container.bounce {
+            animation: bounce 0.5s ease;
+        }
+
+        .pet-container.wiggle {
+            animation: wiggle 0.5s ease;
+        }
+
+        .pet-container.sparkle {
+            animation: sparkle 0.6s ease;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.1); filter: brightness(1.3); }
+        }
+
+        /* Pet SVG Styles */
+        .pet-svg {
+            width: 150px;
+            height: 150px;
+            transition: all 0.3s ease;
+        }
+
+        /* Egg Styles */
+        .egg-container {
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .egg-container:hover,
+        .egg-container:focus {
+            transform: scale(1.05);
+        }
+
+        .egg-container:active {
+            transform: scale(0.95);
+        }
+
+        .egg-svg {
+            width: 120px;
+            height: 160px;
+        }
+
+        .egg-crack {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .egg-shake {
+            animation: eggShake 0.3s ease;
+        }
+
+        @keyframes eggShake {
+            0%, 100% { transform: rotate(0deg); }
+            20% { transform: rotate(-5deg); }
+            40% { transform: rotate(5deg); }
+            60% { transform: rotate(-5deg); }
+            80% { transform: rotate(5deg); }
+        }
+
+        .hatch-message {
+            font-size: 1.5rem;
+            color: var(--color-text);
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .tap-hint {
+            font-size: 1.2rem;
+            color: var(--color-text);
+            margin-top: 10px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Pet Name Display */
+        .pet-name {
+            font-size: 1.8rem;
+            color: var(--color-primary);
+            font-weight: bold;
+            margin-top: 15px;
+            text-shadow: 1px 1px 0 var(--color-accent);
+        }
+
+        .pet-mood {
+            font-size: 1.2rem;
+            color: var(--color-text);
+            margin-top: 5px;
+        }
+
+        /* Needs Section */
+        .needs-section {
+            margin: 25px 0;
+        }
+
+        .needs-title {
+            font-size: 1.3rem;
+            color: var(--color-text);
+            margin-bottom: 15px;
+        }
+
+        .need-bar-container {
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .need-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .need-icon {
+            font-size: 1.5rem;
+            margin-right: 8px;
+        }
+
+        .need-label-text {
+            display: flex;
+            align-items: center;
+        }
+
+        .need-value {
+            font-size: 1rem;
+        }
+
+        .need-bar {
+            width: 100%;
+            height: 25px;
+            background: #E0E0E0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .need-bar-fill {
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s ease, background-color 0.3s ease;
+            position: relative;
+        }
+
+        .need-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 5px;
+            right: 5px;
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+        }
+
+        .need-bar-fill.hunger {
+            background: linear-gradient(90deg, var(--color-hunger), #FF5722);
+        }
+
+        .need-bar-fill.clean {
+            background: linear-gradient(90deg, var(--color-clean), #0288D1);
+        }
+
+        .need-bar-fill.happy {
+            background: linear-gradient(90deg, var(--color-happy-bar), #43A047);
+        }
+
+        /* Action Buttons */
+        .actions-section {
+            margin-top: 25px;
+        }
+
+        .actions-title {
+            font-size: 1.3rem;
+            color: var(--color-text);
+            margin-bottom: 15px;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            min-width: 100px;
+            min-height: 100px;
+            border: none;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            font-family: inherit;
+        }
+
+        .action-btn:hover,
+        .action-btn:focus {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .action-btn.feed {
+            background: linear-gradient(135deg, var(--color-button-feed), #F57C00);
+        }
+
+        .action-btn.wash {
+            background: linear-gradient(135deg, var(--color-button-wash), #0288D1);
+        }
+
+        .action-btn.play {
+            background: linear-gradient(135deg, var(--color-button-play), #7CB342);
+        }
+
+        .btn-icon {
+            font-size: 2.5rem;
+        }
+
+        /* Feedback Messages */
+        .feedback-area {
+            min-height: 40px;
+            margin: 20px 0 10px;
+        }
+
+        .feedback-message {
+            font-size: 1.3rem;
+            color: var(--color-happy);
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            animation: feedbackPop 0.5s ease;
+        }
+
+        .feedback-message.show {
+            opacity: 1;
+        }
+
+        @keyframes feedbackPop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* New Pet Button */
+        .new-pet-btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1rem;
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .new-pet-btn:hover,
+        .new-pet-btn:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+        }
+
+        /* Screen Reader Only */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Live Region for Screen Readers */
+        .live-region {
+            position: absolute;
+            left: -10000px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        /* Sparkle Effect */
+        .sparkles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .sparkle-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--color-accent);
+            border-radius: 50%;
+            animation: sparkleFloat 1s ease-out forwards;
+        }
+
+        @keyframes sparkleFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-50px);
+            }
+        }
+
+        /* Hearts for Play */
+        .heart-particle {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: heartFloat 1s ease-out forwards;
+        }
+
+        @keyframes heartFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.5) translateY(-60px);
+            }
+        }
+
+        /* Bubbles for Wash */
+        .bubble-particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            border: 2px solid rgba(100,200,255,0.5);
+            animation: bubbleFloat 1.2s ease-out forwards;
+        }
+
+        @keyframes bubbleFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-70px);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 500px) {
+            .game-container {
+                padding: 20px;
+                border-radius: 15px;
+            }
+
+            .game-title {
+                font-size: 1.6rem;
+            }
+
+            .pet-area {
+                padding: 20px;
+                min-height: 200px;
+            }
+
+            .pet-svg {
+                width: 120px;
+                height: 120px;
+            }
+
+            .action-btn {
+                min-width: 90px;
+                min-height: 90px;
+            }
+
+            .btn-icon {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 350px) {
+            .action-buttons {
+                gap: 10px;
+            }
+
+            .action-btn {
+                min-width: 80px;
+                min-height: 80px;
+                font-size: 1rem;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --color-text: #000000;
+                --shadow: 0 4px 15px rgba(0,0,0,0.3);
+            }
+
+            .action-btn {
+                border: 3px solid #000000;
+            }
+
+            .need-bar {
+                border: 2px solid #000000;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-game" class="skip-link">Skip to game</a>
+
+    <main id="main-game" class="game-container" role="main" aria-label="Pet Care Buddy Game">
+        <header class="game-header">
+            <h1 class="game-title">Pet Care Buddy</h1>
+        </header>
+
+        <div id="game-content">
+            <!-- Game content will be dynamically inserted here -->
+        </div>
+
+        <!-- Live region for screen reader announcements -->
+        <div id="live-announcer" class="live-region" aria-live="polite" aria-atomic="true"></div>
+        <div id="live-announcer-assertive" class="live-region" aria-live="assertive" aria-atomic="true"></div>
+    </main>
+
+    <script>
+        // Pet Care Buddy Game - Main JavaScript
+
+        // ==================== GAME DATA ====================
+
+        const PET_TYPES = {
+            dog: {
+                name: 'Puppy',
+                emoji: '🐕',
+                colors: ['#D4A574', '#8B7355', '#F5DEB3', '#A0522D', '#FFE4C4'],
+                sounds: ['Woof!', 'Bark!', 'Arf!'],
+                happySounds: ['Happy bark!', 'Tail wagging!', 'Playful woof!'],
+                sadSounds: ['Whimper...', 'Sad whine...']
+            },
+            cat: {
+                name: 'Kitty',
+                emoji: '🐱',
+                colors: ['#FFA500', '#808080', '#FFFFFF', '#000000', '#DEB887'],
+                sounds: ['Meow!', 'Purr!', 'Mew!'],
+                happySounds: ['Loud purring!', 'Happy meow!', 'Content purr!'],
+                sadSounds: ['Sad meow...', 'Quiet mew...']
+            },
+            bunny: {
+                name: 'Bunny',
+                emoji: '🐰',
+                colors: ['#FFFFFF', '#D4A574', '#808080', '#F5DEB3', '#FFB6C1'],
+                sounds: ['Hop hop!', 'Sniff sniff!', 'Thump!'],
+                happySounds: ['Binky jump!', 'Happy hop!', 'Excited thump!'],
+                sadSounds: ['Quiet sniff...', 'Slow hop...']
+            },
+            bird: {
+                name: 'Birdie',
+                emoji: '🐦',
+                colors: ['#FFD700', '#87CEEB', '#98FB98', '#FF6347', '#DDA0DD'],
+                sounds: ['Tweet!', 'Chirp!', 'Whistle!'],
+                happySounds: ['Happy song!', 'Joyful chirp!', 'Cheerful tweet!'],
+                sadSounds: ['Quiet chirp...', 'Soft tweet...']
+            },
+            hamster: {
+                name: 'Hammy',
+                emoji: '🐹',
+                colors: ['#D4A574', '#F5DEB3', '#FFFFFF', '#DEB887', '#FFE4C4'],
+                sounds: ['Squeak!', 'Nibble nibble!', 'Scurry!'],
+                happySounds: ['Happy squeak!', 'Wheel spinning!', 'Excited nibble!'],
+                sadSounds: ['Soft squeak...', 'Quiet nibble...']
+            },
+            turtle: {
+                name: 'Shelly',
+                emoji: '🐢',
+                colors: ['#228B22', '#556B2F', '#6B8E23', '#8FBC8F', '#2E8B57'],
+                sounds: ['*slow blink*', '*head bob*', '*shell tap*'],
+                happySounds: ['Happy waddle!', 'Excited stretch!', 'Shell shimmy!'],
+                sadSounds: ['Hiding in shell...', 'Slow retreat...']
+            }
+        };
+
+        const FEEDBACK_MESSAGES = {
+            feed: ['Yummy!', 'Delicious!', 'So tasty!', 'Nom nom!', 'Thank you!'],
+            wash: ['So clean!', 'Sparkly!', 'Fresh!', 'Squeaky clean!', 'Shiny!'],
+            play: ['So fun!', 'Wheee!', 'Again!', 'Yay!', 'Love it!']
+        };
+
+        const MOOD_MESSAGES = {
+            happy: ['is super happy!', 'is feeling great!', 'is full of joy!', 'loves you!'],
+            neutral: ['is doing okay.', 'is content.', 'is relaxed.'],
+            sad: ['needs some love.', 'misses you.', 'wants attention.']
+        };
+
+        // ==================== GAME STATE ====================
+
+        let gameState = {
+            phase: 'egg', // 'egg', 'hatching', 'pet'
+            pet: null,
+            eggTaps: 0,
+            lastUpdate: Date.now()
+        };
+
+        // ==================== UTILITY FUNCTIONS ====================
+
+        function randomFromArray(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function announce(message, assertive = false) {
+            const announcer = document.getElementById(assertive ? 'live-announcer-assertive' : 'live-announcer');
+            announcer.textContent = '';
+            setTimeout(() => {
+                announcer.textContent = message;
+            }, 100);
+        }
+
+        // ==================== SAVE/LOAD ====================
+
+        function saveGame() {
+            try {
+                gameState.lastUpdate = Date.now();
+                localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
+            } catch (e) {
+                console.log('Could not save game:', e);
+            }
+        }
+
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('petCareBuddy');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    // Apply time-based decay for needs
+                    if (parsed.pet && parsed.lastUpdate) {
+                        const timePassed = Date.now() - parsed.lastUpdate;
+                        const minutesPassed = timePassed / 60000;
+                        // Decrease needs by 1 point per 2 minutes (slower decay for young children)
+                        const decay = Math.floor(minutesPassed / 2);
+                        if (decay > 0) {
+                            parsed.pet.hunger = clamp(parsed.pet.hunger - decay, 0, 100);
+                            parsed.pet.cleanliness = clamp(parsed.pet.cleanliness - decay, 0, 100);
+                            parsed.pet.happiness = clamp(parsed.pet.happiness - decay, 0, 100);
+                        }
+                    }
+                    return parsed;
+                }
+            } catch (e) {
+                console.log('Could not load game:', e);
+            }
+            return null;
+        }
+
+        // ==================== PET CREATION ====================
+
+        function createPet() {
+            const types = Object.keys(PET_TYPES);
+            const type = randomFromArray(types);
+            const petData = PET_TYPES[type];
+            const color = randomFromArray(petData.colors);
+
+            return {
+                type: type,
+                name: petData.name,
+                color: color,
+                hunger: 70,
+                cleanliness: 70,
+                happiness: 70
+            };
+        }
+
+        function getMood(pet) {
+            const average = (pet.hunger + pet.cleanliness + pet.happiness) / 3;
+            if (average >= 60) return 'happy';
+            if (average >= 30) return 'neutral';
+            return 'sad';
+        }
+
+        // ==================== SVG GENERATION ====================
+
+        function generateEggSVG(crackLevel) {
+            const cracks = [];
+            if (crackLevel >= 1) {
+                cracks.push('<path class="egg-crack" style="opacity:1" d="M55 40 L60 55 L50 50 Z" fill="#8B7355" stroke="#5D4037" stroke-width="1"/>');
+            }
+            if (crackLevel >= 2) {
+                cracks.push('<path class="egg-crack" style="opacity:1" d="M65 60 L75 75 L60 70 Z" fill="#8B7355" stroke="#5D4037" stroke-width="1"/>');
+            }
+            if (crackLevel >= 3) {
+                cracks.push('<path class="egg-crack" style="opacity:1" d="M45 70 L40 85 L55 80 Z" fill="#8B7355" stroke="#5D4037" stroke-width="1"/>');
+            }
+
+            return `
+                <svg class="egg-svg" viewBox="0 0 100 130" role="img" aria-label="A colorful egg waiting to hatch. Tap to help it hatch!">
+                    <defs>
+                        <linearGradient id="eggGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FFE4B5"/>
+                            <stop offset="50%" style="stop-color:#FFDAB9"/>
+                            <stop offset="100%" style="stop-color:#FFE4B5"/>
+                        </linearGradient>
+                        <linearGradient id="eggShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:rgba(255,255,255,0.6)"/>
+                            <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Egg body -->
+                    <ellipse cx="50" cy="70" rx="40" ry="50" fill="url(#eggGradient)" stroke="#DEB887" stroke-width="3"/>
+                    <!-- Decorative spots -->
+                    <circle cx="35" cy="50" r="8" fill="#FFB6C1" opacity="0.7"/>
+                    <circle cx="65" cy="45" r="6" fill="#87CEEB" opacity="0.7"/>
+                    <circle cx="55" cy="80" r="7" fill="#98FB98" opacity="0.7"/>
+                    <circle cx="30" cy="75" r="5" fill="#DDA0DD" opacity="0.7"/>
+                    <circle cx="70" cy="70" r="6" fill="#FFD700" opacity="0.7"/>
+                    <!-- Shine -->
+                    <ellipse cx="35" cy="45" rx="15" ry="20" fill="url(#eggShine)"/>
+                    <!-- Cracks -->
+                    ${cracks.join('')}
+                </svg>
+            `;
+        }
+
+        function generatePetSVG(pet, mood) {
+            const type = pet.type;
+            const color = pet.color;
+
+            // Eye style based on mood
+            let eyeStyle = '';
+            let mouthPath = '';
+
+            switch (mood) {
+                case 'happy':
+                    eyeStyle = 'arc'; // Happy curved eyes
+                    mouthPath = 'M35 75 Q50 90 65 75'; // Big smile
+                    break;
+                case 'neutral':
+                    eyeStyle = 'normal';
+                    mouthPath = 'M40 78 L60 78'; // Straight line
+                    break;
+                case 'sad':
+                    eyeStyle = 'sad';
+                    mouthPath = 'M35 82 Q50 72 65 82'; // Frown
+                    break;
+            }
+
+            const petSVGs = {
+                dog: generateDogSVG(color, eyeStyle, mouthPath, mood),
+                cat: generateCatSVG(color, eyeStyle, mouthPath, mood),
+                bunny: generateBunnySVG(color, eyeStyle, mouthPath, mood),
+                bird: generateBirdSVG(color, eyeStyle, mouthPath, mood),
+                hamster: generateHamsterSVG(color, eyeStyle, mouthPath, mood),
+                turtle: generateTurtleSVG(color, eyeStyle, mouthPath, mood)
+            };
+
+            return petSVGs[type] || petSVGs.dog;
+        }
+
+        function generateEyes(eyeStyle, leftX, rightX, y) {
+            switch (eyeStyle) {
+                case 'arc':
+                    return `
+                        <path d="M${leftX - 5} ${y} Q${leftX} ${y - 8} ${leftX + 5} ${y}" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <path d="M${rightX - 5} ${y} Q${rightX} ${y - 8} ${rightX + 5} ${y}" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    `;
+                case 'sad':
+                    return `
+                        <circle cx="${leftX}" cy="${y}" r="5" fill="#333"/>
+                        <circle cx="${rightX}" cy="${y}" r="5" fill="#333"/>
+                        <circle cx="${leftX + 1}" cy="${y - 1}" r="1.5" fill="white"/>
+                        <circle cx="${rightX + 1}" cy="${y - 1}" r="1.5" fill="white"/>
+                        <path d="M${leftX - 6} ${y - 8} L${leftX + 4} ${y - 5}" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M${rightX + 6} ${y - 8} L${rightX - 4} ${y - 5}" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+                    `;
+                default:
+                    return `
+                        <circle cx="${leftX}" cy="${y}" r="6" fill="#333"/>
+                        <circle cx="${rightX}" cy="${y}" r="6" fill="#333"/>
+                        <circle cx="${leftX + 2}" cy="${y - 2}" r="2" fill="white"/>
+                        <circle cx="${rightX + 2}" cy="${y - 2}" r="2" fill="white"/>
+                    `;
+            }
+        }
+
+        function generateDogSVG(color, eyeStyle, mouthPath, mood) {
+            return `
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy puppy wagging its tail' : mood === 'sad' ? 'A sad puppy who needs love' : 'A calm puppy'}">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="70" rx="30" ry="25" fill="${color}"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="40" r="25" fill="${color}"/>
+                    <!-- Ears -->
+                    <ellipse cx="25" cy="30" rx="10" ry="18" fill="${color}" transform="rotate(-20 25 30)"/>
+                    <ellipse cx="75" cy="30" rx="10" ry="18" fill="${color}" transform="rotate(20 75 30)"/>
+                    <!-- Inner ears -->
+                    <ellipse cx="25" cy="32" rx="5" ry="10" fill="#FFB6C1" transform="rotate(-20 25 32)"/>
+                    <ellipse cx="75" cy="32" rx="5" ry="10" fill="#FFB6C1" transform="rotate(20 75 32)"/>
+                    <!-- Snout -->
+                    <ellipse cx="50" cy="50" rx="12" ry="10" fill="#F5DEB3"/>
+                    <!-- Nose -->
+                    <ellipse cx="50" cy="48" rx="5" ry="4" fill="#333"/>
+                    <!-- Eyes -->
+                    ${generateEyes(eyeStyle, 38, 62, 38)}
+                    <!-- Mouth -->
+                    <path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <!-- Tail -->
+                    <path d="M80 70 Q95 ${mood === 'happy' ? '50' : '65'} 85 ${mood === 'happy' ? '45' : '60'}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
+                    <!-- Cheeks -->
+                    ${mood === 'happy' ? '<circle cx="30" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/><circle cx="70" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                </svg>
+            `;
+        }
+
+        function generateCatSVG(color, eyeStyle, mouthPath, mood) {
+            return `
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy kitty purring' : mood === 'sad' ? 'A sad kitty who needs love' : 'A calm kitty'}">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="72" rx="28" ry="23" fill="${color}"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="40" r="24" fill="${color}"/>
+                    <!-- Ears (triangles) -->
+                    <polygon points="25,35 20,10 40,25" fill="${color}"/>
+                    <polygon points="75,35 80,10 60,25" fill="${color}"/>
+                    <!-- Inner ears -->
+                    <polygon points="27,32 24,18 36,27" fill="#FFB6C1"/>
+                    <polygon points="73,32 76,18 64,27" fill="#FFB6C1"/>
+                    <!-- Eyes -->
+                    ${eyeStyle === 'arc' ?
+                    `<path d="M33 38 Q38 30 43 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+                     <path d="M57 38 Q62 30 67 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>` :
+                    `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
+                     <ellipse cx="62" cy="39" rx="2" ry="5" fill="#333"/>`}
+                    <!-- Nose -->
+                    <polygon points="50,48 46,44 54,44" fill="#FFB6C1"/>
+                    <!-- Mouth -->
+                    <path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <!-- Whiskers -->
+                    <line x1="20" y1="48" x2="35" y2="50" stroke="#333" stroke-width="1"/>
+                    <line x1="20" y1="52" x2="35" y2="52" stroke="#333" stroke-width="1"/>
+                    <line x1="65" y1="50" x2="80" y2="48" stroke="#333" stroke-width="1"/>
+                    <line x1="65" y1="52" x2="80" y2="52" stroke="#333" stroke-width="1"/>
+                    <!-- Tail -->
+                    <path d="M78 72 Q100 60 95 ${mood === 'happy' ? '40' : '55'}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
+                    <!-- Cheeks -->
+                    ${mood === 'happy' ? '<circle cx="28" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/><circle cx="72" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                </svg>
+            `;
+        }
+
+        function generateBunnySVG(color, eyeStyle, mouthPath, mood) {
+            return `
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy bunny hopping with joy' : mood === 'sad' ? 'A sad bunny who needs love' : 'A calm bunny'}">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="75" rx="25" ry="20" fill="${color}"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="45" r="22" fill="${color}"/>
+                    <!-- Ears (long) -->
+                    <ellipse cx="35" cy="15" rx="8" ry="25" fill="${color}"/>
+                    <ellipse cx="65" cy="15" rx="8" ry="25" fill="${color}"/>
+                    <!-- Inner ears -->
+                    <ellipse cx="35" cy="15" rx="4" ry="18" fill="#FFB6C1"/>
+                    <ellipse cx="65" cy="15" rx="4" ry="18" fill="#FFB6C1"/>
+                    <!-- Eyes -->
+                    ${generateEyes(eyeStyle, 40, 60, 42)}
+                    <!-- Nose -->
+                    <ellipse cx="50" cy="52" rx="4" ry="3" fill="#FFB6C1"/>
+                    <!-- Mouth -->
+                    <path d="M46 56 L50 60 L54 56" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <!-- Cheeks -->
+                    <circle cx="32" cy="52" r="6" fill="#FFB6C1" opacity="0.5"/>
+                    <circle cx="68" cy="52" r="6" fill="#FFB6C1" opacity="0.5"/>
+                    <!-- Feet -->
+                    <ellipse cx="35" cy="92" rx="10" ry="6" fill="${color}"/>
+                    <ellipse cx="65" cy="92" rx="10" ry="6" fill="${color}"/>
+                    <!-- Tail (fluffy ball) -->
+                    <circle cx="75" cy="80" r="8" fill="white"/>
+                </svg>
+            `;
+        }
+
+        function generateBirdSVG(color, eyeStyle, mouthPath, mood) {
+            return `
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy bird singing' : mood === 'sad' ? 'A sad bird who needs love' : 'A calm bird'}">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="65" rx="25" ry="28" fill="${color}"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="32" r="20" fill="${color}"/>
+                    <!-- Wing -->
+                    <ellipse cx="30" cy="65" rx="15" ry="20" fill="${color}" opacity="0.8"/>
+                    <ellipse cx="70" cy="65" rx="15" ry="20" fill="${color}" opacity="0.8"/>
+                    <!-- Belly -->
+                    <ellipse cx="50" cy="70" rx="15" ry="18" fill="#F5F5DC"/>
+                    <!-- Eyes -->
+                    ${generateEyes(eyeStyle, 42, 58, 30)}
+                    <!-- Beak -->
+                    <polygon points="50,38 42,45 50,48 58,45" fill="#FFA500"/>
+                    <!-- Tuft -->
+                    <ellipse cx="50" cy="14" rx="5" ry="8" fill="${color}"/>
+                    <ellipse cx="45" cy="16" rx="4" ry="6" fill="${color}"/>
+                    <ellipse cx="55" cy="16" rx="4" ry="6" fill="${color}"/>
+                    <!-- Feet -->
+                    <line x1="42" y1="90" x2="42" y2="98" stroke="#FFA500" stroke-width="3"/>
+                    <line x1="50" y1="92" x2="50" y2="98" stroke="#FFA500" stroke-width="3"/>
+                    <line x1="58" y1="90" x2="58" y2="98" stroke="#FFA500" stroke-width="3"/>
+                    <!-- Cheeks -->
+                    ${mood === 'happy' ? '<circle cx="35" cy="38" r="4" fill="#FFB6C1" opacity="0.6"/><circle cx="65" cy="38" r="4" fill="#FFB6C1" opacity="0.6"/>' : ''}
+                </svg>
+            `;
+        }
+
+        function generateHamsterSVG(color, eyeStyle, mouthPath, mood) {
+            return `
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy hamster running on its wheel' : mood === 'sad' ? 'A sad hamster who needs love' : 'A calm hamster'}">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="70" rx="30" ry="25" fill="${color}"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="40" r="28" fill="${color}"/>
+                    <!-- Ears -->
+                    <circle cx="25" cy="22" r="10" fill="${color}"/>
+                    <circle cx="75" cy="22" r="10" fill="${color}"/>
+                    <!-- Inner ears -->
+                    <circle cx="25" cy="22" r="5" fill="#FFB6C1"/>
+                    <circle cx="75" cy="22" r="5" fill="#FFB6C1"/>
+                    <!-- Cheeks (puffy) -->
+                    <circle cx="28" cy="48" r="12" fill="#FFE4C4"/>
+                    <circle cx="72" cy="48" r="12" fill="#FFE4C4"/>
+                    <!-- Eyes -->
+                    ${generateEyes(eyeStyle, 40, 60, 38)}
+                    <!-- Nose -->
+                    <circle cx="50" cy="50" r="4" fill="#333"/>
+                    <!-- Mouth -->
+                    <path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <!-- Whiskers -->
+                    <line x1="15" y1="48" x2="28" y2="50" stroke="#333" stroke-width="1"/>
+                    <line x1="15" y1="52" x2="28" y2="52" stroke="#333" stroke-width="1"/>
+                    <line x1="72" y1="50" x2="85" y2="48" stroke="#333" stroke-width="1"/>
+                    <line x1="72" y1="52" x2="85" y2="52" stroke="#333" stroke-width="1"/>
+                    <!-- Paws -->
+                    <ellipse cx="30" cy="88" rx="8" ry="5" fill="${color}"/>
+                    <ellipse cx="70" cy="88" rx="8" ry="5" fill="${color}"/>
+                    <!-- Belly -->
+                    <ellipse cx="50" cy="72" rx="18" ry="15" fill="#F5F5DC"/>
+                </svg>
+            `;
+        }
+
+        function generateTurtleSVG(color, eyeStyle, mouthPath, mood) {
+            return `
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy turtle basking in the sun' : mood === 'sad' ? 'A sad turtle hiding in its shell' : 'A calm turtle'}">
+                    <!-- Shell -->
+                    <ellipse cx="50" cy="60" rx="38" ry="30" fill="${color}"/>
+                    <!-- Shell pattern -->
+                    <ellipse cx="50" cy="55" rx="25" ry="18" fill="none" stroke="#2E7D32" stroke-width="2"/>
+                    <path d="M50 37 L50 73" stroke="#2E7D32" stroke-width="2"/>
+                    <path d="M25 55 L75 55" stroke="#2E7D32" stroke-width="2"/>
+                    <path d="M30 42 L70 68" stroke="#2E7D32" stroke-width="2"/>
+                    <path d="M30 68 L70 42" stroke="#2E7D32" stroke-width="2"/>
+                    <!-- Shell rim -->
+                    <ellipse cx="50" cy="60" rx="38" ry="30" fill="none" stroke="#1B5E20" stroke-width="3"/>
+                    <!-- Head -->
+                    <ellipse cx="50" cy="28" rx="15" ry="12" fill="#8FBC8F"/>
+                    <!-- Eyes -->
+                    ${generateEyes(eyeStyle, 44, 56, 26)}
+                    <!-- Mouth -->
+                    <path d="M45 33 Q50 ${mood === 'happy' ? '38' : '35'} 55 33" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <!-- Legs -->
+                    <ellipse cx="20" cy="55" rx="10" ry="8" fill="#8FBC8F"/>
+                    <ellipse cx="80" cy="55" rx="10" ry="8" fill="#8FBC8F"/>
+                    <ellipse cx="25" cy="80" rx="8" ry="10" fill="#8FBC8F"/>
+                    <ellipse cx="75" cy="80" rx="8" ry="10" fill="#8FBC8F"/>
+                    <!-- Tail -->
+                    <ellipse cx="50" cy="92" rx="6" ry="4" fill="#8FBC8F"/>
+                    <!-- Cheeks -->
+                    ${mood === 'happy' ? '<circle cx="38" cy="30" r="3" fill="#FFB6C1" opacity="0.5"/><circle cx="62" cy="30" r="3" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                </svg>
+            `;
+        }
+
+        // ==================== RENDER FUNCTIONS ====================
+
+        function renderEggPhase() {
+            const content = document.getElementById('game-content');
+            const crackLevel = Math.min(gameState.eggTaps, 3);
+
+            content.innerHTML = `
+                <div class="pet-area" role="region" aria-label="Egg hatching area">
+                    <div class="sparkles" id="sparkles"></div>
+                    <button class="egg-container" id="egg-button"
+                            aria-label="Tap the egg to help it hatch! Tapped ${gameState.eggTaps} of 5 times."
+                            aria-describedby="tap-hint">
+                        ${generateEggSVG(crackLevel)}
+                    </button>
+                    <p class="hatch-message" aria-live="polite">A mystery pet is inside!</p>
+                    <p class="tap-hint" id="tap-hint">Tap the egg to hatch it!</p>
+                </div>
+            `;
+
+            const eggButton = document.getElementById('egg-button');
+            eggButton.addEventListener('click', handleEggTap);
+            eggButton.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleEggTap();
+                }
+            });
+        }
+
+        function handleEggTap() {
+            gameState.eggTaps++;
+            const eggButton = document.getElementById('egg-button');
+            const sparkles = document.getElementById('sparkles');
+
+            // Add shake animation
+            eggButton.classList.add('egg-shake');
+            setTimeout(() => eggButton.classList.remove('egg-shake'), 300);
+
+            // Add sparkles
+            createSparkles(sparkles, 5);
+
+            // Announce progress
+            announce(`Tap ${gameState.eggTaps} of 5. ${5 - gameState.eggTaps} more to hatch!`);
+
+            if (gameState.eggTaps >= 5) {
+                // Hatch the egg!
+                gameState.phase = 'hatching';
+                announce('The egg is hatching!', true);
+                setTimeout(hatchPet, 1000);
+            } else {
+                // Update egg display with more cracks
+                renderEggPhase();
+            }
+
+            saveGame();
+        }
+
+        function hatchPet() {
+            gameState.pet = createPet();
+            gameState.phase = 'pet';
+            saveGame();
+
+            const petData = PET_TYPES[gameState.pet.type];
+            announce(`Congratulations! You hatched a ${petData.name}! ${petData.emoji}`, true);
+
+            renderPetPhase();
+        }
+
+        function renderPetPhase() {
+            const content = document.getElementById('game-content');
+            const pet = gameState.pet;
+            const petData = PET_TYPES[pet.type];
+            const mood = getMood(pet);
+            const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
+
+            content.innerHTML = `
+                <div class="pet-area" role="region" aria-label="Your pet ${petData.name}">
+                    <div class="sparkles" id="sparkles"></div>
+                    <div class="pet-container" id="pet-container">
+                        ${generatePetSVG(pet, mood)}
+                    </div>
+                    <p class="pet-name">${petData.emoji} ${petData.name}</p>
+                    <p class="pet-mood" id="pet-mood" aria-live="polite">Your pet ${moodMessage}</p>
+                </div>
+
+                <section class="needs-section" aria-label="Pet needs">
+                    <h2 class="needs-title">How is your pet doing?</h2>
+
+                    <div class="need-bar-container">
+                        <div class="need-label">
+                            <span class="need-label-text">
+                                <span class="need-icon" aria-hidden="true">🍎</span>
+                                <span>Hunger</span>
+                            </span>
+                            <span class="need-value" id="hunger-value">${pet.hunger}%</span>
+                        </div>
+                        <div class="need-bar" role="progressbar" aria-label="Hunger level"
+                             aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="need-bar-fill hunger" id="hunger-bar" style="width: ${pet.hunger}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="need-bar-container">
+                        <div class="need-label">
+                            <span class="need-label-text">
+                                <span class="need-icon" aria-hidden="true">🛁</span>
+                                <span>Cleanliness</span>
+                            </span>
+                            <span class="need-value" id="clean-value">${pet.cleanliness}%</span>
+                        </div>
+                        <div class="need-bar" role="progressbar" aria-label="Cleanliness level"
+                             aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="need-bar-fill clean" id="clean-bar" style="width: ${pet.cleanliness}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="need-bar-container">
+                        <div class="need-label">
+                            <span class="need-label-text">
+                                <span class="need-icon" aria-hidden="true">💖</span>
+                                <span>Happiness</span>
+                            </span>
+                            <span class="need-value" id="happy-value">${pet.happiness}%</span>
+                        </div>
+                        <div class="need-bar" role="progressbar" aria-label="Happiness level"
+                             aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="need-bar-fill happy" id="happy-bar" style="width: ${pet.happiness}%"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="actions-section" aria-label="Care actions">
+                    <h2 class="actions-title">Take care of your pet!</h2>
+                    <div class="action-buttons" role="group" aria-label="Pet care buttons">
+                        <button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%">
+                            <span class="btn-icon" aria-hidden="true">🍎</span>
+                            <span>Feed</span>
+                        </button>
+                        <button class="action-btn wash" id="wash-btn" aria-label="Wash your pet. Current cleanliness: ${pet.cleanliness}%">
+                            <span class="btn-icon" aria-hidden="true">🛁</span>
+                            <span>Wash</span>
+                        </button>
+                        <button class="action-btn play" id="play-btn" aria-label="Play with your pet. Current happiness: ${pet.happiness}%">
+                            <span class="btn-icon" aria-hidden="true">⚽</span>
+                            <span>Play</span>
+                        </button>
+                    </div>
+                </section>
+
+                <div class="feedback-area">
+                    <p class="feedback-message" id="feedback" aria-live="polite"></p>
+                </div>
+
+                <button class="new-pet-btn" id="new-pet-btn" aria-label="Start over with a new egg">
+                    🥚 New Pet
+                </button>
+            `;
+
+            // Add event listeners
+            document.getElementById('feed-btn').addEventListener('click', () => careAction('feed'));
+            document.getElementById('wash-btn').addEventListener('click', () => careAction('wash'));
+            document.getElementById('play-btn').addEventListener('click', () => careAction('play'));
+            document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
+
+            // Start decay timer
+            startDecayTimer();
+        }
+
+        function careAction(action) {
+            const pet = gameState.pet;
+            const petData = PET_TYPES[pet.type];
+            const petContainer = document.getElementById('pet-container');
+            const sparkles = document.getElementById('sparkles');
+            let message = '';
+
+            switch (action) {
+                case 'feed':
+                    pet.hunger = clamp(pet.hunger + 20, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.feed);
+                    petContainer.classList.add('bounce');
+                    createFoodParticles(sparkles);
+                    announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
+                    break;
+                case 'wash':
+                    pet.cleanliness = clamp(pet.cleanliness + 20, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.wash);
+                    petContainer.classList.add('sparkle');
+                    createBubbles(sparkles);
+                    announce(`Washed your pet! Cleanliness is now ${pet.cleanliness}%`);
+                    break;
+                case 'play':
+                    pet.happiness = clamp(pet.happiness + 20, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.play);
+                    petContainer.classList.add('wiggle');
+                    createHearts(sparkles);
+                    announce(`Played with your pet! Happiness is now ${pet.happiness}%`);
+                    break;
+            }
+
+            // Show feedback
+            const feedback = document.getElementById('feedback');
+            feedback.textContent = `${petData.emoji} ${message}`;
+            feedback.classList.add('show');
+
+            // Update displays
+            updateNeedDisplays();
+            updatePetMood();
+
+            // Remove animation class
+            setTimeout(() => {
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle');
+            }, 500);
+
+            // Hide feedback
+            setTimeout(() => {
+                feedback.classList.remove('show');
+            }, 2000);
+
+            saveGame();
+        }
+
+        function updateNeedDisplays() {
+            const pet = gameState.pet;
+
+            // Update bars
+            document.getElementById('hunger-bar').style.width = `${pet.hunger}%`;
+            document.getElementById('clean-bar').style.width = `${pet.cleanliness}%`;
+            document.getElementById('happy-bar').style.width = `${pet.happiness}%`;
+
+            // Update values
+            document.getElementById('hunger-value').textContent = `${pet.hunger}%`;
+            document.getElementById('clean-value').textContent = `${pet.cleanliness}%`;
+            document.getElementById('happy-value').textContent = `${pet.happiness}%`;
+
+            // Update ARIA
+            document.querySelector('[aria-label="Hunger level"]').setAttribute('aria-valuenow', pet.hunger);
+            document.querySelector('[aria-label="Cleanliness level"]').setAttribute('aria-valuenow', pet.cleanliness);
+            document.querySelector('[aria-label="Happiness level"]').setAttribute('aria-valuenow', pet.happiness);
+
+            // Update button labels
+            document.getElementById('feed-btn').setAttribute('aria-label', `Feed your pet. Current hunger: ${pet.hunger}%`);
+            document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Current cleanliness: ${pet.cleanliness}%`);
+            document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Current happiness: ${pet.happiness}%`);
+        }
+
+        function updatePetMood() {
+            const pet = gameState.pet;
+            const petData = PET_TYPES[pet.type];
+            const mood = getMood(pet);
+            const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
+
+            // Update pet SVG
+            const petContainer = document.getElementById('pet-container');
+            petContainer.innerHTML = generatePetSVG(pet, mood);
+
+            // Update mood text
+            document.getElementById('pet-mood').textContent = `Your pet ${moodMessage}`;
+        }
+
+        // ==================== PARTICLE EFFECTS ====================
+
+        function createSparkles(container, count) {
+            for (let i = 0; i < count; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle-particle';
+                sparkle.style.left = `${30 + Math.random() * 40}%`;
+                sparkle.style.top = `${30 + Math.random() * 40}%`;
+                sparkle.style.background = ['#FFD700', '#FF69B4', '#87CEEB', '#98FB98'][Math.floor(Math.random() * 4)];
+                container.appendChild(sparkle);
+                setTimeout(() => sparkle.remove(), 1000);
+            }
+        }
+
+        function createFoodParticles(container) {
+            const foods = ['🍎', '🥕', '🍪', '🥬', '🌾'];
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'sparkle-particle';
+                particle.textContent = foods[Math.floor(Math.random() * foods.length)];
+                particle.style.left = `${30 + Math.random() * 40}%`;
+                particle.style.top = `${40 + Math.random() * 30}%`;
+                particle.style.background = 'transparent';
+                particle.style.fontSize = '1.5rem';
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+
+        function createBubbles(container) {
+            for (let i = 0; i < 8; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble-particle';
+                bubble.style.left = `${20 + Math.random() * 60}%`;
+                bubble.style.top = `${30 + Math.random() * 40}%`;
+                bubble.style.animationDelay = `${Math.random() * 0.3}s`;
+                container.appendChild(bubble);
+                setTimeout(() => bubble.remove(), 1500);
+            }
+        }
+
+        function createHearts(container) {
+            for (let i = 0; i < 5; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.textContent = '❤️';
+                heart.style.left = `${25 + Math.random() * 50}%`;
+                heart.style.top = `${35 + Math.random() * 30}%`;
+                heart.style.animationDelay = `${Math.random() * 0.3}s`;
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 1200);
+            }
+        }
+
+        // ==================== DECAY TIMER ====================
+
+        let decayInterval = null;
+
+        function startDecayTimer() {
+            if (decayInterval) clearInterval(decayInterval);
+
+            // Decrease needs every 30 seconds (gentle for young children)
+            decayInterval = setInterval(() => {
+                if (gameState.phase === 'pet' && gameState.pet) {
+                    const pet = gameState.pet;
+                    pet.hunger = clamp(pet.hunger - 1, 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness - 1, 0, 100);
+                    pet.happiness = clamp(pet.happiness - 1, 0, 100);
+
+                    updateNeedDisplays();
+                    updatePetMood();
+                    saveGame();
+
+                    // Gentle reminders at low levels (no negative messages)
+                    const mood = getMood(pet);
+                    if (mood === 'sad') {
+                        const lowestNeed = Math.min(pet.hunger, pet.cleanliness, pet.happiness);
+                        if (lowestNeed <= 20) {
+                            let needName = '';
+                            if (pet.hunger === lowestNeed) needName = 'hungry';
+                            else if (pet.cleanliness === lowestNeed) needName = 'needs a bath';
+                            else needName = 'wants to play';
+                            announce(`Your pet is ${needName}! Can you help?`);
+                        }
+                    }
+                }
+            }, 30000); // Every 30 seconds
+        }
+
+        // ==================== NEW PET ====================
+
+        function startNewPet() {
+            if (confirm('Start over with a new egg? Your current pet will say goodbye.')) {
+                gameState = {
+                    phase: 'egg',
+                    pet: null,
+                    eggTaps: 0,
+                    lastUpdate: Date.now()
+                };
+                saveGame();
+                announce('Starting fresh with a new egg!');
+                renderEggPhase();
+            }
+        }
+
+        // ==================== INITIALIZATION ====================
+
+        function init() {
+            const saved = loadGame();
+            if (saved) {
+                gameState = saved;
+            }
+
+            if (gameState.phase === 'pet' && gameState.pet) {
+                renderPetPhase();
+                const petData = PET_TYPES[gameState.pet.type];
+                announce(`Welcome back! Your ${petData.name} missed you!`);
+            } else {
+                renderEggPhase();
+                announce('Welcome to Pet Care Buddy! Tap the egg to hatch your new pet!');
+            }
+        }
+
+        // Start the game when page loads
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Save on page unload
+        window.addEventListener('beforeunload', saveGame);
+    </script>
+</body>
+</html>
