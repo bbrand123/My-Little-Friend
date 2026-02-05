@@ -26,9 +26,11 @@
             --color-button-feed: #FF8C42;
             --color-button-wash: #4FC3F7;
             --color-button-play: #AED581;
+            --color-button-sleep: #9575CD;
             --color-hunger: #FF7043;
             --color-clean: #29B6F6;
             --color-happy-bar: #66BB6A;
+            --color-energy: #FFD54F;
             --shadow: 0 4px 15px rgba(0,0,0,0.15);
             --radius: 20px;
             --focus-outline: 4px solid #6C63FF;
@@ -150,6 +152,10 @@
             animation: sparkle 0.6s ease;
         }
 
+        .pet-container.sleep-anim {
+            animation: sleepBob 0.8s ease;
+        }
+
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-30px); }
@@ -164,6 +170,12 @@
         @keyframes sparkle {
             0%, 100% { transform: scale(1); filter: brightness(1); }
             50% { transform: scale(1.1); filter: brightness(1.3); }
+        }
+
+        @keyframes sleepBob {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-5px) rotate(-3deg); }
+            75% { transform: translateY(-5px) rotate(3deg); }
         }
 
         /* Pet SVG Styles */
@@ -401,6 +413,14 @@
             background: linear-gradient(135deg, var(--color-button-play), #7CB342);
         }
 
+        .action-btn.sleep {
+            background: linear-gradient(135deg, var(--color-button-sleep), #7E57C2);
+        }
+
+        .need-bar-fill.energy {
+            background: linear-gradient(90deg, var(--color-energy), #FFC107);
+        }
+
         .btn-icon {
             font-size: 2.5rem;
         }
@@ -541,6 +561,133 @@
                 opacity: 0;
                 transform: scale(0.5) translateY(-70px);
             }
+        }
+
+        /* Zzz particles for Sleep */
+        .zzz-particle {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #9575CD;
+            animation: zzzFloat 1.5s ease-out forwards;
+        }
+
+        @keyframes zzzFloat {
+            0% {
+                opacity: 1;
+                transform: scale(0.5) translateY(0) translateX(0);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1) translateY(-30px) translateX(10px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.2) translateY(-60px) translateX(20px);
+            }
+        }
+
+        /* Star particles for Sleep */
+        .star-particle {
+            position: absolute;
+            font-size: 1.2rem;
+            animation: starTwinkle 1.2s ease-out forwards;
+        }
+
+        @keyframes starTwinkle {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) rotate(360deg);
+            }
+        }
+
+        /* Day/Night cycle styles */
+        .pet-area.daytime {
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+        }
+
+        .pet-area.sunset {
+            background: linear-gradient(180deg, #FF7E5F 0%, #FEB47B 50%, #98FB98 100%);
+        }
+
+        .pet-area.nighttime {
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+
+        .pet-area.nighttime::after {
+            background: linear-gradient(180deg, #2d4a22 0%, #1a3015 100%);
+        }
+
+        .pet-area.sunrise {
+            background: linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #98FB98 100%);
+        }
+
+        /* Stars overlay for night */
+        .stars-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* Moon for nighttime */
+        .moon {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            width: 35px;
+            height: 35px;
+            background: #FFFACD;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 250, 205, 0.6);
+            z-index: 0;
+        }
+
+        /* Sun for daytime */
+        .sun {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: #FFD700;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            z-index: 0;
+        }
+
+        /* Time indicator */
+        .time-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 1.2rem;
+            z-index: 2;
         }
 
         /* Responsive Design */
@@ -786,7 +933,8 @@
         const FEEDBACK_MESSAGES = {
             feed: ['Yummy!', 'Delicious!', 'So tasty!', 'Nom nom!', 'Thank you!'],
             wash: ['So clean!', 'Sparkly!', 'Fresh!', 'Squeaky clean!', 'Shiny!'],
-            play: ['So fun!', 'Wheee!', 'Again!', 'Yay!', 'Love it!']
+            play: ['So fun!', 'Wheee!', 'Again!', 'Yay!', 'Love it!'],
+            sleep: ['So cozy!', 'Sweet dreams!', 'Zzz...', 'Night night!', 'Sleepy time!']
         };
 
         const MOOD_MESSAGES = {
@@ -801,7 +949,8 @@
             phase: 'egg', // 'egg', 'hatching', 'pet'
             pet: null,
             eggTaps: 0,
-            lastUpdate: Date.now()
+            lastUpdate: Date.now(),
+            timeOfDay: 'day' // 'day', 'sunset', 'night', 'sunrise'
         };
 
         // ==================== UTILITY FUNCTIONS ====================
@@ -861,7 +1010,14 @@
                             // Corrupted pet data, start fresh
                             return null;
                         }
+                        // Add energy stat if missing (for existing saves)
+                        if (typeof parsed.pet.energy !== 'number') {
+                            parsed.pet.energy = 70;
+                        }
                     }
+
+                    // Update time of day
+                    parsed.timeOfDay = getTimeOfDay();
 
                     // Apply time-based decay for needs
                     if (parsed.pet && parsed.lastUpdate) {
@@ -873,6 +1029,7 @@
                             parsed.pet.hunger = clamp(parsed.pet.hunger - decay, 0, 100);
                             parsed.pet.cleanliness = clamp(parsed.pet.cleanliness - decay, 0, 100);
                             parsed.pet.happiness = clamp(parsed.pet.happiness - decay, 0, 100);
+                            parsed.pet.energy = clamp(parsed.pet.energy - decay, 0, 100);
                         }
                     }
                     return parsed;
@@ -903,15 +1060,49 @@
                 color: color,
                 hunger: 70,
                 cleanliness: 70,
-                happiness: 70
+                happiness: 70,
+                energy: 70
             };
         }
 
         function getMood(pet) {
-            const average = (pet.hunger + pet.cleanliness + pet.happiness) / 3;
+            const average = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
             if (average >= 60) return 'happy';
             if (average >= 30) return 'neutral';
             return 'sad';
+        }
+
+        // Get time of day based on real time
+        function getTimeOfDay() {
+            const hour = new Date().getHours();
+            if (hour >= 6 && hour < 8) return 'sunrise';
+            if (hour >= 8 && hour < 18) return 'day';
+            if (hour >= 18 && hour < 20) return 'sunset';
+            return 'night';
+        }
+
+        // Get time icon based on time of day
+        function getTimeIcon(timeOfDay) {
+            switch (timeOfDay) {
+                case 'sunrise': return '🌅';
+                case 'day': return '☀️';
+                case 'sunset': return '🌇';
+                case 'night': return '🌙';
+                default: return '☀️';
+            }
+        }
+
+        // Generate stars for nighttime
+        function generateStarsHTML() {
+            let stars = '';
+            for (let i = 0; i < 15; i++) {
+                const left = Math.random() * 90 + 5;
+                const top = Math.random() * 60 + 5;
+                const delay = Math.random() * 2;
+                const size = Math.random() * 3 + 2;
+                stars += `<div class="star" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation-delay: ${delay}s;"></div>`;
+            }
+            return stars;
         }
 
         // ==================== SVG GENERATION ====================
@@ -1337,8 +1528,24 @@
             const mood = getMood(pet);
             const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
 
+            // Update time of day
+            gameState.timeOfDay = getTimeOfDay();
+            const timeOfDay = gameState.timeOfDay;
+            const timeIcon = getTimeIcon(timeOfDay);
+            const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
+
+            // Generate celestial elements
+            let celestialHTML = '';
+            if (timeOfDay === 'night') {
+                celestialHTML = `<div class="stars-overlay">${generateStarsHTML()}</div><div class="moon"></div>`;
+            } else if (timeOfDay === 'day') {
+                celestialHTML = `<div class="sun"></div>`;
+            }
+
             content.innerHTML = `
-                <div class="pet-area" role="region" aria-label="Your pet ${petData.name}">
+                <div class="pet-area ${timeClass}" role="region" aria-label="Your pet ${petData.name}">
+                    ${celestialHTML}
+                    <div class="time-indicator" aria-label="Time: ${timeOfDay}">${timeIcon}</div>
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
                         ${generatePetSVG(pet, mood)}
@@ -1391,6 +1598,20 @@
                             <div class="need-bar-fill happy" id="happy-bar" style="width: ${pet.happiness}%"></div>
                         </div>
                     </div>
+
+                    <div class="need-bar-container">
+                        <div class="need-label">
+                            <span class="need-label-text">
+                                <span class="need-icon" aria-hidden="true">😴</span>
+                                <span>Energy</span>
+                            </span>
+                            <span class="need-value" id="energy-value">${pet.energy}%</span>
+                        </div>
+                        <div class="need-bar" role="progressbar" aria-label="Energy level"
+                             aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="need-bar-fill energy" id="energy-bar" style="width: ${pet.energy}%"></div>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="actions-section" aria-label="Care actions">
@@ -1408,6 +1629,10 @@
                             <span class="btn-icon" aria-hidden="true">⚽</span>
                             <span>Play</span>
                         </button>
+                        <button class="action-btn sleep" id="sleep-btn" aria-label="Put your pet to sleep. Current energy: ${pet.energy}%">
+                            <span class="btn-icon" aria-hidden="true">🛏️</span>
+                            <span>Sleep</span>
+                        </button>
                     </div>
                 </section>
 
@@ -1424,6 +1649,7 @@
             document.getElementById('feed-btn').addEventListener('click', () => careAction('feed'));
             document.getElementById('wash-btn').addEventListener('click', () => careAction('wash'));
             document.getElementById('play-btn').addEventListener('click', () => careAction('play'));
+            document.getElementById('sleep-btn').addEventListener('click', () => careAction('sleep'));
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
 
             // Start decay timer
@@ -1474,6 +1700,13 @@
                     createHearts(sparkles);
                     announce(`Played with your pet! Happiness is now ${pet.happiness}%`);
                     break;
+                case 'sleep':
+                    pet.energy = clamp(pet.energy + 25, 0, 100);
+                    message = randomFromArray(FEEDBACK_MESSAGES.sleep);
+                    petContainer.classList.add('sleep-anim');
+                    createZzz(sparkles);
+                    announce(`Your pet had a nice nap! Energy is now ${pet.energy}%`);
+                    break;
             }
 
             // Show feedback
@@ -1487,8 +1720,8 @@
 
             // Remove animation class
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle');
-            }, 500);
+                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim');
+            }, 800);
 
             // Hide feedback
             setTimeout(() => {
@@ -1512,42 +1745,51 @@
             const hungerBar = document.getElementById('hunger-bar');
             const cleanBar = document.getElementById('clean-bar');
             const happyBar = document.getElementById('happy-bar');
+            const energyBar = document.getElementById('energy-bar');
 
             hungerBar.style.width = `${pet.hunger}%`;
             cleanBar.style.width = `${pet.cleanliness}%`;
             happyBar.style.width = `${pet.happiness}%`;
+            energyBar.style.width = `${pet.energy}%`;
 
             // Update color classes
             hungerBar.classList.remove('low', 'medium');
             cleanBar.classList.remove('low', 'medium');
             happyBar.classList.remove('low', 'medium');
+            energyBar.classList.remove('low', 'medium');
 
             const hungerClass = getColorClass(pet.hunger);
             const cleanClass = getColorClass(pet.cleanliness);
             const happyClass = getColorClass(pet.happiness);
+            const energyClass = getColorClass(pet.energy);
 
             if (hungerClass) hungerBar.classList.add(hungerClass);
             if (cleanClass) cleanBar.classList.add(cleanClass);
             if (happyClass) happyBar.classList.add(happyClass);
+            if (energyClass) energyBar.classList.add(energyClass);
 
             // Update values
             document.getElementById('hunger-value').textContent = `${pet.hunger}%`;
             document.getElementById('clean-value').textContent = `${pet.cleanliness}%`;
             document.getElementById('happy-value').textContent = `${pet.happiness}%`;
+            document.getElementById('energy-value').textContent = `${pet.energy}%`;
 
             // Update ARIA
             document.querySelector('[aria-label="Hunger level"]').setAttribute('aria-valuenow', pet.hunger);
             document.querySelector('[aria-label="Cleanliness level"]').setAttribute('aria-valuenow', pet.cleanliness);
             document.querySelector('[aria-label="Happiness level"]').setAttribute('aria-valuenow', pet.happiness);
+            document.querySelector('[aria-label="Energy level"]').setAttribute('aria-valuenow', pet.energy);
 
             // Update button labels with more descriptive text
             const hungerDesc = pet.hunger <= 25 ? 'very low' : pet.hunger <= 50 ? 'low' : pet.hunger <= 75 ? 'good' : 'full';
             const cleanDesc = pet.cleanliness <= 25 ? 'very dirty' : pet.cleanliness <= 50 ? 'needs washing' : pet.cleanliness <= 75 ? 'clean' : 'sparkly clean';
             const happyDesc = pet.happiness <= 25 ? 'sad' : pet.happiness <= 50 ? 'bored' : pet.happiness <= 75 ? 'happy' : 'very happy';
+            const energyDesc = pet.energy <= 25 ? 'exhausted' : pet.energy <= 50 ? 'tired' : pet.energy <= 75 ? 'rested' : 'full of energy';
 
             document.getElementById('feed-btn').setAttribute('aria-label', `Feed your pet. Hunger level: ${pet.hunger}%, ${hungerDesc}`);
             document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Cleanliness: ${pet.cleanliness}%, ${cleanDesc}`);
             document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Happiness: ${pet.happiness}%, ${happyDesc}`);
+            document.getElementById('sleep-btn').setAttribute('aria-label', `Put your pet to sleep. Energy: ${pet.energy}%, ${energyDesc}`);
         }
 
         function updatePetMood() {
@@ -1618,6 +1860,34 @@
             }
         }
 
+        function createZzz(container) {
+            // Create Zzz particles
+            const zzzTexts = ['Z', 'z', 'Z'];
+            for (let i = 0; i < 3; i++) {
+                const zzz = document.createElement('div');
+                zzz.className = 'zzz-particle';
+                zzz.textContent = zzzTexts[i];
+                zzz.style.left = `${45 + i * 10}%`;
+                zzz.style.top = `${30 + i * 5}%`;
+                zzz.style.animationDelay = `${i * 0.3}s`;
+                zzz.style.fontSize = `${1.5 - i * 0.2}rem`;
+                container.appendChild(zzz);
+                setTimeout(() => zzz.remove(), 1800);
+            }
+            // Create star particles
+            const stars = ['⭐', '✨', '🌟'];
+            for (let i = 0; i < 4; i++) {
+                const star = document.createElement('div');
+                star.className = 'star-particle';
+                star.textContent = stars[Math.floor(Math.random() * stars.length)];
+                star.style.left = `${20 + Math.random() * 60}%`;
+                star.style.top = `${25 + Math.random() * 40}%`;
+                star.style.animationDelay = `${Math.random() * 0.5}s`;
+                container.appendChild(star);
+                setTimeout(() => star.remove(), 1500);
+            }
+        }
+
         // ==================== DECAY TIMER ====================
 
         let decayInterval = null;
@@ -1633,6 +1903,14 @@
                     pet.hunger = clamp(pet.hunger - 1, 0, 100);
                     pet.cleanliness = clamp(pet.cleanliness - 1, 0, 100);
                     pet.happiness = clamp(pet.happiness - 1, 0, 100);
+                    pet.energy = clamp(pet.energy - 1, 0, 100);
+
+                    // Update time of day and refresh display if changed
+                    const newTimeOfDay = getTimeOfDay();
+                    if (gameState.timeOfDay !== newTimeOfDay) {
+                        gameState.timeOfDay = newTimeOfDay;
+                        updateDayNightDisplay();
+                    }
 
                     updateNeedDisplays();
                     updatePetMood();
@@ -1644,11 +1922,12 @@
                     if (now - lastDecayAnnouncement > 120000) {
                         const mood = getMood(pet);
                         if (mood === 'sad') {
-                            const lowestNeed = Math.min(pet.hunger, pet.cleanliness, pet.happiness);
+                            const lowestNeed = Math.min(pet.hunger, pet.cleanliness, pet.happiness, pet.energy);
                             if (lowestNeed <= 20) {
                                 let needName = '';
                                 if (pet.hunger === lowestNeed) needName = 'hungry';
                                 else if (pet.cleanliness === lowestNeed) needName = 'needs a bath';
+                                else if (pet.energy === lowestNeed) needName = 'tired and needs sleep';
                                 else needName = 'wants to play';
                                 announce(`Your pet is ${needName}! Can you help?`);
                                 lastDecayAnnouncement = now;
@@ -1657,6 +1936,49 @@
                     }
                 }
             }, 30000); // Every 30 seconds
+        }
+
+        function updateDayNightDisplay() {
+            const petArea = document.querySelector('.pet-area');
+            if (!petArea) return;
+
+            const timeOfDay = gameState.timeOfDay;
+            const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
+
+            // Update class
+            petArea.classList.remove('daytime', 'nighttime', 'sunset', 'sunrise');
+            petArea.classList.add(timeClass);
+
+            // Update time indicator
+            const timeIndicator = petArea.querySelector('.time-indicator');
+            if (timeIndicator) {
+                timeIndicator.textContent = getTimeIcon(timeOfDay);
+                timeIndicator.setAttribute('aria-label', `Time: ${timeOfDay}`);
+            }
+
+            // Update celestial elements
+            const existingStars = petArea.querySelector('.stars-overlay');
+            const existingMoon = petArea.querySelector('.moon');
+            const existingSun = petArea.querySelector('.sun');
+
+            if (existingStars) existingStars.remove();
+            if (existingMoon) existingMoon.remove();
+            if (existingSun) existingSun.remove();
+
+            if (timeOfDay === 'night') {
+                const starsOverlay = document.createElement('div');
+                starsOverlay.className = 'stars-overlay';
+                starsOverlay.innerHTML = generateStarsHTML();
+                petArea.insertBefore(starsOverlay, petArea.firstChild);
+
+                const moon = document.createElement('div');
+                moon.className = 'moon';
+                petArea.insertBefore(moon, petArea.children[1]);
+            } else if (timeOfDay === 'day') {
+                const sun = document.createElement('div');
+                sun.className = 'sun';
+                petArea.insertBefore(sun, petArea.firstChild);
+            }
         }
 
         function stopDecayTimer() {
@@ -1795,7 +2117,8 @@
                         phase: 'egg',
                         pet: null,
                         eggTaps: 0,
-                        lastUpdate: Date.now()
+                        lastUpdate: Date.now(),
+                        timeOfDay: getTimeOfDay()
                     };
                     saveGame();
                     announce('Starting fresh with a new egg!', true);
