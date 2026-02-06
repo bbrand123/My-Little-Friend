@@ -156,8 +156,38 @@
                         if (typeof parsed.pet.careActions !== 'number') {
                             parsed.pet.careActions = 0;
                         }
+                        // Add birthdate if missing (estimate based on care actions)
+                        if (!parsed.pet.birthdate) {
+                            // Estimate: 1 hour per care action for existing pets
+                            const estimatedAge = parsed.pet.careActions * 60 * 60 * 1000;
+                            parsed.pet.birthdate = Date.now() - estimatedAge;
+                        }
+                        // Calculate age for growth stage
+                        const ageInHours = (Date.now() - parsed.pet.birthdate) / (1000 * 60 * 60);
                         if (!parsed.pet.growthStage) {
-                            parsed.pet.growthStage = getGrowthStage(parsed.pet.careActions);
+                            parsed.pet.growthStage = getGrowthStage(parsed.pet.careActions, ageInHours);
+                        }
+                        // Add care quality fields if missing
+                        if (!parsed.pet.careHistory) {
+                            parsed.pet.careHistory = [];
+                        }
+                        if (typeof parsed.pet.neglectCount !== 'number') {
+                            parsed.pet.neglectCount = 0;
+                        }
+                        if (!parsed.pet.careQuality) {
+                            parsed.pet.careQuality = 'average';
+                        }
+                        if (!parsed.pet.careVariant) {
+                            parsed.pet.careVariant = 'normal';
+                        }
+                        if (!parsed.pet.evolutionStage) {
+                            parsed.pet.evolutionStage = 'base';
+                        }
+                        if (!parsed.pet.lastGrowthStage) {
+                            parsed.pet.lastGrowthStage = parsed.pet.growthStage || 'baby';
+                        }
+                        if (!parsed.pet.unlockedAccessories) {
+                            parsed.pet.unlockedAccessories = [];
                         }
                         // Add adultsRaised if missing
                         if (typeof parsed.adultsRaised !== 'number') {
@@ -300,7 +330,15 @@
                 happiness: 70,
                 energy: 70,
                 careActions: 0,
-                growthStage: 'baby'
+                growthStage: 'baby',
+                birthdate: Date.now(), // Timestamp of when pet was born
+                careHistory: [], // Track stats over time for care quality
+                neglectCount: 0, // Track how many times stats dropped critically low
+                careQuality: 'average', // Current care quality level
+                careVariant: 'normal', // Appearance variant based on care
+                evolutionStage: 'base', // 'base' or 'evolved'
+                lastGrowthStage: 'baby', // Track last stage for birthday celebrations
+                unlockedAccessories: [] // Accessories unlocked through milestones
             };
         }
 
@@ -339,6 +377,130 @@
             if (hour >= 8 && hour < 18) return 'day';
             if (hour >= 18 && hour < 20) return 'sunset';
             return 'night';
+        }
+
+        // ==================== GROWTH & CARE QUALITY FUNCTIONS ====================
+
+        function getPetAge(pet) {
+            if (!pet || !pet.birthdate) return 0;
+            const ageInMs = Date.now() - pet.birthdate;
+            return ageInMs / (1000 * 60 * 60); // Convert to hours
+        }
+
+        function updateCareHistory(pet) {
+            if (!pet) return null;
+
+            // Initialize care history if missing
+            if (!pet.careHistory) pet.careHistory = [];
+
+            // Track previous care quality for change detection
+            const previousQuality = pet.careQuality || 'average';
+
+            // Track current stats
+            const currentAverage = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
+            const timestamp = Date.now();
+
+            // Add to history (keep last 100 entries to calculate trends)
+            pet.careHistory.push({ average: currentAverage, timestamp });
+            if (pet.careHistory.length > 100) {
+                pet.careHistory.shift();
+            }
+
+            // Check for neglect (any stat below 20)
+            const isNeglected = pet.hunger < 20 || pet.cleanliness < 20 || pet.happiness < 20 || pet.energy < 20;
+            if (isNeglected) {
+                pet.neglectCount = (pet.neglectCount || 0) + 1;
+            }
+
+            // Calculate overall care quality
+            const recentHistory = pet.careHistory.slice(-20); // Last 20 measurements
+            const averageStats = recentHistory.reduce((sum, entry) => sum + entry.average, 0) / recentHistory.length;
+            const neglectCount = pet.neglectCount || 0;
+
+            // Update care quality
+            const newQuality = getCareQuality(averageStats, neglectCount);
+            pet.careQuality = newQuality;
+
+            // Update care variant based on quality
+            const qualityData = CARE_QUALITY[newQuality];
+            if (qualityData) {
+                pet.careVariant = qualityData.variant;
+            }
+
+            // Return quality change info for notifications
+            if (previousQuality !== newQuality) {
+                return {
+                    changed: true,
+                    from: previousQuality,
+                    to: newQuality,
+                    improved: getCareQualityLevel(newQuality) > getCareQualityLevel(previousQuality)
+                };
+            }
+
+            return { changed: false };
+        }
+
+        // Helper to get numeric level for care quality comparison
+        function getCareQualityLevel(quality) {
+            const levels = { poor: 0, average: 1, good: 2, excellent: 3 };
+            return levels[quality] || 0;
+        }
+
+        function checkGrowthMilestone(pet) {
+            if (!pet) return false;
+
+            const ageInHours = getPetAge(pet);
+            const currentStage = getGrowthStage(pet.careActions, ageInHours);
+            const lastStage = pet.lastGrowthStage || 'baby';
+
+            if (currentStage !== lastStage) {
+                pet.growthStage = currentStage;
+                pet.lastGrowthStage = currentStage;
+
+                // Show birthday celebration
+                if (currentStage !== 'baby') {
+                    showBirthdayCelebration(currentStage, pet);
+                }
+
+                // Update adults raised counter
+                if (currentStage === 'adult') {
+                    gameState.adultsRaised = (gameState.adultsRaised || 0) + 1;
+                }
+
+                saveGame();
+                return true;
+            }
+
+            return false;
+        }
+
+        function canEvolve(pet) {
+            if (!pet) return false;
+            if (pet.evolutionStage === 'evolved') return false;
+            if (pet.growthStage !== 'adult') return false;
+
+            const qualityData = CARE_QUALITY[pet.careQuality];
+            return qualityData && qualityData.canEvolve;
+        }
+
+        function evolvePet(pet) {
+            if (!canEvolve(pet)) return false;
+
+            pet.evolutionStage = 'evolved';
+            const evolutionData = PET_EVOLUTIONS[pet.type];
+
+            if (evolutionData) {
+                // Update pet name to evolution name
+                pet.name = evolutionData.name;
+
+                // Show evolution celebration
+                showEvolutionCelebration(pet, evolutionData);
+
+                saveGame();
+                return true;
+            }
+
+            return false;
         }
 
         // Get time icon based on time of day
@@ -1071,10 +1233,45 @@
                         return; // renderPetPhase will handle the rest
                     }
 
+                    // Update care quality tracking
+                    const careQualityChange = updateCareHistory(pet);
+
+                    // Check for growth milestones
+                    checkGrowthMilestone(pet);
+
                     updateNeedDisplays();
                     updatePetMood();
                     updateWellnessBar();
                     saveGame();
+
+                    // Notify user of care quality changes (after updates to avoid issues)
+                    if (careQualityChange && careQualityChange.changed) {
+                        const fromData = CARE_QUALITY[careQualityChange.from];
+                        const toData = CARE_QUALITY[careQualityChange.to];
+                        const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+
+                        if (careQualityChange.improved) {
+                            showToast(`${toData.emoji} Care quality improved to ${toData.label}!`, '#66BB6A');
+                            announce(`Great job! ${petName}'s care quality is now ${toData.label}!`);
+
+                            // Special message for reaching excellent
+                            if (careQualityChange.to === 'excellent' && pet.growthStage === 'adult') {
+                                setTimeout(() => {
+                                    showToast('⭐ Your pet can now evolve!', '#FFD700');
+                                }, 2000);
+                            }
+                        } else {
+                            showToast(`${toData.emoji} Care quality changed to ${toData.label}`, '#FFB74D');
+                            announce(`${petName}'s care quality is now ${toData.label}. ${toData.description}`);
+                        }
+
+                        // Re-render to show appearance changes (debounced to avoid rapid re-renders)
+                        if (typeof renderPetPhase === 'function' && !careQualityChange.skipRender) {
+                            setTimeout(() => {
+                                renderPetPhase();
+                            }, 100);
+                        }
+                    }
 
                     // Gentle reminders at low levels (no negative messages)
                     // But don't spam - only announce every 2 minutes max

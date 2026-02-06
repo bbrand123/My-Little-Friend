@@ -382,7 +382,8 @@
                             ${(() => {
                                 const stage = pet.growthStage || 'adult';
                                 const stageData = GROWTH_STAGES[stage];
-                                const progress = getGrowthProgress(pet.careActions || 0, stage);
+                                const ageInHours = getPetAge(pet);
+                                const progress = getGrowthProgress(pet.careActions || 0, ageInHours, stage);
                                 const nextStage = getNextGrowthStage(stage);
                                 const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
                                 return `
@@ -395,15 +396,68 @@
                         </div>
                         ${(() => {
                             const stage = pet.growthStage || 'adult';
-                            const progress = getGrowthProgress(pet.careActions || 0, stage);
+                            const ageInHours = getPetAge(pet);
                             const nextStage = getNextGrowthStage(stage);
                             if (!nextStage) return '';
+
+                            const currentActionsThreshold = GROWTH_STAGES[stage].actionsNeeded;
+                            const nextActionsThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
+                            const currentHoursThreshold = GROWTH_STAGES[stage].hoursNeeded;
+                            const nextHoursThreshold = GROWTH_STAGES[nextStage].hoursNeeded;
+
+                            // Calculate progress with safety checks for division by zero
+                            const actionDiff = nextActionsThreshold - currentActionsThreshold;
+                            const hourDiff = nextHoursThreshold - currentHoursThreshold;
+
+                            const actionProgress = actionDiff > 0
+                                ? Math.min(100, Math.max(0, ((pet.careActions - currentActionsThreshold) / actionDiff) * 100))
+                                : 100;
+
+                            const timeProgress = hourDiff > 0
+                                ? Math.min(100, Math.max(0, ((ageInHours - currentHoursThreshold) / hourDiff) * 100))
+                                : 100;
+
+                            const overallProgress = Math.min(actionProgress, timeProgress);
+
+                            const actionsNeeded = Math.max(0, nextActionsThreshold - pet.careActions);
+                            const hoursNeeded = Math.max(0, nextHoursThreshold - ageInHours);
+
                             return `
                                 <div class="growth-progress-wrap" aria-label="Growth progress to ${GROWTH_STAGES[nextStage].label}">
-                                    <div class="growth-progress-bar">
-                                        <div class="growth-progress-fill" id="growth-fill" style="width: ${progress}%;"></div>
+                                    <div class="growth-progress-header">
+                                        <span class="growth-progress-title">Growing to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+                                        <span class="growth-progress-percent">${Math.round(overallProgress)}%</span>
                                     </div>
-                                    <span class="growth-progress-label">${GROWTH_STAGES[stage].emoji} ${progress}% to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+
+                                    <div class="dual-progress-container">
+                                        <div class="progress-requirement ${actionProgress >= 100 ? 'complete' : ''}">
+                                            <div class="requirement-label">
+                                                <span class="requirement-icon">💪</span>
+                                                <span class="requirement-text">Care Actions</span>
+                                                <span class="requirement-status">${Math.round(actionProgress)}%</span>
+                                            </div>
+                                            <div class="requirement-bar">
+                                                <div class="requirement-fill actions" style="width: ${actionProgress}%;"></div>
+                                            </div>
+                                            <div class="requirement-detail">${actionsNeeded > 0 ? `${actionsNeeded} more needed` : '✓ Ready!'}</div>
+                                        </div>
+
+                                        <div class="progress-requirement ${timeProgress >= 100 ? 'complete' : ''}">
+                                            <div class="requirement-label">
+                                                <span class="requirement-icon">⏰</span>
+                                                <span class="requirement-text">Time</span>
+                                                <span class="requirement-status">${Math.round(timeProgress)}%</span>
+                                            </div>
+                                            <div class="requirement-bar">
+                                                <div class="requirement-fill time" style="width: ${timeProgress}%;"></div>
+                                            </div>
+                                            <div class="requirement-detail">${hoursNeeded > 0 ? `${Math.round(hoursNeeded)}h left` : '✓ Ready!'}</div>
+                                        </div>
+                                    </div>
+
+                                    ${actionProgress >= 100 && timeProgress < 100 ? `<p class="growth-tip">💡 Your pet needs more time to grow. Keep caring!</p>` : ''}
+                                    ${timeProgress >= 100 && actionProgress < 100 ? `<p class="growth-tip">💡 Your pet needs more care. Interact more!</p>` : ''}
+                                    ${actionProgress >= 100 && timeProgress >= 100 ? `<p class="growth-tip ready">🎉 Ready to grow! Will evolve soon!</p>` : ''}
                                 </div>
                             `;
                         })()}
@@ -458,6 +512,80 @@
                         <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}%;"></div>
                     </div>
                 </div>
+
+                ${(() => {
+                    const careQuality = pet.careQuality || 'average';
+                    const qualityData = CARE_QUALITY[careQuality] || CARE_QUALITY.average;
+                    const ageInHours = getPetAge(pet);
+                    const ageDisplay = ageInHours < 24
+                        ? `${Math.floor(ageInHours)} hours old`
+                        : `${Math.floor(ageInHours / 24)} days old`;
+
+                    // Get care quality tips
+                    const careQualityTips = {
+                        poor: 'Keep stats above 35% and avoid letting any stat drop below 20% to improve care quality.',
+                        average: 'Keep stats above 60% and minimize neglect (stats below 20%) to reach Good care.',
+                        good: 'Maintain stats above 80% with minimal neglect to reach Excellent care!',
+                        excellent: 'Amazing care! Your pet can evolve once they reach adult stage. ✨'
+                    };
+
+                    const neglectCount = pet.neglectCount || 0;
+                    const avgStats = pet.careHistory && pet.careHistory.length > 0
+                        ? Math.round(pet.careHistory.slice(-20).reduce((sum, e) => sum + e.average, 0) / Math.min(20, pet.careHistory.length))
+                        : Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
+
+                    const tipText = careQualityTips[careQuality] || careQualityTips.average;
+
+                    return `
+                        <div class="care-quality-wrap" aria-label="Care quality and age">
+                            <div class="care-quality-row">
+                                <div class="care-quality-badge ${careQuality}" title="${qualityData.description}: ${tipText}">
+                                    <span class="care-quality-emoji">${qualityData.emoji}</span>
+                                    <div class="care-quality-text">
+                                        <span class="care-quality-label">Care Quality</span>
+                                        <span class="care-quality-value">${qualityData.label}</span>
+                                        <span class="care-quality-hint">${qualityData.description}</span>
+                                    </div>
+                                </div>
+                                <div class="pet-age-badge" title="Time since hatching. Pets grow based on both age and care!">
+                                    <span class="pet-age-emoji">🎂</span>
+                                    <div class="pet-age-text">
+                                        <span class="pet-age-label">Age</span>
+                                        <span class="pet-age-value">${ageDisplay}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="care-stats-detail">
+                                <div class="care-stat-item">
+                                    <span class="care-stat-label">Average Stats:</span>
+                                    <span class="care-stat-value ${avgStats >= 80 ? 'excellent' : avgStats >= 60 ? 'good' : avgStats >= 35 ? 'average' : 'poor'}">${avgStats}%</span>
+                                </div>
+                                <div class="care-stat-item">
+                                    <span class="care-stat-label">Neglect Count:</span>
+                                    <span class="care-stat-value ${neglectCount <= 2 ? 'excellent' : neglectCount <= 5 ? 'good' : neglectCount <= 10 ? 'average' : 'poor'}">${neglectCount}</span>
+                                </div>
+                            </div>
+
+                            ${careQuality !== 'excellent' ? `
+                                <div class="care-quality-tip">
+                                    💡 ${careQualityTips[careQuality]}
+                                </div>
+                            ` : ''}
+
+                            ${pet.evolutionStage === 'evolved' ? `
+                                <div class="evolution-badge-display">
+                                    ✨ ${PET_EVOLUTIONS[pet.type]?.name || 'Evolved Form'} ✨
+                                </div>
+                            ` : ''}
+                            ${canEvolve(pet) ? `
+                                <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet to their special form!" title="Your excellent care has unlocked evolution!">
+                                    ⭐ Evolve ${petDisplayName}! ⭐
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                })()}
 
                 <div class="section-divider"></div>
 
@@ -569,6 +697,18 @@
             document.getElementById('stats-btn').addEventListener('click', showStatsScreen);
             document.getElementById('furniture-btn').addEventListener('click', showFurnitureModal);
 
+            // Evolution button if available
+            const evolveBtn = document.getElementById('evolve-btn');
+            if (evolveBtn) {
+                evolveBtn.addEventListener('click', () => {
+                    const pet = gameState.pet;
+                    if (evolvePet(pet)) {
+                        // Re-render to show evolved pet
+                        renderPetPhase();
+                    }
+                });
+            }
+
             // Render garden UI if in garden room
             if (currentRoom === 'garden') {
                 renderGardenUI();
@@ -601,7 +741,17 @@
         // ==================== TOAST NOTIFICATIONS ====================
 
         function showToast(message, color = '#66BB6A') {
-            const container = document.getElementById('toast-container');
+            let container = document.getElementById('toast-container');
+
+            // Create container if it doesn't exist
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.setAttribute('aria-live', 'polite');
+                container.setAttribute('aria-atomic', 'false');
+                document.body.appendChild(container);
+            }
+
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
@@ -1221,6 +1371,224 @@
             announce(title + '. ' + message);
         }
 
+        // ==================== CELEBRATION MODALS ====================
+
+        function showBirthdayCelebration(growthStage, pet) {
+            const rewardData = BIRTHDAY_REWARDS[growthStage];
+            if (!rewardData) return;
+
+            // Add confetti animation
+            createConfetti();
+
+            // Unlock accessories as rewards
+            if (rewardData.accessories && pet) {
+                rewardData.accessories.forEach(accessoryId => {
+                    if (!pet.unlockedAccessories.includes(accessoryId)) {
+                        pet.unlockedAccessories.push(accessoryId);
+                    }
+                });
+            }
+
+            // Create celebration modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay celebration-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'celebration-title');
+
+            const petName = pet ? (pet.name || PET_TYPES[pet.type]?.name || 'Your pet') : 'Your pet';
+            const stageLabel = GROWTH_STAGES[growthStage]?.label || growthStage;
+            const stageEmoji = GROWTH_STAGES[growthStage]?.emoji || '🎉';
+
+            modal.innerHTML = `
+                <div class="modal-content celebration-content">
+                    <div class="celebration-header">
+                        <div class="celebration-icon">${rewardData.title}</div>
+                    </div>
+                    <h2 class="modal-title" id="celebration-title">${stageEmoji} ${petName} is now a ${stageLabel}! ${stageEmoji}</h2>
+                    <p class="modal-message celebration-message">${rewardData.message}</p>
+                    <div class="rewards-display">
+                        <p class="reward-title">🎁 ${rewardData.unlockMessage}</p>
+                        <div class="reward-accessories">
+                            ${rewardData.accessories.map(accId => {
+                                const acc = ACCESSORIES[accId];
+                                return acc ? `<span class="reward-item">${acc.emoji} ${acc.name}</span>` : '';
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-btn confirm celebration-btn" id="celebration-ok">
+                            🎊 Celebrate! 🎊
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const okBtn = document.getElementById('celebration-ok');
+            okBtn.focus();
+
+            function closeModal() {
+                modal.remove();
+                // Trigger confetti cleanup
+                setTimeout(() => {
+                    const confettiContainer = document.querySelector('.confetti-container');
+                    if (confettiContainer) confettiContainer.remove();
+                }, 5000);
+            }
+
+            okBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            document.addEventListener('keydown', function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            });
+
+            announce(`Birthday celebration! ${petName} is now a ${stageLabel}! ${rewardData.unlockMessage}`);
+            showToast(`🎉 ${petName} grew to ${stageLabel}!`, '#FFB74D');
+        }
+
+        function showEvolutionCelebration(pet, evolutionData) {
+            // Add confetti animation
+            createConfetti();
+
+            // Create evolution modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay celebration-modal evolution-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'evolution-title');
+
+            const petName = pet ? (pet.name || evolutionData.name) : evolutionData.name;
+            const qualityLabel = CARE_QUALITY[pet.careQuality]?.label || 'Excellent';
+
+            modal.innerHTML = `
+                <div class="modal-content celebration-content">
+                    <div class="celebration-header">
+                        <div class="celebration-icon evolution-icon">✨ EVOLUTION! ✨</div>
+                    </div>
+                    <h2 class="modal-title" id="evolution-title">${evolutionData.emoji} ${petName} ${evolutionData.emoji}</h2>
+                    <p class="modal-message celebration-message">
+                        Thanks to your ${qualityLabel.toLowerCase()} care, your pet has evolved into a special form!
+                    </p>
+                    <div class="evolution-display">
+                        <div class="evolution-sparkle">✨🌟⭐🌟✨</div>
+                        <p class="evolution-subtitle">A rare and beautiful transformation!</p>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-btn confirm celebration-btn evolution-btn" id="evolution-ok">
+                            ⭐ Amazing! ⭐
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const okBtn = document.getElementById('evolution-ok');
+            okBtn.focus();
+
+            function closeModal() {
+                modal.remove();
+                // Re-render to show evolved appearance
+                if (typeof renderPetPhase === 'function') {
+                    renderPetPhase();
+                }
+                // Trigger confetti cleanup
+                setTimeout(() => {
+                    const confettiContainer = document.querySelector('.confetti-container');
+                    if (confettiContainer) confettiContainer.remove();
+                }, 5000);
+            }
+
+            okBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            document.addEventListener('keydown', function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            });
+
+            announce(`Evolution! Your pet has evolved into ${petName}!`);
+            showToast(`✨ Evolution! ${petName}!`, '#FFD700');
+        }
+
+        function createConfetti() {
+            // Remove existing confetti
+            const existing = document.querySelector('.confetti-container');
+            if (existing) existing.remove();
+
+            const container = document.createElement('div');
+            container.className = 'confetti-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9999;
+                overflow: hidden;
+            `;
+
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+            const shapes = ['🎉', '🎊', '⭐', '✨', '🌟', '💫'];
+
+            // Create 50 confetti pieces
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti-piece';
+
+                const isEmoji = Math.random() > 0.5;
+                if (isEmoji) {
+                    confetti.textContent = shapes[Math.floor(Math.random() * shapes.length)];
+                    confetti.style.fontSize = (10 + Math.random() * 15) + 'px';
+                } else {
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = (5 + Math.random() * 10) + 'px';
+                    confetti.style.height = (5 + Math.random() * 10) + 'px';
+                }
+
+                confetti.style.cssText += `
+                    position: absolute;
+                    left: ${Math.random() * 100}%;
+                    top: -20px;
+                    opacity: ${0.6 + Math.random() * 0.4};
+                    animation: confetti-fall ${2 + Math.random() * 3}s linear ${Math.random() * 2}s;
+                    animation-fill-mode: forwards;
+                `;
+
+                container.appendChild(confetti);
+            }
+
+            // Add CSS animation if not already added
+            if (!document.getElementById('confetti-style')) {
+                const style = document.createElement('style');
+                style.id = 'confetti-style';
+                style.textContent = `
+                    @keyframes confetti-fall {
+                        to {
+                            transform: translateY(100vh) rotate(${360 + Math.random() * 360}deg);
+                            opacity: 0;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(container);
+        }
+
         // ==================== MINI-GAME CLEANUP ====================
 
         function cleanupAllMiniGames() {
@@ -1470,6 +1838,17 @@
             const unlockedCount = Object.keys(PET_TYPES).filter(t => !PET_TYPES[t].mythical || adultsRaised >= (PET_TYPES[t].unlockRequirement || 0)).length;
             const totalCount = Object.keys(PET_TYPES).length;
 
+            // New metrics
+            const ageInHours = pet ? getPetAge(pet) : 0;
+            const ageDisplay = ageInHours < 24
+                ? `${Math.floor(ageInHours)} hours`
+                : `${Math.floor(ageInHours / 24)} days`;
+            const careQuality = pet ? (pet.careQuality || 'average') : 'average';
+            const qualityData = CARE_QUALITY[careQuality];
+            const neglectCount = pet ? (pet.neglectCount || 0) : 0;
+            const evolutionStage = pet ? (pet.evolutionStage || 'base') : 'base';
+            const isEvolved = evolutionStage === 'evolved';
+
             const roomBonusesHTML = Object.keys(ROOMS).map(key => {
                 const room = ROOMS[key];
                 return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${room.bonus.label}</div>`;
@@ -1483,7 +1862,9 @@
             overlay.innerHTML = `
                 <div class="stats-modal">
                     <h2 class="stats-title">Stats & Progress</h2>
-                    <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}` : 'No pet yet'}</p>
+                    <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}${isEvolved ? ' ✨' : ''}` : 'No pet yet'}</p>
+
+                    <div class="stats-section-title">Pet Overview</div>
                     <div class="stats-grid">
                         <div class="stats-card">
                             <div class="stats-card-icon">${stageData.emoji}</div>
@@ -1491,30 +1872,65 @@
                             <div class="stats-card-label">Growth Stage</div>
                         </div>
                         <div class="stats-card">
+                            <div class="stats-card-icon">🎂</div>
+                            <div class="stats-card-value">${ageDisplay}</div>
+                            <div class="stats-card-label">Age</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="stats-card-icon">${qualityData.emoji}</div>
+                            <div class="stats-card-value">${qualityData.label}</div>
+                            <div class="stats-card-label">Care Quality</div>
+                        </div>
+                        <div class="stats-card">
                             <div class="stats-card-icon">💝</div>
                             <div class="stats-card-value">${careActions}</div>
                             <div class="stats-card-label">Care Actions</div>
                         </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">⭐</div>
-                            <div class="stats-card-value">${adultsRaised}</div>
-                            <div class="stats-card-label">Adults Raised</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">📖</div>
-                            <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
-                            <div class="stats-card-label">Species Found</div>
-                        </div>
                     </div>
+
                     ${pet ? `
-                        <div class="stats-section-title">Current Pet Wellness</div>
+                        <div class="stats-section-title">Current Wellness</div>
                         <div class="stats-grid">
                             <div class="stats-card"><div class="stats-card-icon">🍎</div><div class="stats-card-value">${pet.hunger}%</div><div class="stats-card-label">Food</div></div>
                             <div class="stats-card"><div class="stats-card-icon">🛁</div><div class="stats-card-value">${pet.cleanliness}%</div><div class="stats-card-label">Bath</div></div>
                             <div class="stats-card"><div class="stats-card-icon">💖</div><div class="stats-card-value">${pet.happiness}%</div><div class="stats-card-label">Happy</div></div>
                             <div class="stats-card"><div class="stats-card-icon">😴</div><div class="stats-card-value">${pet.energy}%</div><div class="stats-card-label">Energy</div></div>
                         </div>
+
+                        <div class="stats-section-title">Care History</div>
+                        <div class="stats-grid">
+                            <div class="stats-card">
+                                <div class="stats-card-icon">📊</div>
+                                <div class="stats-card-value">${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}%</div>
+                                <div class="stats-card-label">Avg Stats</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">⚠️</div>
+                                <div class="stats-card-value">${neglectCount}</div>
+                                <div class="stats-card-label">Neglect Count</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">${isEvolved ? '✨' : '⭐'}</div>
+                                <div class="stats-card-value">${isEvolved ? 'Evolved' : 'Base'}</div>
+                                <div class="stats-card-label">Form</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">🏆</div>
+                                <div class="stats-card-value">${adultsRaised}</div>
+                                <div class="stats-card-label">Adults Raised</div>
+                            </div>
+                        </div>
                     ` : ''}
+
+                    <div class="stats-section-title">Collection</div>
+                    <div class="stats-grid">
+                        <div class="stats-card">
+                            <div class="stats-card-icon">📖</div>
+                            <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
+                            <div class="stats-card-label">Species Found</div>
+                        </div>
+                    </div>
+
                     <div class="stats-section-title">Room Bonuses</div>
                     <div class="stats-room-bonuses">${roomBonusesHTML}</div>
                     <button class="stats-close-btn" id="stats-close">Close</button>

@@ -1,5 +1,134 @@
         // ==================== SVG GENERATION ====================
 
+        // Helper function to adjust color brightness
+        function adjustColorBrightness(hexColor, percent) {
+            // Convert hex to RGB
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+
+            // Adjust brightness
+            const newR = Math.max(0, Math.min(255, r + (r * percent / 100)));
+            const newG = Math.max(0, Math.min(255, g + (g * percent / 100)));
+            const newB = Math.max(0, Math.min(255, b + (b * percent / 100)));
+
+            // Convert back to hex
+            const toHex = (n) => {
+                const hex = Math.round(n).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+
+            return '#' + toHex(newR) + toHex(newG) + toHex(newB);
+        }
+
+        // Helper function to adjust color saturation
+        function adjustColorSaturation(hexColor, percent) {
+            // Convert hex to RGB
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16) / 255;
+            const g = parseInt(hex.substring(2, 4), 16) / 255;
+            const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+            // Convert RGB to HSL
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+
+            // Adjust saturation
+            s = Math.max(0, Math.min(1, s * (1 + percent / 100)));
+
+            // Convert HSL back to RGB
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+
+            let nr, ng, nb;
+            if (s === 0) {
+                nr = ng = nb = l;
+            } else {
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                nr = hue2rgb(p, q, h + 1/3);
+                ng = hue2rgb(p, q, h);
+                nb = hue2rgb(p, q, h - 1/3);
+            }
+
+            // Convert back to hex
+            const toHex = (n) => {
+                const hex = Math.round(n * 255).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+
+            return '#' + toHex(nr) + toHex(ng) + toHex(nb);
+        }
+
+        // Apply care variant effects to color
+        function applyCareVariant(color, variant, isEvolved) {
+            if (!color) return color;
+
+            switch (variant) {
+                case 'dull':
+                    // Reduce saturation and brightness for poor care
+                    return adjustColorSaturation(adjustColorBrightness(color, -20), -40);
+                case 'shiny':
+                    // Increase brightness and saturation for excellent care
+                    return adjustColorSaturation(adjustColorBrightness(color, 15), 20);
+                case 'normal':
+                default:
+                    return color;
+            }
+        }
+
+        // Generate sparkle effect for shiny/evolved pets
+        function generateSparkleEffect(isShiny, isEvolved) {
+            if (!isShiny && !isEvolved) return '';
+
+            const sparkles = [];
+            const positions = [
+                { x: 20, y: 30, size: 3 },
+                { x: 75, y: 25, size: 2 },
+                { x: 85, y: 60, size: 4 },
+                { x: 15, y: 70, size: 2 },
+                { x: 50, y: 15, size: 3 }
+            ];
+
+            positions.forEach((pos, i) => {
+                const delay = i * 0.3;
+                sparkles.push(`
+                    <g opacity="0.8">
+                        <circle cx="${pos.x}" cy="${pos.y}" r="${pos.size}" fill="#FFD700">
+                            <animate attributeName="opacity" values="0;1;0" dur="2s" begin="${delay}s" repeatCount="indefinite"/>
+                        </circle>
+                        <path d="M${pos.x} ${pos.y - pos.size - 2} L${pos.x} ${pos.y + pos.size + 2} M${pos.x - pos.size - 2} ${pos.y} L${pos.x + pos.size + 2} ${pos.y}"
+                              stroke="#FFF" stroke-width="1" opacity="0.6">
+                            <animate attributeName="opacity" values="0;0.8;0" dur="2s" begin="${delay}s" repeatCount="indefinite"/>
+                        </path>
+                    </g>
+                `);
+            });
+
+            return `<g class="sparkle-effect">${sparkles.join('')}</g>`;
+        }
+
         function generateEggSVG(crackLevel, eggType) {
             const eggData = EGG_TYPES[eggType] || EGG_TYPES['furry'];
             const colors = eggData.colors;
@@ -175,10 +304,16 @@
 
         function generatePetSVG(pet, mood) {
             const type = pet.type;
-            const color = pet.color;
+            let baseColor = pet.color;
             const growthStage = pet.growthStage || 'adult';
             const stageData = GROWTH_STAGES[growthStage];
             const scale = stageData ? stageData.scale : 1.0;
+
+            // Apply care variant to color
+            const careVariant = pet.careVariant || 'normal';
+            const evolutionStage = pet.evolutionStage || 'base';
+            const isEvolved = evolutionStage === 'evolved';
+            const color = applyCareVariant(baseColor, careVariant, isEvolved);
 
             // Eye style based on mood
             let eyeStyle = '';
@@ -226,7 +361,18 @@
             let svg = petSVGs[type] || petSVGs.dog;
 
             // Apply growth stage class for size
-            svg = svg.replace('class="pet-svg"', `class="pet-svg growth-${growthStage}"`);
+            let classes = `pet-svg growth-${growthStage}`;
+            if (careVariant === 'shiny') classes += ' care-shiny';
+            if (careVariant === 'dull') classes += ' care-dull';
+            if (isEvolved) classes += ' evolved';
+            svg = svg.replace('class="pet-svg"', `class="${classes}"`);
+
+            // Add sparkle effect for shiny/evolved pets
+            const isShiny = careVariant === 'shiny';
+            if (isShiny || isEvolved) {
+                const sparkleEffect = generateSparkleEffect(isShiny, isEvolved);
+                svg = svg.replace('</svg>', `${sparkleEffect}</svg>`);
+            }
 
             // Add pattern overlay
             const pattern = pet.pattern || 'solid';
