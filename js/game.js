@@ -923,6 +923,10 @@
             gameState.pet.hunger = clamp(gameState.pet.hunger + crop.hungerValue, 0, 100);
             gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
 
+            // Track care actions for growth
+            if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
+            gameState.pet.careActions++;
+
             const petData = PET_TYPES[gameState.pet.type];
             const sparkles = document.getElementById('sparkles');
             const petContainer = document.getElementById('pet-container');
@@ -940,6 +944,7 @@
             updateNeedDisplays();
             updatePetMood();
             updateWellnessBar();
+            updateGrowthDisplay();
             saveGame();
 
             if (gameState.currentRoom === 'garden') {
@@ -1137,6 +1142,10 @@
                 }
             }
 
+            // Track care actions for growth
+            if (typeof pet.careActions !== 'number') pet.careActions = 0;
+            pet.careActions++;
+
             const message = `${petData.emoji} ${pet.name || petData.name} ${randomFromArray(seasonData.activityMessages)}`;
             showToast(message, '#FFB74D');
             announce(message);
@@ -1150,6 +1159,7 @@
             updateNeedDisplays();
             updatePetMood();
             updateWellnessBar();
+            updateGrowthDisplay();
             saveGame();
         }
 
