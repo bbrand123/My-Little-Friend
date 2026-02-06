@@ -1531,9 +1531,10 @@
         /* Weather mood indicator on the mood message */
         .weather-mood-note {
             font-size: 0.75rem;
-            opacity: 0.8;
+            color: #4A5568;
             display: block;
             margin-top: 2px;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
         }
 
         /* Time indicator */
@@ -5891,6 +5892,13 @@
             const content = document.getElementById('game-content');
             const pet = gameState.pet;
             const petData = PET_TYPES[pet.type];
+            if (!petData) {
+                gameState.phase = 'egg';
+                gameState.pet = null;
+                saveGame();
+                renderEggPhase();
+                return;
+            }
             const mood = getMood(pet);
             const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
 
@@ -6074,17 +6082,17 @@
                         <div class="action-group-label">Basics</div>
                         <div class="action-group-buttons" role="group" aria-label="Basic care buttons">
                             <button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%">
-                                <span class="action-btn-tooltip">+20 Food</span>
+                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('feed'))} Food${getRoomBonus('feed') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
                             </button>
                             <button class="action-btn wash" id="wash-btn" aria-label="Wash your pet. Current cleanliness: ${pet.cleanliness}%">
-                                <span class="action-btn-tooltip">+20 Bath</span>
+                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('wash'))} Bath${getRoomBonus('wash') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
                             </button>
                             <button class="action-btn sleep" id="sleep-btn" aria-label="Put your pet to sleep. Current energy: ${pet.energy}%">
-                                <span class="action-btn-tooltip">+25-40 Energy</span>
+                                <span class="action-btn-tooltip">+${Math.round(25 * getRoomBonus('sleep'))}-${Math.round(40 * getRoomBonus('sleep'))} Energy${getRoomBonus('sleep') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
                             </button>
@@ -6099,12 +6107,12 @@
                         <div class="action-group-label">Fun & Play</div>
                         <div class="action-group-buttons" role="group" aria-label="Fun and play buttons">
                             <button class="action-btn play" id="play-btn" aria-label="Play with your pet. Current happiness: ${pet.happiness}%">
-                                <span class="action-btn-tooltip">+20 Happy</span>
+                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('play'))} Happy${getRoomBonus('play') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
                             </button>
                             <button class="action-btn exercise" id="exercise-btn" aria-label="Exercise your pet - take a walk or play fetch">
-                                <span class="action-btn-tooltip">+20 Happy, -10 Energy</span>
+                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('exercise'))} Happy, -10 Energy${getRoomBonus('exercise') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🏃</span>
                                 <span>Exercise</span>
                             </button>
@@ -6129,7 +6137,7 @@
                                 <span>Medicine</span>
                             </button>
                             <button class="action-btn groom" id="groom-btn" aria-label="Groom your pet - brush fur and trim nails">
-                                <span class="action-btn-tooltip">+15 Bath, +10 Happy</span>
+                                <span class="action-btn-tooltip">+${Math.round(15 * getRoomBonus('groom'))} Bath, +${Math.round(10 * getRoomBonus('groom'))} Happy${getRoomBonus('groom') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">✂️</span>
                                 <span>Groom</span>
                             </button>
@@ -6406,7 +6414,8 @@
                     });
                 }
 
-                // Re-render to show new size and stage
+                // Save and re-render to show new size and stage
+                saveGame();
                 renderPetPhase();
                 return;
             }
@@ -6440,6 +6449,7 @@
 
         function updateNeedDisplays() {
             const pet = gameState.pet;
+            if (!pet) return;
 
             // Helper to update a bubble indicator with enhanced warning classes
             function updateBubble(id, value) {
@@ -6515,12 +6525,15 @@
 
         function updatePetMood() {
             const pet = gameState.pet;
+            if (!pet) return;
             const petData = PET_TYPES[pet.type];
+            if (!petData) return;
             const mood = getMood(pet);
             const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
 
             // Update pet SVG
             const petContainer = document.getElementById('pet-container');
+            if (!petContainer) return;
             petContainer.innerHTML = generatePetSVG(pet, mood);
 
             // Update mood text with weather and time-of-day notes
@@ -6966,7 +6979,7 @@
             fetchState._timeouts.push(setTimeout(() => {
                 if (!fetchState) return;
                 fetchState.phase = 'fetching';
-                instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Running to get it!`;
+                instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Running to get it!`;
 
                 pet.classList.add('running');
                 pet.style.left = (targetX - 5) + '%';
@@ -6979,7 +6992,7 @@
                 ball.style.opacity = '0';
                 ball.style.transition = 'opacity 0.15s';
 
-                instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Got it!`;
+                instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Got it!`;
                 instruction.className = 'fetch-instruction highlight';
 
                 // Show a reward particle
@@ -6990,7 +7003,7 @@
             fetchState._timeouts.push(setTimeout(() => {
                 if (!fetchState) return;
                 fetchState.phase = 'returning';
-                instruction.textContent = `${PET_TYPES[gameState.pet.type].emoji} Bringing it back!`;
+                instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Bringing it back!`;
                 instruction.className = 'fetch-instruction';
 
                 pet.classList.remove('running');
@@ -9211,15 +9224,16 @@
                         // Morning energy boost when transitioning to sunrise
                         if (newTimeOfDay === 'sunrise' && previousTime === 'night') {
                             pet.energy = clamp(pet.energy + 15, 0, 100);
-                            announce(`Good morning! ${pet.name || PET_TYPES[pet.type].name} wakes up feeling refreshed!`);
+                            const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                            announce(`Good morning! ${petName} wakes up feeling refreshed!`);
                         }
                         // Nighttime sleepiness notification
                         if (newTimeOfDay === 'night') {
-                            announce(`It's getting late! ${pet.name || PET_TYPES[pet.type].name} is getting sleepy...`);
+                            announce(`It's getting late! ${pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet')} is getting sleepy...`);
                         }
                         // Sunset wind-down notification
                         if (newTimeOfDay === 'sunset') {
-                            announce(`The sun is setting. ${pet.name || PET_TYPES[pet.type].name} is starting to wind down.`);
+                            announce(`The sun is setting. ${pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet')} is starting to wind down.`);
                         }
                     }
 
@@ -9634,7 +9648,7 @@
             overlay.innerHTML = `
                 <div class="stats-modal">
                     <h2 class="stats-title">Stats & Progress</h2>
-                    <p class="stats-subtitle">${pet ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}` : 'No pet yet'}</p>
+                    <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}` : 'No pet yet'}</p>
                     <div class="stats-grid">
                         <div class="stats-card">
                             <div class="stats-card-icon">${stageData.emoji}</div>
@@ -9688,7 +9702,7 @@
             const stageData = GROWTH_STAGES[growthStage];
             const careActions = pet ? (pet.careActions || 0) : 0;
             const adultsRaised = gameState.adultsRaised || 0;
-            const petName = pet ? escapeHTML(pet.name || petData.name) : '';
+            const petName = pet && petData ? escapeHTML(pet.name || petData.name) : pet ? escapeHTML(pet.name || 'Pet') : '';
 
             // Build pet summary for the modal
             let summaryHTML = '';
@@ -9832,13 +9846,15 @@
             if (gameState.phase === 'pet' && gameState.pet) {
                 renderPetPhase();
                 const petData = PET_TYPES[gameState.pet.type];
-                const mood = getMood(gameState.pet);
-                const weatherData = WEATHER_TYPES[gameState.weather];
-                const seasonData = SEASONS[gameState.season];
-                const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
-                                     mood === 'sad' ? 'missed you and needs some care!' :
-                                     'is glad you\'re back!';
-                announce(`Welcome back! Your ${petData.name} ${moodGreeting} The weather is ${weatherData.name.toLowerCase()}. It's ${seasonData.name}!`);
+                if (petData) {
+                    const mood = getMood(gameState.pet);
+                    const weatherData = WEATHER_TYPES[gameState.weather];
+                    const seasonData = SEASONS[gameState.season];
+                    const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
+                                         mood === 'sad' ? 'missed you and needs some care!' :
+                                         'is glad you\'re back!';
+                    announce(`Welcome back! Your ${petData.name} ${moodGreeting} The weather is ${weatherData.name.toLowerCase()}. It's ${seasonData.name}!`);
+                }
             } else {
                 // Reset to egg phase if not in pet phase
                 gameState.phase = 'egg';
