@@ -432,6 +432,18 @@
             border: 1.5px solid rgba(255, 107, 107, 0.5);
         }
 
+        .mood-badge.sleepy {
+            background: rgba(130, 120, 200, 0.25);
+            color: #5C4DB1;
+            border: 1.5px solid rgba(130, 120, 200, 0.5);
+        }
+
+        .mood-badge.energetic {
+            background: rgba(255, 215, 0, 0.25);
+            color: #F9A825;
+            border: 1.5px solid rgba(255, 215, 0, 0.5);
+        }
+
         .mood-badge-emoji {
             font-size: 0.85rem;
         }
@@ -3008,7 +3020,9 @@
         const MOOD_MESSAGES = {
             happy: ['is super happy!', 'is feeling great!', 'is full of joy!', 'loves you!'],
             neutral: ['is doing okay.', 'is content.', 'is relaxed.'],
-            sad: ['needs some love.', 'misses you.', 'wants attention.']
+            sad: ['needs some love.', 'misses you.', 'wants attention.'],
+            sleepy: ['is getting sleepy...', 'is yawning!', 'can barely keep eyes open...', 'is ready for bed!'],
+            energetic: ['is full of energy!', 'is bright-eyed and bushy-tailed!', 'is raring to go!', 'had a great sleep!']
         };
 
         // ==================== WEATHER SYSTEM ====================
@@ -3290,6 +3304,18 @@
             const isOutdoor = room ? room.isOutdoor : false;
             const weatherBonus = isOutdoor ? weatherData.moodBonus : 0;
             const adjusted = average + weatherBonus;
+
+            // Day/Night cycle mood overrides
+            const timeOfDay = gameState.timeOfDay || 'day';
+            const isNightTime = (timeOfDay === 'night' || timeOfDay === 'sunset');
+            const isMorning = (timeOfDay === 'sunrise');
+
+            // Sleepy at night when energy is low-ish
+            if (isNightTime && pet.energy < 50) return 'sleepy';
+
+            // Energetic in the morning when energy is decent
+            if (isMorning && pet.energy >= 50) return 'energetic';
+
             if (adjusted >= 60) return 'happy';
             if (adjusted >= 30) return 'neutral';
             return 'sad';
@@ -3364,6 +3390,23 @@
                     flakes += `<div class="snowflake" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;">${char}</div>`;
                 }
                 return `<div class="weather-overlay">${flakes}</div>`;
+            }
+            return '';
+        }
+
+        function getTimeMoodMessage(pet) {
+            const timeOfDay = gameState.timeOfDay || 'day';
+            if (timeOfDay === 'night' && pet.energy < 50) {
+                return randomFromArray(['is getting very sleepy...', 'could really use some sleep!', 'keeps nodding off...']);
+            }
+            if (timeOfDay === 'night' && pet.energy >= 50) {
+                return 'is staying up late!';
+            }
+            if (timeOfDay === 'sunset' && pet.energy < 40) {
+                return 'is winding down for the evening.';
+            }
+            if (timeOfDay === 'sunrise' && pet.energy >= 50) {
+                return randomFromArray(['is bright-eyed this morning!', 'woke up ready for fun!', 'is greeting the sunrise!']);
             }
             return '';
         }
@@ -3569,6 +3612,14 @@
                     eyeStyle = 'sad';
                     mouthPath = 'M35 82 Q50 72 65 82'; // Frown
                     break;
+                case 'sleepy':
+                    eyeStyle = 'sleepy'; // Half-closed droopy eyes
+                    mouthPath = 'M40 80 Q50 84 60 80'; // Gentle yawn/open mouth
+                    break;
+                case 'energetic':
+                    eyeStyle = 'energetic'; // Wide bright eyes
+                    mouthPath = 'M35 75 Q50 92 65 75'; // Big excited smile
+                    break;
             }
 
             const petSVGs = {
@@ -3599,6 +3650,26 @@
                         <path d="M${leftX - 6} ${y - 8} L${leftX + 4} ${y - 5}" stroke="#333" stroke-width="2" stroke-linecap="round"/>
                         <path d="M${rightX + 6} ${y - 8} L${rightX - 4} ${y - 5}" stroke="#333" stroke-width="2" stroke-linecap="round"/>
                     `;
+                case 'sleepy':
+                    // Half-closed droopy eyes with eyelids
+                    return `
+                        <ellipse cx="${leftX}" cy="${y}" rx="5" ry="3" fill="#333"/>
+                        <ellipse cx="${rightX}" cy="${y}" rx="5" ry="3" fill="#333"/>
+                        <circle cx="${leftX + 1}" cy="${y}" r="1" fill="white" opacity="0.5"/>
+                        <circle cx="${rightX + 1}" cy="${y}" r="1" fill="white" opacity="0.5"/>
+                        <path d="M${leftX - 6} ${y - 4} Q${leftX} ${y - 6} ${leftX + 6} ${y - 4}" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                        <path d="M${rightX - 6} ${y - 4} Q${rightX} ${y - 6} ${rightX + 6} ${y - 4}" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    `;
+                case 'energetic':
+                    // Wide, bright, sparkling eyes
+                    return `
+                        <circle cx="${leftX}" cy="${y}" r="7" fill="#333"/>
+                        <circle cx="${rightX}" cy="${y}" r="7" fill="#333"/>
+                        <circle cx="${leftX + 2}" cy="${y - 2}" r="3" fill="white"/>
+                        <circle cx="${rightX + 2}" cy="${y - 2}" r="3" fill="white"/>
+                        <circle cx="${leftX - 1}" cy="${y + 2}" r="1.5" fill="white" opacity="0.7"/>
+                        <circle cx="${rightX - 1}" cy="${y + 2}" r="1.5" fill="white" opacity="0.7"/>
+                    `;
                 default:
                     return `
                         <circle cx="${leftX}" cy="${y}" r="6" fill="#333"/>
@@ -3610,8 +3681,10 @@
         }
 
         function generateDogSVG(color, eyeStyle, mouthPath, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = mood === 'happy' ? 'A happy puppy wagging its tail' : mood === 'sad' ? 'A sad puppy who needs love' : mood === 'sleepy' ? 'A sleepy puppy ready for bed' : mood === 'energetic' ? 'An energetic puppy ready to play' : 'A calm puppy';
             return `
-                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy puppy wagging its tail' : mood === 'sad' ? 'A sad puppy who needs love' : 'A calm puppy'}">
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="70" rx="30" ry="25" fill="${color}"/>
                     <!-- Head -->
@@ -3631,16 +3704,52 @@
                     <!-- Mouth -->
                     <path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
                     <!-- Tail -->
-                    <path d="M80 70 Q95 ${mood === 'happy' ? '50' : '65'} 85 ${mood === 'happy' ? '45' : '60'}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
+                    <path d="M80 70 Q95 ${isUp ? '50' : '65'} 85 ${isUp ? '45' : '60'}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
                     <!-- Cheeks -->
-                    ${mood === 'happy' ? '<circle cx="30" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/><circle cx="70" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                    ${isUp ? '<circle cx="30" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/><circle cx="70" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                    <!-- Sleepy Zzz -->
+                    ${mood === 'sleepy' ? '<text x="75" y="25" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="82" y="18" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="87" y="12" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
         function generateCatSVG(color, eyeStyle, mouthPath, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = mood === 'happy' ? 'A happy kitty purring' : mood === 'sad' ? 'A sad kitty who needs love' : mood === 'sleepy' ? 'A sleepy kitty curling up' : mood === 'energetic' ? 'An energetic kitty ready to pounce' : 'A calm kitty';
+            // Cat has custom eyes - handle sleepy/energetic
+            let catEyes = '';
+            if (eyeStyle === 'arc') {
+                catEyes = `<path d="M33 38 Q38 30 43 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+                     <path d="M57 38 Q62 30 67 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+            } else if (eyeStyle === 'sad') {
+                catEyes = `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
+                     <ellipse cx="62" cy="39" rx="2" ry="5" fill="#333"/>
+                     <path d="M32 32 L42 35" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+                     <path d="M68 32 L58 35" stroke="#333" stroke-width="2" stroke-linecap="round"/>`;
+            } else if (eyeStyle === 'sleepy') {
+                catEyes = `<ellipse cx="38" cy="38" rx="5" ry="3" fill="#90EE90"/>
+                     <ellipse cx="62" cy="38" rx="5" ry="3" fill="#90EE90"/>
+                     <ellipse cx="38" cy="38" rx="2" ry="2" fill="#333"/>
+                     <ellipse cx="62" cy="38" rx="2" ry="2" fill="#333"/>
+                     <path d="M33 35 Q38 33 43 35" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                     <path d="M57 35 Q62 33 67 35" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+            } else if (eyeStyle === 'energetic') {
+                catEyes = `<ellipse cx="38" cy="38" rx="6" ry="8" fill="#90EE90"/>
+                     <ellipse cx="62" cy="38" rx="6" ry="8" fill="#90EE90"/>
+                     <ellipse cx="38" cy="38" rx="2" ry="6" fill="#333"/>
+                     <ellipse cx="62" cy="38" rx="2" ry="6" fill="#333"/>
+                     <circle cx="36" cy="35" r="2" fill="white" opacity="0.8"/>
+                     <circle cx="60" cy="35" r="2" fill="white" opacity="0.8"/>`;
+            } else {
+                catEyes = `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
+                     <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
+                     <ellipse cx="62" cy="39" rx="2" ry="5" fill="#333"/>`;
+            }
             return `
-                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy kitty purring' : mood === 'sad' ? 'A sad kitty who needs love' : 'A calm kitty'}">
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="72" rx="28" ry="23" fill="${color}"/>
                     <!-- Head -->
@@ -3652,20 +3761,7 @@
                     <polygon points="27,32 24,18 36,27" fill="#FFB6C1"/>
                     <polygon points="73,32 76,18 64,27" fill="#FFB6C1"/>
                     <!-- Eyes -->
-                    ${eyeStyle === 'arc' ?
-                    `<path d="M33 38 Q38 30 43 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
-                     <path d="M57 38 Q62 30 67 38" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>` :
-                    eyeStyle === 'sad' ?
-                    `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
-                     <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
-                     <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
-                     <ellipse cx="62" cy="39" rx="2" ry="5" fill="#333"/>
-                     <path d="M32 32 L42 35" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-                     <path d="M68 32 L58 35" stroke="#333" stroke-width="2" stroke-linecap="round"/>` :
-                    `<ellipse cx="38" cy="38" rx="5" ry="7" fill="#90EE90"/>
-                     <ellipse cx="62" cy="38" rx="5" ry="7" fill="#90EE90"/>
-                     <ellipse cx="38" cy="39" rx="2" ry="5" fill="#333"/>
-                     <ellipse cx="62" cy="39" rx="2" ry="5" fill="#333"/>`}
+                    ${catEyes}
                     <!-- Nose -->
                     <polygon points="50,48 46,44 54,44" fill="#FFB6C1"/>
                     <!-- Mouth -->
@@ -3676,36 +3772,42 @@
                     <line x1="65" y1="50" x2="80" y2="48" stroke="#333" stroke-width="1"/>
                     <line x1="65" y1="52" x2="80" y2="52" stroke="#333" stroke-width="1"/>
                     <!-- Tail -->
-                    <path d="M78 72 Q100 60 95 ${mood === 'happy' ? '40' : '55'}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
+                    <path d="M78 72 Q100 60 95 ${isUp ? '40' : '55'}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round"/>
                     <!-- Cheeks -->
-                    ${mood === 'happy' ? '<circle cx="28" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/><circle cx="72" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                    ${isUp ? '<circle cx="28" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/><circle cx="72" cy="48" r="5" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                    <!-- Sleepy Zzz -->
+                    ${mood === 'sleepy' ? '<text x="75" y="25" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="82" y="18" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="87" y="12" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
         function generateBunnySVG(color, eyeStyle, mouthPath, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
             // Bunny-specific mouth paths (adjusted for bunny face position)
             let bunnyMouth = '';
-            if (mood === 'happy') {
+            if (mood === 'happy' || mood === 'energetic') {
                 bunnyMouth = '<path d="M46 56 L50 62 L54 56" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>';
             } else if (mood === 'sad') {
                 bunnyMouth = '<path d="M46 60 Q50 55 54 60" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>';
+            } else if (mood === 'sleepy') {
+                bunnyMouth = '<ellipse cx="50" cy="58" rx="3" ry="4" fill="#333" opacity="0.6"/>';  // Yawning mouth
             } else {
                 bunnyMouth = '<path d="M46 58 L54 58" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>';
             }
 
+            const ariaLabel = mood === 'happy' ? 'A happy bunny hopping with joy' : mood === 'sad' ? 'A sad bunny who needs love' : mood === 'sleepy' ? 'A sleepy bunny nesting down' : mood === 'energetic' ? 'An energetic bunny bouncing around' : 'A calm bunny';
             return `
-                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy bunny hopping with joy' : mood === 'sad' ? 'A sad bunny who needs love' : 'A calm bunny'}">
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="75" rx="25" ry="20" fill="${color}"/>
                     <!-- Head -->
                     <circle cx="50" cy="45" r="22" fill="${color}"/>
                     <!-- Ears (long) -->
-                    <ellipse cx="35" cy="15" rx="8" ry="25" fill="${color}"/>
-                    <ellipse cx="65" cy="15" rx="8" ry="25" fill="${color}"/>
+                    <ellipse cx="35" cy="${mood === 'sleepy' ? '18' : '15'}" rx="8" ry="25" fill="${color}" ${mood === 'sleepy' ? 'transform="rotate(10 35 18)"' : ''}/>
+                    <ellipse cx="65" cy="${mood === 'sleepy' ? '18' : '15'}" rx="8" ry="25" fill="${color}" ${mood === 'sleepy' ? 'transform="rotate(-10 65 18)"' : ''}/>
                     <!-- Inner ears -->
-                    <ellipse cx="35" cy="15" rx="4" ry="18" fill="#FFB6C1"/>
-                    <ellipse cx="65" cy="15" rx="4" ry="18" fill="#FFB6C1"/>
+                    <ellipse cx="35" cy="${mood === 'sleepy' ? '18' : '15'}" rx="4" ry="18" fill="#FFB6C1" ${mood === 'sleepy' ? 'transform="rotate(10 35 18)"' : ''}/>
+                    <ellipse cx="65" cy="${mood === 'sleepy' ? '18' : '15'}" rx="4" ry="18" fill="#FFB6C1" ${mood === 'sleepy' ? 'transform="rotate(-10 65 18)"' : ''}/>
                     <!-- Eyes -->
                     ${generateEyes(eyeStyle, 40, 60, 42)}
                     <!-- Nose -->
@@ -3713,20 +3815,24 @@
                     <!-- Mouth -->
                     ${bunnyMouth}
                     <!-- Cheeks -->
-                    <circle cx="32" cy="52" r="6" fill="#FFB6C1" opacity="${mood === 'happy' ? '0.7' : '0.5'}"/>
-                    <circle cx="68" cy="52" r="6" fill="#FFB6C1" opacity="${mood === 'happy' ? '0.7' : '0.5'}"/>
+                    <circle cx="32" cy="52" r="6" fill="#FFB6C1" opacity="${isUp ? '0.7' : '0.5'}"/>
+                    <circle cx="68" cy="52" r="6" fill="#FFB6C1" opacity="${isUp ? '0.7' : '0.5'}"/>
                     <!-- Feet -->
                     <ellipse cx="35" cy="92" rx="10" ry="6" fill="${color}"/>
                     <ellipse cx="65" cy="92" rx="10" ry="6" fill="${color}"/>
                     <!-- Tail (fluffy ball) -->
                     <circle cx="75" cy="80" r="8" fill="white"/>
+                    <!-- Sleepy Zzz -->
+                    ${mood === 'sleepy' ? '<text x="75" y="30" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="82" y="23" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="87" y="17" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
         function generateBirdSVG(color, eyeStyle, mouthPath, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = mood === 'happy' ? 'A happy bird singing' : mood === 'sad' ? 'A sad bird who needs love' : mood === 'sleepy' ? 'A sleepy bird tucking its head' : mood === 'energetic' ? 'An energetic bird chirping loudly' : 'A calm bird';
             return `
-                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy bird singing' : mood === 'sad' ? 'A sad bird who needs love' : 'A calm bird'}">
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="65" rx="25" ry="28" fill="${color}"/>
                     <!-- Head -->
@@ -3749,14 +3855,17 @@
                     <line x1="50" y1="92" x2="50" y2="98" stroke="#FFA500" stroke-width="3"/>
                     <line x1="58" y1="90" x2="58" y2="98" stroke="#FFA500" stroke-width="3"/>
                     <!-- Cheeks -->
-                    ${mood === 'happy' ? '<circle cx="35" cy="38" r="4" fill="#FFB6C1" opacity="0.6"/><circle cx="65" cy="38" r="4" fill="#FFB6C1" opacity="0.6"/>' : ''}
+                    ${isUp ? '<circle cx="35" cy="38" r="4" fill="#FFB6C1" opacity="0.6"/><circle cx="65" cy="38" r="4" fill="#FFB6C1" opacity="0.6"/>' : ''}
+                    <!-- Sleepy Zzz -->
+                    ${mood === 'sleepy' ? '<text x="70" y="18" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="77" y="11" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="82" y="6" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
         function generateHamsterSVG(color, eyeStyle, mouthPath, mood) {
+            const ariaLabel = mood === 'happy' ? 'A happy hamster running on its wheel' : mood === 'sad' ? 'A sad hamster who needs love' : mood === 'sleepy' ? 'A sleepy hamster curling up in its bedding' : mood === 'energetic' ? 'An energetic hamster zooming around' : 'A calm hamster';
             return `
-                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy hamster running on its wheel' : mood === 'sad' ? 'A sad hamster who needs love' : 'A calm hamster'}">
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="70" rx="30" ry="25" fill="${color}"/>
                     <!-- Head -->
@@ -3786,13 +3895,17 @@
                     <ellipse cx="70" cy="88" rx="8" ry="5" fill="${color}"/>
                     <!-- Belly -->
                     <ellipse cx="50" cy="72" rx="18" ry="15" fill="#F5F5DC"/>
+                    <!-- Sleepy Zzz -->
+                    ${mood === 'sleepy' ? '<text x="78" y="25" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="85" y="18" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="90" y="12" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
         function generateTurtleSVG(color, eyeStyle, mouthPath, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = mood === 'happy' ? 'A happy turtle basking in the sun' : mood === 'sad' ? 'A sad turtle hiding in its shell' : mood === 'sleepy' ? 'A sleepy turtle retreating into its shell' : mood === 'energetic' ? 'An energetic turtle stretching out' : 'A calm turtle';
             return `
-                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${mood === 'happy' ? 'A happy turtle basking in the sun' : mood === 'sad' ? 'A sad turtle hiding in its shell' : 'A calm turtle'}">
+                <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Shell -->
                     <ellipse cx="50" cy="60" rx="38" ry="30" fill="${color}"/>
                     <!-- Shell pattern -->
@@ -3808,7 +3921,7 @@
                     <!-- Eyes -->
                     ${generateEyes(eyeStyle, 44, 56, 26)}
                     <!-- Mouth -->
-                    <path d="M45 33 Q50 ${mood === 'happy' ? '38' : '35'} 55 33" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <path d="M45 33 Q50 ${isUp ? '38' : '35'} 55 33" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
                     <!-- Legs -->
                     <ellipse cx="20" cy="55" rx="10" ry="8" fill="#8FBC8F"/>
                     <ellipse cx="80" cy="55" rx="10" ry="8" fill="#8FBC8F"/>
@@ -3817,7 +3930,9 @@
                     <!-- Tail -->
                     <ellipse cx="50" cy="92" rx="6" ry="4" fill="#8FBC8F"/>
                     <!-- Cheeks -->
-                    ${mood === 'happy' ? '<circle cx="38" cy="30" r="3" fill="#FFB6C1" opacity="0.5"/><circle cx="62" cy="30" r="3" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                    ${isUp ? '<circle cx="38" cy="30" r="3" fill="#FFB6C1" opacity="0.5"/><circle cx="62" cy="30" r="3" fill="#FFB6C1" opacity="0.5"/>' : ''}
+                    <!-- Sleepy Zzz -->
+                    ${mood === 'sleepy' ? '<text x="68" y="18" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="75" y="11" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="80" y="6" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
@@ -4260,13 +4375,28 @@
                     createHearts(sparkles);
                     announce(`Played with your pet! Happiness is now ${pet.happiness}%`);
                     break;
-                case 'sleep':
-                    pet.energy = clamp(pet.energy + 25, 0, 100);
+                case 'sleep': {
+                    // Sleep is more effective at night (deep sleep) and less during the day (just a nap)
+                    const sleepTime = gameState.timeOfDay || 'day';
+                    let sleepBonus = 25; // default nap
+                    let sleepAnnounce = 'Your pet had a nice nap!';
+                    if (sleepTime === 'night') {
+                        sleepBonus = 40; // deep sleep at night
+                        sleepAnnounce = 'Your pet had a wonderful deep sleep!';
+                    } else if (sleepTime === 'sunset') {
+                        sleepBonus = 30; // good evening rest
+                        sleepAnnounce = 'Your pet had a cozy evening rest!';
+                    } else if (sleepTime === 'sunrise') {
+                        sleepBonus = 30; // nice morning sleep-in
+                        sleepAnnounce = 'Your pet slept in a little!';
+                    }
+                    pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.sleep);
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
-                    announce(`Your pet had a nice nap! Energy is now ${pet.energy}%`);
+                    announce(`${sleepAnnounce} Energy is now ${pet.energy}%`);
                     break;
+                }
                 case 'medicine':
                     // Medicine gives a gentle boost to all stats - helps pet feel better
                     pet.hunger = clamp(pet.hunger + 10, 0, 100);
@@ -4380,12 +4510,14 @@
             const hungerDesc = pet.hunger <= 25 ? 'very low' : pet.hunger <= 50 ? 'low' : pet.hunger <= 75 ? 'good' : 'full';
             const cleanDesc = pet.cleanliness <= 25 ? 'very dirty' : pet.cleanliness <= 50 ? 'needs washing' : pet.cleanliness <= 75 ? 'clean' : 'sparkly clean';
             const happyDesc = pet.happiness <= 25 ? 'sad' : pet.happiness <= 50 ? 'bored' : pet.happiness <= 75 ? 'happy' : 'very happy';
-            const energyDesc = pet.energy <= 25 ? 'exhausted' : pet.energy <= 50 ? 'tired' : pet.energy <= 75 ? 'rested' : 'full of energy';
+            const curTimeForEnergy = gameState.timeOfDay || 'day';
+            const isNightForEnergy = curTimeForEnergy === 'night' || curTimeForEnergy === 'sunset';
+            const energyDesc = pet.energy <= 25 ? 'exhausted' : pet.energy <= 50 ? (isNightForEnergy ? 'sleepy - bedtime!' : 'tired') : pet.energy <= 75 ? 'rested' : 'full of energy';
 
             document.getElementById('feed-btn').setAttribute('aria-label', `Feed your pet. Hunger level: ${pet.hunger}%, ${hungerDesc}`);
             document.getElementById('wash-btn').setAttribute('aria-label', `Wash your pet. Cleanliness: ${pet.cleanliness}%, ${cleanDesc}`);
             document.getElementById('play-btn').setAttribute('aria-label', `Play with your pet. Happiness: ${pet.happiness}%, ${happyDesc}`);
-            document.getElementById('sleep-btn').setAttribute('aria-label', `Put your pet to sleep. Energy: ${pet.energy}%, ${energyDesc}`);
+            document.getElementById('sleep-btn').setAttribute('aria-label', `Put your pet to sleep${isNightForEnergy ? ' (extra effective at night!)' : ''}. Energy: ${pet.energy}%, ${energyDesc}`);
 
             // Update medicine button with overall wellness description
             const avgWellness = Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
@@ -4415,21 +4547,27 @@
             const petContainer = document.getElementById('pet-container');
             petContainer.innerHTML = generatePetSVG(pet, mood);
 
-            // Update mood text with weather note
+            // Update mood text with weather and time-of-day notes
             const petDisplayName = pet.name || petData.name;
             const weather = gameState.weather || 'sunny';
             const weatherData = WEATHER_TYPES[weather];
             const weatherMoodNote = getWeatherMoodMessage(pet, weather);
+            const timeMoodNote = getTimeMoodMessage(pet);
             const petMoodEl = document.getElementById('pet-mood');
             if (petMoodEl) {
-                petMoodEl.innerHTML = `${petDisplayName} ${moodMessage}${weatherMoodNote ? `<span class="weather-mood-note">${weatherData.icon} ${petDisplayName} ${weatherMoodNote}</span>` : ''}`;
+                let noteHTML = '';
+                if (weatherMoodNote) noteHTML += `<span class="weather-mood-note">${weatherData.icon} ${petDisplayName} ${weatherMoodNote}</span>`;
+                if (timeMoodNote) noteHTML += `<span class="weather-mood-note">${getTimeIcon(gameState.timeOfDay)} ${petDisplayName} ${timeMoodNote}</span>`;
+                petMoodEl.innerHTML = `${petDisplayName} ${moodMessage}${noteHTML}`;
             }
 
             // Update mood badge
             const badge = document.getElementById('mood-badge');
             if (badge) {
+                const moodEmoji = { happy: '😊', neutral: '😐', sad: '😢', sleepy: '😴', energetic: '⚡' };
+                const moodLabel = { happy: 'Happy', neutral: 'Okay', sad: 'Sad', sleepy: 'Sleepy', energetic: 'Energetic' };
                 badge.className = `mood-badge ${mood}`;
-                badge.innerHTML = `<span class="mood-badge-emoji">${mood === 'happy' ? '😊' : mood === 'neutral' ? '😐' : '😢'}</span><span>${mood === 'happy' ? 'Happy' : mood === 'neutral' ? 'Okay' : 'Sad'}</span>`;
+                badge.innerHTML = `<span class="mood-badge-emoji">${moodEmoji[mood] || '😐'}</span><span>${moodLabel[mood] || 'Okay'}</span>`;
             }
         }
 
@@ -6634,11 +6772,23 @@
                     const room = ROOMS[gameState.currentRoom || 'bedroom'];
                     const isOutdoor = room ? room.isOutdoor : false;
 
+                    // Day/Night cycle energy modifiers
+                    const timeOfDay = gameState.timeOfDay || 'day';
+                    let energyDecayBonus = 0;
+                    let energyRegenBonus = 0;
+                    if (timeOfDay === 'night') {
+                        energyDecayBonus = 2; // Energy drains faster at night (pet gets sleepy)
+                    } else if (timeOfDay === 'sunset') {
+                        energyDecayBonus = 1; // Energy starts draining more at sunset
+                    } else if (timeOfDay === 'sunrise') {
+                        energyRegenBonus = 1; // Energy recovers slightly in the morning
+                    }
+
                     // Base decay
                     pet.hunger = clamp(pet.hunger - 1, 0, 100);
                     pet.cleanliness = clamp(pet.cleanliness - 1, 0, 100);
                     pet.happiness = clamp(pet.happiness - 1, 0, 100);
-                    pet.energy = clamp(pet.energy - 1, 0, 100);
+                    pet.energy = clamp(pet.energy - 1 - energyDecayBonus + energyRegenBonus, 0, 100);
 
                     // Extra weather-based decay when outdoors
                     if (isOutdoor) {
@@ -6653,8 +6803,23 @@
                     // Update time of day and refresh display if changed
                     const newTimeOfDay = getTimeOfDay();
                     if (gameState.timeOfDay !== newTimeOfDay) {
+                        const previousTime = gameState.timeOfDay;
                         gameState.timeOfDay = newTimeOfDay;
                         updateDayNightDisplay();
+
+                        // Morning energy boost when transitioning to sunrise
+                        if (newTimeOfDay === 'sunrise' && previousTime === 'night') {
+                            pet.energy = clamp(pet.energy + 15, 0, 100);
+                            announce(`Good morning! ${pet.name || PET_TYPES[pet.type].name} wakes up feeling refreshed!`);
+                        }
+                        // Nighttime sleepiness notification
+                        if (newTimeOfDay === 'night') {
+                            announce(`It's getting late! ${pet.name || PET_TYPES[pet.type].name} is getting sleepy...`);
+                        }
+                        // Sunset wind-down notification
+                        if (newTimeOfDay === 'sunset') {
+                            announce(`The sun is setting. ${pet.name || PET_TYPES[pet.type].name} is starting to wind down.`);
+                        }
                     }
 
                     updateNeedDisplays();
