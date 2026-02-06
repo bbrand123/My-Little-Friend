@@ -347,7 +347,7 @@
             const roomBonusLabel = currentRoomData && currentRoomData.bonus ? currentRoomData.bonus.label : '';
 
             content.innerHTML = `
-                <div class="top-action-bar">
+                <div class="top-action-bar" role="toolbar" aria-label="Game actions">
                     <button class="top-action-btn" id="codex-btn" aria-label="Open Pet Codex" tabindex="0">
                         <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
                     </button>
@@ -929,7 +929,7 @@
 
             // Check for growth stage transition
             const oldStage = pet.growthStage || 'baby';
-            const newStage = getGrowthStage(pet.careActions);
+            const newStage = getGrowthStage(pet.careActions, getPetAge(pet));
             if (newStage !== oldStage) {
                 pet.growthStage = newStage;
                 const stageData = GROWTH_STAGES[newStage];
@@ -1104,7 +1104,7 @@
             if (!pet) return;
             const stage = pet.growthStage || 'adult';
             const stageData = GROWTH_STAGES[stage];
-            const progress = getGrowthProgress(pet.careActions || 0, stage);
+            const progress = getGrowthProgress(pet.careActions || 0, getPetAge(pet), stage);
             const nextStage = getNextGrowthStage(stage);
             const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
 
@@ -2021,6 +2021,11 @@
                 stopGardenGrowTimer();
 
                 const preservedAdultsRaised = gameState.adultsRaised || 0;
+                const preservedFurniture = gameState.furniture || {
+                    bedroom: { bed: 'basic', decoration: 'none' },
+                    kitchen: { decoration: 'none' },
+                    bathroom: { decoration: 'none' }
+                };
                 gameState = {
                     phase: 'egg',
                     pet: null,
@@ -2032,6 +2037,7 @@
                     lastWeatherChange: Date.now(),
                     season: getCurrentSeason(),
                     adultsRaised: preservedAdultsRaised,
+                    furniture: preservedFurniture,
                     garden: {
                         plots: [],
                         inventory: {},

@@ -138,10 +138,10 @@ function getGrowthProgress(careActions, ageInHours, currentStage) {
 }
 
 function getCareQuality(averageStats, neglectCount) {
-    // Check from best to worst
+    // Check from best to worst - only check minAverage (no maxAverage ceiling)
+    // so that high-stat pets with too much neglect fall to the next tier gracefully
     for (const [level, data] of Object.entries(CARE_QUALITY).reverse()) {
         if (averageStats >= data.minAverage &&
-            averageStats <= data.maxAverage &&
             neglectCount <= data.maxNeglect) {
             return level;
         }
