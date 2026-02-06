@@ -382,7 +382,8 @@
                             ${(() => {
                                 const stage = pet.growthStage || 'adult';
                                 const stageData = GROWTH_STAGES[stage];
-                                const progress = getGrowthProgress(pet.careActions || 0, stage);
+                                const ageInHours = getPetAge(pet);
+                                const progress = getGrowthProgress(pet.careActions || 0, ageInHours, stage);
                                 const nextStage = getNextGrowthStage(stage);
                                 const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
                                 return `
@@ -395,7 +396,8 @@
                         </div>
                         ${(() => {
                             const stage = pet.growthStage || 'adult';
-                            const progress = getGrowthProgress(pet.careActions || 0, stage);
+                            const ageInHours = getPetAge(pet);
+                            const progress = getGrowthProgress(pet.careActions || 0, ageInHours, stage);
                             const nextStage = getNextGrowthStage(stage);
                             if (!nextStage) return '';
                             return `
@@ -403,7 +405,7 @@
                                     <div class="growth-progress-bar">
                                         <div class="growth-progress-fill" id="growth-fill" style="width: ${progress}%;"></div>
                                     </div>
-                                    <span class="growth-progress-label">${GROWTH_STAGES[stage].emoji} ${progress}% to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+                                    <span class="growth-progress-label">${GROWTH_STAGES[stage].emoji} ${Math.round(progress)}% to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
                                 </div>
                             `;
                         })()}
@@ -458,6 +460,46 @@
                         <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}%;"></div>
                     </div>
                 </div>
+
+                ${(() => {
+                    const careQuality = pet.careQuality || 'average';
+                    const qualityData = CARE_QUALITY[careQuality];
+                    const ageInHours = getPetAge(pet);
+                    const ageDisplay = ageInHours < 24
+                        ? `${Math.floor(ageInHours)} hours old`
+                        : `${Math.floor(ageInHours / 24)} days old`;
+
+                    return `
+                        <div class="care-quality-wrap" aria-label="Care quality and age">
+                            <div class="care-quality-row">
+                                <div class="care-quality-badge ${careQuality}">
+                                    <span class="care-quality-emoji">${qualityData.emoji}</span>
+                                    <div class="care-quality-text">
+                                        <span class="care-quality-label">Care Quality</span>
+                                        <span class="care-quality-value">${qualityData.label}</span>
+                                    </div>
+                                </div>
+                                <div class="pet-age-badge">
+                                    <span class="pet-age-emoji">🎂</span>
+                                    <div class="pet-age-text">
+                                        <span class="pet-age-label">Age</span>
+                                        <span class="pet-age-value">${ageDisplay}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            ${pet.evolutionStage === 'evolved' ? `
+                                <div class="evolution-badge-display">
+                                    ✨ ${PET_EVOLUTIONS[pet.type]?.name || 'Evolved Form'} ✨
+                                </div>
+                            ` : ''}
+                            ${canEvolve(pet) ? `
+                                <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet">
+                                    ⭐ Evolve ${petDisplayName}! ⭐
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                })()}
 
                 <div class="section-divider"></div>
 
@@ -568,6 +610,18 @@
             document.getElementById('codex-btn').addEventListener('click', showPetCodex);
             document.getElementById('stats-btn').addEventListener('click', showStatsScreen);
             document.getElementById('furniture-btn').addEventListener('click', showFurnitureModal);
+
+            // Evolution button if available
+            const evolveBtn = document.getElementById('evolve-btn');
+            if (evolveBtn) {
+                evolveBtn.addEventListener('click', () => {
+                    const pet = gameState.pet;
+                    if (evolvePet(pet)) {
+                        // Re-render to show evolved pet
+                        renderPetPhase();
+                    }
+                });
+            }
 
             // Render garden UI if in garden room
             if (currentRoom === 'garden') {
@@ -1219,6 +1273,224 @@
             });
 
             announce(title + '. ' + message);
+        }
+
+        // ==================== CELEBRATION MODALS ====================
+
+        function showBirthdayCelebration(growthStage, pet) {
+            const rewardData = BIRTHDAY_REWARDS[growthStage];
+            if (!rewardData) return;
+
+            // Add confetti animation
+            createConfetti();
+
+            // Unlock accessories as rewards
+            if (rewardData.accessories && pet) {
+                rewardData.accessories.forEach(accessoryId => {
+                    if (!pet.unlockedAccessories.includes(accessoryId)) {
+                        pet.unlockedAccessories.push(accessoryId);
+                    }
+                });
+            }
+
+            // Create celebration modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay celebration-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'celebration-title');
+
+            const petName = pet ? (pet.name || PET_TYPES[pet.type]?.name || 'Your pet') : 'Your pet';
+            const stageLabel = GROWTH_STAGES[growthStage]?.label || growthStage;
+            const stageEmoji = GROWTH_STAGES[growthStage]?.emoji || '🎉';
+
+            modal.innerHTML = `
+                <div class="modal-content celebration-content">
+                    <div class="celebration-header">
+                        <div class="celebration-icon">${rewardData.title}</div>
+                    </div>
+                    <h2 class="modal-title" id="celebration-title">${stageEmoji} ${petName} is now a ${stageLabel}! ${stageEmoji}</h2>
+                    <p class="modal-message celebration-message">${rewardData.message}</p>
+                    <div class="rewards-display">
+                        <p class="reward-title">🎁 ${rewardData.unlockMessage}</p>
+                        <div class="reward-accessories">
+                            ${rewardData.accessories.map(accId => {
+                                const acc = ACCESSORIES[accId];
+                                return acc ? `<span class="reward-item">${acc.emoji} ${acc.name}</span>` : '';
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-btn confirm celebration-btn" id="celebration-ok">
+                            🎊 Celebrate! 🎊
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const okBtn = document.getElementById('celebration-ok');
+            okBtn.focus();
+
+            function closeModal() {
+                modal.remove();
+                // Trigger confetti cleanup
+                setTimeout(() => {
+                    const confettiContainer = document.querySelector('.confetti-container');
+                    if (confettiContainer) confettiContainer.remove();
+                }, 5000);
+            }
+
+            okBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            document.addEventListener('keydown', function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            });
+
+            announce(`Birthday celebration! ${petName} is now a ${stageLabel}! ${rewardData.unlockMessage}`);
+            showToast(`🎉 ${petName} grew to ${stageLabel}!`, '#FFB74D');
+        }
+
+        function showEvolutionCelebration(pet, evolutionData) {
+            // Add confetti animation
+            createConfetti();
+
+            // Create evolution modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay celebration-modal evolution-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'evolution-title');
+
+            const petName = pet ? (pet.name || evolutionData.name) : evolutionData.name;
+            const qualityLabel = CARE_QUALITY[pet.careQuality]?.label || 'Excellent';
+
+            modal.innerHTML = `
+                <div class="modal-content celebration-content">
+                    <div class="celebration-header">
+                        <div class="celebration-icon evolution-icon">✨ EVOLUTION! ✨</div>
+                    </div>
+                    <h2 class="modal-title" id="evolution-title">${evolutionData.emoji} ${petName} ${evolutionData.emoji}</h2>
+                    <p class="modal-message celebration-message">
+                        Thanks to your ${qualityLabel.toLowerCase()} care, your pet has evolved into a special form!
+                    </p>
+                    <div class="evolution-display">
+                        <div class="evolution-sparkle">✨🌟⭐🌟✨</div>
+                        <p class="evolution-subtitle">A rare and beautiful transformation!</p>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-btn confirm celebration-btn evolution-btn" id="evolution-ok">
+                            ⭐ Amazing! ⭐
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const okBtn = document.getElementById('evolution-ok');
+            okBtn.focus();
+
+            function closeModal() {
+                modal.remove();
+                // Re-render to show evolved appearance
+                if (typeof renderPetPhase === 'function') {
+                    renderPetPhase();
+                }
+                // Trigger confetti cleanup
+                setTimeout(() => {
+                    const confettiContainer = document.querySelector('.confetti-container');
+                    if (confettiContainer) confettiContainer.remove();
+                }, 5000);
+            }
+
+            okBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            document.addEventListener('keydown', function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            });
+
+            announce(`Evolution! Your pet has evolved into ${petName}!`);
+            showToast(`✨ Evolution! ${petName}!`, '#FFD700');
+        }
+
+        function createConfetti() {
+            // Remove existing confetti
+            const existing = document.querySelector('.confetti-container');
+            if (existing) existing.remove();
+
+            const container = document.createElement('div');
+            container.className = 'confetti-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 9999;
+                overflow: hidden;
+            `;
+
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+            const shapes = ['🎉', '🎊', '⭐', '✨', '🌟', '💫'];
+
+            // Create 50 confetti pieces
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti-piece';
+
+                const isEmoji = Math.random() > 0.5;
+                if (isEmoji) {
+                    confetti.textContent = shapes[Math.floor(Math.random() * shapes.length)];
+                    confetti.style.fontSize = (10 + Math.random() * 15) + 'px';
+                } else {
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = (5 + Math.random() * 10) + 'px';
+                    confetti.style.height = (5 + Math.random() * 10) + 'px';
+                }
+
+                confetti.style.cssText += `
+                    position: absolute;
+                    left: ${Math.random() * 100}%;
+                    top: -20px;
+                    opacity: ${0.6 + Math.random() * 0.4};
+                    animation: confetti-fall ${2 + Math.random() * 3}s linear ${Math.random() * 2}s;
+                    animation-fill-mode: forwards;
+                `;
+
+                container.appendChild(confetti);
+            }
+
+            // Add CSS animation if not already added
+            if (!document.getElementById('confetti-style')) {
+                const style = document.createElement('style');
+                style.id = 'confetti-style';
+                style.textContent = `
+                    @keyframes confetti-fall {
+                        to {
+                            transform: translateY(100vh) rotate(${360 + Math.random() * 360}deg);
+                            opacity: 0;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(container);
         }
 
         // ==================== MINI-GAME CLEANUP ====================

@@ -1,16 +1,117 @@
 // ==================== GROWTH STAGES ====================
 
 const GROWTH_STAGES = {
-    baby: { label: 'Baby', emoji: '🍼', scale: 0.6, actionsNeeded: 0, sizeLabel: 'Tiny' },
-    child: { label: 'Child', emoji: '🌱', scale: 0.8, actionsNeeded: 15, sizeLabel: 'Small' },
-    adult: { label: 'Adult', emoji: '⭐', scale: 1.0, actionsNeeded: 40, sizeLabel: 'Full' }
+    baby: {
+        label: 'Baby',
+        emoji: '🍼',
+        scale: 0.6,
+        actionsNeeded: 0,
+        hoursNeeded: 0,
+        sizeLabel: 'Tiny'
+    },
+    child: {
+        label: 'Child',
+        emoji: '🌱',
+        scale: 0.8,
+        actionsNeeded: 15,
+        hoursNeeded: 24,
+        sizeLabel: 'Small'
+    },
+    adult: {
+        label: 'Adult',
+        emoji: '⭐',
+        scale: 1.0,
+        actionsNeeded: 40,
+        hoursNeeded: 72,
+        sizeLabel: 'Full'
+    }
 };
 
 const GROWTH_ORDER = ['baby', 'child', 'adult'];
 
-function getGrowthStage(careActions) {
-    if (careActions >= GROWTH_STAGES.adult.actionsNeeded) return 'adult';
-    if (careActions >= GROWTH_STAGES.child.actionsNeeded) return 'child';
+// Care quality levels and their thresholds
+const CARE_QUALITY = {
+    poor: {
+        label: 'Poor',
+        emoji: '😢',
+        minAverage: 0,
+        maxAverage: 35,
+        maxNeglect: 999, // No limit on neglect
+        variant: 'dull',
+        description: 'Needs more attention'
+    },
+    average: {
+        label: 'Average',
+        emoji: '😊',
+        minAverage: 35,
+        maxAverage: 60,
+        maxNeglect: 10,
+        variant: 'normal',
+        description: 'Doing okay'
+    },
+    good: {
+        label: 'Good',
+        emoji: '😄',
+        minAverage: 60,
+        maxAverage: 80,
+        maxNeglect: 5,
+        variant: 'normal',
+        description: 'Well cared for'
+    },
+    excellent: {
+        label: 'Excellent',
+        emoji: '🌟',
+        minAverage: 80,
+        maxAverage: 100,
+        maxNeglect: 2,
+        variant: 'shiny',
+        description: 'Exceptionally loved',
+        canEvolve: true
+    }
+};
+
+// Evolution forms for each pet type (unlocked with excellent care at adult stage)
+const PET_EVOLUTIONS = {
+    dog: { name: 'Royal Hound', emoji: '👑🐕', colorShift: 20, sparkle: true },
+    cat: { name: 'Mystic Cat', emoji: '✨🐱', colorShift: 15, sparkle: true },
+    bunny: { name: 'Spring Guardian', emoji: '🌸🐰', colorShift: 10, sparkle: true },
+    bird: { name: 'Phoenix Chick', emoji: '🔥🐦', colorShift: 25, sparkle: true },
+    hamster: { name: 'Golden Hamster', emoji: '⭐🐹', colorShift: 30, sparkle: true },
+    turtle: { name: 'Ancient Turtle', emoji: '🌊🐢', colorShift: 15, sparkle: true },
+    fish: { name: 'Celestial Fish', emoji: '🌟🐟', colorShift: 20, sparkle: true },
+    frog: { name: 'Jade Frog', emoji: '💎🐸', colorShift: 25, sparkle: true },
+    hedgehog: { name: 'Crystal Hedgehog', emoji: '💎🦔', colorShift: 20, sparkle: true },
+    panda: { name: 'Zen Master', emoji: '☯️🐼', colorShift: 10, sparkle: true },
+    penguin: { name: 'Emperor Penguin', emoji: '👑🐧', colorShift: 15, sparkle: true },
+    unicorn: { name: 'Alicorn', emoji: '🦄✨', colorShift: 30, sparkle: true },
+    dragon: { name: 'Ancient Dragon', emoji: '🐉👑', colorShift: 35, sparkle: true }
+};
+
+// Birthday milestone rewards based on growth stage
+const BIRTHDAY_REWARDS = {
+    child: {
+        title: '🎉 First Birthday! 🎉',
+        message: 'Your pet has grown into a child!',
+        accessories: ['bow', 'ribbonBow'],
+        unlockMessage: 'Unlocked cute accessories!'
+    },
+    adult: {
+        title: '🎊 Coming of Age! 🎊',
+        message: 'Your pet is now fully grown!',
+        accessories: ['crown', 'partyHat'],
+        unlockMessage: 'Unlocked special accessories!'
+    }
+};
+
+function getGrowthStage(careActions, ageInHours) {
+    // Growth requires BOTH time passage AND care actions
+    const hasAdultTime = ageInHours >= GROWTH_STAGES.adult.hoursNeeded;
+    const hasAdultActions = careActions >= GROWTH_STAGES.adult.actionsNeeded;
+    const hasChildTime = ageInHours >= GROWTH_STAGES.child.hoursNeeded;
+    const hasChildActions = careActions >= GROWTH_STAGES.child.actionsNeeded;
+
+    if (hasAdultTime && hasAdultActions) return 'adult';
+    if (hasChildTime && hasChildActions) return 'child';
     return 'baby';
 }
 
@@ -20,12 +121,32 @@ function getNextGrowthStage(currentStage) {
     return null;
 }
 
-function getGrowthProgress(careActions, currentStage) {
+function getGrowthProgress(careActions, ageInHours, currentStage) {
     const nextStage = getNextGrowthStage(currentStage);
     if (!nextStage) return 100;
-    const currentThreshold = GROWTH_STAGES[currentStage].actionsNeeded;
-    const nextThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
-    return Math.min(100, Math.round(((careActions - currentThreshold) / (nextThreshold - currentThreshold)) * 100));
+
+    const currentActionsThreshold = GROWTH_STAGES[currentStage].actionsNeeded;
+    const nextActionsThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
+    const currentHoursThreshold = GROWTH_STAGES[currentStage].hoursNeeded;
+    const nextHoursThreshold = GROWTH_STAGES[nextStage].hoursNeeded;
+
+    // Progress is the minimum of time-based and action-based progress
+    const actionProgress = ((careActions - currentActionsThreshold) / (nextActionsThreshold - currentActionsThreshold)) * 100;
+    const timeProgress = ((ageInHours - currentHoursThreshold) / (nextHoursThreshold - currentHoursThreshold)) * 100;
+
+    return Math.min(100, Math.max(0, Math.min(actionProgress, timeProgress)));
+}
+
+function getCareQuality(averageStats, neglectCount) {
+    // Check from best to worst
+    for (const [level, data] of Object.entries(CARE_QUALITY).reverse()) {
+        if (averageStats >= data.minAverage &&
+            averageStats <= data.maxAverage &&
+            neglectCount <= data.maxNeglect) {
+            return level;
+        }
+    }
+    return 'poor';
 }
 
 // ==================== EGG TYPES ====================
