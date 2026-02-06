@@ -1283,6 +1283,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             gap: 2px;
             padding: 6px 10px;
             border: 2px solid rgba(0,0,0,0.1);
@@ -1291,7 +1292,8 @@
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
-            min-width: 56px;
+            min-width: 48px;
+            min-height: 44px;
         }
 
         .room-btn:hover,
@@ -1299,21 +1301,21 @@
         .room-btn:focus-visible {
             transform: translateY(-2px);
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-            border-color: var(--primary);
-            outline: 3px solid var(--primary);
+            border-color: var(--color-primary);
+            outline: 3px solid var(--color-primary);
             outline-offset: 2px;
         }
 
         /* Ensure VoiceOver focus is visible on iOS */
         .room-btn:focus:not(:focus-visible) {
-            outline: 3px solid var(--primary);
+            outline: 3px solid var(--color-primary);
             outline-offset: 2px;
         }
 
         .room-btn.active {
-            background: var(--primary);
+            background: var(--color-primary);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--color-primary);
             box-shadow: 0 2px 8px rgba(108, 99, 255, 0.4);
         }
 
@@ -1381,7 +1383,8 @@
 
         @media (max-width: 400px) {
             .room-btn {
-                min-width: 48px;
+                min-width: 44px;
+                min-height: 44px;
                 padding: 5px 7px;
             }
             .room-btn-icon {
@@ -1978,7 +1981,7 @@
         }
 
         .top-action-btn {
-            padding: 5px 14px;
+            padding: 10px 14px;
             border: 1.5px solid #E0E0E0;
             border-radius: 12px;
             background: white;
@@ -1991,6 +1994,9 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            min-height: 44px;
+            min-width: 44px;
+            justify-content: center;
         }
 
         .top-action-btn:hover,

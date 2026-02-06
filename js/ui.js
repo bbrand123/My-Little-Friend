@@ -347,7 +347,7 @@
             const roomBonusLabel = currentRoomData && currentRoomData.bonus ? currentRoomData.bonus.label : '';
 
             content.innerHTML = `
-                <div class="top-action-bar">
+                <div class="top-action-bar" role="toolbar" aria-label="Game actions">
                     <button class="top-action-btn" id="codex-btn" aria-label="Open Pet Codex" tabindex="0">
                         <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
                     </button>
