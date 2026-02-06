@@ -2920,6 +2920,332 @@
             color: #666;
         }
 
+        /* ==================== SEASONS STYLES ==================== */
+
+        .season-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0.9;
+        }
+
+        .season-badge.spring {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            color: #2E7D32;
+        }
+
+        .season-badge.summer {
+            background: linear-gradient(135deg, #FFF9C4, #FFF176);
+            color: #F57F17;
+        }
+
+        .season-badge.autumn {
+            background: linear-gradient(135deg, #FBE9E7, #FFCCBC);
+            color: #BF360C;
+        }
+
+        .season-badge.winter {
+            background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+            color: #1565C0;
+        }
+
+        .seasonal-decor {
+            position: absolute;
+            bottom: 38px;
+            left: 0;
+            right: 0;
+            font-size: 0.65rem;
+            letter-spacing: 10px;
+            text-align: center;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* Seasonal activity button */
+        .action-btn.seasonal {
+            background: linear-gradient(135deg, #FFB74D, #FF8A65);
+            color: white;
+        }
+
+        .action-btn.seasonal.spring-activity {
+            background: linear-gradient(135deg, #AED581, #81C784);
+        }
+
+        .action-btn.seasonal.summer-activity {
+            background: linear-gradient(135deg, #FFD54F, #FFB300);
+        }
+
+        .action-btn.seasonal.autumn-activity {
+            background: linear-gradient(135deg, #FFAB91, #FF8A65);
+        }
+
+        .action-btn.seasonal.winter-activity {
+            background: linear-gradient(135deg, #90CAF9, #64B5F6);
+        }
+
+        /* ==================== GARDEN STYLES ==================== */
+
+        .garden-section {
+            margin: 8px 0;
+            padding: 12px;
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            border-radius: var(--radius);
+            border: 2px solid #A5D6A7;
+        }
+
+        .garden-title {
+            font-size: 1rem;
+            color: #2E7D32;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .garden-plots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .garden-plot {
+            background: linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
+            border-radius: 12px;
+            padding: 10px 6px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid #5D4037;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .garden-plot:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .garden-plot.empty {
+            background: linear-gradient(180deg, #A1887F, #8D6E63);
+            border-style: dashed;
+            opacity: 0.8;
+        }
+
+        .garden-plot.growing {
+            background: linear-gradient(180deg, #795548, #5D4037);
+        }
+
+        .garden-plot.ready {
+            background: linear-gradient(180deg, #66BB6A, #43A047);
+            border-color: #2E7D32;
+            animation: gardenGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes gardenGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.3); }
+            50% { box-shadow: 0 0 15px rgba(76, 175, 80, 0.6); }
+        }
+
+        .garden-plot-emoji {
+            font-size: 1.6rem;
+            margin-bottom: 2px;
+        }
+
+        .garden-plot-label {
+            font-size: 0.6rem;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .garden-plot-progress {
+            width: 80%;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .garden-plot-progress-fill {
+            height: 100%;
+            background: #FFD54F;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .garden-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .garden-btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .garden-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .garden-btn.plant-btn {
+            background: linear-gradient(135deg, #81C784, #66BB6A);
+            color: white;
+        }
+
+        .garden-btn.water-btn {
+            background: linear-gradient(135deg, #4FC3F7, #29B6F6);
+            color: white;
+        }
+
+        .garden-btn.harvest-btn {
+            background: linear-gradient(135deg, #FFB74D, #FFA726);
+            color: white;
+        }
+
+        .garden-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .garden-inventory {
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: #555;
+        }
+
+        .garden-inventory-items {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .garden-inventory-item {
+            background: white;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Seed picker overlay */
+        .seed-picker-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .seed-picker {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .seed-picker-title {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: #2E7D32;
+        }
+
+        .seed-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .seed-option {
+            padding: 10px 8px;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .seed-option:hover {
+            border-color: #66BB6A;
+            background: #E8F5E9;
+            transform: translateY(-2px);
+        }
+
+        .seed-option-emoji {
+            font-size: 1.4rem;
+        }
+
+        .seed-option-name {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .seed-option-time {
+            font-size: 0.6rem;
+            color: #888;
+        }
+
+        .seed-picker-close {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            background: #EF5350;
+            color: white;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .seed-picker-close:hover {
+            background: #E53935;
+        }
+
     </style>
 </head>
 <body>
@@ -3133,10 +3459,172 @@
                 bgNight: 'linear-gradient(180deg, #0D1B2A 0%, #1B2838 50%, #1A472A 100%)',
                 bgSunset: 'linear-gradient(180deg, #FF8A65 0%, #FFB74D 50%, #81C784 100%)',
                 bgSunrise: 'linear-gradient(180deg, #FFCCBC 0%, #FFE0B2 50%, #81C784 100%)'
+            },
+            garden: {
+                name: 'Garden',
+                icon: '🌱',
+                isOutdoor: true,
+                ground: { color1: '#8D6E63', color2: '#6D4C41' },
+                decorEmoji: '🌱 🪴 🌿',
+                nightDecorEmoji: '🌱 🌙 🌿',
+                bgDay: 'linear-gradient(180deg, #87CEEB 0%, #A5D6A7 50%, #81C784 100%)',
+                bgNight: 'linear-gradient(180deg, #1a1a2e 0%, #1B3A1B 50%, #0f3460 100%)',
+                bgSunset: 'linear-gradient(180deg, #FF7E5F 0%, #FEB47B 50%, #A5D6A7 100%)',
+                bgSunrise: 'linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #A5D6A7 100%)'
             }
         };
 
         const ROOM_IDS = Object.keys(ROOMS);
+
+        // ==================== SEASONS SYSTEM ====================
+
+        const SEASONS = {
+            spring: {
+                name: 'Spring',
+                icon: '🌸',
+                months: [2, 3, 4], // March, April, May
+                decorEmoji: '🌸 🌷 🐝',
+                nightDecorEmoji: '🌸 🌙 🌷',
+                weatherBias: { sunny: 0.5, rainy: 0.35, snowy: 0.15 },
+                moodBonus: 3,
+                gardenGrowthMultiplier: 1.2,
+                activityName: 'Flower Pick',
+                activityIcon: '🌷',
+                activityMessages: ['found a beautiful flower!', 'made a flower crown!', 'loves the spring blossoms!', 'is chasing butterflies!'],
+                activityEffects: { happiness: 15, energy: -5 },
+                ambientMessages: ['The flowers are blooming!', 'Spring is in the air!', 'What a lovely spring day!', 'The butterflies are out!']
+            },
+            summer: {
+                name: 'Summer',
+                icon: '☀️',
+                months: [5, 6, 7], // June, July, August
+                decorEmoji: '🌻 🦋 🍉',
+                nightDecorEmoji: '🌻 🌟 🦗',
+                weatherBias: { sunny: 0.7, rainy: 0.2, snowy: 0.1 },
+                moodBonus: 5,
+                gardenGrowthMultiplier: 1.5,
+                activityName: 'Splash Play',
+                activityIcon: '💦',
+                activityMessages: ['is splashing in water!', 'loves the summer fun!', 'had a water play session!', 'is cooling off in the sprinkler!'],
+                activityEffects: { happiness: 20, cleanliness: 10, energy: -10 },
+                ambientMessages: ['The sun is shining bright!', 'What a hot summer day!', 'Perfect for outdoor fun!', 'Summer vibes!']
+            },
+            autumn: {
+                name: 'Autumn',
+                icon: '🍂',
+                months: [8, 9, 10], // September, October, November
+                decorEmoji: '🍂 🎃 🍁',
+                nightDecorEmoji: '🍂 🌙 🦉',
+                weatherBias: { sunny: 0.4, rainy: 0.4, snowy: 0.2 },
+                moodBonus: 2,
+                gardenGrowthMultiplier: 0.8,
+                activityName: 'Leaf Pile',
+                activityIcon: '🍁',
+                activityMessages: ['jumped in the leaf pile!', 'is crunching autumn leaves!', 'loves the fall colors!', 'found a cool pinecone!'],
+                activityEffects: { happiness: 15, energy: -5 },
+                ambientMessages: ['The leaves are changing colors!', 'Autumn is so cozy!', 'Crisp fall air!', 'Pumpkin season!']
+            },
+            winter: {
+                name: 'Winter',
+                icon: '❄️',
+                months: [11, 0, 1], // December, January, February
+                decorEmoji: '❄️ ⛄ 🎄',
+                nightDecorEmoji: '❄️ 🌙 ✨',
+                weatherBias: { sunny: 0.25, rainy: 0.15, snowy: 0.6 },
+                moodBonus: 1,
+                gardenGrowthMultiplier: 0.5,
+                activityName: 'Snowplay',
+                activityIcon: '⛄',
+                activityMessages: ['built a tiny snowman!', 'is catching snowflakes!', 'loves playing in the snow!', 'made a snow angel!'],
+                activityEffects: { happiness: 15, cleanliness: -5, energy: -10 },
+                ambientMessages: ['It\'s a winter wonderland!', 'So cozy and cold!', 'Hot cocoa weather!', 'Winter magic!']
+            }
+        };
+
+        function getCurrentSeason() {
+            const month = new Date().getMonth();
+            for (const [id, season] of Object.entries(SEASONS)) {
+                if (season.months.includes(month)) return id;
+            }
+            return 'spring';
+        }
+
+        function getSeasonalDecor(season, timeOfDay) {
+            const seasonData = SEASONS[season];
+            if (!seasonData) return '';
+            return timeOfDay === 'night' ? seasonData.nightDecorEmoji : seasonData.decorEmoji;
+        }
+
+        function getSeasonalWeather(season) {
+            const seasonData = SEASONS[season];
+            if (!seasonData) return getRandomWeather();
+            const rand = Math.random();
+            const bias = seasonData.weatherBias;
+            if (rand < bias.sunny) return 'sunny';
+            if (rand < bias.sunny + bias.rainy) return 'rainy';
+            return 'snowy';
+        }
+
+        // ==================== GARDEN SYSTEM ====================
+
+        const GARDEN_CROPS = {
+            carrot: {
+                name: 'Carrot',
+                seedEmoji: '🥕',
+                stages: ['🟫', '🌱', '🌿', '🥕'],
+                growTime: 3, // grow ticks needed per stage
+                hungerValue: 15,
+                happinessValue: 5,
+                seasonBonus: ['spring', 'autumn']
+            },
+            tomato: {
+                name: 'Tomato',
+                seedEmoji: '🍅',
+                stages: ['🟫', '🌱', '🌿', '🍅'],
+                growTime: 4,
+                hungerValue: 18,
+                happinessValue: 8,
+                seasonBonus: ['summer']
+            },
+            strawberry: {
+                name: 'Strawberry',
+                seedEmoji: '🍓',
+                stages: ['🟫', '🌱', '🌿', '🍓'],
+                growTime: 5,
+                hungerValue: 20,
+                happinessValue: 12,
+                seasonBonus: ['spring', 'summer']
+            },
+            pumpkin: {
+                name: 'Pumpkin',
+                seedEmoji: '🎃',
+                stages: ['🟫', '🌱', '🌿', '🎃'],
+                growTime: 6,
+                hungerValue: 25,
+                happinessValue: 10,
+                seasonBonus: ['autumn']
+            },
+            sunflower: {
+                name: 'Sunflower',
+                seedEmoji: '🌻',
+                stages: ['🟫', '🌱', '🌿', '🌻'],
+                growTime: 4,
+                hungerValue: 10,
+                happinessValue: 15,
+                seasonBonus: ['summer', 'spring']
+            },
+            apple: {
+                name: 'Apple',
+                seedEmoji: '🍎',
+                stages: ['🟫', '🌱', '🌳', '🍎'],
+                growTime: 7,
+                hungerValue: 22,
+                happinessValue: 8,
+                seasonBonus: ['autumn']
+            }
+        };
+
+        const MAX_GARDEN_PLOTS = 6;
 
         // ==================== GAME STATE ====================
 
@@ -3146,10 +3634,18 @@
             eggTaps: 0,
             lastUpdate: Date.now(),
             timeOfDay: 'day', // 'day', 'sunset', 'night', 'sunrise'
-            currentRoom: 'bedroom', // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park'
+            currentRoom: 'bedroom', // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park', 'garden'
             weather: 'sunny', // 'sunny', 'rainy', 'snowy'
-            lastWeatherChange: Date.now()
+            lastWeatherChange: Date.now(),
+            season: getCurrentSeason(),
+            garden: {
+                plots: [], // { cropId, stage, growTicks, watered }
+                inventory: {}, // { cropId: count }
+                lastGrowTick: Date.now()
+            }
         };
+
+        let gardenGrowInterval = null;
 
         let weatherInterval = null;
 
@@ -3246,6 +3742,43 @@
                         parsed.lastWeatherChange = Date.now();
                     }
 
+                    // Add season if missing (for existing saves)
+                    parsed.season = getCurrentSeason();
+
+                    // Add garden if missing (for existing saves)
+                    if (!parsed.garden || typeof parsed.garden !== 'object') {
+                        parsed.garden = {
+                            plots: [],
+                            inventory: {},
+                            lastGrowTick: Date.now()
+                        };
+                    }
+                    if (!parsed.garden.plots) parsed.garden.plots = [];
+                    if (!parsed.garden.inventory) parsed.garden.inventory = {};
+                    if (!parsed.garden.lastGrowTick) parsed.garden.lastGrowTick = Date.now();
+
+                    // Apply garden growth for time passed
+                    if (parsed.garden.plots.length > 0 && parsed.garden.lastGrowTick) {
+                        const gardenTimePassed = Date.now() - parsed.garden.lastGrowTick;
+                        const gardenTicksPassed = Math.floor(gardenTimePassed / 60000); // 1 tick per minute
+                        if (gardenTicksPassed > 0) {
+                            const season = parsed.season || getCurrentSeason();
+                            const growthMult = SEASONS[season] ? SEASONS[season].gardenGrowthMultiplier : 1;
+                            parsed.garden.plots.forEach(plot => {
+                                if (plot && plot.cropId && plot.stage < 3) {
+                                    const crop = GARDEN_CROPS[plot.cropId];
+                                    if (crop) {
+                                        const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growthMult));
+                                        plot.growTicks += gardenTicksPassed;
+                                        const newStage = Math.min(3, Math.floor(plot.growTicks / effectiveGrowTime));
+                                        plot.stage = Math.max(plot.stage, newStage);
+                                    }
+                                }
+                            });
+                            parsed.garden.lastGrowTick = Date.now();
+                        }
+                    }
+
                     // Update time of day
                     parsed.timeOfDay = getTimeOfDay();
 
@@ -3303,7 +3836,9 @@
             const room = ROOMS[gameState.currentRoom || 'bedroom'];
             const isOutdoor = room ? room.isOutdoor : false;
             const weatherBonus = isOutdoor ? weatherData.moodBonus : 0;
-            const adjusted = average + weatherBonus;
+            const season = gameState.season || getCurrentSeason();
+            const seasonBonus = SEASONS[season] ? SEASONS[season].moodBonus : 0;
+            const adjusted = average + weatherBonus + seasonBonus;
 
             // Day/Night cycle mood overrides
             const timeOfDay = gameState.timeOfDay || 'day';
@@ -3344,10 +3879,9 @@
         // ==================== WEATHER FUNCTIONS ====================
 
         function getRandomWeather() {
-            const rand = Math.random();
-            if (rand < 0.5) return 'sunny';
-            if (rand < 0.8) return 'rainy';
-            return 'snowy';
+            // Use seasonal weather bias if season is set
+            const season = gameState.season || getCurrentSeason();
+            return getSeasonalWeather(season);
         }
 
         function checkWeatherChange() {
@@ -3490,8 +4024,15 @@
         function switchRoom(roomId) {
             if (!ROOMS[roomId] || roomId === gameState.currentRoom) return;
 
+            const previousRoom = gameState.currentRoom;
             gameState.currentRoom = roomId;
             saveGame();
+
+            // Re-render when switching to/from garden (garden section needs DOM update)
+            if (roomId === 'garden' || previousRoom === 'garden') {
+                renderPetPhase();
+                return;
+            }
 
             const room = ROOMS[roomId];
             const petArea = document.querySelector('.pet-area');
@@ -4127,6 +4668,13 @@
             const weatherClass = isOutdoor && weather !== 'sunny' ? `weather-${weather}` : '';
             const weatherBadgeHTML = `<div class="weather-badge ${weather}" aria-label="Weather: ${weatherData.name}">${weatherData.icon} ${weatherData.name}</div>`;
 
+            // Season info
+            const season = gameState.season || getCurrentSeason();
+            gameState.season = season;
+            const seasonData = SEASONS[season];
+            const seasonBadgeHTML = `<div class="season-badge ${season}" aria-label="Season: ${seasonData.name}">${seasonData.icon} ${seasonData.name}</div>`;
+            const seasonalDecorHTML = isOutdoor && seasonData ? `<div class="seasonal-decor" aria-hidden="true">${getSeasonalDecor(season, timeOfDay)}</div>` : '';
+
             // Weather mood note
             const weatherMoodNote = getWeatherMoodMessage(pet, weather);
 
@@ -4146,6 +4694,8 @@
                     ${celestialHTML}
                     ${weatherHTML}
                     ${weatherBadgeHTML}
+                    ${seasonBadgeHTML}
+                    ${seasonalDecorHTML}
                     <div class="room-label">${room.icon} ${room.name}</div>
                     <div class="time-indicator" aria-label="Time: ${timeOfDay}">${timeIcon}</div>
                     <div class="sparkles" id="sparkles"></div>
@@ -4260,7 +4810,18 @@
                             </button>
                         </div>
                     </div>
+                    <div class="action-group">
+                        <div class="action-group-label">${seasonData.icon} Seasonal</div>
+                        <div class="action-group-buttons" role="group" aria-label="Seasonal activity buttons">
+                            <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" aria-label="${seasonData.activityName} - seasonal activity">
+                                <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
+                                <span>${seasonData.activityName}</span>
+                            </button>
+                        </div>
+                    </div>
                 </section>
+
+                ${currentRoom === 'garden' ? '<section class="garden-section" id="garden-section" aria-label="Garden"></section>' : ''}
 
                 <button class="new-pet-btn" id="new-pet-btn" aria-label="Start over with a new egg">
                     🥚 New Pet
@@ -4278,7 +4839,16 @@
             document.getElementById('treat-btn').addEventListener('click', () => careAction('treat'));
             document.getElementById('pet-btn').addEventListener('click', () => careAction('cuddle'));
             document.getElementById('minigames-btn').addEventListener('click', openMiniGamesMenu);
+            document.getElementById('seasonal-btn').addEventListener('click', () => {
+                if (actionCooldown) return;
+                performSeasonalActivity();
+            });
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
+
+            // Render garden UI if in garden room
+            if (currentRoom === 'garden') {
+                renderGardenUI();
+            }
 
             // Room navigation event listeners
             document.querySelectorAll('.room-btn').forEach(btn => {
@@ -4299,9 +4869,10 @@
                 }
             });
 
-            // Start decay timer and weather timer
+            // Start decay timer, weather timer, and garden grow timer
             startDecayTimer();
             startWeatherTimer();
+            startGardenGrowTimer();
         }
 
         // ==================== TOAST NOTIFICATIONS ====================
@@ -6755,6 +7326,381 @@
             coloringState = null;
         }
 
+        // ==================== GARDEN FUNCTIONS ====================
+
+        function startGardenGrowTimer() {
+            if (gardenGrowInterval) clearInterval(gardenGrowInterval);
+            gardenGrowInterval = setInterval(() => {
+                if (gameState.phase === 'pet' && !document.hidden) {
+                    tickGardenGrowth();
+                }
+            }, 60000); // Grow tick every 60 seconds
+        }
+
+        function stopGardenGrowTimer() {
+            if (gardenGrowInterval) {
+                clearInterval(gardenGrowInterval);
+                gardenGrowInterval = null;
+            }
+        }
+
+        function tickGardenGrowth() {
+            const garden = gameState.garden;
+            if (!garden || !garden.plots || garden.plots.length === 0) return;
+
+            const season = gameState.season || getCurrentSeason();
+            const growthMult = SEASONS[season] ? SEASONS[season].gardenGrowthMultiplier : 1;
+            let anyGrew = false;
+
+            garden.plots.forEach(plot => {
+                if (plot && plot.cropId && plot.stage < 3) {
+                    const crop = GARDEN_CROPS[plot.cropId];
+                    if (!crop) return;
+                    const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growthMult));
+                    // Watered plants grow faster
+                    const waterBonus = plot.watered ? 2 : 1;
+                    plot.growTicks += waterBonus;
+                    plot.watered = false; // Water dries up each tick
+                    const newStage = Math.min(3, Math.floor(plot.growTicks / effectiveGrowTime));
+                    if (newStage > plot.stage) {
+                        plot.stage = newStage;
+                        anyGrew = true;
+                        if (newStage === 3) {
+                            showToast(`🌱 Your ${crop.name} is ready to harvest!`, '#66BB6A');
+                        }
+                    }
+                }
+            });
+
+            garden.lastGrowTick = Date.now();
+            if (anyGrew && gameState.currentRoom === 'garden') {
+                renderGardenUI();
+            }
+            saveGame();
+        }
+
+        function plantSeed(plotIndex, cropId) {
+            const garden = gameState.garden;
+            if (plotIndex >= MAX_GARDEN_PLOTS) return;
+
+            // Extend plots array if needed
+            while (garden.plots.length <= plotIndex) {
+                garden.plots.push(null);
+            }
+
+            if (garden.plots[plotIndex] !== null) return; // Plot occupied
+
+            garden.plots[plotIndex] = {
+                cropId: cropId,
+                stage: 0,
+                growTicks: 0,
+                watered: false
+            };
+
+            const crop = GARDEN_CROPS[cropId];
+            showToast(`🌱 Planted ${crop.name}!`, '#66BB6A');
+            announce(`Planted a ${crop.name} seed!`);
+
+            if (gameState.pet) {
+                gameState.pet.happiness = clamp(gameState.pet.happiness + 5, 0, 100);
+                updateNeedDisplays();
+                updatePetMood();
+            }
+
+            saveGame();
+            if (gameState.currentRoom === 'garden') {
+                renderGardenUI();
+            }
+        }
+
+        function waterPlot(plotIndex) {
+            const garden = gameState.garden;
+            if (!garden.plots[plotIndex]) return;
+
+            const plot = garden.plots[plotIndex];
+            if (plot.stage >= 3) return; // Already ready
+            if (plot.watered) {
+                showToast('💧 Already watered!', '#64B5F6');
+                return;
+            }
+
+            plot.watered = true;
+            const crop = GARDEN_CROPS[plot.cropId];
+            showToast(`💧 Watered the ${crop.name}!`, '#64B5F6');
+            announce(`Watered the ${crop.name}!`);
+
+            saveGame();
+            if (gameState.currentRoom === 'garden') {
+                renderGardenUI();
+            }
+        }
+
+        function harvestPlot(plotIndex) {
+            const garden = gameState.garden;
+            if (!garden.plots[plotIndex]) return;
+
+            const plot = garden.plots[plotIndex];
+            if (plot.stage < 3) return; // Not ready
+
+            const crop = GARDEN_CROPS[plot.cropId];
+            if (!garden.inventory[plot.cropId]) {
+                garden.inventory[plot.cropId] = 0;
+            }
+            garden.inventory[plot.cropId]++;
+
+            showToast(`${crop.seedEmoji} Harvested a ${crop.name}!`, '#FF8C42');
+            announce(`Harvested a ${crop.name}! It's now in your inventory.`);
+
+            if (gameState.pet) {
+                gameState.pet.happiness = clamp(gameState.pet.happiness + 8, 0, 100);
+                updateNeedDisplays();
+                updatePetMood();
+            }
+
+            // Clear the plot
+            garden.plots[plotIndex] = null;
+
+            saveGame();
+            if (gameState.currentRoom === 'garden') {
+                renderGardenUI();
+            }
+        }
+
+        function feedFromGarden(cropId) {
+            const garden = gameState.garden;
+            if (!garden.inventory[cropId] || garden.inventory[cropId] <= 0) return;
+            if (!gameState.pet) return;
+
+            const crop = GARDEN_CROPS[cropId];
+            garden.inventory[cropId]--;
+            if (garden.inventory[cropId] <= 0) {
+                delete garden.inventory[cropId];
+            }
+
+            gameState.pet.hunger = clamp(gameState.pet.hunger + crop.hungerValue, 0, 100);
+            gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
+
+            const petData = PET_TYPES[gameState.pet.type];
+            const sparkles = document.getElementById('sparkles');
+            const petContainer = document.getElementById('pet-container');
+
+            if (petContainer) petContainer.classList.add('bounce');
+            if (sparkles) createFoodParticles(sparkles);
+
+            showToast(`${crop.seedEmoji} Fed ${petData.name} a garden-fresh ${crop.name}!`, '#FF8C42');
+            announce(`Fed your pet a fresh ${crop.name} from the garden! Hunger +${crop.hungerValue}, Happiness +${crop.happinessValue}`);
+
+            if (petContainer) {
+                setTimeout(() => petContainer.classList.remove('bounce'), 800);
+            }
+
+            updateNeedDisplays();
+            updatePetMood();
+            saveGame();
+
+            if (gameState.currentRoom === 'garden') {
+                renderGardenUI();
+            }
+        }
+
+        function openSeedPicker(plotIndex) {
+            const existing = document.querySelector('.seed-picker-overlay');
+            if (existing) existing.remove();
+
+            const season = gameState.season || getCurrentSeason();
+            const overlay = document.createElement('div');
+            overlay.className = 'seed-picker-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Choose a seed to plant');
+
+            let seedsHTML = '';
+            for (const [id, crop] of Object.entries(GARDEN_CROPS)) {
+                const isBonus = crop.seasonBonus.includes(season);
+                const bonusLabel = isBonus ? ' (in season!)' : '';
+                const growMult = SEASONS[season] ? SEASONS[season].gardenGrowthMultiplier : 1;
+                const effectiveTime = Math.max(1, Math.round(crop.growTime / growMult));
+                seedsHTML += `
+                    <button class="seed-option" data-crop="${id}" aria-label="Plant ${crop.name}${bonusLabel}">
+                        <span class="seed-option-emoji">${crop.seedEmoji}</span>
+                        <span class="seed-option-name">${crop.name}${isBonus ? ' ⭐' : ''}</span>
+                        <span class="seed-option-time">${effectiveTime} min</span>
+                    </button>
+                `;
+            }
+
+            overlay.innerHTML = `
+                <div class="seed-picker">
+                    <h3 class="seed-picker-title">🌱 Pick a Seed to Plant!</h3>
+                    <div class="seed-list">
+                        ${seedsHTML}
+                    </div>
+                    <button class="seed-picker-close" id="seed-picker-close">Cancel</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            overlay.querySelectorAll('.seed-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cropId = btn.getAttribute('data-crop');
+                    overlay.remove();
+                    plantSeed(plotIndex, cropId);
+                });
+            });
+
+            overlay.querySelector('#seed-picker-close').addEventListener('click', () => overlay.remove());
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.remove();
+            });
+
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    overlay.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            const firstSeed = overlay.querySelector('.seed-option');
+            if (firstSeed) firstSeed.focus();
+        }
+
+        function renderGardenUI() {
+            const gardenSection = document.getElementById('garden-section');
+            if (!gardenSection) return;
+
+            const garden = gameState.garden;
+            const season = gameState.season || getCurrentSeason();
+            const seasonData = SEASONS[season];
+
+            // Render plots
+            let plotsHTML = '';
+            for (let i = 0; i < MAX_GARDEN_PLOTS; i++) {
+                const plot = garden.plots[i] || null;
+                if (!plot) {
+                    plotsHTML += `
+                        <div class="garden-plot empty" data-plot="${i}" role="button" tabindex="0" aria-label="Empty garden plot. Click to plant a seed.">
+                            <span class="garden-plot-emoji">➕</span>
+                            <span class="garden-plot-label">Plant</span>
+                        </div>
+                    `;
+                } else {
+                    const crop = GARDEN_CROPS[plot.cropId];
+                    const stageEmoji = crop.stages[plot.stage];
+                    const isReady = plot.stage >= 3;
+                    const growMult = seasonData ? seasonData.gardenGrowthMultiplier : 1;
+                    const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growMult));
+                    const progress = isReady ? 100 : Math.min(100, Math.round((plot.growTicks / (effectiveGrowTime * 3)) * 100));
+                    const statusLabel = isReady ? 'Ready to harvest!' : `Growing... ${progress}%${plot.watered ? ' 💧' : ''}`;
+                    const plotClass = isReady ? 'ready' : 'growing';
+
+                    plotsHTML += `
+                        <div class="garden-plot ${plotClass}" data-plot="${i}" role="button" tabindex="0"
+                             aria-label="${crop.name} - ${statusLabel}">
+                            <span class="garden-plot-emoji">${stageEmoji}</span>
+                            <span class="garden-plot-label">${crop.name}</span>
+                            ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
+                            <span class="garden-plot-label">${isReady ? '🎉 Harvest!' : (plot.watered ? '💧' : '')}</span>
+                        </div>
+                    `;
+                }
+            }
+
+            // Render inventory
+            let inventoryHTML = '';
+            const invKeys = Object.keys(garden.inventory).filter(k => garden.inventory[k] > 0);
+            if (invKeys.length > 0) {
+                let itemsHTML = '';
+                invKeys.forEach(cropId => {
+                    const crop = GARDEN_CROPS[cropId];
+                    if (crop) {
+                        itemsHTML += `<button class="garden-inventory-item" data-feed-crop="${cropId}" aria-label="Feed ${crop.name} to pet (${garden.inventory[cropId]} left)">${crop.seedEmoji} ${crop.name} x${garden.inventory[cropId]}</button>`;
+                    }
+                });
+                inventoryHTML = `
+                    <div class="garden-inventory">
+                        <strong>🧺 Harvested Food:</strong> <span style="font-size:0.65rem;color:#888;">(tap to feed pet)</span>
+                        <div class="garden-inventory-items">${itemsHTML}</div>
+                    </div>
+                `;
+            }
+
+            gardenSection.innerHTML = `
+                <div class="garden-title">🌱 ${seasonData ? seasonData.icon : ''} My Garden</div>
+                <div class="garden-plots">${plotsHTML}</div>
+                ${inventoryHTML}
+            `;
+
+            // Add event listeners to plots
+            gardenSection.querySelectorAll('.garden-plot').forEach(plotEl => {
+                const plotIdx = parseInt(plotEl.getAttribute('data-plot'));
+                plotEl.addEventListener('click', () => {
+                    const plot = garden.plots[plotIdx] || null;
+                    if (!plot) {
+                        openSeedPicker(plotIdx);
+                    } else if (plot.stage >= 3) {
+                        harvestPlot(plotIdx);
+                    } else if (!plot.watered) {
+                        waterPlot(plotIdx);
+                    } else {
+                        const crop = GARDEN_CROPS[plot.cropId];
+                        showToast(`${crop.seedEmoji} ${crop.name} is growing... be patient!`, '#81C784');
+                    }
+                });
+                plotEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        plotEl.click();
+                    }
+                });
+            });
+
+            // Add event listeners to inventory items (feed pet)
+            gardenSection.querySelectorAll('[data-feed-crop]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cropId = btn.getAttribute('data-feed-crop');
+                    feedFromGarden(cropId);
+                });
+            });
+        }
+
+        // ==================== SEASONAL ACTIVITY ====================
+
+        function performSeasonalActivity() {
+            if (!gameState.pet) return;
+
+            const season = gameState.season || getCurrentSeason();
+            const seasonData = SEASONS[season];
+            if (!seasonData) return;
+
+            const pet = gameState.pet;
+            const petData = PET_TYPES[pet.type];
+            const sparkles = document.getElementById('sparkles');
+            const petContainer = document.getElementById('pet-container');
+
+            // Apply effects
+            for (const [stat, value] of Object.entries(seasonData.activityEffects)) {
+                if (pet[stat] !== undefined) {
+                    pet[stat] = clamp(pet[stat] + value, 0, 100);
+                }
+            }
+
+            const message = `${petData.emoji} ${pet.name || petData.name} ${randomFromArray(seasonData.activityMessages)}`;
+            showToast(message, '#FFB74D');
+            announce(message);
+
+            if (petContainer) {
+                petContainer.classList.add('wiggle');
+                setTimeout(() => petContainer.classList.remove('wiggle'), 800);
+            }
+            if (sparkles) createHearts(sparkles);
+
+            updateNeedDisplays();
+            updatePetMood();
+            saveGame();
+        }
+
         // ==================== DECAY TIMER ====================
 
         let decayInterval = null;
@@ -6820,6 +7766,18 @@
                         if (newTimeOfDay === 'sunset') {
                             announce(`The sun is setting. ${pet.name || PET_TYPES[pet.type].name} is starting to wind down.`);
                         }
+                    }
+
+                    // Check for season changes
+                    const newSeason = getCurrentSeason();
+                    if (gameState.season !== newSeason) {
+                        gameState.season = newSeason;
+                        const seasonData = SEASONS[newSeason];
+                        showToast(`${seasonData.icon} ${seasonData.name} has arrived!`, '#FFB74D');
+                        announce(`The season has changed to ${seasonData.name}!`);
+                        // Re-render to update seasonal decorations
+                        renderPetPhase();
+                        return; // renderPetPhase will handle the rest
                     }
 
                     updateNeedDisplays();
@@ -7110,8 +8068,9 @@
                         decayInterval = null;
                     }
 
-                    // Stop weather timer
+                    // Stop weather timer and garden timer
                     stopWeatherTimer();
+                    stopGardenGrowTimer();
 
                     gameState = {
                         phase: 'egg',
@@ -7121,7 +8080,13 @@
                         timeOfDay: getTimeOfDay(),
                         currentRoom: 'bedroom',
                         weather: getRandomWeather(),
-                        lastWeatherChange: Date.now()
+                        lastWeatherChange: Date.now(),
+                        season: getCurrentSeason(),
+                        garden: {
+                            plots: [],
+                            inventory: {},
+                            lastGrowTick: Date.now()
+                        }
                     };
                     saveGame();
                     announce('Starting fresh with a new egg!', true);
@@ -7141,6 +8106,7 @@
             // Stop any existing timers
             stopDecayTimer();
             stopWeatherTimer();
+            stopGardenGrowTimer();
 
             const saved = loadGame();
             if (saved) {
@@ -7155,15 +8121,24 @@
                 gameState.lastWeatherChange = Date.now();
             }
 
+            // Ensure season is current
+            gameState.season = getCurrentSeason();
+
+            // Ensure garden state exists
+            if (!gameState.garden || typeof gameState.garden !== 'object') {
+                gameState.garden = { plots: [], inventory: {}, lastGrowTick: Date.now() };
+            }
+
             if (gameState.phase === 'pet' && gameState.pet) {
                 renderPetPhase();
                 const petData = PET_TYPES[gameState.pet.type];
                 const mood = getMood(gameState.pet);
                 const weatherData = WEATHER_TYPES[gameState.weather];
+                const seasonData = SEASONS[gameState.season];
                 const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
                                      mood === 'sad' ? 'missed you and needs some care!' :
                                      'is glad you\'re back!';
-                announce(`Welcome back! Your ${petData.name} ${moodGreeting} The weather is ${weatherData.name.toLowerCase()}.`);
+                announce(`Welcome back! Your ${petData.name} ${moodGreeting} The weather is ${weatherData.name.toLowerCase()}. It's ${seasonData.name}!`);
             } else {
                 // Reset to egg phase if not in pet phase
                 gameState.phase = 'egg';
@@ -7181,6 +8156,7 @@
             saveGame();
             stopDecayTimer();
             stopWeatherTimer();
+            stopGardenGrowTimer();
         });
 
         // Also handle page hide for mobile browsers
