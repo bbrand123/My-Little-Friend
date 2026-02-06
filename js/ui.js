@@ -397,15 +397,57 @@
                         ${(() => {
                             const stage = pet.growthStage || 'adult';
                             const ageInHours = getPetAge(pet);
-                            const progress = getGrowthProgress(pet.careActions || 0, ageInHours, stage);
                             const nextStage = getNextGrowthStage(stage);
                             if (!nextStage) return '';
+
+                            const currentActionsThreshold = GROWTH_STAGES[stage].actionsNeeded;
+                            const nextActionsThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
+                            const currentHoursThreshold = GROWTH_STAGES[stage].hoursNeeded;
+                            const nextHoursThreshold = GROWTH_STAGES[nextStage].hoursNeeded;
+
+                            const actionProgress = Math.min(100, Math.max(0, ((pet.careActions - currentActionsThreshold) / (nextActionsThreshold - currentActionsThreshold)) * 100));
+                            const timeProgress = Math.min(100, Math.max(0, ((ageInHours - currentHoursThreshold) / (nextHoursThreshold - currentHoursThreshold)) * 100));
+                            const overallProgress = Math.min(actionProgress, timeProgress);
+
+                            const actionsNeeded = nextActionsThreshold - pet.careActions;
+                            const hoursNeeded = Math.max(0, nextHoursThreshold - ageInHours);
+
                             return `
                                 <div class="growth-progress-wrap" aria-label="Growth progress to ${GROWTH_STAGES[nextStage].label}">
-                                    <div class="growth-progress-bar">
-                                        <div class="growth-progress-fill" id="growth-fill" style="width: ${progress}%;"></div>
+                                    <div class="growth-progress-header">
+                                        <span class="growth-progress-title">Growing to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+                                        <span class="growth-progress-percent">${Math.round(overallProgress)}%</span>
                                     </div>
-                                    <span class="growth-progress-label">${GROWTH_STAGES[stage].emoji} ${Math.round(progress)}% to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+
+                                    <div class="dual-progress-container">
+                                        <div class="progress-requirement ${actionProgress >= 100 ? 'complete' : ''}">
+                                            <div class="requirement-label">
+                                                <span class="requirement-icon">💪</span>
+                                                <span class="requirement-text">Care Actions</span>
+                                                <span class="requirement-status">${Math.round(actionProgress)}%</span>
+                                            </div>
+                                            <div class="requirement-bar">
+                                                <div class="requirement-fill actions" style="width: ${actionProgress}%;"></div>
+                                            </div>
+                                            <div class="requirement-detail">${actionsNeeded > 0 ? `${actionsNeeded} more needed` : '✓ Ready!'}</div>
+                                        </div>
+
+                                        <div class="progress-requirement ${timeProgress >= 100 ? 'complete' : ''}">
+                                            <div class="requirement-label">
+                                                <span class="requirement-icon">⏰</span>
+                                                <span class="requirement-text">Time</span>
+                                                <span class="requirement-status">${Math.round(timeProgress)}%</span>
+                                            </div>
+                                            <div class="requirement-bar">
+                                                <div class="requirement-fill time" style="width: ${timeProgress}%;"></div>
+                                            </div>
+                                            <div class="requirement-detail">${hoursNeeded > 0 ? `${Math.round(hoursNeeded)}h left` : '✓ Ready!'}</div>
+                                        </div>
+                                    </div>
+
+                                    ${actionProgress >= 100 && timeProgress < 100 ? `<p class="growth-tip">💡 Your pet needs more time to grow. Keep caring!</p>` : ''}
+                                    ${timeProgress >= 100 && actionProgress < 100 ? `<p class="growth-tip">💡 Your pet needs more care. Interact more!</p>` : ''}
+                                    ${actionProgress >= 100 && timeProgress >= 100 ? `<p class="growth-tip ready">🎉 Ready to grow! Will evolve soon!</p>` : ''}
                                 </div>
                             `;
                         })()}
@@ -469,17 +511,31 @@
                         ? `${Math.floor(ageInHours)} hours old`
                         : `${Math.floor(ageInHours / 24)} days old`;
 
+                    // Get care quality tips
+                    const careQualityTips = {
+                        poor: 'Keep stats above 35% and avoid letting any stat drop below 20% to improve care quality.',
+                        average: 'Keep stats above 60% and minimize neglect (stats below 20%) to reach Good care.',
+                        good: 'Maintain stats above 80% with minimal neglect to reach Excellent care!',
+                        excellent: 'Amazing care! Your pet can evolve once they reach adult stage. ✨'
+                    };
+
+                    const neglectCount = pet.neglectCount || 0;
+                    const avgStats = pet.careHistory && pet.careHistory.length > 0
+                        ? Math.round(pet.careHistory.slice(-20).reduce((sum, e) => sum + e.average, 0) / Math.min(20, pet.careHistory.length))
+                        : Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
+
                     return `
                         <div class="care-quality-wrap" aria-label="Care quality and age">
                             <div class="care-quality-row">
-                                <div class="care-quality-badge ${careQuality}">
+                                <div class="care-quality-badge ${careQuality}" title="${qualityData.description}: ${careQualityTips[careQuality]}">
                                     <span class="care-quality-emoji">${qualityData.emoji}</span>
                                     <div class="care-quality-text">
                                         <span class="care-quality-label">Care Quality</span>
                                         <span class="care-quality-value">${qualityData.label}</span>
+                                        <span class="care-quality-hint">${qualityData.description}</span>
                                     </div>
                                 </div>
-                                <div class="pet-age-badge">
+                                <div class="pet-age-badge" title="Time since hatching. Pets grow based on both age and care!">
                                     <span class="pet-age-emoji">🎂</span>
                                     <div class="pet-age-text">
                                         <span class="pet-age-label">Age</span>
@@ -487,13 +543,31 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="care-stats-detail">
+                                <div class="care-stat-item">
+                                    <span class="care-stat-label">Average Stats:</span>
+                                    <span class="care-stat-value ${avgStats >= 80 ? 'excellent' : avgStats >= 60 ? 'good' : avgStats >= 35 ? 'average' : 'poor'}">${avgStats}%</span>
+                                </div>
+                                <div class="care-stat-item">
+                                    <span class="care-stat-label">Neglect Count:</span>
+                                    <span class="care-stat-value ${neglectCount <= 2 ? 'excellent' : neglectCount <= 5 ? 'good' : neglectCount <= 10 ? 'average' : 'poor'}">${neglectCount}</span>
+                                </div>
+                            </div>
+
+                            ${careQuality !== 'excellent' ? `
+                                <div class="care-quality-tip">
+                                    💡 ${careQualityTips[careQuality]}
+                                </div>
+                            ` : ''}
+
                             ${pet.evolutionStage === 'evolved' ? `
                                 <div class="evolution-badge-display">
                                     ✨ ${PET_EVOLUTIONS[pet.type]?.name || 'Evolved Form'} ✨
                                 </div>
                             ` : ''}
                             ${canEvolve(pet) ? `
-                                <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet">
+                                <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet to their special form!" title="Your excellent care has unlocked evolution!">
                                     ⭐ Evolve ${petDisplayName}! ⭐
                                 </button>
                             ` : ''}
@@ -1742,6 +1816,17 @@
             const unlockedCount = Object.keys(PET_TYPES).filter(t => !PET_TYPES[t].mythical || adultsRaised >= (PET_TYPES[t].unlockRequirement || 0)).length;
             const totalCount = Object.keys(PET_TYPES).length;
 
+            // New metrics
+            const ageInHours = pet ? getPetAge(pet) : 0;
+            const ageDisplay = ageInHours < 24
+                ? `${Math.floor(ageInHours)} hours`
+                : `${Math.floor(ageInHours / 24)} days`;
+            const careQuality = pet ? (pet.careQuality || 'average') : 'average';
+            const qualityData = CARE_QUALITY[careQuality];
+            const neglectCount = pet ? (pet.neglectCount || 0) : 0;
+            const evolutionStage = pet ? (pet.evolutionStage || 'base') : 'base';
+            const isEvolved = evolutionStage === 'evolved';
+
             const roomBonusesHTML = Object.keys(ROOMS).map(key => {
                 const room = ROOMS[key];
                 return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${room.bonus.label}</div>`;
@@ -1755,7 +1840,9 @@
             overlay.innerHTML = `
                 <div class="stats-modal">
                     <h2 class="stats-title">Stats & Progress</h2>
-                    <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}` : 'No pet yet'}</p>
+                    <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}${isEvolved ? ' ✨' : ''}` : 'No pet yet'}</p>
+
+                    <div class="stats-section-title">Pet Overview</div>
                     <div class="stats-grid">
                         <div class="stats-card">
                             <div class="stats-card-icon">${stageData.emoji}</div>
@@ -1763,30 +1850,65 @@
                             <div class="stats-card-label">Growth Stage</div>
                         </div>
                         <div class="stats-card">
+                            <div class="stats-card-icon">🎂</div>
+                            <div class="stats-card-value">${ageDisplay}</div>
+                            <div class="stats-card-label">Age</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="stats-card-icon">${qualityData.emoji}</div>
+                            <div class="stats-card-value">${qualityData.label}</div>
+                            <div class="stats-card-label">Care Quality</div>
+                        </div>
+                        <div class="stats-card">
                             <div class="stats-card-icon">💝</div>
                             <div class="stats-card-value">${careActions}</div>
                             <div class="stats-card-label">Care Actions</div>
                         </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">⭐</div>
-                            <div class="stats-card-value">${adultsRaised}</div>
-                            <div class="stats-card-label">Adults Raised</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">📖</div>
-                            <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
-                            <div class="stats-card-label">Species Found</div>
-                        </div>
                     </div>
+
                     ${pet ? `
-                        <div class="stats-section-title">Current Pet Wellness</div>
+                        <div class="stats-section-title">Current Wellness</div>
                         <div class="stats-grid">
                             <div class="stats-card"><div class="stats-card-icon">🍎</div><div class="stats-card-value">${pet.hunger}%</div><div class="stats-card-label">Food</div></div>
                             <div class="stats-card"><div class="stats-card-icon">🛁</div><div class="stats-card-value">${pet.cleanliness}%</div><div class="stats-card-label">Bath</div></div>
                             <div class="stats-card"><div class="stats-card-icon">💖</div><div class="stats-card-value">${pet.happiness}%</div><div class="stats-card-label">Happy</div></div>
                             <div class="stats-card"><div class="stats-card-icon">😴</div><div class="stats-card-value">${pet.energy}%</div><div class="stats-card-label">Energy</div></div>
                         </div>
+
+                        <div class="stats-section-title">Care History</div>
+                        <div class="stats-grid">
+                            <div class="stats-card">
+                                <div class="stats-card-icon">📊</div>
+                                <div class="stats-card-value">${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}%</div>
+                                <div class="stats-card-label">Avg Stats</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">⚠️</div>
+                                <div class="stats-card-value">${neglectCount}</div>
+                                <div class="stats-card-label">Neglect Count</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">${isEvolved ? '✨' : '⭐'}</div>
+                                <div class="stats-card-value">${isEvolved ? 'Evolved' : 'Base'}</div>
+                                <div class="stats-card-label">Form</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">🏆</div>
+                                <div class="stats-card-value">${adultsRaised}</div>
+                                <div class="stats-card-label">Adults Raised</div>
+                            </div>
+                        </div>
                     ` : ''}
+
+                    <div class="stats-section-title">Collection</div>
+                    <div class="stats-grid">
+                        <div class="stats-card">
+                            <div class="stats-card-icon">📖</div>
+                            <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
+                            <div class="stats-card-label">Species Found</div>
+                        </div>
+                    </div>
+
                     <div class="stats-section-title">Room Bonuses</div>
                     <div class="stats-room-bonuses">${roomBonusesHTML}</div>
                     <button class="stats-close-btn" id="stats-close">Close</button>

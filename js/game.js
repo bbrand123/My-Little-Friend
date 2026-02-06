@@ -388,10 +388,13 @@
         }
 
         function updateCareHistory(pet) {
-            if (!pet) return;
+            if (!pet) return null;
 
             // Initialize care history if missing
             if (!pet.careHistory) pet.careHistory = [];
+
+            // Track previous care quality for change detection
+            const previousQuality = pet.careQuality || 'average';
 
             // Track current stats
             const currentAverage = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
@@ -415,13 +418,32 @@
             const neglectCount = pet.neglectCount || 0;
 
             // Update care quality
-            pet.careQuality = getCareQuality(averageStats, neglectCount);
+            const newQuality = getCareQuality(averageStats, neglectCount);
+            pet.careQuality = newQuality;
 
             // Update care variant based on quality
-            const qualityData = CARE_QUALITY[pet.careQuality];
+            const qualityData = CARE_QUALITY[newQuality];
             if (qualityData) {
                 pet.careVariant = qualityData.variant;
             }
+
+            // Return quality change info for notifications
+            if (previousQuality !== newQuality) {
+                return {
+                    changed: true,
+                    from: previousQuality,
+                    to: newQuality,
+                    improved: getCareQualityLevel(newQuality) > getCareQualityLevel(previousQuality)
+                };
+            }
+
+            return { changed: false };
+        }
+
+        // Helper to get numeric level for care quality comparison
+        function getCareQualityLevel(quality) {
+            const levels = { poor: 0, average: 1, good: 2, excellent: 3 };
+            return levels[quality] || 0;
         }
 
         function checkGrowthMilestone(pet) {
@@ -1212,7 +1234,35 @@
                     }
 
                     // Update care quality tracking
-                    updateCareHistory(pet);
+                    const careQualityChange = updateCareHistory(pet);
+
+                    // Notify user of care quality changes
+                    if (careQualityChange && careQualityChange.changed) {
+                        const fromData = CARE_QUALITY[careQualityChange.from];
+                        const toData = CARE_QUALITY[careQualityChange.to];
+                        const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+
+                        if (careQualityChange.improved) {
+                            showToast(`${toData.emoji} Care quality improved to ${toData.label}!`, '#66BB6A');
+                            announce(`Great job! ${petName}'s care quality is now ${toData.label}!`);
+
+                            // Special message for reaching excellent
+                            if (careQualityChange.to === 'excellent' && pet.growthStage === 'adult') {
+                                setTimeout(() => {
+                                    showToast('⭐ Your pet can now evolve!', '#FFD700');
+                                }, 2000);
+                            }
+                        } else {
+                            showToast(`${toData.emoji} Care quality changed to ${toData.label}`, '#FFB74D');
+                            announce(`${petName}'s care quality is now ${toData.label}. ${toData.description}`);
+                        }
+
+                        // Re-render to show appearance changes
+                        if (typeof renderPetPhase === 'function') {
+                            renderPetPhase();
+                            return;
+                        }
+                    }
 
                     // Check for growth milestones
                     checkGrowthMilestone(pet);

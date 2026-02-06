@@ -14,7 +14,7 @@ const GROWTH_STAGES = {
         emoji: '🌱',
         scale: 0.8,
         actionsNeeded: 15,
-        hoursNeeded: 24,
+        hoursNeeded: 2, // 2 hours for testing/faster gameplay
         sizeLabel: 'Small'
     },
     adult: {
@@ -22,7 +22,7 @@ const GROWTH_STAGES = {
         emoji: '⭐',
         scale: 1.0,
         actionsNeeded: 40,
-        hoursNeeded: 72,
+        hoursNeeded: 6, // 6 hours total for more balanced gameplay
         sizeLabel: 'Full'
     }
 };
