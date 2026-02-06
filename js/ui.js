@@ -348,14 +348,14 @@
 
             content.innerHTML = `
                 <div class="top-action-bar">
-                    <button class="top-action-btn" id="codex-btn" aria-label="Open Pet Codex">
-                        <span class="top-action-btn-icon">📖</span> Codex
+                    <button class="top-action-btn" id="codex-btn" aria-label="Open Pet Codex" tabindex="0">
+                        <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
                     </button>
-                    <button class="top-action-btn" id="stats-btn" aria-label="Open Stats">
-                        <span class="top-action-btn-icon">📊</span> Stats
+                    <button class="top-action-btn" id="stats-btn" aria-label="Open Stats" tabindex="0">
+                        <span class="top-action-btn-icon" aria-hidden="true">📊</span> Stats
                     </button>
-                    <button class="top-action-btn" id="furniture-btn" aria-label="Customize Furniture">
-                        <span class="top-action-btn-icon">🛋️</span> Decor
+                    <button class="top-action-btn" id="furniture-btn" aria-label="Customize Furniture" tabindex="0">
+                        <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
                     </button>
                     ${roomBonusLabel ? `<span class="room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
                 </div>

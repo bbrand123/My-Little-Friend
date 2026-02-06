@@ -1294,10 +1294,20 @@
             min-width: 56px;
         }
 
-        .room-btn:hover, .room-btn:focus-visible {
+        .room-btn:hover,
+        .room-btn:focus,
+        .room-btn:focus-visible {
             transform: translateY(-2px);
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
             border-color: var(--primary);
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        /* Ensure VoiceOver focus is visible on iOS */
+        .room-btn:focus:not(:focus-visible) {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .room-btn.active {
@@ -1984,11 +1994,20 @@
         }
 
         .top-action-btn:hover,
-        .top-action-btn:focus {
+        .top-action-btn:focus,
+        .top-action-btn:focus-visible {
             border-color: var(--color-secondary);
             color: var(--color-secondary);
             transform: translateY(-1px);
             box-shadow: 0 3px 8px rgba(92, 214, 204, 0.15);
+            outline: 3px solid var(--color-secondary);
+            outline-offset: 2px;
+        }
+
+        /* Ensure VoiceOver focus is visible on iOS */
+        .top-action-btn:focus:not(:focus-visible) {
+            outline: 3px solid var(--color-secondary);
+            outline-offset: 2px;
         }
 
         .top-action-btn-icon {
