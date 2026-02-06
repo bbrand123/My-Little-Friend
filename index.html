@@ -3585,6 +3585,182 @@
             color: #666;
         }
 
+        /* ==================== CUSTOMIZATION MODAL STYLES ==================== */
+
+        .naming-modal {
+            max-width: 450px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .customization-section {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .customization-title {
+            font-size: 1rem;
+            color: var(--color-text);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .tts-button {
+            margin-top: 8px;
+            padding: 8px 16px;
+            border: 2px solid #4ECDC4;
+            border-radius: 10px;
+            background: white;
+            color: #4ECDC4;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .tts-button:hover {
+            background: #4ECDC4;
+            color: white;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: #4ECDC4;
+            border-width: 4px;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        .pattern-options {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .pattern-option {
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        .pattern-option:hover {
+            border-color: #4ECDC4;
+            transform: translateY(-2px);
+        }
+
+        .pattern-option.selected {
+            border-color: #4ECDC4;
+            background: rgba(78, 205, 196, 0.1);
+            font-weight: 600;
+        }
+
+        .accessory-options {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .accessory-option {
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+
+        .accessory-option:hover {
+            border-color: #FFA726;
+            transform: translateY(-2px);
+        }
+
+        .accessory-option.selected {
+            border-color: #FFA726;
+            background: rgba(255, 167, 38, 0.1);
+            font-weight: 600;
+        }
+
+        .furniture-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .furniture-option {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            min-width: 80px;
+        }
+
+        .furniture-emoji {
+            font-size: 2rem;
+        }
+
+        .furniture-name {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .furniture-option:hover {
+            border-color: #4ECDC4;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .furniture-option.selected {
+            border-color: #4ECDC4;
+            background: rgba(78, 205, 196, 0.1);
+            border-width: 3px;
+        }
+
+        .furniture-option.selected .furniture-name {
+            font-weight: 600;
+            color: #4ECDC4;
+        }
+
         /* ==================== SEASONS STYLES ==================== */
 
         .season-badge {
@@ -3965,6 +4141,87 @@
             const nextThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
             return Math.min(100, Math.round(((careActions - currentThreshold) / (nextThreshold - currentThreshold)) * 100));
         }
+
+        // ==================== EGG TYPES ====================
+
+        const EGG_TYPES = {
+            furry: {
+                name: 'Furry Egg',
+                description: 'A soft, fuzzy egg',
+                colors: { base: '#D4A574', accent: '#8B7355', shine: '#FFE4C4' },
+                pattern: 'spots',
+                petTypes: ['dog', 'cat', 'bunny', 'hamster', 'hedgehog', 'panda']
+            },
+            feathery: {
+                name: 'Feathery Egg',
+                description: 'A light egg with feather patterns',
+                colors: { base: '#87CEEB', accent: '#FFD700', shine: '#E0F6FF' },
+                pattern: 'stripes',
+                petTypes: ['bird', 'penguin']
+            },
+            scaly: {
+                name: 'Scaly Egg',
+                description: 'An egg with scales and shimmer',
+                colors: { base: '#32CD32', accent: '#228B22', shine: '#98FB98' },
+                pattern: 'scales',
+                petTypes: ['turtle', 'fish', 'frog']
+            },
+            magical: {
+                name: 'Magical Egg',
+                description: 'A glowing, mystical egg',
+                colors: { base: '#DDA0DD', accent: '#FFB6C1', shine: '#F0E68C' },
+                pattern: 'sparkles',
+                petTypes: ['unicorn', 'dragon']
+            }
+        };
+
+        // ==================== PET PATTERNS ====================
+
+        const PET_PATTERNS = {
+            solid: { name: 'Solid', description: 'Solid color' },
+            spotted: { name: 'Spotted', description: 'Cute spots' },
+            striped: { name: 'Striped', description: 'Bold stripes' },
+            patchy: { name: 'Patchy', description: 'Color patches' }
+        };
+
+        // ==================== PET ACCESSORIES ====================
+
+        const ACCESSORIES = {
+            // Hats
+            partyHat: { name: 'Party Hat', emoji: '🎉', type: 'hat', position: 'top' },
+            crown: { name: 'Crown', emoji: '👑', type: 'hat', position: 'top' },
+            topHat: { name: 'Top Hat', emoji: '🎩', type: 'hat', position: 'top' },
+            // Bows
+            bow: { name: 'Bow', emoji: '🎀', type: 'bow', position: 'head' },
+            ribbonBow: { name: 'Ribbon Bow', emoji: '🎗️', type: 'bow', position: 'head' },
+            // Collars
+            collar: { name: 'Collar', emoji: '⭕', type: 'collar', position: 'neck' },
+            bandana: { name: 'Bandana', emoji: '🔺', type: 'collar', position: 'neck' },
+            // Glasses
+            glasses: { name: 'Glasses', emoji: '👓', type: 'glasses', position: 'eyes' },
+            sunglasses: { name: 'Sunglasses', emoji: '🕶️', type: 'glasses', position: 'eyes' },
+            // Costumes
+            superhero: { name: 'Superhero Cape', emoji: '🦸', type: 'costume', position: 'body' },
+            wizard: { name: 'Wizard Hat', emoji: '🧙', type: 'costume', position: 'top' }
+        };
+
+        // ==================== FURNITURE ====================
+
+        const FURNITURE = {
+            beds: {
+                basic: { name: 'Basic Bed', emoji: '🛏️', description: 'A simple comfy bed' },
+                plushy: { name: 'Plushy Bed', emoji: '🎀', description: 'A super soft bed' },
+                royal: { name: 'Royal Bed', emoji: '👑', description: 'Fit for royalty' },
+                cozy: { name: 'Cozy Nest', emoji: '🪺', description: 'A warm cozy nest' }
+            },
+            decorations: {
+                none: { name: 'None', emoji: '', description: 'No decoration' },
+                plants: { name: 'Plants', emoji: '🪴', description: 'Fresh greenery' },
+                balloons: { name: 'Balloons', emoji: '🎈', description: 'Festive balloons' },
+                lights: { name: 'Fairy Lights', emoji: '✨', description: 'Magical lighting' },
+                toys: { name: 'Toy Box', emoji: '🧸', description: 'Fun toys' }
+            }
+        };
 
         // ==================== PET TYPES ====================
 
@@ -4418,6 +4675,8 @@
             phase: 'egg', // 'egg', 'hatching', 'pet'
             pet: null,
             eggTaps: 0,
+            eggType: null, // Type of egg (furry, feathery, scaly, magical)
+            pendingPetType: null, // Pre-determined pet type for the egg
             lastUpdate: Date.now(),
             timeOfDay: 'day', // 'day', 'sunset', 'night', 'sunrise'
             currentRoom: 'bedroom', // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park', 'garden'
@@ -4425,6 +4684,11 @@
             lastWeatherChange: Date.now(),
             season: getCurrentSeason(),
             adultsRaised: 0, // Track how many pets reached adult stage (for mythical unlocks)
+            furniture: {
+                bedroom: { bed: 'basic', decoration: 'none' },
+                kitchen: { decoration: 'none' },
+                bathroom: { decoration: 'none' }
+            },
             garden: {
                 plots: [], // { cropId, stage, growTicks, watered }
                 inventory: {}, // { cropId: count }
@@ -4669,9 +4933,30 @@
             return (gameState.adultsRaised || 0) >= (data.unlockRequirement || 0);
         }
 
+        function getEggTypeForPet(petType) {
+            for (const [eggType, eggData] of Object.entries(EGG_TYPES)) {
+                if (eggData.petTypes.includes(petType)) {
+                    return eggType;
+                }
+            }
+            return 'furry'; // Default fallback
+        }
+
+        function initializeNewEgg() {
+            const types = getUnlockedPetTypes();
+            const petType = randomFromArray(types);
+            const eggType = getEggTypeForPet(petType);
+
+            gameState.phase = 'egg';
+            gameState.eggTaps = 0;
+            gameState.eggType = eggType;
+            gameState.pendingPetType = petType;
+            gameState.pet = null;
+            saveGame();
+        }
+
         function createPet(specificType) {
-            const types = specificType ? [specificType] : getUnlockedPetTypes();
-            const type = randomFromArray(types);
+            const type = specificType || gameState.pendingPetType || randomFromArray(getUnlockedPetTypes());
             const petData = PET_TYPES[type];
             const color = randomFromArray(petData.colors);
 
@@ -4679,6 +4964,8 @@
                 type: type,
                 name: petData.name,
                 color: color,
+                pattern: 'solid', // Default pattern
+                accessories: [], // Array of accessory IDs
                 hunger: 70,
                 cleanliness: 70,
                 happiness: 70,
@@ -4980,7 +5267,10 @@
 
         // ==================== SVG GENERATION ====================
 
-        function generateEggSVG(crackLevel) {
+        function generateEggSVG(crackLevel, eggType) {
+            const eggData = EGG_TYPES[eggType] || EGG_TYPES['furry'];
+            const colors = eggData.colors;
+
             const cracks = [];
             if (crackLevel >= 1) {
                 cracks.push('<path class="egg-crack" style="opacity:1" d="M55 40 L60 55 L50 50 Z" fill="#8B7355" stroke="#5D4037" stroke-width="1"/>');
@@ -4992,13 +5282,55 @@
                 cracks.push('<path class="egg-crack" style="opacity:1" d="M45 70 L40 85 L55 80 Z" fill="#8B7355" stroke="#5D4037" stroke-width="1"/>');
             }
 
+            // Pattern-specific decorations
+            let patternHTML = '';
+            if (eggData.pattern === 'spots') {
+                patternHTML = `
+                    <circle cx="35" cy="50" r="8" fill="${colors.accent}" opacity="0.7"/>
+                    <circle cx="65" cy="45" r="6" fill="${colors.accent}" opacity="0.7"/>
+                    <circle cx="55" cy="80" r="7" fill="${colors.accent}" opacity="0.7"/>
+                    <circle cx="30" cy="75" r="5" fill="${colors.accent}" opacity="0.7"/>
+                    <circle cx="70" cy="70" r="6" fill="${colors.accent}" opacity="0.7"/>
+                `;
+            } else if (eggData.pattern === 'stripes') {
+                patternHTML = `
+                    <path d="M20 50 Q50 45 80 50" stroke="${colors.accent}" stroke-width="3" fill="none" opacity="0.6"/>
+                    <path d="M20 65 Q50 60 80 65" stroke="${colors.accent}" stroke-width="3" fill="none" opacity="0.6"/>
+                    <path d="M20 80 Q50 75 80 80" stroke="${colors.accent}" stroke-width="3" fill="none" opacity="0.6"/>
+                `;
+            } else if (eggData.pattern === 'scales') {
+                patternHTML = `
+                    <path d="M30 45 Q35 50 40 45 Q35 40 30 45" fill="${colors.accent}" opacity="0.5"/>
+                    <path d="M50 45 Q55 50 60 45 Q55 40 50 45" fill="${colors.accent}" opacity="0.5"/>
+                    <path d="M40 60 Q45 65 50 60 Q45 55 40 60" fill="${colors.accent}" opacity="0.5"/>
+                    <path d="M60 60 Q65 65 70 60 Q65 55 60 60" fill="${colors.accent}" opacity="0.5"/>
+                    <path d="M35 75 Q40 80 45 75 Q40 70 35 75" fill="${colors.accent}" opacity="0.5"/>
+                    <path d="M55 75 Q60 80 65 75 Q60 70 55 75" fill="${colors.accent}" opacity="0.5"/>
+                `;
+            } else if (eggData.pattern === 'sparkles') {
+                patternHTML = `
+                    <path d="M35 50 L37 52 L35 54 L33 52 Z" fill="${colors.shine}" opacity="0.8">
+                        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
+                    </path>
+                    <path d="M60 45 L62 47 L60 49 L58 47 Z" fill="${colors.shine}" opacity="0.8">
+                        <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite"/>
+                    </path>
+                    <path d="M45 70 L47 72 L45 74 L43 72 Z" fill="${colors.shine}" opacity="0.8">
+                        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
+                    </path>
+                    <path d="M65 75 L67 77 L65 79 L63 77 Z" fill="${colors.shine}" opacity="0.8">
+                        <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite"/>
+                    </path>
+                `;
+            }
+
             return `
-                <svg class="egg-svg" viewBox="0 0 100 130" role="img" aria-label="A colorful egg waiting to hatch. Tap to help it hatch!">
+                <svg class="egg-svg" viewBox="0 0 100 130" role="img" aria-label="${eggData.description}. Tap to help it hatch!">
                     <defs>
                         <linearGradient id="eggGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#FFE4B5"/>
-                            <stop offset="50%" style="stop-color:#FFDAB9"/>
-                            <stop offset="100%" style="stop-color:#FFE4B5"/>
+                            <stop offset="0%" style="stop-color:${colors.shine}"/>
+                            <stop offset="50%" style="stop-color:${colors.base}"/>
+                            <stop offset="100%" style="stop-color:${colors.shine}"/>
                         </linearGradient>
                         <linearGradient id="eggShine" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" style="stop-color:rgba(255,255,255,0.6)"/>
@@ -5006,19 +5338,106 @@
                         </linearGradient>
                     </defs>
                     <!-- Egg body -->
-                    <ellipse cx="50" cy="70" rx="40" ry="50" fill="url(#eggGradient)" stroke="#DEB887" stroke-width="3"/>
-                    <!-- Decorative spots -->
-                    <circle cx="35" cy="50" r="8" fill="#FFB6C1" opacity="0.7"/>
-                    <circle cx="65" cy="45" r="6" fill="#87CEEB" opacity="0.7"/>
-                    <circle cx="55" cy="80" r="7" fill="#98FB98" opacity="0.7"/>
-                    <circle cx="30" cy="75" r="5" fill="#DDA0DD" opacity="0.7"/>
-                    <circle cx="70" cy="70" r="6" fill="#FFD700" opacity="0.7"/>
+                    <ellipse cx="50" cy="70" rx="40" ry="50" fill="url(#eggGradient)" stroke="${colors.accent}" stroke-width="3"/>
+                    <!-- Pattern decorations -->
+                    ${patternHTML}
                     <!-- Shine -->
                     <ellipse cx="35" cy="45" rx="15" ry="20" fill="url(#eggShine)"/>
                     <!-- Cracks -->
                     ${cracks.join('')}
                 </svg>
             `;
+        }
+
+        function generatePatternOverlay(pattern, color) {
+            if (!pattern || pattern === 'solid') return '';
+
+            const darkerColor = color ? `${color}88` : '#00000033';
+
+            switch (pattern) {
+                case 'spotted':
+                    return `
+                        <circle cx="35" cy="45" r="6" fill="${darkerColor}" opacity="0.6"/>
+                        <circle cx="60" cy="50" r="5" fill="${darkerColor}" opacity="0.6"/>
+                        <circle cx="45" cy="70" r="7" fill="${darkerColor}" opacity="0.6"/>
+                        <circle cx="70" cy="65" r="4" fill="${darkerColor}" opacity="0.6"/>
+                    `;
+                case 'striped':
+                    return `
+                        <path d="M20 40 L80 40" stroke="${darkerColor}" stroke-width="4" opacity="0.5"/>
+                        <path d="M20 55 L80 55" stroke="${darkerColor}" stroke-width="4" opacity="0.5"/>
+                        <path d="M20 70 L80 70" stroke="${darkerColor}" stroke-width="4" opacity="0.5"/>
+                    `;
+                case 'patchy':
+                    return `
+                        <path d="M30 40 Q35 35 40 40 Q35 45 30 40" fill="${darkerColor}" opacity="0.5"/>
+                        <path d="M60 50 Q65 45 70 50 Q65 55 60 50" fill="${darkerColor}" opacity="0.5"/>
+                        <path d="M40 65 Q45 60 50 65 Q45 70 40 65" fill="${darkerColor}" opacity="0.5"/>
+                    `;
+                default:
+                    return '';
+            }
+        }
+
+        function generateAccessoryOverlay(accessories) {
+            if (!accessories || accessories.length === 0) return '';
+
+            let accessoryHTML = '';
+
+            accessories.forEach(accessoryId => {
+                const accessory = ACCESSORIES[accessoryId];
+                if (!accessory) return;
+
+                switch (accessoryId) {
+                    case 'partyHat':
+                        accessoryHTML += `
+                            <g transform="translate(50, 8)">
+                                <polygon points="-8,0 8,0 0,-20" fill="#FF6B9D" stroke="#FF1493" stroke-width="1"/>
+                                <circle cx="0" cy="-20" r="3" fill="#FFD700"/>
+                            </g>
+                        `;
+                        break;
+                    case 'crown':
+                        accessoryHTML += `
+                            <g transform="translate(50, 12)">
+                                <path d="M-12,0 L-8,-8 L-4,0 L0,-8 L4,0 L8,-8 L12,0 Z" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+                                <circle cx="-8" cy="-8" r="2" fill="#FF69B4"/>
+                                <circle cx="0" cy="-8" r="2" fill="#FF69B4"/>
+                                <circle cx="8" cy="-8" r="2" fill="#FF69B4"/>
+                            </g>
+                        `;
+                        break;
+                    case 'bow':
+                        accessoryHTML += `
+                            <g transform="translate(70, 20)">
+                                <path d="M-8,-4 Q-12,0 -8,4 Q-10,0 -8,-4" fill="#FF69B4"/>
+                                <path d="M8,-4 Q12,0 8,4 Q10,0 8,-4" fill="#FF69B4"/>
+                                <circle cx="0" cy="0" r="3" fill="#FF1493"/>
+                            </g>
+                        `;
+                        break;
+                    case 'glasses':
+                        accessoryHTML += `
+                            <g transform="translate(50, 42)">
+                                <circle cx="-12" cy="0" r="8" fill="none" stroke="#333" stroke-width="2" opacity="0.7"/>
+                                <circle cx="12" cy="0" r="8" fill="none" stroke="#333" stroke-width="2" opacity="0.7"/>
+                                <path d="M-4,0 L4,0" stroke="#333" stroke-width="2"/>
+                            </g>
+                        `;
+                        break;
+                    case 'sunglasses':
+                        accessoryHTML += `
+                            <g transform="translate(50, 42)">
+                                <ellipse cx="-12" cy="0" rx="10" ry="6" fill="#333" opacity="0.8"/>
+                                <ellipse cx="12" cy="0" rx="10" ry="6" fill="#333" opacity="0.8"/>
+                                <path d="M-2,0 L2,0" stroke="#333" stroke-width="2"/>
+                            </g>
+                        `;
+                        break;
+                }
+            });
+
+            return accessoryHTML;
         }
 
         function generatePetSVG(pet, mood) {
@@ -5075,6 +5494,20 @@
 
             // Apply growth stage class for size
             svg = svg.replace('class="pet-svg"', `class="pet-svg growth-${growthStage}"`);
+
+            // Add pattern overlay
+            const pattern = pet.pattern || 'solid';
+            if (pattern !== 'solid') {
+                const patternOverlay = generatePatternOverlay(pattern, color);
+                svg = svg.replace('</svg>', `${patternOverlay}</svg>`);
+            }
+
+            // Add accessories
+            const accessories = pet.accessories || [];
+            if (accessories.length > 0) {
+                const accessoryOverlay = generateAccessoryOverlay(accessories);
+                svg = svg.replace('</svg>', `${accessoryOverlay}</svg>`);
+            }
 
             return svg;
         }
@@ -5740,8 +6173,14 @@
         // ==================== RENDER FUNCTIONS ====================
 
         function renderEggPhase(maintainFocus = false) {
+            // Initialize egg if not set
+            if (!gameState.eggType || !gameState.pendingPetType) {
+                initializeNewEgg();
+            }
+
             const content = document.getElementById('game-content');
             const crackLevel = Math.min(gameState.eggTaps, 3);
+            const eggData = EGG_TYPES[gameState.eggType] || EGG_TYPES['furry'];
 
             // Generate progress dots
             let progressDots = '';
@@ -5753,11 +6192,11 @@
                 <div class="pet-area" role="region" aria-label="Egg hatching area">
                     <div class="sparkles" id="sparkles"></div>
                     <button class="egg-container" id="egg-button"
-                            aria-label="Tap the egg to help it hatch! Tapped ${gameState.eggTaps} of 5 times. ${5 - gameState.eggTaps} more taps needed."
+                            aria-label="Tap the ${eggData.name} to help it hatch! Tapped ${gameState.eggTaps} of 5 times. ${5 - gameState.eggTaps} more taps needed."
                             aria-describedby="tap-hint">
-                        ${generateEggSVG(crackLevel)}
+                        ${generateEggSVG(crackLevel, gameState.eggType)}
                     </button>
-                    <p class="hatch-message" aria-live="polite">A mystery pet is inside!</p>
+                    <p class="hatch-message" aria-live="polite">${eggData.description} - what could be inside?</p>
                     <div class="egg-progress" role="progressbar" aria-valuenow="${gameState.eggTaps}" aria-valuemin="0" aria-valuemax="5" aria-label="Hatching progress: ${gameState.eggTaps} of 5 taps">
                         ${progressDots}
                     </div>
@@ -5845,19 +6284,69 @@
         }
 
         function showNamingModal(petData) {
+            const pet = gameState.pet;
             const overlay = document.createElement('div');
             overlay.className = 'naming-overlay';
+
+            // Generate color options
+            let colorOptions = petData.colors.map((color, idx) => `
+                <button class="color-option ${idx === 0 ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="Color option ${idx + 1}">
+                    ${idx === 0 ? '✓' : ''}
+                </button>
+            `).join('');
+
+            // Generate pattern options
+            let patternOptions = Object.entries(PET_PATTERNS).map(([id, pattern], idx) => `
+                <button class="pattern-option ${idx === 0 ? 'selected' : ''}" data-pattern="${id}" aria-label="${pattern.name}">
+                    <span class="pattern-label">${pattern.name}</span>
+                </button>
+            `).join('');
+
+            // Generate accessory options (just a few basic ones to start)
+            let accessoryOptions = `
+                <button class="accessory-option" data-accessory="none">None</button>
+                <button class="accessory-option" data-accessory="bow">🎀 Bow</button>
+                <button class="accessory-option" data-accessory="glasses">👓 Glasses</button>
+                <button class="accessory-option" data-accessory="partyHat">🎉 Party Hat</button>
+            `;
+
             overlay.innerHTML = `
                 <div class="naming-modal">
                     <div class="naming-modal-icon">${petData.emoji}</div>
-                    <h2 class="naming-modal-title">You hatched a baby ${petData.name}!</h2>
+                    <h2 class="naming-modal-title">Customize Your ${petData.name}!</h2>
                     ${petData.mythical ? '<p class="naming-modal-mythical">Mythical Pet!</p>' : ''}
-                    <p class="naming-modal-subtitle">Give your new pet a name</p>
-                    <input type="text" class="naming-input" id="pet-name-input"
-                           placeholder="${petData.name}" maxlength="14" autocomplete="off"
-                           aria-label="Enter a name for your pet">
-                    <button class="naming-submit-btn" id="naming-submit">Choose Name</button>
-                    <button class="naming-skip-btn" id="naming-skip">Keep "${petData.name}"</button>
+
+                    <div class="customization-section">
+                        <h3 class="customization-title">Name</h3>
+                        <input type="text" class="naming-input" id="pet-name-input"
+                               placeholder="${petData.name}" maxlength="14" autocomplete="off"
+                               aria-label="Enter a name for your pet">
+                        <button class="tts-button" id="tts-button" aria-label="Hear name spoken">🔊 Hear Name</button>
+                    </div>
+
+                    <div class="customization-section">
+                        <h3 class="customization-title">Choose Color</h3>
+                        <div class="color-options" id="color-options">
+                            ${colorOptions}
+                        </div>
+                    </div>
+
+                    <div class="customization-section">
+                        <h3 class="customization-title">Choose Pattern</h3>
+                        <div class="pattern-options" id="pattern-options">
+                            ${patternOptions}
+                        </div>
+                    </div>
+
+                    <div class="customization-section">
+                        <h3 class="customization-title">Add Accessory (Optional)</h3>
+                        <div class="accessory-options" id="accessory-options">
+                            ${accessoryOptions}
+                        </div>
+                    </div>
+
+                    <button class="naming-submit-btn" id="naming-submit">Create My Pet!</button>
+                    <button class="naming-skip-btn" id="naming-skip">Use Defaults</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -5865,26 +6354,94 @@
             const input = document.getElementById('pet-name-input');
             const submitBtn = document.getElementById('naming-submit');
             const skipBtn = document.getElementById('naming-skip');
+            const ttsBtn = document.getElementById('tts-button');
+
+            // Selected customization values
+            let selectedColor = petData.colors[0];
+            let selectedPattern = 'solid';
+            let selectedAccessory = null;
+
+            // Color selection
+            document.querySelectorAll('.color-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.color-option').forEach(b => {
+                        b.classList.remove('selected');
+                        b.textContent = '';
+                    });
+                    btn.classList.add('selected');
+                    btn.textContent = '✓';
+                    selectedColor = btn.dataset.color;
+                });
+            });
+
+            // Pattern selection
+            document.querySelectorAll('.pattern-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.pattern-option').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedPattern = btn.dataset.pattern;
+                });
+            });
+
+            // Accessory selection
+            document.querySelectorAll('.accessory-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.accessory-option').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    const accessory = btn.dataset.accessory;
+                    selectedAccessory = accessory === 'none' ? null : accessory;
+                });
+            });
+
+            // Text-to-speech
+            ttsBtn.addEventListener('click', () => {
+                const name = input.value.trim() || petData.name;
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(name);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1;
+                    window.speechSynthesis.cancel(); // Cancel any ongoing speech
+                    window.speechSynthesis.speak(utterance);
+                    showToast(`🔊 "${name}"`, '#4ECDC4');
+                } else {
+                    showToast('Text-to-speech not supported', '#FFA726');
+                }
+            });
 
             setTimeout(() => input.focus(), 100);
 
-            function finishNaming(customName) {
+            function finishNaming(customName, useDefaults = false) {
                 const name = customName ? customName.trim() : '';
                 if (name.length > 0) {
                     gameState.pet.name = name;
+                    // Text-to-speech on submit
+                    if ('speechSynthesis' in window && !useDefaults) {
+                        const utterance = new SpeechSynthesisUtterance(name);
+                        utterance.rate = 0.9;
+                        utterance.pitch = 1.1;
+                        window.speechSynthesis.speak(utterance);
+                    }
                 } else {
                     gameState.pet.name = petData.name;
                 }
+
+                // Apply customizations
+                if (!useDefaults) {
+                    gameState.pet.color = selectedColor;
+                    gameState.pet.pattern = selectedPattern;
+                    gameState.pet.accessories = selectedAccessory ? [selectedAccessory] : [];
+                }
+
                 saveGame();
                 overlay.remove();
                 renderPetPhase();
                 showToast(`Welcome home, ${gameState.pet.name}!`, '#4ECDC4');
             }
 
-            submitBtn.addEventListener('click', () => finishNaming(input.value));
-            skipBtn.addEventListener('click', () => finishNaming(''));
+            submitBtn.addEventListener('click', () => finishNaming(input.value, false));
+            skipBtn.addEventListener('click', () => finishNaming('', true));
             input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') finishNaming(input.value);
+                if (e.key === 'Enter') finishNaming(input.value, false);
             });
         }
 
@@ -5968,6 +6525,9 @@
                     </button>
                     <button class="top-action-btn" id="stats-btn" aria-label="Open Stats">
                         <span class="top-action-btn-icon">📊</span> Stats
+                    </button>
+                    <button class="top-action-btn" id="furniture-btn" aria-label="Customize Furniture">
+                        <span class="top-action-btn-icon">🛋️</span> Decor
                     </button>
                     ${roomBonusLabel ? `<span class="room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
                 </div>
@@ -6179,6 +6739,7 @@
             document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
             document.getElementById('codex-btn').addEventListener('click', showPetCodex);
             document.getElementById('stats-btn').addEventListener('click', showStatsScreen);
+            document.getElementById('furniture-btn').addEventListener('click', showFurnitureModal);
 
             // Render garden UI if in garden room
             if (currentRoom === 'garden') {
@@ -9544,6 +10105,97 @@
             if (matchingState) endMatchingGame();
             if (simonState) endSimonSaysGame();
             if (coloringState) endColoringGame();
+        }
+
+        // ==================== FURNITURE CUSTOMIZATION ====================
+
+        function showFurnitureModal() {
+            const currentRoom = gameState.currentRoom || 'bedroom';
+            const furniture = gameState.furniture || {};
+
+            // Only show furniture options for certain rooms
+            if (!['bedroom', 'kitchen', 'bathroom'].includes(currentRoom)) {
+                showToast('Furniture customization is available in bedroom, kitchen, and bathroom!', '#FFA726');
+                return;
+            }
+
+            const roomFurniture = furniture[currentRoom] || {};
+
+            const overlay = document.createElement('div');
+            overlay.className = 'naming-overlay';
+
+            let bedOptions = '';
+            let decorOptions = '';
+
+            if (currentRoom === 'bedroom') {
+                bedOptions = `
+                    <div class="customization-section">
+                        <h3 class="customization-title">Choose Bed</h3>
+                        <div class="furniture-options">
+                            ${Object.entries(FURNITURE.beds).map(([id, bed]) => `
+                                <button class="furniture-option ${roomFurniture.bed === id ? 'selected' : ''}"
+                                        data-type="bed" data-id="${id}">
+                                    <span class="furniture-emoji">${bed.emoji}</span>
+                                    <span class="furniture-name">${bed.name}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            decorOptions = `
+                <div class="customization-section">
+                    <h3 class="customization-title">Room Decoration</h3>
+                    <div class="furniture-options">
+                        ${Object.entries(FURNITURE.decorations).map(([id, decor]) => `
+                            <button class="furniture-option ${roomFurniture.decoration === id ? 'selected' : ''}"
+                                    data-type="decoration" data-id="${id}">
+                                <span class="furniture-emoji">${decor.emoji || '❌'}</span>
+                                <span class="furniture-name">${decor.name}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            overlay.innerHTML = `
+                <div class="naming-modal">
+                    <h2 class="naming-modal-title">🛋️ Customize ${ROOMS[currentRoom].name}</h2>
+                    <p class="naming-modal-subtitle">Make this room your own!</p>
+                    ${bedOptions}
+                    ${decorOptions}
+                    <button class="naming-submit-btn" id="furniture-done">Done</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Handle furniture selection
+            document.querySelectorAll('.furniture-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const type = btn.dataset.type;
+                    const id = btn.dataset.id;
+
+                    // Update selection UI
+                    document.querySelectorAll(`[data-type="${type}"]`).forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+
+                    // Update game state
+                    if (!gameState.furniture[currentRoom]) {
+                        gameState.furniture[currentRoom] = {};
+                    }
+                    gameState.furniture[currentRoom][type] = id;
+                    saveGame();
+
+                    showToast(`${type === 'bed' ? 'Bed' : 'Decoration'} updated!`, '#4ECDC4');
+                });
+            });
+
+            document.getElementById('furniture-done').addEventListener('click', () => {
+                overlay.remove();
+                renderPetPhase(); // Re-render to show changes
+            });
         }
 
         // ==================== PET CODEX ====================
