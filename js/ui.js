@@ -405,11 +405,21 @@
                             const currentHoursThreshold = GROWTH_STAGES[stage].hoursNeeded;
                             const nextHoursThreshold = GROWTH_STAGES[nextStage].hoursNeeded;
 
-                            const actionProgress = Math.min(100, Math.max(0, ((pet.careActions - currentActionsThreshold) / (nextActionsThreshold - currentActionsThreshold)) * 100));
-                            const timeProgress = Math.min(100, Math.max(0, ((ageInHours - currentHoursThreshold) / (nextHoursThreshold - currentHoursThreshold)) * 100));
+                            // Calculate progress with safety checks for division by zero
+                            const actionDiff = nextActionsThreshold - currentActionsThreshold;
+                            const hourDiff = nextHoursThreshold - currentHoursThreshold;
+
+                            const actionProgress = actionDiff > 0
+                                ? Math.min(100, Math.max(0, ((pet.careActions - currentActionsThreshold) / actionDiff) * 100))
+                                : 100;
+
+                            const timeProgress = hourDiff > 0
+                                ? Math.min(100, Math.max(0, ((ageInHours - currentHoursThreshold) / hourDiff) * 100))
+                                : 100;
+
                             const overallProgress = Math.min(actionProgress, timeProgress);
 
-                            const actionsNeeded = nextActionsThreshold - pet.careActions;
+                            const actionsNeeded = Math.max(0, nextActionsThreshold - pet.careActions);
                             const hoursNeeded = Math.max(0, nextHoursThreshold - ageInHours);
 
                             return `
@@ -505,7 +515,7 @@
 
                 ${(() => {
                     const careQuality = pet.careQuality || 'average';
-                    const qualityData = CARE_QUALITY[careQuality];
+                    const qualityData = CARE_QUALITY[careQuality] || CARE_QUALITY.average;
                     const ageInHours = getPetAge(pet);
                     const ageDisplay = ageInHours < 24
                         ? `${Math.floor(ageInHours)} hours old`
@@ -524,10 +534,12 @@
                         ? Math.round(pet.careHistory.slice(-20).reduce((sum, e) => sum + e.average, 0) / Math.min(20, pet.careHistory.length))
                         : Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
 
+                    const tipText = careQualityTips[careQuality] || careQualityTips.average;
+
                     return `
                         <div class="care-quality-wrap" aria-label="Care quality and age">
                             <div class="care-quality-row">
-                                <div class="care-quality-badge ${careQuality}" title="${qualityData.description}: ${careQualityTips[careQuality]}">
+                                <div class="care-quality-badge ${careQuality}" title="${qualityData.description}: ${tipText}">
                                     <span class="care-quality-emoji">${qualityData.emoji}</span>
                                     <div class="care-quality-text">
                                         <span class="care-quality-label">Care Quality</span>
@@ -729,7 +741,17 @@
         // ==================== TOAST NOTIFICATIONS ====================
 
         function showToast(message, color = '#66BB6A') {
-            const container = document.getElementById('toast-container');
+            let container = document.getElementById('toast-container');
+
+            // Create container if it doesn't exist
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.setAttribute('aria-live', 'polite');
+                container.setAttribute('aria-atomic', 'false');
+                document.body.appendChild(container);
+            }
+
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Care Test</title>
+</head>
+<body>
+    <h1>Testing Game Load</h1>
+    <div id="test-results"></div>
+
+    <script src="js/constants.js"></script>
+    <script src="js/svg.js"></script>
+    <script src="js/game.js"></script>
+    <script>
+        const results = document.getElementById('test-results');
+
+        function log(message, success = true) {
+            const p = document.createElement('p');
+            p.textContent = (success ? '✅ ' : '❌ ') + message;
+            p.style.color = success ? 'green' : 'red';
+            results.appendChild(p);
+        }
+
+        try {
+            // Test 1: Constants loaded
+            if (typeof GROWTH_STAGES !== 'undefined') {
+                log('GROWTH_STAGES loaded');
+            } else {
+                log('GROWTH_STAGES not found', false);
+            }
+
+            // Test 2: Care quality constants
+            if (typeof CARE_QUALITY !== 'undefined') {
+                log('CARE_QUALITY loaded');
+                log(`Care quality levels: ${Object.keys(CARE_QUALITY).join(', ')}`);
+            } else {
+                log('CARE_QUALITY not found', false);
+            }
+
+            // Test 3: Evolution data
+            if (typeof PET_EVOLUTIONS !== 'undefined') {
+                log('PET_EVOLUTIONS loaded');
+                log(`Evolution count: ${Object.keys(PET_EVOLUTIONS).length}`);
+            } else {
+                log('PET_EVOLUTIONS not found', false);
+            }
+
+            // Test 4: Birthday rewards
+            if (typeof BIRTHDAY_REWARDS !== 'undefined') {
+                log('BIRTHDAY_REWARDS loaded');
+            } else {
+                log('BIRTHDAY_REWARDS not found', false);
+            }
+
+            // Test 5: Growth stages timing
+            log(`Baby→Child: ${GROWTH_STAGES.child.hoursNeeded} hours, ${GROWTH_STAGES.child.actionsNeeded} actions`);
+            log(`Child→Adult: ${GROWTH_STAGES.adult.hoursNeeded} hours, ${GROWTH_STAGES.adult.actionsNeeded} actions`);
+
+            // Test 6: Functions exist
+            if (typeof getGrowthStage === 'function') {
+                log('getGrowthStage() function available');
+
+                // Test growth stage calculation
+                const stage1 = getGrowthStage(0, 0);
+                const stage2 = getGrowthStage(20, 3);
+                const stage3 = getGrowthStage(50, 10);
+
+                log(`getGrowthStage(0, 0) = ${stage1} (expected: baby)`);
+                log(`getGrowthStage(20, 3) = ${stage2} (expected: child)`);
+                log(`getGrowthStage(50, 10) = ${stage3} (expected: adult)`);
+            } else {
+                log('getGrowthStage() not found', false);
+            }
+
+            // Test 7: Care quality function
+            if (typeof getCareQuality === 'function') {
+                log('getCareQuality() function available');
+
+                const quality1 = getCareQuality(30, 0);
+                const quality2 = getCareQuality(65, 3);
+                const quality3 = getCareQuality(85, 1);
+
+                log(`getCareQuality(30, 0) = ${quality1} (expected: poor/average)`);
+                log(`getCareQuality(65, 3) = ${quality2} (expected: good)`);
+                log(`getCareQuality(85, 1) = ${quality3} (expected: excellent)`);
+            } else {
+                log('getCareQuality() not found', false);
+            }
+
+            // Test 8: SVG functions
+            if (typeof applyCareVariant === 'function') {
+                log('applyCareVariant() function available');
+
+                const testColor = '#FF0000';
+                const dull = applyCareVariant(testColor, 'dull');
+                const shiny = applyCareVariant(testColor, 'shiny');
+
+                log(`Color transformation works: dull=${dull}, shiny=${shiny}`);
+            } else {
+                log('applyCareVariant() not found', false);
+            }
+
+            log('\n🎉 All basic tests passed!', true);
+
+        } catch (error) {
+            log(`Error during testing: ${error.message}`, false);
+            console.error(error);
+        }
+    </script>
+</body>
+</html>

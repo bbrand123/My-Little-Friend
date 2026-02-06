@@ -1236,7 +1236,15 @@
                     // Update care quality tracking
                     const careQualityChange = updateCareHistory(pet);
 
-                    // Notify user of care quality changes
+                    // Check for growth milestones
+                    checkGrowthMilestone(pet);
+
+                    updateNeedDisplays();
+                    updatePetMood();
+                    updateWellnessBar();
+                    saveGame();
+
+                    // Notify user of care quality changes (after updates to avoid issues)
                     if (careQualityChange && careQualityChange.changed) {
                         const fromData = CARE_QUALITY[careQualityChange.from];
                         const toData = CARE_QUALITY[careQualityChange.to];
@@ -1257,20 +1265,13 @@
                             announce(`${petName}'s care quality is now ${toData.label}. ${toData.description}`);
                         }
 
-                        // Re-render to show appearance changes
-                        if (typeof renderPetPhase === 'function') {
-                            renderPetPhase();
-                            return;
+                        // Re-render to show appearance changes (debounced to avoid rapid re-renders)
+                        if (typeof renderPetPhase === 'function' && !careQualityChange.skipRender) {
+                            setTimeout(() => {
+                                renderPetPhase();
+                            }, 100);
                         }
                     }
-
-                    // Check for growth milestones
-                    checkGrowthMilestone(pet);
-
-                    updateNeedDisplays();
-                    updatePetMood();
-                    updateWellnessBar();
-                    saveGame();
 
                     // Gentle reminders at low levels (no negative messages)
                     // But don't spam - only announce every 2 minutes max
