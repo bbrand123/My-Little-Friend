@@ -1124,6 +1124,101 @@
             z-index: 0;
         }
 
+        /* ==================== WEATHER SYSTEM ==================== */
+
+        /* Weather overlay container */
+        .weather-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 40px;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        /* Rain drops */
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(transparent, rgba(174, 194, 224, 0.6));
+            border-radius: 0 0 2px 2px;
+            animation: rainFall linear infinite;
+        }
+
+        @keyframes rainFall {
+            0% { transform: translateY(-20px); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(280px); opacity: 0.3; }
+        }
+
+        /* Snowflakes */
+        .snowflake {
+            position: absolute;
+            color: white;
+            font-size: 0.8rem;
+            opacity: 0.8;
+            animation: snowFall linear infinite;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes snowFall {
+            0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            100% { transform: translateY(280px) rotate(360deg); opacity: 0.2; }
+        }
+
+        /* Weather badge */
+        .weather-badge {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .weather-badge.sunny {
+            background: rgba(255, 235, 59, 0.85);
+            color: #F57F17;
+        }
+
+        .weather-badge.rainy {
+            background: rgba(100, 181, 246, 0.85);
+            color: #1565C0;
+        }
+
+        .weather-badge.snowy {
+            background: rgba(255, 255, 255, 0.9);
+            color: #546E7A;
+        }
+
+        /* Rainy background tint for outdoor rooms */
+        .pet-area.weather-rainy {
+            filter: brightness(0.9) saturate(0.85);
+        }
+
+        /* Snowy background tint for outdoor rooms */
+        .pet-area.weather-snowy {
+            filter: brightness(1.05) saturate(0.7);
+        }
+
+        /* Weather mood indicator on the mood message */
+        .weather-mood-note {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            display: block;
+            margin-top: 2px;
+        }
+
         /* Time indicator */
         .time-indicator {
             position: absolute;
@@ -2916,6 +3011,52 @@
             sad: ['needs some love.', 'misses you.', 'wants attention.']
         };
 
+        // ==================== WEATHER SYSTEM ====================
+
+        const WEATHER_TYPES = {
+            sunny: {
+                name: 'Sunny',
+                icon: '☀️',
+                moodBonus: 5,
+                happinessDecayModifier: 0,
+                energyDecayModifier: 0,
+                cleanlinessDecayModifier: 0,
+                messages: [
+                    'loves the sunny weather!',
+                    'is soaking up the sunshine!',
+                    'is basking in the warm sun!'
+                ]
+            },
+            rainy: {
+                name: 'Rainy',
+                icon: '🌧️',
+                moodBonus: -5,
+                happinessDecayModifier: 1,
+                energyDecayModifier: 0,
+                cleanlinessDecayModifier: 1,
+                messages: [
+                    'doesn\'t love the rain...',
+                    'is a bit gloomy from the rain.',
+                    'wants to stay dry inside.'
+                ]
+            },
+            snowy: {
+                name: 'Snowy',
+                icon: '🌨️',
+                moodBonus: -3,
+                happinessDecayModifier: 0,
+                energyDecayModifier: 1,
+                cleanlinessDecayModifier: 0,
+                messages: [
+                    'is watching the snowflakes!',
+                    'shivers a little in the snow.',
+                    'thinks the snow is pretty!'
+                ]
+            }
+        };
+
+        const WEATHER_CHANGE_INTERVAL = 300000; // Check for weather change every 5 minutes
+
         // ==================== ROOMS ====================
 
         const ROOMS = {
@@ -2991,8 +3132,12 @@
             eggTaps: 0,
             lastUpdate: Date.now(),
             timeOfDay: 'day', // 'day', 'sunset', 'night', 'sunrise'
-            currentRoom: 'bedroom' // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park'
+            currentRoom: 'bedroom', // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park'
+            weather: 'sunny', // 'sunny', 'rainy', 'snowy'
+            lastWeatherChange: Date.now()
         };
+
+        let weatherInterval = null;
 
         // ==================== UTILITY FUNCTIONS ====================
 
@@ -3079,6 +3224,14 @@
                         parsed.currentRoom = 'bedroom';
                     }
 
+                    // Add weather if missing (for existing saves)
+                    if (!parsed.weather || !WEATHER_TYPES[parsed.weather]) {
+                        parsed.weather = 'sunny';
+                    }
+                    if (!parsed.lastWeatherChange) {
+                        parsed.lastWeatherChange = Date.now();
+                    }
+
                     // Update time of day
                     parsed.timeOfDay = getTimeOfDay();
 
@@ -3130,8 +3283,15 @@
 
         function getMood(pet) {
             const average = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
-            if (average >= 60) return 'happy';
-            if (average >= 30) return 'neutral';
+            // Weather affects mood thresholds when pet is outdoors
+            const weather = gameState.weather || 'sunny';
+            const weatherData = WEATHER_TYPES[weather];
+            const room = ROOMS[gameState.currentRoom || 'bedroom'];
+            const isOutdoor = room ? room.isOutdoor : false;
+            const weatherBonus = isOutdoor ? weatherData.moodBonus : 0;
+            const adjusted = average + weatherBonus;
+            if (adjusted >= 60) return 'happy';
+            if (adjusted >= 30) return 'neutral';
             return 'sad';
         }
 
@@ -3152,6 +3312,87 @@
                 case 'sunset': return '🌇';
                 case 'night': return '🌙';
                 default: return '☀️';
+            }
+        }
+
+        // ==================== WEATHER FUNCTIONS ====================
+
+        function getRandomWeather() {
+            const rand = Math.random();
+            if (rand < 0.5) return 'sunny';
+            if (rand < 0.8) return 'rainy';
+            return 'snowy';
+        }
+
+        function checkWeatherChange() {
+            const now = Date.now();
+            if (now - gameState.lastWeatherChange >= WEATHER_CHANGE_INTERVAL) {
+                const newWeather = getRandomWeather();
+                if (newWeather !== gameState.weather) {
+                    gameState.weather = newWeather;
+                    const weatherData = WEATHER_TYPES[newWeather];
+                    showToast(`${weatherData.icon} Weather changed to ${weatherData.name}!`, newWeather === 'sunny' ? '#FFD700' : newWeather === 'rainy' ? '#64B5F6' : '#B0BEC5');
+                    announce(`The weather is now ${weatherData.name.toLowerCase()}.`);
+                    updateWeatherDisplay();
+                    updatePetMood();
+                }
+                gameState.lastWeatherChange = now;
+                saveGame();
+            }
+        }
+
+        function generateWeatherHTML(weather) {
+            if (weather === 'rainy') {
+                let drops = '';
+                for (let i = 0; i < 30; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 2;
+                    const duration = 0.6 + Math.random() * 0.4;
+                    const height = 15 + Math.random() * 15;
+                    drops += `<div class="rain-drop" style="left:${left}%;height:${height}px;animation-delay:${delay}s;animation-duration:${duration}s;"></div>`;
+                }
+                return `<div class="weather-overlay">${drops}</div>`;
+            }
+            if (weather === 'snowy') {
+                let flakes = '';
+                const snowChars = ['❄', '❆', '✦'];
+                for (let i = 0; i < 20; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 3;
+                    const duration = 2 + Math.random() * 2;
+                    const char = snowChars[Math.floor(Math.random() * snowChars.length)];
+                    flakes += `<div class="snowflake" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;">${char}</div>`;
+                }
+                return `<div class="weather-overlay">${flakes}</div>`;
+            }
+            return '';
+        }
+
+        function getWeatherMoodMessage(pet, weather) {
+            if (weather === 'sunny') return '';
+            const weatherData = WEATHER_TYPES[weather];
+            const room = ROOMS[gameState.currentRoom || 'bedroom'];
+            if (room.isOutdoor) {
+                return randomFromArray(weatherData.messages);
+            }
+            if (weather === 'rainy') return 'can hear the rain outside.';
+            if (weather === 'snowy') return 'is cozy inside while it snows.';
+            return '';
+        }
+
+        function startWeatherTimer() {
+            if (weatherInterval) clearInterval(weatherInterval);
+            weatherInterval = setInterval(() => {
+                if (gameState.phase === 'pet' && !document.hidden) {
+                    checkWeatherChange();
+                }
+            }, 60000); // Check every minute
+        }
+
+        function stopWeatherTimer() {
+            if (weatherInterval) {
+                clearInterval(weatherInterval);
+                weatherInterval = null;
             }
         }
 
@@ -3241,7 +3482,13 @@
                 if (starsOverlay) starsOverlay.style.display = isOutdoor ? '' : 'none';
                 const moon = petArea.querySelector('.moon');
                 if (moon) moon.style.display = isOutdoor ? '' : 'none';
+
+                // Update weather display for the new room
+                updateWeatherDisplay();
             }
+
+            // Update mood display since weather affects mood differently indoors/outdoors
+            updatePetMood();
 
             // Update nav buttons
             document.querySelectorAll('.room-btn').forEach(btn => {
@@ -3755,6 +4002,19 @@
                 }
             }
 
+            // Generate weather effects
+            const weather = gameState.weather || 'sunny';
+            const weatherData = WEATHER_TYPES[weather];
+            let weatherHTML = '';
+            if (isOutdoor) {
+                weatherHTML = generateWeatherHTML(weather);
+            }
+            const weatherClass = isOutdoor && weather !== 'sunny' ? `weather-${weather}` : '';
+            const weatherBadgeHTML = `<div class="weather-badge ${weather}" aria-label="Weather: ${weatherData.name}">${weatherData.icon} ${weatherData.name}</div>`;
+
+            // Weather mood note
+            const weatherMoodNote = getWeatherMoodMessage(pet, weather);
+
             // Helper: need bubble class based on level
             function needClass(val) {
                 if (val <= 15) return 'critical';
@@ -3767,8 +4027,10 @@
 
             content.innerHTML = `
                 ${generateRoomNavHTML(currentRoom)}
-                <div class="pet-area ${timeClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
+                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
                     ${celestialHTML}
+                    ${weatherHTML}
+                    ${weatherBadgeHTML}
                     <div class="room-label">${room.icon} ${room.name}</div>
                     <div class="time-indicator" aria-label="Time: ${timeOfDay}">${timeIcon}</div>
                     <div class="sparkles" id="sparkles"></div>
@@ -3782,7 +4044,7 @@
                             <span>${mood === 'happy' ? 'Happy' : mood === 'neutral' ? 'Okay' : 'Sad'}</span>
                         </div>
                     </div>
-                    <p class="pet-mood" id="pet-mood" aria-live="polite">${petDisplayName} ${moodMessage}</p>
+                    <p class="pet-mood" id="pet-mood" aria-live="polite">${petDisplayName} ${moodMessage}${weatherMoodNote ? `<span class="weather-mood-note">${weatherData.icon} ${petDisplayName} ${weatherMoodNote}</span>` : ''}</p>
                     <div class="room-decor" aria-hidden="true">${roomDecor}</div>
                 </div>
 
@@ -3922,8 +4184,9 @@
                 }
             });
 
-            // Start decay timer
+            // Start decay timer and weather timer
             startDecayTimer();
+            startWeatherTimer();
         }
 
         // ==================== TOAST NOTIFICATIONS ====================
@@ -4152,9 +4415,15 @@
             const petContainer = document.getElementById('pet-container');
             petContainer.innerHTML = generatePetSVG(pet, mood);
 
-            // Update mood text
+            // Update mood text with weather note
             const petDisplayName = pet.name || petData.name;
-            document.getElementById('pet-mood').textContent = `${petDisplayName} ${moodMessage}`;
+            const weather = gameState.weather || 'sunny';
+            const weatherData = WEATHER_TYPES[weather];
+            const weatherMoodNote = getWeatherMoodMessage(pet, weather);
+            const petMoodEl = document.getElementById('pet-mood');
+            if (petMoodEl) {
+                petMoodEl.innerHTML = `${petDisplayName} ${moodMessage}${weatherMoodNote ? `<span class="weather-mood-note">${weatherData.icon} ${petDisplayName} ${weatherMoodNote}</span>` : ''}`;
+            }
 
             // Update mood badge
             const badge = document.getElementById('mood-badge');
@@ -6360,10 +6629,26 @@
             decayInterval = setInterval(() => {
                 if (gameState.phase === 'pet' && gameState.pet && !document.hidden) {
                     const pet = gameState.pet;
+                    const weather = gameState.weather || 'sunny';
+                    const weatherData = WEATHER_TYPES[weather];
+                    const room = ROOMS[gameState.currentRoom || 'bedroom'];
+                    const isOutdoor = room ? room.isOutdoor : false;
+
+                    // Base decay
                     pet.hunger = clamp(pet.hunger - 1, 0, 100);
                     pet.cleanliness = clamp(pet.cleanliness - 1, 0, 100);
                     pet.happiness = clamp(pet.happiness - 1, 0, 100);
                     pet.energy = clamp(pet.energy - 1, 0, 100);
+
+                    // Extra weather-based decay when outdoors
+                    if (isOutdoor) {
+                        pet.happiness = clamp(pet.happiness - weatherData.happinessDecayModifier, 0, 100);
+                        pet.energy = clamp(pet.energy - weatherData.energyDecayModifier, 0, 100);
+                        pet.cleanliness = clamp(pet.cleanliness - weatherData.cleanlinessDecayModifier, 0, 100);
+                    }
+
+                    // Check for weather changes
+                    checkWeatherChange();
 
                     // Update time of day and refresh display if changed
                     const newTimeOfDay = getTimeOfDay();
@@ -6472,6 +6757,44 @@
                     cloud.textContent = '☁️';
                     petArea.appendChild(cloud);
                 }
+            }
+
+            // Update weather visuals
+            updateWeatherDisplay();
+        }
+
+        function updateWeatherDisplay() {
+            const petArea = document.querySelector('.pet-area');
+            if (!petArea) return;
+
+            const weather = gameState.weather || 'sunny';
+            const weatherData = WEATHER_TYPES[weather];
+            const currentRoom = gameState.currentRoom || 'bedroom';
+            const room = ROOMS[currentRoom];
+            const isOutdoor = room ? room.isOutdoor : false;
+
+            // Remove old weather overlay
+            const oldOverlay = petArea.querySelector('.weather-overlay');
+            if (oldOverlay) oldOverlay.remove();
+
+            // Remove old weather classes
+            petArea.classList.remove('weather-rainy', 'weather-snowy');
+
+            // Add new weather effects for outdoor rooms
+            if (isOutdoor && weather !== 'sunny') {
+                petArea.classList.add(`weather-${weather}`);
+                const weatherEl = document.createElement('div');
+                weatherEl.innerHTML = generateWeatherHTML(weather);
+                const overlay = weatherEl.firstChild;
+                if (overlay) petArea.appendChild(overlay);
+            }
+
+            // Update weather badge
+            const oldBadge = petArea.querySelector('.weather-badge');
+            if (oldBadge) {
+                oldBadge.className = `weather-badge ${weather}`;
+                oldBadge.setAttribute('aria-label', `Weather: ${weatherData.name}`);
+                oldBadge.innerHTML = `${weatherData.icon} ${weatherData.name}`;
             }
         }
 
@@ -6622,13 +6945,18 @@
                         decayInterval = null;
                     }
 
+                    // Stop weather timer
+                    stopWeatherTimer();
+
                     gameState = {
                         phase: 'egg',
                         pet: null,
                         eggTaps: 0,
                         lastUpdate: Date.now(),
                         timeOfDay: getTimeOfDay(),
-                        currentRoom: 'bedroom'
+                        currentRoom: 'bedroom',
+                        weather: getRandomWeather(),
+                        lastWeatherChange: Date.now()
                     };
                     saveGame();
                     announce('Starting fresh with a new egg!', true);
@@ -6647,20 +6975,30 @@
         function init() {
             // Stop any existing timers
             stopDecayTimer();
+            stopWeatherTimer();
 
             const saved = loadGame();
             if (saved) {
                 gameState = saved;
             }
 
+            // Ensure weather state exists
+            if (!gameState.weather || !WEATHER_TYPES[gameState.weather]) {
+                gameState.weather = 'sunny';
+            }
+            if (!gameState.lastWeatherChange) {
+                gameState.lastWeatherChange = Date.now();
+            }
+
             if (gameState.phase === 'pet' && gameState.pet) {
                 renderPetPhase();
                 const petData = PET_TYPES[gameState.pet.type];
                 const mood = getMood(gameState.pet);
+                const weatherData = WEATHER_TYPES[gameState.weather];
                 const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
                                      mood === 'sad' ? 'missed you and needs some care!' :
                                      'is glad you\'re back!';
-                announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
+                announce(`Welcome back! Your ${petData.name} ${moodGreeting} The weather is ${weatherData.name.toLowerCase()}.`);
             } else {
                 // Reset to egg phase if not in pet phase
                 gameState.phase = 'egg';
@@ -6677,6 +7015,7 @@
         window.addEventListener('beforeunload', () => {
             saveGame();
             stopDecayTimer();
+            stopWeatherTimer();
         });
 
         // Also handle page hide for mobile browsers
