@@ -588,7 +588,24 @@
 
         .action-btn.cooldown {
             pointer-events: none;
-            opacity: 0.7;
+            opacity: 0.85;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn.cooldown::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.35);
+            animation: cooldownSweep 0.6s linear forwards;
+            border-radius: inherit;
+            pointer-events: none;
+        }
+
+        @keyframes cooldownSweep {
+            0% { clip-path: inset(0 0 0 0); }
+            100% { clip-path: inset(100% 0 0 0); }
         }
 
         .action-btn.feed {
@@ -700,6 +717,178 @@
             width: 1px;
             height: 1px;
             overflow: hidden;
+        }
+
+        /* Floating stat change indicators */
+        .stat-change {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: 900;
+            pointer-events: none;
+            z-index: 10;
+            animation: statChangeFloat 1.2s ease-out forwards;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+            white-space: nowrap;
+        }
+
+        .stat-change.positive {
+            color: #2E7D32;
+        }
+
+        .stat-change.negative {
+            color: #C62828;
+        }
+
+        @keyframes statChangeFloat {
+            0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.8); }
+            20% { opacity: 1; transform: translateX(-50%) translateY(-8px) scale(1.1); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-28px) scale(0.9); }
+        }
+
+        /* Overall pet wellness bar */
+        .wellness-bar-wrap {
+            margin: 6px 0 2px;
+            padding: 0 4px;
+        }
+
+        .wellness-bar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .wellness-bar-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #aaa;
+        }
+
+        .wellness-bar-value {
+            font-size: 0.7rem;
+            font-weight: 800;
+            transition: color 0.5s ease;
+        }
+
+        .wellness-bar {
+            width: 100%;
+            height: 8px;
+            background: #e8e8e8;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .wellness-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s ease, background 0.8s ease;
+            background: linear-gradient(90deg, #66BB6A, #81C784);
+        }
+
+        .wellness-bar-fill.good {
+            background: linear-gradient(90deg, #66BB6A, #81C784);
+        }
+
+        .wellness-bar-fill.okay {
+            background: linear-gradient(90deg, #FFB74D, #FFA726);
+        }
+
+        .wellness-bar-fill.low {
+            background: linear-gradient(90deg, #EF5350, #E53935);
+        }
+
+        /* Action button tooltips */
+        .action-btn {
+            position: relative;
+        }
+
+        .action-btn-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            background: rgba(45, 52, 54, 0.92);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 20;
+            text-shadow: none;
+            letter-spacing: 0.02em;
+        }
+
+        .action-btn-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(45, 52, 54, 0.92);
+        }
+
+        .action-btn:hover .action-btn-tooltip,
+        .action-btn:focus .action-btn-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        .action-btn.cooldown .action-btn-tooltip {
+            opacity: 0;
+        }
+
+        /* Garden crop ready badge on mini-games button area */
+        .garden-ready-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #FF5252;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.55rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            animation: badgePop 0.3s ease;
+            z-index: 5;
+        }
+
+        @keyframes badgePop {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Garden countdown timer */
+        .garden-plot-timer {
+            font-size: 0.55rem;
+            color: rgba(255,255,255,0.85);
+            font-weight: 700;
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Section visual separators */
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent);
+            margin: 8px 0;
         }
 
         /* Sparkle Effect */
@@ -3673,6 +3862,51 @@
             return '#EF5350';
         }
 
+        // Wellness bar helpers
+        function getWellnessPercent(pet) {
+            return Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
+        }
+
+        function getWellnessClass(pet) {
+            const w = getWellnessPercent(pet);
+            if (w >= 60) return 'good';
+            if (w >= 35) return 'okay';
+            return 'low';
+        }
+
+        function getWellnessLabel(pet) {
+            const w = getWellnessPercent(pet);
+            if (w >= 80) return `${w}% Great!`;
+            if (w >= 60) return `${w}% Good`;
+            if (w >= 35) return `${w}% Okay`;
+            return `${w}% Needs care`;
+        }
+
+        // Floating stat change indicator
+        function showStatChange(bubbleId, amount) {
+            const bubble = document.getElementById(bubbleId);
+            if (!bubble) return;
+            const el = document.createElement('div');
+            el.className = `stat-change ${amount >= 0 ? 'positive' : 'negative'}`;
+            el.textContent = amount >= 0 ? `+${amount}` : `${amount}`;
+            bubble.appendChild(el);
+            setTimeout(() => el.remove(), 1200);
+        }
+
+        // Update wellness bar display
+        function updateWellnessBar() {
+            const pet = gameState.pet;
+            if (!pet) return;
+            const fill = document.getElementById('wellness-fill');
+            const val = document.getElementById('wellness-value');
+            if (!fill || !val) return;
+            const w = getWellnessPercent(pet);
+            fill.style.width = w + '%';
+            fill.className = `wellness-bar-fill ${getWellnessClass(pet)}`;
+            val.textContent = getWellnessLabel(pet);
+            val.style.color = w >= 60 ? '#66BB6A' : w >= 35 ? '#FFA726' : '#EF5350';
+        }
+
         function announce(message, assertive = false) {
             const announcer = document.getElementById(assertive ? 'live-announcer-assertive' : 'live-announcer');
             announcer.textContent = '';
@@ -4005,20 +4239,49 @@
             return timeOfDay === 'night' ? room.nightDecorEmoji : room.decorEmoji;
         }
 
+        function getReadyCropCount() {
+            const garden = gameState.garden;
+            if (!garden || !garden.plots) return 0;
+            return garden.plots.filter(p => p && p.stage >= 3).length;
+        }
+
         function generateRoomNavHTML(currentRoom) {
+            const readyCrops = getReadyCropCount();
             let html = '<nav class="room-nav" role="navigation" aria-label="Room navigation">';
             for (const id of ROOM_IDS) {
                 const room = ROOMS[id];
                 const isActive = id === currentRoom;
+                const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
                 html += `<button class="room-btn${isActive ? ' active' : ''}" data-room="${id}"
-                    aria-label="Go to ${room.name}" aria-pressed="${isActive}"
-                    ${isActive ? 'aria-current="true"' : ''}>
+                    aria-label="Go to ${room.name}${id === 'garden' && readyCrops > 0 ? ` (${readyCrops} crops ready!)` : ''}" aria-pressed="${isActive}"
+                    ${isActive ? 'aria-current="true"' : ''} style="position:relative;">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
                     <span class="room-btn-label">${room.name}</span>
+                    ${badge}
                 </button>`;
             }
             html += '</nav>';
             return html;
+        }
+
+        function updateRoomNavBadge() {
+            const gardenBtn = document.querySelector('.room-btn[data-room="garden"]');
+            if (!gardenBtn) return;
+            const readyCrops = getReadyCropCount();
+            const existingBadge = gardenBtn.querySelector('.garden-ready-badge');
+            if (readyCrops > 0) {
+                if (existingBadge) {
+                    existingBadge.textContent = readyCrops;
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'garden-ready-badge';
+                    badge.setAttribute('aria-label', `${readyCrops} crops ready`);
+                    badge.textContent = readyCrops;
+                    gardenBtn.appendChild(badge);
+                }
+            } else if (existingBadge) {
+                existingBadge.remove();
+            }
         }
 
         function switchRoom(roomId) {
@@ -4750,6 +5013,18 @@
                     </div>
                 </section>
 
+                <div class="wellness-bar-wrap" aria-label="Overall wellness">
+                    <div class="wellness-bar-header">
+                        <span class="wellness-bar-label">Overall Wellness</span>
+                        <span class="wellness-bar-value" id="wellness-value">${getWellnessLabel(pet)}</span>
+                    </div>
+                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness" aria-valuenow="${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}%;"></div>
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+
                 <div class="feedback-area">
                     <p class="feedback-message" id="feedback" aria-live="polite"></p>
                 </div>
@@ -4759,18 +5034,22 @@
                         <div class="action-group-label">Basics</div>
                         <div class="action-group-buttons" role="group" aria-label="Basic care buttons">
                             <button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%">
+                                <span class="action-btn-tooltip">+20 Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
                             </button>
                             <button class="action-btn wash" id="wash-btn" aria-label="Wash your pet. Current cleanliness: ${pet.cleanliness}%">
+                                <span class="action-btn-tooltip">+20 Bath</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
                             </button>
                             <button class="action-btn sleep" id="sleep-btn" aria-label="Put your pet to sleep. Current energy: ${pet.energy}%">
+                                <span class="action-btn-tooltip">+25-40 Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn" aria-label="Pet and cuddle your pet. Current happiness: ${pet.happiness}%">
+                                <span class="action-btn-tooltip">+15 Happy, +5 Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
                             </button>
@@ -4780,18 +5059,22 @@
                         <div class="action-group-label">Fun & Play</div>
                         <div class="action-group-buttons" role="group" aria-label="Fun and play buttons">
                             <button class="action-btn play" id="play-btn" aria-label="Play with your pet. Current happiness: ${pet.happiness}%">
+                                <span class="action-btn-tooltip">+20 Happy</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
                             </button>
                             <button class="action-btn exercise" id="exercise-btn" aria-label="Exercise your pet - take a walk or play fetch">
+                                <span class="action-btn-tooltip">+20 Happy, -10 Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🏃</span>
                                 <span>Exercise</span>
                             </button>
                             <button class="action-btn treat" id="treat-btn" aria-label="Give your pet a special treat for bonus happiness">
+                                <span class="action-btn-tooltip">+25 Happy, +10 Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍪</span>
                                 <span>Treat</span>
                             </button>
                             <button class="action-btn mini-games" id="minigames-btn" aria-label="Open mini games to play with your pet">
+                                <span class="action-btn-tooltip">6 games to play!</span>
                                 <span class="btn-icon" aria-hidden="true">🎮</span>
                                 <span>Games</span>
                             </button>
@@ -4801,10 +5084,12 @@
                         <div class="action-group-label">Wellness</div>
                         <div class="action-group-buttons" role="group" aria-label="Wellness buttons">
                             <button class="action-btn medicine" id="medicine-btn" aria-label="Give medicine to help your pet feel better">
+                                <span class="action-btn-tooltip">Boosts all stats</span>
                                 <span class="btn-icon" aria-hidden="true">🩹</span>
                                 <span>Medicine</span>
                             </button>
                             <button class="action-btn groom" id="groom-btn" aria-label="Groom your pet - brush fur and trim nails">
+                                <span class="action-btn-tooltip">+15 Bath, +10 Happy</span>
                                 <span class="btn-icon" aria-hidden="true">✂️</span>
                                 <span>Groom</span>
                             </button>
@@ -4930,6 +5215,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.feed);
                     petContainer.classList.add('bounce');
                     createFoodParticles(sparkles);
+                    showStatChange('hunger-bubble', 20);
                     announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
                     break;
                 case 'wash':
@@ -4937,6 +5223,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     petContainer.classList.add('sparkle');
                     createBubbles(sparkles);
+                    showStatChange('clean-bubble', 20);
                     announce(`Washed your pet! Cleanliness is now ${pet.cleanliness}%`);
                     break;
                 case 'play':
@@ -4944,6 +5231,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     petContainer.classList.add('wiggle');
                     createHearts(sparkles);
+                    showStatChange('happy-bubble', 20);
                     announce(`Played with your pet! Happiness is now ${pet.happiness}%`);
                     break;
                 case 'sleep': {
@@ -4965,6 +5253,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.sleep);
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
+                    showStatChange('energy-bubble', sleepBonus);
                     announce(`${sleepAnnounce} Energy is now ${pet.energy}%`);
                     break;
                 }
@@ -4977,6 +5266,10 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
                     petContainer.classList.add('heal-anim');
                     createMedicineParticles(sparkles);
+                    showStatChange('hunger-bubble', 10);
+                    showStatChange('clean-bubble', 10);
+                    showStatChange('happy-bubble', 15);
+                    showStatChange('energy-bubble', 10);
                     announce(`You gave your pet medicine! Your pet feels much better now!`);
                     break;
                 case 'groom':
@@ -4986,6 +5279,8 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
                     petContainer.classList.add('groom-anim');
                     createGroomParticles(sparkles);
+                    showStatChange('clean-bubble', 15);
+                    showStatChange('happy-bubble', 10);
                     announce(`Groomed your pet! Looking beautiful and feeling happy!`);
                     break;
                 case 'exercise':
@@ -4996,6 +5291,9 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
                     petContainer.classList.add('exercise-anim');
                     createExerciseParticles(sparkles);
+                    showStatChange('happy-bubble', 20);
+                    showStatChange('energy-bubble', -10);
+                    showStatChange('hunger-bubble', -5);
                     announce(`Exercised your pet! Happiness is now ${pet.happiness}% but energy dropped to ${pet.energy}%`);
                     break;
                 case 'treat': {
@@ -5006,6 +5304,8 @@
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
                     petContainer.classList.add('treat-anim');
                     createTreatParticles(sparkles, treat.emoji);
+                    showStatChange('happy-bubble', 25);
+                    showStatChange('hunger-bubble', 10);
                     announce(`Gave your pet a ${treat.name}! Happiness is now ${pet.happiness}%`);
                     break;
                 }
@@ -5016,6 +5316,8 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     petContainer.classList.add('cuddle-anim');
                     createCuddleParticles(sparkles);
+                    showStatChange('happy-bubble', 15);
+                    showStatChange('energy-bubble', 5);
                     announce(`You pet and cuddled your pet! Happiness is now ${pet.happiness}%`);
                     break;
             }
@@ -5031,6 +5333,7 @@
             // Update displays
             updateNeedDisplays();
             updatePetMood();
+            updateWellnessBar();
 
             // Remove animation class
             setTimeout(() => {
@@ -7373,8 +7676,12 @@
             });
 
             garden.lastGrowTick = Date.now();
-            if (anyGrew && gameState.currentRoom === 'garden') {
+            if (gameState.currentRoom === 'garden') {
                 renderGardenUI();
+            }
+            // Update room nav badge when crops become harvestable
+            if (anyGrew) {
+                updateRoomNavBadge();
             }
             saveGame();
         }
@@ -7595,13 +7902,20 @@
                     const statusLabel = isReady ? 'Ready to harvest!' : `Growing... ${progress}%${plot.watered ? ' 💧' : ''}`;
                     const plotClass = isReady ? 'ready' : 'growing';
 
+                    // Calculate remaining time for countdown
+                    const totalTicksNeeded = effectiveGrowTime * 3;
+                    const ticksRemaining = Math.max(0, totalTicksNeeded - plot.growTicks);
+                    const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining * (plot.watered ? 0.5 : 1));
+                    const timerText = isReady ? '' : (minsRemaining > 0 ? `~${minsRemaining}m left` : 'Almost...');
+
                     plotsHTML += `
                         <div class="garden-plot ${plotClass}" data-plot="${i}" role="button" tabindex="0"
                              aria-label="${crop.name} - ${statusLabel}">
                             <span class="garden-plot-emoji">${stageEmoji}</span>
                             <span class="garden-plot-label">${crop.name}</span>
                             ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
-                            <span class="garden-plot-label">${isReady ? '🎉 Harvest!' : (plot.watered ? '💧' : '')}</span>
+                            ${!isReady ? `<span class="garden-plot-timer">${timerText}${plot.watered ? ' 💧' : ''}</span>` : ''}
+                            <span class="garden-plot-label">${isReady ? '🎉 Harvest!' : ''}</span>
                         </div>
                     `;
                 }
@@ -7782,6 +8096,7 @@
 
                     updateNeedDisplays();
                     updatePetMood();
+                    updateWellnessBar();
                     saveGame();
 
                     // Gentle reminders at low levels (no negative messages)
