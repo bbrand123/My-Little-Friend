@@ -130,20 +130,22 @@
 
         function handleEggTap() {
             if (eggTapCooldown) return;
+            if (gameState.phase !== 'egg') return;
 
             eggTapCooldown = true;
             setTimeout(() => { eggTapCooldown = false; }, 200);
 
-            gameState.eggTaps++;
             const eggButton = document.getElementById('egg-button');
             const sparkles = document.getElementById('sparkles');
+            if (!eggButton) return;
+            gameState.eggTaps++;
 
             // Add shake animation
             eggButton.classList.add('egg-shake');
             setTimeout(() => eggButton.classList.remove('egg-shake'), 300);
 
             // Add sparkles
-            createSparkles(sparkles, 5);
+            if (sparkles) createSparkles(sparkles, 5);
 
             // Announce progress
             const remaining = 5 - gameState.eggTaps;
@@ -181,9 +183,15 @@
         }
 
         function showNamingModal(petData) {
+            const existingOverlay = document.querySelector('.naming-overlay');
+            if (existingOverlay) existingOverlay.remove();
+
             const pet = gameState.pet;
             const overlay = document.createElement('div');
             overlay.className = 'naming-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'naming-title');
 
             // Generate color options
             let colorOptions = petData.colors.map((color, idx) => `
@@ -210,7 +218,7 @@
             overlay.innerHTML = `
                 <div class="naming-modal">
                     <div class="naming-modal-icon">${petData.emoji}</div>
-                    <h2 class="naming-modal-title">Customize Your ${petData.name}!</h2>
+                    <h2 class="naming-modal-title" id="naming-title">Customize Your ${petData.name}!</h2>
                     ${petData.mythical ? '<p class="naming-modal-mythical">Mythical Pet!</p>' : ''}
 
                     <div class="customization-section">
