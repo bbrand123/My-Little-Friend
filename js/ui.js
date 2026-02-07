@@ -1,28 +1,5 @@
         // ==================== RENDER FUNCTIONS ====================
 
-        function bindActivate(element, handler) {
-            if (!element || typeof handler !== 'function') return;
-
-            const invoke = (e) => {
-                const now = Date.now();
-                const last = element._lastActivate || 0;
-                if (now - last < 350) return;
-                element._lastActivate = now;
-                handler(e);
-            };
-
-            element.addEventListener('click', (e) => invoke(e));
-            element.addEventListener('pointerup', (e) => invoke(e));
-            element.addEventListener('mouseup', (e) => invoke(e));
-            element.addEventListener('touchend', (e) => invoke(e), { passive: true });
-            element.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    invoke(e);
-                }
-            });
-        }
-
         let globalActivateBound = false;
 
         function setupGlobalActivateDelegates() {
@@ -1543,6 +1520,7 @@
             okBtn.focus();
 
             function closeModal() {
+                document.removeEventListener('keydown', handleEscape);
                 modal.remove();
                 // Trigger confetti cleanup
                 setTimeout(() => {
@@ -1556,12 +1534,12 @@
                 if (e.target === modal) closeModal();
             });
 
-            document.addEventListener('keydown', function handleEscape(e) {
+            function handleEscape(e) {
                 if (e.key === 'Escape') {
                     closeModal();
-                    document.removeEventListener('keydown', handleEscape);
                 }
-            });
+            }
+            document.addEventListener('keydown', handleEscape);
 
             announce(`Birthday celebration! ${petName} is now a ${stageLabel}! ${rewardData.unlockMessage}`);
             showToast(`🎉 ${petName} grew to ${stageLabel}!`, '#FFB74D');
@@ -1608,6 +1586,7 @@
             okBtn.focus();
 
             function closeModal() {
+                document.removeEventListener('keydown', handleEscape);
                 modal.remove();
                 // Re-render to show evolved appearance
                 if (typeof renderPetPhase === 'function') {
@@ -1625,12 +1604,12 @@
                 if (e.target === modal) closeModal();
             });
 
-            document.addEventListener('keydown', function handleEscape(e) {
+            function handleEscape(e) {
                 if (e.key === 'Escape') {
                     closeModal();
-                    document.removeEventListener('keydown', handleEscape);
                 }
-            });
+            }
+            document.addEventListener('keydown', handleEscape);
 
             announce(`Evolution! Your pet has evolved into ${petName}!`);
             showToast(`✨ Evolution! ${petName}!`, '#FFD700');
@@ -1705,12 +1684,12 @@
         // ==================== MINI-GAME CLEANUP ====================
 
         function cleanupAllMiniGames() {
-            if (fetchState) endFetchGame();
-            if (hideSeekState) endHideSeekGame();
-            if (bubblePopState) endBubblePopGame();
-            if (matchingState) endMatchingGame();
-            if (simonState) endSimonSaysGame();
-            if (coloringState) endColoringGame();
+            if (typeof fetchState !== 'undefined' && fetchState) endFetchGame();
+            if (typeof hideSeekState !== 'undefined' && hideSeekState) endHideSeekGame();
+            if (typeof bubblePopState !== 'undefined' && bubblePopState) endBubblePopGame();
+            if (typeof matchingState !== 'undefined' && matchingState) endMatchingGame();
+            if (typeof simonState !== 'undefined' && simonState) endSimonSaysGame();
+            if (typeof coloringState !== 'undefined' && coloringState) endColoringGame();
         }
 
         // ==================== TUTORIAL / ONBOARDING ====================
@@ -1900,7 +1879,7 @@
             let unlockHTML = mythicalTypes.map(type => {
                 const data = PET_TYPES[type];
                 const req = data.unlockRequirement || 0;
-                const progress = Math.min(100, Math.round((adultsRaised / req) * 100));
+                const progress = req > 0 ? Math.min(100, Math.round((adultsRaised / req) * 100)) : 100;
                 const isComplete = adultsRaised >= req;
                 return `
                     <div class="codex-unlock-item">
@@ -1957,7 +1936,7 @@
                 ? `${Math.floor(ageInHours)} hours`
                 : `${Math.floor(ageInHours / 24)} days`;
             const careQuality = pet ? (pet.careQuality || 'average') : 'average';
-            const qualityData = CARE_QUALITY[careQuality];
+            const qualityData = CARE_QUALITY[careQuality] || CARE_QUALITY.average;
             const neglectCount = pet ? (pet.neglectCount || 0) : 0;
             const evolutionStage = pet ? (pet.evolutionStage || 'base') : 'base';
             const isEvolved = evolutionStage === 'evolved';

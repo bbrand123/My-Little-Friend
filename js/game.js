@@ -990,23 +990,27 @@
 
             document.body.appendChild(overlay);
 
+            function closeOverlay() {
+                document.removeEventListener('keydown', handleEscape);
+                if (overlay && overlay.parentNode) overlay.remove();
+            }
+
             overlay.querySelectorAll('.seed-option').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const cropId = btn.getAttribute('data-crop');
-                    overlay.remove();
+                    closeOverlay();
                     plantSeed(plotIndex, cropId);
                 });
             });
 
-            overlay.querySelector('#seed-picker-close').addEventListener('click', () => overlay.remove());
+            overlay.querySelector('#seed-picker-close').addEventListener('click', () => closeOverlay());
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.remove();
+                if (e.target === overlay) closeOverlay();
             });
 
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    overlay.remove();
-                    document.removeEventListener('keydown', handleEscape);
+                    closeOverlay();
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -1567,12 +1571,12 @@
         // ==================== MINI-GAME CLEANUP ====================
 
         function cleanupAllMiniGames() {
-            if (fetchState) endFetchGame();
-            if (hideSeekState) endHideSeekGame();
-            if (bubblePopState) endBubblePopGame();
-            if (matchingState) endMatchingGame();
-            if (simonState) endSimonSaysGame();
-            if (coloringState) endColoringGame();
+            if (typeof fetchState !== 'undefined' && fetchState) endFetchGame();
+            if (typeof hideSeekState !== 'undefined' && hideSeekState) endHideSeekGame();
+            if (typeof bubblePopState !== 'undefined' && bubblePopState) endBubblePopGame();
+            if (typeof matchingState !== 'undefined' && matchingState) endMatchingGame();
+            if (typeof simonState !== 'undefined' && simonState) endSimonSaysGame();
+            if (typeof coloringState !== 'undefined' && coloringState) endColoringGame();
         }
 
         // ==================== TUTORIAL / ONBOARDING ====================

@@ -2260,23 +2260,27 @@
 
             document.body.appendChild(overlay);
 
+            function closeOverlay() {
+                document.removeEventListener('keydown', handleEscape);
+                if (overlay && overlay.parentNode) overlay.remove();
+            }
+
             overlay.querySelectorAll('.seed-option').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const cropId = btn.getAttribute('data-crop');
-                    overlay.remove();
+                    closeOverlay();
                     plantSeed(plotIndex, cropId);
                 });
             });
 
-            overlay.querySelector('#seed-picker-close').addEventListener('click', () => overlay.remove());
+            overlay.querySelector('#seed-picker-close').addEventListener('click', () => closeOverlay());
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.remove();
+                if (e.target === overlay) closeOverlay();
             });
 
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    overlay.remove();
-                    document.removeEventListener('keydown', handleEscape);
+                    closeOverlay();
                 }
             }
             document.addEventListener('keydown', handleEscape);
