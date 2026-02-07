@@ -717,7 +717,13 @@
             document.getElementById('exercise-btn').addEventListener('click', () => careAction('exercise'));
             document.getElementById('treat-btn').addEventListener('click', () => careAction('treat'));
             document.getElementById('pet-btn').addEventListener('click', () => careAction('cuddle'));
-            document.getElementById('minigames-btn').addEventListener('click', openMiniGamesMenu);
+            document.getElementById('minigames-btn').addEventListener('click', () => {
+                if (typeof openMiniGamesMenu === 'function') {
+                    openMiniGamesMenu();
+                } else {
+                    showToast('Mini-games are still loading. Try again in a moment.', '#FFA726');
+                }
+            });
             document.getElementById('seasonal-btn').addEventListener('click', () => {
                 if (actionCooldown) return;
                 performSeasonalActivity();
