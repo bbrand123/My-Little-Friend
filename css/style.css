@@ -796,6 +796,7 @@
             font-family: inherit;
             font-weight: 600;
             transition: all 0.2s ease;
+            touch-action: manipulation;
         }
 
         .new-pet-btn:hover,
@@ -1299,6 +1300,7 @@
             font-family: inherit;
             min-width: 48px;
             min-height: 44px;
+            touch-action: manipulation;
         }
 
         .room-btn:hover,

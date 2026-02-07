@@ -1,5 +1,29 @@
         // ==================== RENDER FUNCTIONS ====================
 
+        function bindActivate(element, handler) {
+            if (!element || typeof handler !== 'function') return;
+
+            const invoke = (e) => {
+                const now = Date.now();
+                const last = element._lastActivate || 0;
+                if (now - last < 350) return;
+                element._lastActivate = now;
+                handler(e);
+            };
+
+            element.addEventListener('click', (e) => invoke(e));
+            element.addEventListener('touchend', (e) => {
+                if (e.cancelable) e.preventDefault();
+                invoke(e);
+            }, { passive: false });
+            element.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    invoke(e);
+                }
+            });
+        }
+
         function renderEggPhase(maintainFocus = false) {
             // Initialize egg if not set
             if (!gameState.eggType || !gameState.pendingPetType) {
@@ -699,10 +723,10 @@
                 if (actionCooldown) return;
                 performSeasonalActivity();
             });
-            document.getElementById('new-pet-btn').addEventListener('click', startNewPet);
-            document.getElementById('codex-btn').addEventListener('click', showPetCodex);
-            document.getElementById('stats-btn').addEventListener('click', showStatsScreen);
-            document.getElementById('furniture-btn').addEventListener('click', showFurnitureModal);
+            bindActivate(document.getElementById('new-pet-btn'), startNewPet);
+            bindActivate(document.getElementById('codex-btn'), showPetCodex);
+            bindActivate(document.getElementById('stats-btn'), showStatsScreen);
+            bindActivate(document.getElementById('furniture-btn'), showFurnitureModal);
 
             // Evolution button if available
             const evolveBtn = document.getElementById('evolve-btn');
@@ -723,7 +747,7 @@
 
             // Room navigation event listeners
             document.querySelectorAll('.room-btn').forEach(btn => {
-                btn.addEventListener('click', () => switchRoom(btn.dataset.room));
+                bindActivate(btn, () => switchRoom(btn.dataset.room));
             });
 
             // Make pet directly pettable by clicking/touching the pet SVG
