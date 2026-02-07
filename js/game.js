@@ -1321,7 +1321,10 @@
 
             const timeOfDay = gameState.timeOfDay;
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
-            const currentRoom = gameState.currentRoom || 'bedroom';
+            const currentRoom = ROOMS[gameState.currentRoom] ? gameState.currentRoom : 'bedroom';
+            if (currentRoom !== gameState.currentRoom) {
+                gameState.currentRoom = currentRoom;
+            }
             const room = ROOMS[currentRoom];
             const isOutdoor = room ? room.isOutdoor : false;
 
@@ -1399,9 +1402,15 @@
             const petArea = document.querySelector('.pet-area');
             if (!petArea) return;
 
-            const weather = gameState.weather || 'sunny';
+            const weather = WEATHER_TYPES[gameState.weather] ? gameState.weather : 'sunny';
+            if (weather !== gameState.weather) {
+                gameState.weather = weather;
+            }
             const weatherData = WEATHER_TYPES[weather];
-            const currentRoom = gameState.currentRoom || 'bedroom';
+            const currentRoom = ROOMS[gameState.currentRoom] ? gameState.currentRoom : 'bedroom';
+            if (currentRoom !== gameState.currentRoom) {
+                gameState.currentRoom = currentRoom;
+            }
             const room = ROOMS[currentRoom];
             const isOutdoor = room ? room.isOutdoor : false;
 

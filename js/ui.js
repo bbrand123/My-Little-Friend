@@ -1177,16 +1177,20 @@
 
             // Update mood text with weather and time-of-day notes
             const petDisplayName = pet.name || petData.name;
-            const weather = gameState.weather || 'sunny';
+            const safePetName = escapeHTML(petDisplayName);
+            const weather = WEATHER_TYPES[gameState.weather] ? gameState.weather : 'sunny';
+            if (weather !== gameState.weather) {
+                gameState.weather = weather;
+            }
             const weatherData = WEATHER_TYPES[weather];
             const weatherMoodNote = getWeatherMoodMessage(pet, weather);
             const timeMoodNote = getTimeMoodMessage(pet);
             const petMoodEl = document.getElementById('pet-mood');
             if (petMoodEl) {
                 let noteHTML = '';
-                if (weatherMoodNote) noteHTML += `<span class="weather-mood-note">${weatherData.icon} ${petDisplayName} ${weatherMoodNote}</span>`;
-                if (timeMoodNote) noteHTML += `<span class="weather-mood-note">${getTimeIcon(gameState.timeOfDay)} ${petDisplayName} ${timeMoodNote}</span>`;
-                petMoodEl.innerHTML = `${petDisplayName} ${moodMessage}${noteHTML}`;
+                if (weatherMoodNote) noteHTML += `<span class="weather-mood-note">${weatherData.icon} ${safePetName} ${weatherMoodNote}</span>`;
+                if (timeMoodNote) noteHTML += `<span class="weather-mood-note">${getTimeIcon(gameState.timeOfDay)} ${safePetName} ${timeMoodNote}</span>`;
+                petMoodEl.innerHTML = `${safePetName} ${moodMessage}${noteHTML}`;
             }
 
             // Update mood badge
@@ -1498,6 +1502,7 @@
             modal.setAttribute('aria-labelledby', 'celebration-title');
 
             const petName = pet ? (pet.name || PET_TYPES[pet.type]?.name || 'Your pet') : 'Your pet';
+            const safePetName = escapeHTML(petName);
             const stageLabel = GROWTH_STAGES[growthStage]?.label || growthStage;
             const stageEmoji = GROWTH_STAGES[growthStage]?.emoji || '🎉';
 
@@ -1506,7 +1511,7 @@
                     <div class="celebration-header">
                         <div class="celebration-icon">${rewardData.title}</div>
                     </div>
-                    <h2 class="modal-title" id="celebration-title">${stageEmoji} ${petName} is now a ${stageLabel}! ${stageEmoji}</h2>
+                    <h2 class="modal-title" id="celebration-title">${stageEmoji} ${safePetName} is now a ${stageLabel}! ${stageEmoji}</h2>
                     <p class="modal-message celebration-message">${rewardData.message}</p>
                     <div class="rewards-display">
                         <p class="reward-title">🎁 ${rewardData.unlockMessage}</p>
@@ -1568,6 +1573,7 @@
             modal.setAttribute('aria-labelledby', 'evolution-title');
 
             const petName = pet ? (pet.name || evolutionData.name) : evolutionData.name;
+            const safePetName = escapeHTML(petName);
             const qualityLabel = CARE_QUALITY[pet.careQuality]?.label || 'Excellent';
 
             modal.innerHTML = `
@@ -1575,7 +1581,7 @@
                     <div class="celebration-header">
                         <div class="celebration-icon evolution-icon">✨ EVOLUTION! ✨</div>
                     </div>
-                    <h2 class="modal-title" id="evolution-title">${evolutionData.emoji} ${petName} ${evolutionData.emoji}</h2>
+                    <h2 class="modal-title" id="evolution-title">${evolutionData.emoji} ${safePetName} ${evolutionData.emoji}</h2>
                     <p class="modal-message celebration-message">
                         Thanks to your ${qualityLabel.toLowerCase()} care, your pet has evolved into a special form!
                     </p>
