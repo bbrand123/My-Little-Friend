@@ -354,14 +354,14 @@
             const roomBonusLabel = currentRoomData && currentRoomData.bonus ? currentRoomData.bonus.label : '';
 
             content.innerHTML = `
-                <div class="top-action-bar" aria-label="Game actions">
-                    <button class="top-action-btn" id="codex-btn" aria-label="Open Pet Codex" tabindex="0">
+                <div class="top-action-bar" role="toolbar" aria-label="Game actions">
+                    <button class="top-action-btn" id="codex-btn" type="button" aria-label="Open Pet Codex" aria-haspopup="dialog">
                         <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
                     </button>
-                    <button class="top-action-btn" id="stats-btn" aria-label="Open Stats" tabindex="0">
+                    <button class="top-action-btn" id="stats-btn" type="button" aria-label="Open Stats" aria-haspopup="dialog">
                         <span class="top-action-btn-icon" aria-hidden="true">📊</span> Stats
                     </button>
-                    <button class="top-action-btn" id="furniture-btn" aria-label="Customize Furniture" tabindex="0">
+                    <button class="top-action-btn" id="furniture-btn" type="button" aria-label="Customize Furniture" aria-haspopup="dialog">
                         <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
                     </button>
                     ${roomBonusLabel ? `<span class="room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}

@@ -1983,6 +1983,8 @@
             justify-content: center;
             gap: 8px;
             margin-bottom: 8px;
+            position: relative;
+            z-index: 5;
         }
 
         .top-action-btn {
@@ -2005,6 +2007,7 @@
             min-height: 44px;
             min-width: 44px;
             justify-content: center;
+            touch-action: manipulation;
         }
 
         .top-action-btn:hover,
@@ -4745,4 +4748,3 @@
                 align-items: flex-start;
             }
         }
-
