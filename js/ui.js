@@ -403,13 +403,11 @@
                 weatherHTML = generateWeatherHTML(weather);
             }
             const weatherClass = isOutdoor && weather !== 'sunny' ? `weather-${weather}` : '';
-            const weatherBadgeHTML = `<div class="weather-badge ${weather}" aria-label="Weather: ${weatherData.name}">${weatherData.icon} ${weatherData.name}</div>`;
 
             // Season info
             const season = SEASONS[gameState.season] ? gameState.season : getCurrentSeason();
             gameState.season = season;
             const seasonData = SEASONS[season];
-            const seasonBadgeHTML = `<div class="season-badge ${season}" aria-label="Season: ${seasonData.name}">${seasonData.icon} ${seasonData.name}</div>`;
             const seasonalDecorHTML = isOutdoor && seasonData ? `<div class="seasonal-decor" aria-hidden="true">${getSeasonalDecor(season, timeOfDay)}</div>` : '';
 
             // Weather mood note
