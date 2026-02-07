@@ -1523,8 +1523,12 @@
             document.querySelectorAll('.simonsays-pad').forEach(pad => {
                 if (disabled) {
                     pad.classList.add('disabled');
+                    pad.disabled = true;
+                    pad.setAttribute('aria-disabled', 'true');
                 } else {
                     pad.classList.remove('disabled');
+                    pad.disabled = false;
+                    pad.removeAttribute('aria-disabled');
                 }
             });
         }
@@ -2789,4 +2793,3 @@
 
             announce(title + '. ' + message);
         }
-
