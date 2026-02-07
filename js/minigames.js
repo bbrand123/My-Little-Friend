@@ -9,6 +9,77 @@
             { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds!' }
         ];
 
+        const MINIGAME_EXIT_CONFIRM_SCORE = 3;
+
+        function requestMiniGameExit(score, onConfirm) {
+            const safeScore = Number.isFinite(score) ? Math.max(0, score) : 0;
+            if (safeScore < MINIGAME_EXIT_CONFIRM_SCORE) {
+                onConfirm();
+                return;
+            }
+            showMiniGameExitConfirm(safeScore, onConfirm);
+        }
+
+        function showMiniGameExitConfirm(score, onConfirm) {
+            const existing = document.querySelector('.minigame-exit-modal');
+            if (existing) return;
+
+            const returnFocusEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay minigame-exit-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'minigame-exit-title');
+
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-icon" aria-hidden="true">⚠️</div>
+                    <h2 class="modal-title" id="minigame-exit-title">Exit the mini game?</h2>
+                    <p class="modal-message">You have a score of ${score}. If you leave now, this round will end.</p>
+                    <div class="modal-buttons">
+                        <button class="modal-btn cancel" id="minigame-exit-cancel">Keep Playing</button>
+                        <button class="modal-btn confirm" id="minigame-exit-confirm">Exit Game</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const cancelBtn = document.getElementById('minigame-exit-cancel');
+            const confirmBtn = document.getElementById('minigame-exit-confirm');
+            if (cancelBtn) cancelBtn.focus();
+
+            function closeModal() {
+                document.removeEventListener('keydown', handleEscape);
+                modal.remove();
+                if (returnFocusEl && document.contains(returnFocusEl)) {
+                    returnFocusEl.focus();
+                }
+            }
+
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', () => {
+                    closeModal();
+                    onConfirm();
+                });
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeModal);
+            }
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
         function openMiniGamesMenu() {
             // Remove any existing menu
             const existing = document.querySelector('.minigame-menu-overlay');
@@ -182,12 +253,14 @@
 
             throwBtn.addEventListener('click', (e) => handleFetchThrow(e));
 
-            doneBtn.addEventListener('click', () => endFetchGame());
+            doneBtn.addEventListener('click', () => {
+                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
+            });
 
             // Escape to exit
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    endFetchGame();
+                    requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -516,12 +589,14 @@
             });
 
             const doneBtn = overlay.querySelector('#hideseek-done-btn');
-            doneBtn.addEventListener('click', () => endHideSeekGame());
+            doneBtn.addEventListener('click', () => {
+                requestMiniGameExit(hideSeekState ? hideSeekState.treatsFound : 0, () => endHideSeekGame());
+            });
 
             // Escape to exit
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    endHideSeekGame();
+                    requestMiniGameExit(hideSeekState ? hideSeekState.treatsFound : 0, () => endHideSeekGame());
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -795,17 +870,21 @@
             document.body.appendChild(overlay);
 
             // Done button
-            overlay.querySelector('#bubblepop-done').addEventListener('click', () => endBubblePopGame());
+            overlay.querySelector('#bubblepop-done').addEventListener('click', () => {
+                requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
+            });
 
             // Close on overlay click
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) endBubblePopGame();
+                if (e.target === overlay) {
+                    requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
+                }
             });
 
             // Escape to close
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    endBubblePopGame();
+                    requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -1171,17 +1250,21 @@
             });
 
             // Done button
-            overlay.querySelector('#matching-done').addEventListener('click', () => endMatchingGame());
+            overlay.querySelector('#matching-done').addEventListener('click', () => {
+                requestMiniGameExit(matchingState ? matchingState.matchesFound : 0, () => endMatchingGame());
+            });
 
             // Close on overlay click
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) endMatchingGame();
+                if (e.target === overlay) {
+                    requestMiniGameExit(matchingState ? matchingState.matchesFound : 0, () => endMatchingGame());
+                }
             });
 
             // Escape to close
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    endMatchingGame();
+                    requestMiniGameExit(matchingState ? matchingState.matchesFound : 0, () => endMatchingGame());
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -1461,17 +1544,24 @@
             });
 
             // Done button
-            overlay.querySelector('#simon-done').addEventListener('click', () => endSimonSaysGame());
+            overlay.querySelector('#simon-done').addEventListener('click', () => {
+                const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                requestMiniGameExit(rounds, () => endSimonSaysGame());
+            });
 
             // Close on overlay click
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) endSimonSaysGame();
+                if (e.target === overlay) {
+                    const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                    requestMiniGameExit(rounds, () => endSimonSaysGame());
+                }
             });
 
             // Escape to close
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    endSimonSaysGame();
+                    const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                    requestMiniGameExit(rounds, () => endSimonSaysGame());
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -1810,17 +1900,24 @@
             });
 
             // Done button
-            overlay.querySelector('#coloring-done').addEventListener('click', () => endColoringGame());
+            overlay.querySelector('#coloring-done').addEventListener('click', () => {
+                const colored = coloringState ? coloringState.regionsColored.size : 0;
+                requestMiniGameExit(colored, () => endColoringGame());
+            });
 
             // Close on overlay click
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) endColoringGame();
+                if (e.target === overlay) {
+                    const colored = coloringState ? coloringState.regionsColored.size : 0;
+                    requestMiniGameExit(colored, () => endColoringGame());
+                }
             });
 
             // Escape to close
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    endColoringGame();
+                    const colored = coloringState ? coloringState.regionsColored.size : 0;
+                    requestMiniGameExit(colored, () => endColoringGame());
                 }
             }
             document.addEventListener('keydown', handleEscape);

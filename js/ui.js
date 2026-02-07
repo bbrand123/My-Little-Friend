@@ -421,6 +421,14 @@
             const weatherBadgeHTML = `<span class="status-pill weather-badge ${weather}" id="weather-badge" aria-label="Weather: ${weatherData.name}">${weatherData.icon}<span class="status-text">${weatherData.name}</span></span>`;
             const seasonBadgeHTML = `<span class="status-pill season-badge ${season}" id="season-badge" aria-label="Season: ${seasonData.name}">${seasonData.icon}<span class="status-text">${seasonData.name}</span></span>`;
             const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
+            const miniNeedsHTML = `
+                <div class="mini-needs" role="group" aria-label="Quick pet status">
+                    <span class="mini-need" id="mini-hunger" aria-label="Food ${pet.hunger}%" title="Food ${pet.hunger}%" style="--mini-color:${getNeedColor(pet.hunger)};--mini-level:${pet.hunger};"></span>
+                    <span class="mini-need" id="mini-clean" aria-label="Bath ${pet.cleanliness}%" title="Bath ${pet.cleanliness}%" style="--mini-color:${getNeedColor(pet.cleanliness)};--mini-level:${pet.cleanliness};"></span>
+                    <span class="mini-need" id="mini-happy" aria-label="Happy ${pet.happiness}%" title="Happy ${pet.happiness}%" style="--mini-color:${getNeedColor(pet.happiness)};--mini-level:${pet.happiness};"></span>
+                    <span class="mini-need" id="mini-energy" aria-label="Energy ${pet.energy}%" title="Energy ${pet.energy}%" style="--mini-color:${getNeedColor(pet.energy)};--mini-level:${pet.energy};"></span>
+                </div>
+            `;
 
             // Helper: need bubble class based on level
             function needClass(val) {
@@ -456,6 +464,7 @@
                         ${seasonBadgeHTML}
                         ${roomBonusLabel ? `<span class="status-pill room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
                     </div>
+                    ${miniNeedsHTML}
                 </div>
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
@@ -696,21 +705,25 @@
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('feed'))} Food${getRoomBonus('feed') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn wash" id="wash-btn" aria-label="Wash your pet. Current cleanliness: ${pet.cleanliness}%">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('wash'))} Bath${getRoomBonus('wash') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn sleep" id="sleep-btn" aria-label="Put your pet to sleep. Current energy: ${pet.energy}%">
                                 <span class="action-btn-tooltip">+${Math.round(25 * getRoomBonus('sleep'))}-${Math.round(40 * getRoomBonus('sleep'))} Energy${getRoomBonus('sleep') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn" aria-label="Pet and cuddle your pet. Current happiness: ${pet.happiness}%">
                                 <span class="action-btn-tooltip">+15 Happy, +5 Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                         </div>
                     </div>
@@ -721,21 +734,25 @@
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('play'))} Happy${getRoomBonus('play') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn exercise" id="exercise-btn" aria-label="Exercise your pet - take a walk or play fetch">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('exercise'))} Happy, -10 Energy${getRoomBonus('exercise') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🏃</span>
                                 <span>Exercise</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn treat" id="treat-btn" aria-label="Give your pet a special treat for bonus happiness">
                                 <span class="action-btn-tooltip">+25 Happy, +10 Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍪</span>
                                 <span>Treat</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn mini-games" id="minigames-btn" aria-label="Open mini games to play with your pet">
                                 <span class="action-btn-tooltip">6 games to play!</span>
                                 <span class="btn-icon" aria-hidden="true">🎮</span>
                                 <span>Games</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                         </div>
                     </div>
@@ -746,11 +763,13 @@
                                 <span class="action-btn-tooltip">Boosts all stats</span>
                                 <span class="btn-icon" aria-hidden="true">🩹</span>
                                 <span>Medicine</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn groom" id="groom-btn" aria-label="Groom your pet - brush fur and trim nails">
                                 <span class="action-btn-tooltip">+${Math.round(15 * getRoomBonus('groom'))} Bath, +${Math.round(10 * getRoomBonus('groom'))} Happy${getRoomBonus('groom') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">✂️</span>
                                 <span>Groom</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                         </div>
                     </div>
@@ -760,6 +779,7 @@
                             <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" aria-label="${seasonData.activityName} - seasonal activity">
                                 <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
                                 <span>${seasonData.activityName}</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                         </div>
                     </div>
@@ -885,6 +905,8 @@
 
         // Track button cooldowns
         let actionCooldown = false;
+        let actionCooldownTimer = null;
+        const ACTION_COOLDOWN_MS = 600;
 
         function careAction(action) {
             // Prevent rapid clicking
@@ -898,14 +920,38 @@
                 btn.setAttribute('aria-disabled', 'true');
             });
 
+            const cooldownEnd = Date.now() + ACTION_COOLDOWN_MS;
+            if (actionCooldownTimer) {
+                clearInterval(actionCooldownTimer);
+                actionCooldownTimer = null;
+            }
+
+            const updateCooldownLabels = () => {
+                const remaining = cooldownEnd - Date.now();
+                const seconds = Math.max(0, remaining / 1000);
+                const label = remaining > 0 ? seconds.toFixed(1) : '';
+                buttons.forEach(btn => {
+                    const labelEl = btn.querySelector('.cooldown-count');
+                    if (labelEl) labelEl.textContent = label;
+                });
+                if (remaining <= 0) {
+                    clearInterval(actionCooldownTimer);
+                    actionCooldownTimer = null;
+                }
+            };
+            updateCooldownLabels();
+            actionCooldownTimer = setInterval(updateCooldownLabels, 100);
+
             setTimeout(() => {
                 actionCooldown = false;
                 buttons.forEach(btn => {
                     btn.classList.remove('cooldown');
                     btn.disabled = false;
                     btn.removeAttribute('aria-disabled');
+                    const labelEl = btn.querySelector('.cooldown-count');
+                    if (labelEl) labelEl.textContent = '';
                 });
-            }, 600);
+            }, ACTION_COOLDOWN_MS);
 
             const pet = gameState.pet;
             const petData = PET_TYPES[pet.type];
@@ -1180,6 +1226,20 @@
             const cuddleDesc = pet.happiness <= 50 ? 'wants cuddles' : 'loves your attention';
             const petBtn = document.getElementById('pet-btn');
             if (petBtn) petBtn.setAttribute('aria-label', `Pet and cuddle your pet. Happiness: ${pet.happiness}%, ${cuddleDesc}`);
+
+            // Update mini needs (quick status)
+            function updateMini(id, value, label) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.setProperty('--mini-color', getNeedColor(value));
+                el.style.setProperty('--mini-level', value);
+                el.setAttribute('aria-label', `${label} ${value}%`);
+                el.setAttribute('title', `${label} ${value}%`);
+            }
+            updateMini('mini-hunger', pet.hunger, 'Food');
+            updateMini('mini-clean', pet.cleanliness, 'Bath');
+            updateMini('mini-happy', pet.happiness, 'Happy');
+            updateMini('mini-energy', pet.energy, 'Energy');
         }
 
         function updatePetMood() {
