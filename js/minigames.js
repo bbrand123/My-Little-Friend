@@ -43,17 +43,25 @@
 
             document.body.appendChild(overlay);
 
+            const triggerBtn = document.getElementById('minigames-btn');
+
+            function closeMenu() {
+                document.removeEventListener('keydown', handleEscape);
+                if (overlay && overlay.parentNode) overlay.remove();
+                if (triggerBtn) triggerBtn.focus();
+            }
+
             // Event listeners
-            overlay.querySelector('#minigame-close').addEventListener('click', () => overlay.remove());
+            overlay.querySelector('#minigame-close').addEventListener('click', () => closeMenu());
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.remove();
+                if (e.target === overlay) closeMenu();
             });
 
             // Game card listeners
             overlay.querySelectorAll('.minigame-card').forEach(card => {
                 card.addEventListener('click', () => {
                     const gameId = card.getAttribute('data-game');
-                    overlay.remove();
+                    closeMenu();
                     startMiniGame(gameId);
                 });
             });
@@ -61,8 +69,7 @@
             // Escape to close
             function handleEscape(e) {
                 if (e.key === 'Escape') {
-                    overlay.remove();
-                    document.removeEventListener('keydown', handleEscape);
+                    closeMenu();
                 }
             }
             document.addEventListener('keydown', handleEscape);

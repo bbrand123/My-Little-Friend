@@ -1697,9 +1697,12 @@
         function showTutorial() {
             const overlay = document.createElement('div');
             overlay.className = 'naming-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'tutorial-title');
             overlay.innerHTML = `
                 <div class="naming-modal">
-                    <h2 class="naming-modal-title">🎉 Welcome to Pet Care Buddy!</h2>
+                    <h2 class="naming-modal-title" id="tutorial-title">🎉 Welcome to Pet Care Buddy!</h2>
                     <div class="tutorial-content">
                         <div class="tutorial-step">
                             <span class="tutorial-icon">🥚</span>
@@ -1737,6 +1740,7 @@
             const skipBtn = document.getElementById('tutorial-skip');
 
             function closeTutorial() {
+                document.removeEventListener('keydown', handleEscape);
                 overlay.remove();
                 // Mark tutorial as seen
                 try {
@@ -1748,6 +1752,11 @@
 
             doneBtn.addEventListener('click', closeTutorial);
             skipBtn.addEventListener('click', closeTutorial);
+
+            function handleEscape(e) {
+                if (e.key === 'Escape') closeTutorial();
+            }
+            document.addEventListener('keydown', handleEscape);
         }
 
         // ==================== FURNITURE CUSTOMIZATION ====================
@@ -1766,6 +1775,9 @@
 
             const overlay = document.createElement('div');
             overlay.className = 'naming-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'furniture-title');
 
             let bedOptions = '';
             let decorOptions = '';
@@ -1804,7 +1816,7 @@
 
             overlay.innerHTML = `
                 <div class="naming-modal">
-                    <h2 class="naming-modal-title">🛋️ Customize ${ROOMS[currentRoom].name}</h2>
+                    <h2 class="naming-modal-title" id="furniture-title">🛋️ Customize ${ROOMS[currentRoom].name}</h2>
                     <p class="naming-modal-subtitle">Make this room your own!</p>
                     ${bedOptions}
                     ${decorOptions}
@@ -1835,10 +1847,20 @@
                 });
             });
 
-            document.getElementById('furniture-done').addEventListener('click', () => {
+            function closeFurniture() {
+                document.removeEventListener('keydown', handleEscape);
                 overlay.remove();
                 renderPetPhase(); // Re-render to show changes
+            }
+
+            document.getElementById('furniture-done').addEventListener('click', () => {
+                closeFurniture();
             });
+
+            function handleEscape(e) {
+                if (e.key === 'Escape') closeFurniture();
+            }
+            document.addEventListener('keydown', handleEscape);
         }
 
         // ==================== PET CODEX ====================

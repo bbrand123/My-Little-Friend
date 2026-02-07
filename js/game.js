@@ -315,7 +315,11 @@
         }
 
         function createPet(specificType) {
-            const type = specificType || gameState.pendingPetType || randomFromArray(getUnlockedPetTypes());
+            let type = specificType || gameState.pendingPetType || randomFromArray(getUnlockedPetTypes());
+            if (!PET_TYPES[type]) {
+                const unlocked = getUnlockedPetTypes();
+                type = unlocked.find(t => PET_TYPES[t]) || Object.keys(PET_TYPES)[0];
+            }
             const petData = PET_TYPES[type];
             const color = randomFromArray(petData.colors);
 
@@ -676,6 +680,7 @@
             if (readyCrops > 0) {
                 if (existingBadge) {
                     existingBadge.textContent = readyCrops;
+                    existingBadge.setAttribute('aria-label', `${readyCrops} crops ready`);
                 } else {
                     const badge = document.createElement('span');
                     badge.className = 'garden-ready-badge';
