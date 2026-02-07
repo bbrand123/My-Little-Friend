@@ -415,6 +415,13 @@
             // Weather mood note
             const weatherMoodNote = getWeatherMoodMessage(pet, weather);
 
+            const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
+            const roomLabelHTML = `<span class="status-pill room-label" id="room-label" aria-label="Room: ${room.name}">${room.icon}<span class="status-text">${room.name}</span></span>`;
+            const timeIndicatorHTML = `<span class="status-pill time-indicator" id="time-indicator" aria-label="Time: ${timeLabel}">${timeIcon}<span class="status-text">${timeLabel}</span></span>`;
+            const weatherBadgeHTML = `<span class="status-pill weather-badge ${weather}" id="weather-badge" aria-label="Weather: ${weatherData.name}">${weatherData.icon}<span class="status-text">${weatherData.name}</span></span>`;
+            const seasonBadgeHTML = `<span class="status-pill season-badge ${season}" id="season-badge" aria-label="Season: ${seasonData.name}">${seasonData.icon}<span class="status-text">${seasonData.name}</span></span>`;
+            const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
+
             // Helper: need bubble class based on level
             function needClass(val) {
                 if (val <= 15) return 'critical';
@@ -431,26 +438,31 @@
 
             content.innerHTML = `
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
-                    <button class="top-action-btn" id="codex-btn" type="button" aria-label="Open Pet Codex" aria-haspopup="dialog">
-                        <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
-                    </button>
-                    <button class="top-action-btn" id="stats-btn" type="button" aria-label="Open Stats" aria-haspopup="dialog">
-                        <span class="top-action-btn-icon" aria-hidden="true">📊</span> Stats
-                    </button>
-                    <button class="top-action-btn" id="furniture-btn" type="button" aria-label="Customize Furniture" aria-haspopup="dialog">
-                        <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
-                    </button>
-                    ${roomBonusLabel ? `<span class="room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
+                    <div class="top-action-buttons" role="group" aria-label="Top actions">
+                        <button class="top-action-btn" id="codex-btn" type="button" aria-label="Open Pet Codex" aria-haspopup="dialog">
+                            <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
+                        </button>
+                        <button class="top-action-btn" id="stats-btn" type="button" aria-label="Open Stats" aria-haspopup="dialog">
+                            <span class="top-action-btn-icon" aria-hidden="true">📊</span> Stats
+                        </button>
+                        <button class="top-action-btn" id="furniture-btn" type="button" aria-label="Customize Furniture" aria-haspopup="dialog">
+                            <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
+                        </button>
+                    </div>
+                    <div class="status-stack" role="status" aria-label="Game status">
+                        ${roomLabelHTML}
+                        ${timeIndicatorHTML}
+                        ${weatherBadgeHTML}
+                        ${seasonBadgeHTML}
+                        ${roomBonusLabel ? `<span class="status-pill room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
+                    </div>
                 </div>
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
+                    ${roomPatternHTML}
                     ${celestialHTML}
                     ${weatherHTML}
-                    ${weatherBadgeHTML}
-                    ${seasonBadgeHTML}
                     ${seasonalDecorHTML}
-                    <div class="room-label">${room.icon} ${room.name}</div>
-                    <div class="time-indicator" aria-label="Time: ${timeOfDay}">${timeIcon}</div>
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
                         ${generatePetSVG(pet, mood)}

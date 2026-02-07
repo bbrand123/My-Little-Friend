@@ -1359,18 +1359,61 @@
             background: linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
         }
 
+        /* Room pattern overlay */
+        .room-pattern {
+            position: absolute;
+            inset: 0 0 35px 0;
+            pointer-events: none;
+            opacity: 0.25;
+            z-index: 0;
+        }
+
+        .room-pattern-bedroom {
+            background-image: radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 2px, transparent 2.5px);
+            background-size: 18px 18px;
+        }
+
+        .room-pattern-kitchen {
+            background-image:
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 12px),
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 12px);
+        }
+
+        .room-pattern-bathroom {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .room-pattern-backyard {
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 14px);
+        }
+
+        .room-pattern-park {
+            background-image: radial-gradient(circle at 8px 8px, rgba(255,255,255,0.25) 2px, transparent 2.5px);
+            background-size: 22px 22px;
+        }
+
+        .room-pattern-garden {
+            background-image:
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 14px),
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 20px);
+        }
+
         /* Room-specific decor */
         .room-decor {
             position: absolute;
             bottom: 20px;
             left: 0;
             right: 0;
-            font-size: 0.7rem;
-            letter-spacing: 16px;
+            font-size: 0.9rem;
+            letter-spacing: 12px;
             text-align: center;
             z-index: 1;
             pointer-events: none;
-            opacity: 0.8;
+            opacity: 0.85;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.6);
         }
 
         /* Room label */
@@ -1390,6 +1433,19 @@
         .pet-area.nighttime .room-label {
             background: rgba(0,0,0,0.4);
             color: #E0E0E0;
+        }
+
+        .status-stack .room-label {
+            position: static;
+            top: auto;
+            left: auto;
+            background: rgba(255,255,255,0.7);
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            pointer-events: auto;
+            z-index: auto;
         }
 
         @media (max-width: 400px) {
@@ -1534,6 +1590,14 @@
             color: #546E7A;
         }
 
+        .status-stack .weather-badge {
+            position: static;
+            top: auto;
+            left: auto;
+            transform: none;
+            z-index: auto;
+        }
+
         /* Rainy background tint for outdoor rooms */
         .pet-area.weather-rainy {
             filter: brightness(0.9) saturate(0.85);
@@ -1560,6 +1624,15 @@
             left: 10px;
             font-size: 1.2rem;
             z-index: 2;
+        }
+
+        .status-stack .time-indicator {
+            position: static;
+            top: auto;
+            left: auto;
+            transform: none;
+            font-size: 0.7rem;
+            z-index: auto;
         }
 
         /* Responsive Design */
@@ -1644,6 +1717,14 @@
 
             .codex-grid, .stats-achievements-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .status-pill .status-text {
+                display: none;
+            }
+
+            .status-pill {
+                padding: 4px 6px;
             }
         }
 
@@ -1986,11 +2067,46 @@
         /* Top action bar for codex/stats buttons */
         .top-action-bar {
             display: flex;
-            justify-content: center;
-            gap: 8px;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
             margin-bottom: 8px;
             position: relative;
             z-index: 5;
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .top-action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .status-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #555;
+            background: rgba(0, 0, 0, 0.06);
+            white-space: nowrap;
+        }
+
+        .status-pill .status-text {
+            font-size: 0.65rem;
+            font-weight: 700;
         }
 
         .top-action-btn {
@@ -2043,9 +2159,11 @@
             font-weight: 700;
             color: #0D9488;
             background: rgba(92, 214, 204, 0.15);
-            padding: 1px 6px;
-            border-radius: 6px;
-            margin-top: 1px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
         /* Mini Games Button */
@@ -3878,6 +3996,16 @@
             z-index: 5;
             pointer-events: none;
             opacity: 0.9;
+        }
+
+        .status-stack .season-badge {
+            position: static;
+            top: auto;
+            left: auto;
+            transform: none;
+            pointer-events: auto;
+            opacity: 1;
+            z-index: auto;
         }
 
         .season-badge.spring {

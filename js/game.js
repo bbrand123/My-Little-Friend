@@ -725,9 +725,10 @@
                 }
 
                 // Update room label
-                const label = petArea.querySelector('.room-label');
+                const label = document.getElementById('room-label');
                 if (label) {
-                    label.textContent = room.icon + ' ' + room.name;
+                    label.innerHTML = `${room.icon}<span class="status-text">${room.name}</span>`;
+                    label.setAttribute('aria-label', `Room: ${room.name}`);
                 }
 
                 // Show/hide outdoor elements based on room type
@@ -1336,10 +1337,11 @@
             petArea.style.background = getRoomBackground(currentRoom, timeOfDay);
 
             // Update time indicator
-            const timeIndicator = petArea.querySelector('.time-indicator');
+            const timeIndicator = document.getElementById('time-indicator');
             if (timeIndicator) {
-                timeIndicator.textContent = getTimeIcon(timeOfDay);
-                timeIndicator.setAttribute('aria-label', `Time: ${timeOfDay}`);
+                const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
+                timeIndicator.innerHTML = `${getTimeIcon(timeOfDay)}<span class="status-text">${timeLabel}</span>`;
+                timeIndicator.setAttribute('aria-label', `Time: ${timeLabel}`);
             }
 
             // Update room decor for time of day
@@ -1431,11 +1433,11 @@
             }
 
             // Update weather badge
-            const oldBadge = petArea.querySelector('.weather-badge');
+            const oldBadge = document.getElementById('weather-badge');
             if (oldBadge) {
-                oldBadge.className = `weather-badge ${weather}`;
+                oldBadge.className = `status-pill weather-badge ${weather}`;
                 oldBadge.setAttribute('aria-label', `Weather: ${weatherData.name}`);
-                oldBadge.innerHTML = `${weatherData.icon} ${weatherData.name}`;
+                oldBadge.innerHTML = `${weatherData.icon}<span class="status-text">${weatherData.name}</span>`;
             }
         }
 
