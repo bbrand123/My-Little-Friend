@@ -767,6 +767,9 @@
                 container.setAttribute('aria-atomic', 'false');
                 document.body.appendChild(container);
             }
+            if (!container.classList.contains('toast-container')) {
+                container.classList.add('toast-container');
+            }
 
             const toast = document.createElement('div');
             toast.className = 'toast';
@@ -800,11 +803,19 @@
 
             actionCooldown = true;
             const buttons = document.querySelectorAll('.action-btn');
-            buttons.forEach(btn => btn.classList.add('cooldown'));
+            buttons.forEach(btn => {
+                btn.classList.add('cooldown');
+                btn.disabled = true;
+                btn.setAttribute('aria-disabled', 'true');
+            });
 
             setTimeout(() => {
                 actionCooldown = false;
-                buttons.forEach(btn => btn.classList.remove('cooldown'));
+                buttons.forEach(btn => {
+                    btn.classList.remove('cooldown');
+                    btn.disabled = false;
+                    btn.removeAttribute('aria-disabled');
+                });
             }, 600);
 
             const pet = gameState.pet;
@@ -2081,4 +2092,3 @@
 
             announce(`Say goodbye to ${petName || 'your pet'}?`);
         }
-
