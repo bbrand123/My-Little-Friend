@@ -109,6 +109,12 @@
         let fetchState = null;
 
         function startFetchGame() {
+            if (!gameState.pet) {
+                if (typeof showToast === 'function') {
+                    showToast('You need a pet to play this game.', '#FFA726');
+                }
+                return;
+            }
             fetchState = {
                 score: 0,
                 phase: 'ready', // 'ready', 'thrown', 'fetching', 'returning'
@@ -379,6 +385,12 @@
         const HIDESEEK_TREATS = ['🍪', '🦴', '🧀', '🥕', '🍎', '🐟'];
 
         function startHideSeekGame() {
+            if (!gameState.pet) {
+                if (typeof showToast === 'function') {
+                    showToast('You need a pet to play this game.', '#FFA726');
+                }
+                return;
+            }
             const totalTreats = 5;
             const spotCount = 8;
 
@@ -1077,7 +1089,12 @@
         let matchingState = null;
 
         function startMatchingGame() {
-            if (!gameState.pet) return;
+            if (!gameState.pet) {
+                if (typeof showToast === 'function') {
+                    showToast('You need a pet to play this game.', '#FFA726');
+                }
+                return;
+            }
 
             const existing = document.querySelector('.matching-game-overlay');
             if (existing) existing.remove();
@@ -1370,7 +1387,12 @@
         }
 
         function startSimonSaysGame() {
-            if (!gameState.pet) return;
+            if (!gameState.pet) {
+                if (typeof showToast === 'function') {
+                    showToast('You need a pet to play this game.', '#FFA726');
+                }
+                return;
+            }
 
             const existing = document.querySelector('.simonsays-game-overlay');
             if (existing) existing.remove();
@@ -1679,7 +1701,12 @@
         let coloringState = null;
 
         function startColoringGame() {
-            if (!gameState.pet) return;
+            if (!gameState.pet) {
+                if (typeof showToast === 'function') {
+                    showToast('You need a pet to play this game.', '#FFA726');
+                }
+                return;
+            }
 
             const existing = document.querySelector('.coloring-game-overlay');
             if (existing) existing.remove();
@@ -2234,6 +2261,7 @@
             if (existing) existing.remove();
 
             const season = gameState.season || getCurrentSeason();
+            const triggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             const overlay = document.createElement('div');
             overlay.className = 'seed-picker-overlay';
             overlay.setAttribute('role', 'dialog');
@@ -2270,6 +2298,14 @@
             function closeOverlay() {
                 document.removeEventListener('keydown', handleEscape);
                 if (overlay && overlay.parentNode) overlay.remove();
+                setTimeout(() => {
+                    const plotEl = document.querySelector(`.garden-plot[data-plot="${plotIndex}"]`);
+                    if (plotEl) {
+                        plotEl.focus();
+                    } else if (triggerEl && document.contains(triggerEl)) {
+                        triggerEl.focus();
+                    }
+                }, 0);
             }
 
             overlay.querySelectorAll('.seed-option').forEach(btn => {

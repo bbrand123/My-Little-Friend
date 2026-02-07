@@ -363,7 +363,10 @@
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
 
             // Current room
-            const currentRoom = gameState.currentRoom || 'bedroom';
+            const currentRoom = ROOMS[gameState.currentRoom] ? gameState.currentRoom : 'bedroom';
+            if (currentRoom !== gameState.currentRoom) {
+                gameState.currentRoom = currentRoom;
+            }
             const room = ROOMS[currentRoom];
             const isOutdoor = room.isOutdoor;
             const roomBg = getRoomBackground(currentRoom, timeOfDay);
@@ -382,7 +385,10 @@
             }
 
             // Generate weather effects
-            const weather = gameState.weather || 'sunny';
+            const weather = WEATHER_TYPES[gameState.weather] ? gameState.weather : 'sunny';
+            if (weather !== gameState.weather) {
+                gameState.weather = weather;
+            }
             const weatherData = WEATHER_TYPES[weather];
             let weatherHTML = '';
             if (isOutdoor) {
@@ -392,7 +398,7 @@
             const weatherBadgeHTML = `<div class="weather-badge ${weather}" aria-label="Weather: ${weatherData.name}">${weatherData.icon} ${weatherData.name}</div>`;
 
             // Season info
-            const season = gameState.season || getCurrentSeason();
+            const season = SEASONS[gameState.season] ? gameState.season : getCurrentSeason();
             gameState.season = season;
             const seasonData = SEASONS[season];
             const seasonBadgeHTML = `<div class="season-badge ${season}" aria-label="Season: ${seasonData.name}">${seasonData.icon} ${seasonData.name}</div>`;
@@ -1051,8 +1057,10 @@
 
             // Show feedback
             const feedback = document.getElementById('feedback');
-            feedback.textContent = `${petData.emoji} ${message}`;
-            feedback.classList.add('show');
+            if (feedback) {
+                feedback.textContent = `${petData.emoji} ${message}`;
+                feedback.classList.add('show');
+            }
 
             // Show toast notification
             showToast(`${petData.emoji} ${message}`, TOAST_COLORS[action] || '#66BB6A');
@@ -1069,9 +1077,11 @@
             }, 800);
 
             // Hide feedback
-            setTimeout(() => {
-                feedback.classList.remove('show');
-            }, 2000);
+            if (feedback) {
+                setTimeout(() => {
+                    feedback.classList.remove('show');
+                }, 2000);
+            }
 
             saveGame();
         }
@@ -1192,8 +1202,9 @@
         function updateGrowthDisplay() {
             const pet = gameState.pet;
             if (!pet) return;
-            const stage = pet.growthStage || 'adult';
+            const stage = GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
             const stageData = GROWTH_STAGES[stage];
+            if (!stageData) return;
             const progress = getGrowthProgress(pet.careActions || 0, getPetAge(pet), stage);
             const nextStage = getNextGrowthStage(stage);
             const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
