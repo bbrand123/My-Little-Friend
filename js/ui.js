@@ -1763,7 +1763,11 @@
 
         function showFurnitureModal() {
             const currentRoom = gameState.currentRoom || 'bedroom';
-            const furniture = gameState.furniture || {};
+            if (!gameState.furniture || typeof gameState.furniture !== 'object') {
+                gameState.furniture = {};
+            }
+            const furniture = gameState.furniture;
+            const triggerBtn = document.getElementById('furniture-btn');
 
             // Only show furniture options for certain rooms
             if (!['bedroom', 'kitchen', 'bathroom'].includes(currentRoom)) {
@@ -1825,6 +1829,8 @@
             `;
 
             document.body.appendChild(overlay);
+            const doneBtn = document.getElementById('furniture-done');
+            if (doneBtn) doneBtn.focus();
 
             // Handle furniture selection
             document.querySelectorAll('.furniture-option').forEach(btn => {
@@ -1851,9 +1857,14 @@
                 document.removeEventListener('keydown', handleEscape);
                 overlay.remove();
                 renderPetPhase(); // Re-render to show changes
+                setTimeout(() => {
+                    const refreshedBtn = document.getElementById('furniture-btn');
+                    if (refreshedBtn) refreshedBtn.focus();
+                    else if (triggerBtn) triggerBtn.focus();
+                }, 0);
             }
 
-            document.getElementById('furniture-done').addEventListener('click', () => {
+            if (doneBtn) doneBtn.addEventListener('click', () => {
                 closeFurniture();
             });
 
@@ -1903,10 +1914,11 @@
                 const req = data.unlockRequirement || 0;
                 const progress = req > 0 ? Math.min(100, Math.round((adultsRaised / req) * 100)) : 100;
                 const isComplete = adultsRaised >= req;
+                const progressLabel = req > 0 ? `${adultsRaised}/${req}` : 'Unlocked';
                 return `
                     <div class="codex-unlock-item">
                         <span>${data.emoji} ${data.name}</span>
-                        <span>${adultsRaised}/${req}</span>
+                        <span>${progressLabel}</span>
                         <div class="codex-unlock-bar">
                             <div class="codex-unlock-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progress}%"></div>
                         </div>
@@ -1919,6 +1931,7 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', 'Pet Codex');
+            const triggerBtn = document.getElementById('codex-btn');
             overlay.innerHTML = `
                 <div class="codex-modal">
                     <h2 class="codex-title">Pet Codex</h2>
@@ -1934,10 +1947,15 @@
             `;
             document.body.appendChild(overlay);
 
+            function closeCodex() {
+                overlay.remove();
+                if (triggerBtn) triggerBtn.focus();
+            }
+
             document.getElementById('codex-close').focus();
-            document.getElementById('codex-close').addEventListener('click', () => overlay.remove());
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
+            document.getElementById('codex-close').addEventListener('click', () => closeCodex());
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeCodex(); });
+            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCodex(); });
         }
 
         // ==================== STATS SCREEN ====================
@@ -1973,6 +1991,7 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', 'Pet Stats');
+            const triggerBtn = document.getElementById('stats-btn');
             overlay.innerHTML = `
                 <div class="stats-modal">
                     <h2 class="stats-title">Stats & Progress</h2>
@@ -2052,10 +2071,15 @@
             `;
             document.body.appendChild(overlay);
 
+            function closeStats() {
+                overlay.remove();
+                if (triggerBtn) triggerBtn.focus();
+            }
+
             document.getElementById('stats-close').focus();
-            document.getElementById('stats-close').addEventListener('click', () => overlay.remove());
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
+            document.getElementById('stats-close').addEventListener('click', () => closeStats());
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStats(); });
+            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStats(); });
         }
 
         // ==================== NEW PET ====================

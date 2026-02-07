@@ -100,6 +100,7 @@
 
         function announce(message, assertive = false) {
             const announcer = document.getElementById(assertive ? 'live-announcer-assertive' : 'live-announcer');
+            if (!announcer) return;
             announcer.textContent = '';
             setTimeout(() => {
                 announcer.textContent = message;
