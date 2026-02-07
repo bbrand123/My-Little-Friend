@@ -797,6 +797,8 @@
             font-weight: 600;
             transition: all 0.2s ease;
             touch-action: manipulation;
+            position: relative;
+            z-index: 5;
         }
 
         .new-pet-btn:hover,
@@ -1279,6 +1281,8 @@
             padding: 8px 4px;
             margin: 4px 0;
             flex-wrap: wrap;
+            position: relative;
+            z-index: 5;
         }
 
         .room-btn {

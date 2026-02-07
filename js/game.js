@@ -656,7 +656,7 @@
                 const room = ROOMS[id];
                 const isActive = id === currentRoom;
                 const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
-                html += `<button class="room-btn${isActive ? ' active' : ''}" data-room="${id}"
+                html += `<button class="room-btn${isActive ? ' active' : ''}" type="button" data-room="${id}"
                     aria-label="Go to ${room.name}${id === 'garden' && readyCrops > 0 ? ` (${readyCrops} crops ready!)` : ''}" aria-pressed="${isActive}"
                     ${isActive ? 'aria-current="true"' : ''} tabindex="0" style="position:relative;">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>

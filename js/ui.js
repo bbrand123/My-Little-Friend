@@ -12,10 +12,9 @@
             };
 
             element.addEventListener('click', (e) => invoke(e));
-            element.addEventListener('touchend', (e) => {
-                if (e.cancelable) e.preventDefault();
-                invoke(e);
-            }, { passive: false });
+            element.addEventListener('pointerup', (e) => invoke(e));
+            element.addEventListener('mouseup', (e) => invoke(e));
+            element.addEventListener('touchend', (e) => invoke(e), { passive: true });
             element.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -703,7 +702,7 @@
 
                 ${currentRoom === 'garden' ? '<section class="garden-section" id="garden-section" aria-label="Garden"></section>' : ''}
 
-                <button class="new-pet-btn" id="new-pet-btn" aria-label="Start over with a new egg">
+                <button class="new-pet-btn" id="new-pet-btn" type="button" aria-label="Start over with a new egg">
                     🥚 New Pet
                 </button>
             `;
