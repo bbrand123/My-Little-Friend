@@ -23,6 +23,68 @@
             });
         }
 
+        let globalActivateBound = false;
+
+        function setupGlobalActivateDelegates() {
+            if (globalActivateBound) return;
+            globalActivateBound = true;
+
+            const safeInvoke = (element, handler, event) => {
+                if (!element || typeof handler !== 'function') return;
+                if (element.disabled || element.getAttribute('aria-disabled') === 'true') return;
+                const now = Date.now();
+                const last = Number(element.dataset.lastActivate || 0);
+                if (now - last < 350) return;
+                element.dataset.lastActivate = String(now);
+                handler(event);
+            };
+
+            const dispatch = (event) => {
+                const target = event.target;
+                if (!(target instanceof Element)) return;
+
+                const roomBtn = target.closest('.room-btn');
+                if (roomBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    if (typeof switchRoom === 'function') {
+                        safeInvoke(roomBtn, () => switchRoom(roomBtn.dataset.room), event);
+                    }
+                    return;
+                }
+
+                const newPetBtn = target.closest('#new-pet-btn');
+                if (newPetBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(newPetBtn, typeof startNewPet === 'function' ? startNewPet : null, event);
+                    return;
+                }
+
+                const codexBtn = target.closest('#codex-btn');
+                if (codexBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(codexBtn, typeof showPetCodex === 'function' ? showPetCodex : null, event);
+                    return;
+                }
+
+                const statsBtn = target.closest('#stats-btn');
+                if (statsBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(statsBtn, typeof showStatsScreen === 'function' ? showStatsScreen : null, event);
+                    return;
+                }
+
+                const furnitureBtn = target.closest('#furniture-btn');
+                if (furnitureBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(furnitureBtn, typeof showFurnitureModal === 'function' ? showFurnitureModal : null, event);
+                }
+            };
+
+            document.addEventListener('click', dispatch, true);
+            document.addEventListener('pointerup', dispatch, true);
+            document.addEventListener('touchend', dispatch, { passive: false, capture: true });
+        }
+
         function renderEggPhase(maintainFocus = false) {
             // Initialize egg if not set
             if (!gameState.eggType || !gameState.pendingPetType) {
@@ -728,10 +790,7 @@
                 if (actionCooldown) return;
                 performSeasonalActivity();
             });
-            bindActivate(document.getElementById('new-pet-btn'), startNewPet);
-            bindActivate(document.getElementById('codex-btn'), showPetCodex);
-            bindActivate(document.getElementById('stats-btn'), showStatsScreen);
-            bindActivate(document.getElementById('furniture-btn'), showFurnitureModal);
+            // Global delegates handle top actions and new pet button
 
             // Evolution button if available
             const evolveBtn = document.getElementById('evolve-btn');
@@ -751,9 +810,7 @@
             }
 
             // Room navigation event listeners
-            document.querySelectorAll('.room-btn').forEach(btn => {
-                bindActivate(btn, () => switchRoom(btn.dataset.room));
-            });
+            // Global delegates handle room navigation buttons
 
             // Make pet directly pettable by clicking/touching the pet SVG
             const petContainer = document.getElementById('pet-container');
@@ -2121,3 +2178,6 @@
 
             announce(`Say goodbye to ${petName || 'your pet'}?`);
         }
+
+        // Ensure activation delegates are active even if render binding fails
+        setupGlobalActivateDelegates();
