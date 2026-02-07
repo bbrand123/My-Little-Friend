@@ -50,9 +50,16 @@
             eggButton.addEventListener('click', onEggClick);
             eggButton.addEventListener('keydown', onEggKeydown);
 
-            // Maintain focus for keyboard users
+            // Maintain focus for keyboard users / VoiceOver
             if (maintainFocus) {
                 eggButton.focus();
+            } else {
+                // Help VoiceOver re-discover DOM after innerHTML replacement
+                const gameContent = document.getElementById('game-content');
+                if (gameContent) {
+                    gameContent.setAttribute('tabindex', '-1');
+                    gameContent.focus({ preventScroll: true });
+                }
             }
         }
 
@@ -347,7 +354,7 @@
             const roomBonusLabel = currentRoomData && currentRoomData.bonus ? currentRoomData.bonus.label : '';
 
             content.innerHTML = `
-                <div class="top-action-bar" role="toolbar" aria-label="Game actions">
+                <div class="top-action-bar" aria-label="Game actions">
                     <button class="top-action-btn" id="codex-btn" aria-label="Open Pet Codex" tabindex="0">
                         <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
                     </button>
@@ -736,6 +743,15 @@
             // Start decay timer (which also checks weather) and garden grow timer
             startDecayTimer();
             startGardenGrowTimer();
+
+            // Notify VoiceOver that the screen content has changed
+            // Setting focus to the game-content container helps VoiceOver
+            // re-discover the new DOM content after innerHTML replacement
+            const gameContent = document.getElementById('game-content');
+            if (gameContent) {
+                gameContent.setAttribute('tabindex', '-1');
+                gameContent.focus({ preventScroll: true });
+            }
         }
 
         // ==================== TOAST NOTIFICATIONS ====================
