@@ -1,5 +1,27 @@
         // ==================== RENDER FUNCTIONS ====================
 
+        // Color name helper for VoiceOver accessibility
+        function getColorName(hex) {
+            const colorNames = {
+                '#D4A574': 'Sandy Brown', '#8B7355': 'Dark Tan', '#F5DEB3': 'Wheat',
+                '#A0522D': 'Sienna', '#FFE4C4': 'Peach', '#FFA500': 'Orange',
+                '#808080': 'Gray', '#FFFFFF': 'White', '#000000': 'Black',
+                '#DEB887': 'Tan', '#FFB6C1': 'Light Pink', '#FFD700': 'Gold',
+                '#87CEEB': 'Sky Blue', '#98FB98': 'Pale Green', '#FF6347': 'Tomato Red',
+                '#DDA0DD': 'Plum', '#228B22': 'Forest Green', '#556B2F': 'Dark Olive',
+                '#6B8E23': 'Olive Green', '#8FBC8F': 'Sea Green', '#2E8B57': 'Emerald',
+                '#4169E1': 'Royal Blue', '#FF69B4': 'Hot Pink', '#00CED1': 'Turquoise',
+                '#32CD32': 'Lime Green', '#9ACD32': 'Yellow Green', '#00FA9A': 'Spring Green',
+                '#D2B48C': 'Light Tan', '#C4A882': 'Sandy', '#F5F5F5': 'Snow White',
+                '#FFFAF0': 'Floral White', '#FFF8DC': 'Cornsilk', '#FAEBD7': 'Antique White',
+                '#2F4F4F': 'Dark Slate', '#36454F': 'Charcoal', '#1C1C1C': 'Jet Black',
+                '#4A4A4A': 'Dark Gray', '#333333': 'Dark Charcoal', '#E6E6FA': 'Lavender',
+                '#F0E68C': 'Khaki', '#B0E0E6': 'Powder Blue', '#DC143C': 'Crimson',
+                '#8B0000': 'Dark Red', '#FF4500': 'Orange Red', '#B22222': 'Firebrick Red'
+            };
+            return colorNames[hex.toUpperCase()] || colorNames[hex] || hex;
+        }
+
         let globalActivateBound = false;
 
         function setupGlobalActivateDelegates() {
@@ -214,7 +236,7 @@
 
             // Generate color options
             let colorOptions = petData.colors.map((color, idx) => `
-                <button class="color-option ${idx === 0 ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="Color option ${idx + 1}">
+                <button class="color-option ${idx === 0 ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="${getColorName(color)}${idx === 0 ? ', selected' : ''}">
                     ${idx === 0 ? '✓' : ''}
                 </button>
             `).join('');
@@ -291,9 +313,11 @@
                     document.querySelectorAll('.color-option').forEach(b => {
                         b.classList.remove('selected');
                         b.textContent = '';
+                        b.setAttribute('aria-label', getColorName(b.dataset.color));
                     });
                     btn.classList.add('selected');
                     btn.textContent = '✓';
+                    btn.setAttribute('aria-label', getColorName(btn.dataset.color) + ', selected');
                     selectedColor = btn.dataset.color;
                 });
             });
@@ -1149,7 +1173,6 @@
                 pet.growthStage = newStage;
                 const stageData = GROWTH_STAGES[newStage];
                 showToast(`${stageData.emoji} ${pet.name || petData.name} grew into a ${stageData.label}!`, '#FFD700');
-                announce(`Amazing! Your pet grew into a ${stageData.label}!`);
 
                 // Track adults raised for mythical unlocks
                 if (newStage === 'adult') {
@@ -1162,7 +1185,6 @@
                         if (typeData.mythical && gameState.adultsRaised === typeData.unlockRequirement) {
                             setTimeout(() => {
                                 showToast(`${typeData.emoji} ${typeData.name} unlocked! A mythical pet is now available!`, '#DDA0DD');
-                                announce(`You unlocked the mythical ${typeData.name}! Start a new egg to have a chance at hatching one!`);
                             }, 1500);
                         }
                     });
@@ -1914,8 +1936,7 @@
             }
             document.addEventListener('keydown', handleEscape);
 
-            announce(`Birthday celebration! ${petName} is now a ${stageLabel}! ${rewardData.unlockMessage}`);
-            showToast(`🎉 ${petName} grew to ${stageLabel}!`, '#FFB74D');
+            showToast(`🎉 ${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`, '#FFB74D');
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
@@ -1985,8 +2006,7 @@
             }
             document.addEventListener('keydown', handleEscape);
 
-            announce(`Evolution! Your pet has evolved into ${petName}!`);
-            showToast(`✨ Evolution! ${petName}!`, '#FFD700');
+            showToast(`✨ Evolution! Your pet evolved into ${petName}!`, '#FFD700');
         }
 
         function createConfetti() {
