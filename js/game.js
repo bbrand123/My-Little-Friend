@@ -376,10 +376,14 @@
         }
 
         // Get time of day based on real time
+        // Day: 6:00 AM - 6:00 PM | Golden Hour/Sunset: 6:00 PM - 8:00 PM | Night: 8:00 PM - 5:59 AM
         function getTimeOfDay() {
-            const hour = new Date().getHours();
-            if (hour >= 6 && hour < 8) return 'sunrise';
-            if (hour >= 8 && hour < 18) return 'day';
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            // Sunrise brief window at dawn
+            if (hour === 5 && minute >= 30) return 'sunrise';
+            if (hour >= 6 && hour < 18) return 'day';
             if (hour >= 18 && hour < 20) return 'sunset';
             return 'night';
         }
@@ -701,6 +705,11 @@
             gameState.currentRoom = roomId;
             saveGame();
 
+            // Play room-specific earcon
+            if (typeof SoundManager !== 'undefined') {
+                SoundManager.enterRoom(roomId);
+            }
+
             // Re-render when switching to/from garden (garden section needs DOM update)
             if (roomId === 'garden' || previousRoom === 'garden') {
                 renderPetPhase();
@@ -928,7 +937,12 @@
             }
 
             gameState.pet.hunger = clamp(gameState.pet.hunger + crop.hungerValue, 0, 100);
-            gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
+            if (crop.happinessValue) {
+                gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
+            }
+            if (crop.energyValue) {
+                gameState.pet.energy = clamp(gameState.pet.energy + crop.energyValue, 0, 100);
+            }
 
             // Track care actions for growth
             if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
@@ -941,8 +955,20 @@
             if (petContainer) petContainer.classList.add('bounce');
             if (sparkles) createFoodParticles(sparkles);
 
+            // Show stat change indicators
+            if (crop.hungerValue) showStatChange('hunger-bubble', crop.hungerValue);
+            if (crop.happinessValue) showStatChange('happy-bubble', crop.happinessValue);
+            if (crop.energyValue) showStatChange('energy-bubble', crop.energyValue);
+
+            // Build stat change description
+            let statChanges = [];
+            if (crop.hungerValue) statChanges.push(`Hunger +${crop.hungerValue}`);
+            if (crop.happinessValue) statChanges.push(`Happiness +${crop.happinessValue}`);
+            if (crop.energyValue) statChanges.push(`Energy +${crop.energyValue}`);
+            const statDesc = statChanges.join(', ');
+
             showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}!`, '#FF8C42');
-            announce(`Fed your pet a fresh ${crop.name} from the garden! Hunger +${crop.hungerValue}, Happiness +${crop.happinessValue}`);
+            announce(`Fed your pet a fresh ${crop.name} from the garden! ${statDesc}`);
 
             if (petContainer) {
                 setTimeout(() => petContainer.classList.remove('bounce'), 800);
@@ -1967,6 +1993,8 @@
                 stopDecayTimer();
                 stopWeatherTimer();
                 stopGardenGrowTimer();
+                if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
+                if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
 
                 const preservedAdultsRaised = gameState.adultsRaised || 0;
                 gameState = {
@@ -2082,6 +2110,8 @@
             stopDecayTimer();
             stopWeatherTimer();
             stopGardenGrowTimer();
+            if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
+            if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         });
 
         // Also handle page hide for mobile browsers

@@ -54,6 +54,25 @@
                 if (furnitureBtn) {
                     if (event.type === 'touchend') event.preventDefault();
                     safeInvoke(furnitureBtn, typeof showFurnitureModal === 'function' ? showFurnitureModal : null, event);
+                    return;
+                }
+
+                const soundBtn = target.closest('#sound-toggle-btn');
+                if (soundBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(soundBtn, () => {
+                        if (typeof SoundManager !== 'undefined') {
+                            const enabled = SoundManager.toggle();
+                            soundBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+                            soundBtn.setAttribute('aria-label', `Toggle ambient sounds. Currently ${enabled ? 'on' : 'off'}.`);
+                            const iconSpan = soundBtn.querySelector('.top-action-btn-icon');
+                            if (iconSpan) iconSpan.textContent = enabled ? '🔊' : '🔇';
+                            showToast(enabled ? '🔊 Ambient sounds on' : '🔇 Ambient sounds off', '#4ECDC4');
+                            if (enabled && gameState.currentRoom) {
+                                SoundManager.enterRoom(gameState.currentRoom);
+                            }
+                        }
+                    }, event);
                 }
             };
 
@@ -454,6 +473,9 @@
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-label="Customize Furniture" aria-haspopup="dialog">
                             <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
                         </button>
+                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-label="Toggle ambient sounds. Currently ${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'on' : 'off'}." aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}">
+                            <span class="top-action-btn-icon" aria-hidden="true">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span> Sound
+                        </button>
                     </div>
                     <div class="status-stack" role="status" aria-label="Game status">
                         ${roomLabelHTML}
@@ -699,12 +721,18 @@
                     <div class="action-group">
                         <div class="action-group-label">Basics</div>
                         <div class="action-group-buttons" role="group" aria-label="Basic care buttons">
-                            <button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%">
+                            ${(() => {
+                                const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
+                                const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
+                                const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
+                                return `<button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%${totalCrops > 0 ? '. ' + totalCrops + ' garden crops available.' : ''}">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('feed'))} Food${getRoomBonus('feed') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
+                                ${cropBadge}
                                 <span class="cooldown-count" aria-hidden="true"></span>
-                            </button>
+                            </button>`;
+                            })()}
                             <button class="action-btn wash" id="wash-btn" aria-label="Wash your pet. Current cleanliness: ${pet.cleanliness}%">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('wash'))} Bath${getRoomBonus('wash') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
@@ -851,6 +879,16 @@
             startDecayTimer();
             startGardenGrowTimer();
 
+            // Start room earcon
+            if (typeof SoundManager !== 'undefined') {
+                SoundManager.enterRoom(currentRoom);
+            }
+
+            // Start idle micro-animations
+            if (typeof startIdleAnimations === 'function') {
+                startIdleAnimations();
+            }
+
             // Notify VoiceOver that the screen content has changed
             // Setting focus to the game-content container helps VoiceOver
             // re-discover the new DOM content after innerHTML replacement
@@ -959,6 +997,23 @@
 
             switch (action) {
                 case 'feed': {
+                    // Check if garden has crops available - if so, open feed menu
+                    const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
+                    const availableCrops = Object.keys(gardenInv).filter(k => gardenInv[k] > 0);
+                    if (availableCrops.length > 0) {
+                        openFeedMenu();
+                        // Reset cooldown since we opened a menu
+                        actionCooldown = false;
+                        const btns = document.querySelectorAll('.action-btn');
+                        btns.forEach(btn => {
+                            btn.classList.remove('cooldown');
+                            btn.disabled = false;
+                            btn.removeAttribute('aria-disabled');
+                            const labelEl = btn.querySelector('.cooldown-count');
+                            if (labelEl) labelEl.textContent = '';
+                        });
+                        return;
+                    }
                     const feedBonus = Math.round(20 * getRoomBonus('feed'));
                     pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.feed);
@@ -1465,6 +1520,230 @@
             }
         }
 
+        // ==================== IDLE MICRO-ANIMATIONS ====================
+        // Replaces static pet with subtle living animations
+
+        let idleAnimTimers = [];
+
+        function stopIdleAnimations() {
+            idleAnimTimers.forEach(id => clearTimeout(id));
+            idleAnimTimers = [];
+            // Remove any existing idle animation elements
+            document.querySelectorAll('.idle-blink-overlay, .idle-twitch-overlay, .idle-zzz-float, .sleep-nudge-icon').forEach(el => el.remove());
+        }
+
+        function startIdleAnimations() {
+            stopIdleAnimations();
+            if (gameState.phase !== 'pet' || !gameState.pet) return;
+
+            scheduleBlink();
+            scheduleTwitch();
+            checkLowEnergyAnim();
+            checkNightSleepNudge();
+        }
+
+        // Blink: random interval between 2-8 seconds
+        function scheduleBlink() {
+            const delay = 2000 + Math.random() * 6000;
+            const timerId = setTimeout(() => {
+                if (gameState.phase !== 'pet') return;
+                const petContainer = document.getElementById('pet-container');
+                if (!petContainer) return;
+
+                petContainer.classList.add('idle-blink');
+                setTimeout(() => {
+                    petContainer.classList.remove('idle-blink');
+                    scheduleBlink();
+                }, 200);
+            }, delay);
+            idleAnimTimers.push(timerId);
+        }
+
+        // Twitch (nose movement): every ~5 seconds
+        function scheduleTwitch() {
+            const delay = 4000 + Math.random() * 2000;
+            const timerId = setTimeout(() => {
+                if (gameState.phase !== 'pet') return;
+                const petContainer = document.getElementById('pet-container');
+                if (!petContainer) return;
+
+                petContainer.classList.add('idle-twitch');
+                setTimeout(() => {
+                    petContainer.classList.remove('idle-twitch');
+                    scheduleTwitch();
+                }, 400);
+            }, delay);
+            idleAnimTimers.push(timerId);
+        }
+
+        // Low Energy (< 20%): droopy/tumble animation
+        function checkLowEnergyAnim() {
+            if (gameState.phase !== 'pet' || !gameState.pet) return;
+            const petContainer = document.getElementById('pet-container');
+            if (!petContainer) return;
+
+            if (gameState.pet.energy < 20) {
+                petContainer.classList.add('idle-low-energy');
+            } else {
+                petContainer.classList.remove('idle-low-energy');
+            }
+
+            // Re-check every 5 seconds
+            const timerId = setTimeout(checkLowEnergyAnim, 5000);
+            idleAnimTimers.push(timerId);
+        }
+
+        // Night mode sleep nudge: show Zzz icon near pet
+        function checkNightSleepNudge() {
+            if (gameState.phase !== 'pet' || !gameState.pet) return;
+            const petContainer = document.getElementById('pet-container');
+            if (!petContainer) return;
+
+            const timeOfDay = gameState.timeOfDay || getTimeOfDay();
+            const existingNudge = document.querySelector('.sleep-nudge-icon');
+
+            if (timeOfDay === 'night') {
+                if (!existingNudge) {
+                    const nudge = document.createElement('div');
+                    nudge.className = 'sleep-nudge-icon';
+                    nudge.setAttribute('aria-label', 'It is nighttime. Consider putting your pet to sleep.');
+                    nudge.setAttribute('role', 'img');
+                    nudge.innerHTML = '<span class="sleep-nudge-z z1">Z</span><span class="sleep-nudge-z z2">z</span><span class="sleep-nudge-z z3">z</span>';
+                    petContainer.appendChild(nudge);
+                }
+            } else {
+                if (existingNudge) existingNudge.remove();
+            }
+
+            const timerId = setTimeout(checkNightSleepNudge, 30000);
+            idleAnimTimers.push(timerId);
+        }
+
+        // ==================== FEED MENU ====================
+
+        function openFeedMenu() {
+            const existing = document.querySelector('.feed-menu-overlay');
+            if (existing) existing.remove();
+
+            const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
+            const pet = gameState.pet;
+            if (!pet) return;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'feed-menu-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Feed your pet');
+
+            let itemsHTML = '';
+
+            // Standard meal option
+            const feedBonus = Math.round(20 * getRoomBonus('feed'));
+            itemsHTML += `
+                <button class="feed-menu-item standard-meal" data-feed="standard" aria-label="Standard Meal: plus ${feedBonus} hunger">
+                    <span class="feed-item-icon">🍽️</span>
+                    <div class="feed-item-info">
+                        <span class="feed-item-name">Standard Meal</span>
+                        <span class="feed-item-effect">+${feedBonus} Food${getRoomBonus('feed') > 1 ? ' (room bonus!)' : ''}</span>
+                    </div>
+                    <span class="feed-item-count">Unlimited</span>
+                </button>
+            `;
+
+            // Garden crop options
+            for (const [cropId, count] of Object.entries(gardenInv)) {
+                if (count <= 0) continue;
+                const crop = GARDEN_CROPS[cropId];
+                if (!crop) continue;
+
+                let effectParts = [];
+                if (crop.hungerValue) effectParts.push(`+${crop.hungerValue} Food`);
+                if (crop.happinessValue) effectParts.push(`+${crop.happinessValue} Happy`);
+                if (crop.energyValue) effectParts.push(`+${crop.energyValue} Energy`);
+                const effectText = effectParts.join(', ');
+
+                itemsHTML += `
+                    <button class="feed-menu-item crop-item" data-feed-crop="${cropId}" aria-label="${crop.name}: ${effectText}. ${count} available.">
+                        <span class="feed-item-icon">${crop.seedEmoji}</span>
+                        <div class="feed-item-info">
+                            <span class="feed-item-name">${crop.name}</span>
+                            <span class="feed-item-effect">${effectText}</span>
+                        </div>
+                        <span class="feed-item-count">x${count}</span>
+                    </button>
+                `;
+            }
+
+            overlay.innerHTML = `
+                <div class="feed-menu">
+                    <h3 class="feed-menu-title">🍽️ Feed ${escapeHTML(pet.name || PET_TYPES[pet.type].name)}</h3>
+                    <p class="feed-menu-subtitle">Choose what to feed your pet</p>
+                    <div class="feed-menu-items">${itemsHTML}</div>
+                    <button class="feed-menu-close" id="feed-menu-close">Cancel</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeMenu() {
+                document.removeEventListener('keydown', handleEsc);
+                overlay.remove();
+                // Restore focus to feed button
+                const feedBtn = document.getElementById('feed-btn');
+                if (feedBtn) feedBtn.focus();
+            }
+
+            function handleEsc(e) {
+                if (e.key === 'Escape') closeMenu();
+            }
+            document.addEventListener('keydown', handleEsc);
+
+            // Standard meal
+            const standardBtn = overlay.querySelector('[data-feed="standard"]');
+            if (standardBtn) {
+                standardBtn.addEventListener('click', () => {
+                    closeMenu();
+                    const bonus = Math.round(20 * getRoomBonus('feed'));
+                    pet.hunger = clamp(pet.hunger + bonus, 0, 100);
+                    const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
+                    const petContainer = document.getElementById('pet-container');
+                    const sparkles = document.getElementById('sparkles');
+                    if (petContainer) petContainer.classList.add('bounce');
+                    if (sparkles) createFoodParticles(sparkles);
+                    showStatChange('hunger-bubble', bonus);
+                    showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
+                    announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
+                    if (petContainer) setTimeout(() => petContainer.classList.remove('bounce'), 800);
+                    if (typeof pet.careActions !== 'number') pet.careActions = 0;
+                    pet.careActions++;
+                    updateNeedDisplays();
+                    updatePetMood();
+                    updateWellnessBar();
+                    updateGrowthDisplay();
+                    saveGame();
+                });
+            }
+
+            // Garden crops
+            overlay.querySelectorAll('[data-feed-crop]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cropId = btn.getAttribute('data-feed-crop');
+                    closeMenu();
+                    feedFromGarden(cropId);
+                });
+            });
+
+            const closeBtn = overlay.querySelector('#feed-menu-close');
+            if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeMenu();
+            });
+
+            // Focus first item
+            const firstItem = overlay.querySelector('.feed-menu-item');
+            if (firstItem) firstItem.focus();
+        }
+
         // ==================== MODAL ====================
 
         function showModal(title, message, icon, onConfirm, onCancel) {
@@ -1785,6 +2064,8 @@
             if (typeof matchingState !== 'undefined' && matchingState) endMatchingGame();
             if (typeof simonState !== 'undefined' && simonState) endSimonSaysGame();
             if (typeof coloringState !== 'undefined' && coloringState) endColoringGame();
+            // Stop idle animations and earcons during mini-games
+            if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         }
 
         // ==================== TUTORIAL / ONBOARDING ====================
