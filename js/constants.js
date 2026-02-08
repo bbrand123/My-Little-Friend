@@ -625,6 +625,7 @@ const GARDEN_CROPS = {
         growTime: 3, // grow ticks needed per stage
         hungerValue: 15,
         happinessValue: 5,
+        energyValue: 0,
         seasonBonus: ['spring', 'autumn']
     },
     tomato: {
@@ -634,6 +635,7 @@ const GARDEN_CROPS = {
         growTime: 4,
         hungerValue: 18,
         happinessValue: 8,
+        energyValue: 0,
         seasonBonus: ['summer']
     },
     strawberry: {
@@ -643,6 +645,7 @@ const GARDEN_CROPS = {
         growTime: 5,
         hungerValue: 20,
         happinessValue: 12,
+        energyValue: 0,
         seasonBonus: ['spring', 'summer']
     },
     pumpkin: {
@@ -652,6 +655,7 @@ const GARDEN_CROPS = {
         growTime: 6,
         hungerValue: 25,
         happinessValue: 10,
+        energyValue: 0,
         seasonBonus: ['autumn']
     },
     sunflower: {
@@ -659,8 +663,9 @@ const GARDEN_CROPS = {
         seedEmoji: '🌻',
         stages: ['🟫', '🌱', '🌿', '🌻'],
         growTime: 4,
-        hungerValue: 10,
-        happinessValue: 15,
+        hungerValue: 5,
+        happinessValue: 20,
+        energyValue: 0,
         seasonBonus: ['summer', 'spring']
     },
     apple: {
@@ -668,8 +673,9 @@ const GARDEN_CROPS = {
         seedEmoji: '🍎',
         stages: ['🟫', '🌱', '🌳', '🍎'],
         growTime: 7,
-        hungerValue: 22,
-        happinessValue: 8,
+        hungerValue: 10,
+        happinessValue: 0,
+        energyValue: 15,
         seasonBonus: ['autumn']
     }
 };

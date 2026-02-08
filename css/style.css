@@ -4931,3 +4931,395 @@
                 align-items: flex-start;
             }
         }
+
+        /* ==================== IDLE MICRO-ANIMATIONS ==================== */
+
+        /* Blink animation - brief eye squint */
+        .pet-container.idle-blink .pet-svg {
+            animation: idleBlink 0.2s ease-in-out;
+        }
+
+        @keyframes idleBlink {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.92); }
+        }
+
+        /* Twitch animation - subtle nose/head movement */
+        .pet-container.idle-twitch .pet-svg {
+            animation: idleTwitch 0.4s ease-in-out;
+        }
+
+        @keyframes idleTwitch {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(1px) rotate(0.5deg); }
+            50% { transform: translateX(-1px) rotate(-0.5deg); }
+            75% { transform: translateX(0.5px) rotate(0.3deg); }
+        }
+
+        /* Low energy - droopy/tumble animation */
+        .pet-container.idle-low-energy .pet-svg {
+            animation: idleDroopy 3s ease-in-out infinite;
+        }
+
+        @keyframes idleDroopy {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(2px) rotate(-2deg); }
+            50% { transform: translateY(4px) rotate(0deg); }
+            75% { transform: translateY(2px) rotate(2deg); }
+        }
+
+        /* Pettable cursor for pet container */
+        .pet-container.pettable {
+            cursor: pointer;
+        }
+
+        .pet-container.pettable:hover .pet-svg {
+            filter: brightness(1.05);
+        }
+
+        /* ==================== SLEEP NUDGE ICON ==================== */
+
+        .sleep-nudge-icon {
+            position: absolute;
+            top: 0;
+            right: -5px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .sleep-nudge-z {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
+            color: #7C6BFF;
+            opacity: 0;
+            animation: sleepNudgeFloat 2.5s ease-in-out infinite;
+        }
+
+        .sleep-nudge-z.z1 {
+            font-size: 1.2rem;
+            animation-delay: 0s;
+        }
+
+        .sleep-nudge-z.z2 {
+            font-size: 0.9rem;
+            animation-delay: 0.4s;
+        }
+
+        .sleep-nudge-z.z3 {
+            font-size: 0.7rem;
+            animation-delay: 0.8s;
+        }
+
+        @keyframes sleepNudgeFloat {
+            0% {
+                opacity: 0;
+                transform: translateY(0) translateX(0);
+            }
+            20% {
+                opacity: 0.8;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) translateX(8px);
+            }
+        }
+
+        /* ==================== FEED MENU ==================== */
+
+        .feed-menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeInOverlay 0.2s ease;
+        }
+
+        @keyframes fadeInOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feed-menu {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: slideUpModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUpModal {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .feed-menu-title {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: var(--color-primary);
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .feed-menu-subtitle {
+            font-size: 0.7rem;
+            color: #888;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .feed-menu-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .feed-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 2px solid #f0ebe4;
+            border-radius: 14px;
+            background: #FFFAF5;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+
+        .feed-menu-item:hover, .feed-menu-item:focus {
+            border-color: var(--color-button-feed);
+            background: #FFF5EE;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(255, 154, 92, 0.15);
+        }
+
+        .feed-menu-item:active {
+            transform: translateY(0);
+        }
+
+        .feed-menu-item.standard-meal {
+            border-color: #e8e0d8;
+        }
+
+        .feed-item-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            width: 36px;
+            text-align: center;
+        }
+
+        .feed-item-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feed-item-name {
+            font-weight: 700;
+            color: var(--color-text);
+            font-size: 0.85rem;
+        }
+
+        .feed-item-effect {
+            font-size: 0.65rem;
+            color: #66BB6A;
+            font-weight: 600;
+        }
+
+        .feed-item-count {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--color-button-feed);
+            background: rgba(255, 154, 92, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .feed-menu-close {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px;
+            border: none;
+            border-radius: 12px;
+            background: #f5f0eb;
+            color: #666;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .feed-menu-close:hover, .feed-menu-close:focus {
+            background: #ece5dd;
+        }
+
+        /* Feed button crop badge */
+        .feed-crop-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #66BB6A;
+            color: white;
+            font-size: 0.55rem;
+            font-weight: 900;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(102, 187, 106, 0.4);
+            border: 2px solid white;
+            z-index: 2;
+        }
+
+        /* ==================== DYNAMIC TIME-OF-DAY ENHANCEMENTS ==================== */
+
+        /* Golden Hour (sunset) warm overlay for indoor rooms */
+        .pet-area.sunset::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255, 126, 95, 0.08) 0%, rgba(254, 180, 123, 0.05) 100%);
+            pointer-events: none;
+            z-index: 0;
+            border-radius: var(--radius);
+        }
+
+        /* Night dimmed interior overlay */
+        .pet-area.nighttime {
+            filter: brightness(0.95);
+        }
+
+        /* Smooth transitions for time-of-day changes */
+        .pet-area {
+            transition: background 2s ease, filter 1.5s ease;
+        }
+
+        /* ==================== VISUAL POLISH ==================== */
+
+        /* Subtle breathing animation on pet container when idle */
+        .pet-container {
+            animation: idleBreath 4s ease-in-out infinite;
+        }
+
+        /* Override breathing when action or idle animations play */
+        .pet-container.bounce,
+        .pet-container.wiggle,
+        .pet-container.sparkle,
+        .pet-container.sleep-anim,
+        .pet-container.groom-anim,
+        .pet-container.treat-anim,
+        .pet-container.cuddle-anim,
+        .pet-container.exercise-anim,
+        .pet-container.heal-anim,
+        .pet-container.idle-blink,
+        .pet-container.idle-twitch,
+        .pet-container.idle-low-energy {
+            animation: none;
+        }
+
+        @keyframes idleBreath {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+
+        /* Improved action button hover states */
+        .action-btn {
+            position: relative;
+            overflow: visible;
+        }
+
+        .action-btn::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            box-shadow: 0 0 0 3px currentColor;
+        }
+
+        .action-btn:hover::after {
+            opacity: 0.15;
+        }
+
+        /* Room navigation improved active state */
+        .room-btn.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* Improved need bubble pulse for critical */
+        .need-bubble.critical {
+            animation: criticalPulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes criticalPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 83, 80, 0); }
+            50% { transform: scale(1.03); box-shadow: 0 0 0 4px rgba(239, 83, 80, 0.2); }
+        }
+
+        /* Smooth transition on room switch */
+        .room-btn {
+            transition: all 0.2s ease;
+        }
+
+        /* Garden inventory item improved style */
+        .garden-inventory-item {
+            transition: all 0.15s ease;
+        }
+
+        .garden-inventory-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Wellness bar smooth transition */
+        .wellness-bar-fill {
+            transition: width 0.8s cubic-bezier(0.34, 1.2, 0.64, 1), background 0.5s ease;
+        }
+
+        /* Evolution badge glow */
+        .evolution-badge-display {
+            animation: evolveGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes evolveGlow {
+            0%, 100% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
+            50% { text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
+        }
+
+        /* Reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            .pet-container,
+            .pet-container.idle-blink .pet-svg,
+            .pet-container.idle-twitch .pet-svg,
+            .pet-container.idle-low-energy .pet-svg,
+            .sleep-nudge-z,
+            .need-bubble.critical,
+            .evolution-badge-display {
+                animation: none !important;
+            }
+
+            .pet-area {
+                transition: none;
+            }
+        }

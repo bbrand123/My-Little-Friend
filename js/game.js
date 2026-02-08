@@ -376,10 +376,14 @@
         }
 
         // Get time of day based on real time
+        // Day: 6:00 AM - 6:00 PM | Golden Hour/Sunset: 6:00 PM - 8:00 PM | Night: 8:00 PM - 5:59 AM
         function getTimeOfDay() {
-            const hour = new Date().getHours();
-            if (hour >= 6 && hour < 8) return 'sunrise';
-            if (hour >= 8 && hour < 18) return 'day';
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            // Sunrise brief window at dawn
+            if (hour === 5 && minute >= 30) return 'sunrise';
+            if (hour >= 6 && hour < 18) return 'day';
             if (hour >= 18 && hour < 20) return 'sunset';
             return 'night';
         }
@@ -535,7 +539,6 @@
                     gameState.weather = newWeather;
                     const weatherData = WEATHER_TYPES[newWeather];
                     showToast(`${weatherData.icon} Weather changed to ${weatherData.name}!`, newWeather === 'sunny' ? '#FFD700' : newWeather === 'rainy' ? '#64B5F6' : '#B0BEC5');
-                    announce(`The weather is now ${weatherData.name.toLowerCase()}.`);
                     updateWeatherDisplay();
                     updatePetMood();
                 }
@@ -701,6 +704,11 @@
             gameState.currentRoom = roomId;
             saveGame();
 
+            // Play room-specific earcon
+            if (typeof SoundManager !== 'undefined') {
+                SoundManager.enterRoom(roomId);
+            }
+
             // Re-render when switching to/from garden (garden section needs DOM update)
             if (roomId === 'garden' || previousRoom === 'garden') {
                 renderPetPhase();
@@ -760,9 +768,7 @@
                 }
             });
 
-            announce(`Moved to the ${room.name}!`);
-
-            // Show room bonus tooltip
+            // Show room change notification (toast container has aria-live for screen readers)
             if (room.bonus) {
                 showToast(`${room.icon} ${room.name}: +30% ${room.bonus.label}!`, '#4ECDC4');
             } else {
@@ -847,7 +853,6 @@
 
             const crop = GARDEN_CROPS[cropId];
             showToast(`🌱 Planted ${crop.name}!`, '#66BB6A');
-            announce(`Planted a ${crop.name} seed!`);
 
             if (gameState.pet) {
                 gameState.pet.happiness = clamp(gameState.pet.happiness + 5, 0, 100);
@@ -876,7 +881,6 @@
             plot.watered = true;
             const crop = GARDEN_CROPS[plot.cropId];
             showToast(`💧 Watered the ${crop.name}!`, '#64B5F6');
-            announce(`Watered the ${crop.name}!`);
 
             saveGame();
             if (gameState.currentRoom === 'garden') {
@@ -898,7 +902,6 @@
             garden.inventory[plot.cropId]++;
 
             showToast(`${crop.seedEmoji} Harvested a ${crop.name}!`, '#FF8C42');
-            announce(`Harvested a ${crop.name}! It's now in your inventory.`);
 
             if (gameState.pet) {
                 gameState.pet.happiness = clamp(gameState.pet.happiness + 8, 0, 100);
@@ -928,7 +931,12 @@
             }
 
             gameState.pet.hunger = clamp(gameState.pet.hunger + crop.hungerValue, 0, 100);
-            gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
+            if (crop.happinessValue) {
+                gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
+            }
+            if (crop.energyValue) {
+                gameState.pet.energy = clamp(gameState.pet.energy + crop.energyValue, 0, 100);
+            }
 
             // Track care actions for growth
             if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
@@ -941,8 +949,19 @@
             if (petContainer) petContainer.classList.add('bounce');
             if (sparkles) createFoodParticles(sparkles);
 
-            showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}!`, '#FF8C42');
-            announce(`Fed your pet a fresh ${crop.name} from the garden! Hunger +${crop.hungerValue}, Happiness +${crop.happinessValue}`);
+            // Show stat change indicators
+            if (crop.hungerValue) showStatChange('hunger-bubble', crop.hungerValue);
+            if (crop.happinessValue) showStatChange('happy-bubble', crop.happinessValue);
+            if (crop.energyValue) showStatChange('energy-bubble', crop.energyValue);
+
+            // Build stat change description
+            let statChanges = [];
+            if (crop.hungerValue) statChanges.push(`Hunger +${crop.hungerValue}`);
+            if (crop.happinessValue) statChanges.push(`Happiness +${crop.happinessValue}`);
+            if (crop.energyValue) statChanges.push(`Energy +${crop.energyValue}`);
+            const statDesc = statChanges.join(', ');
+
+            showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}! ${statDesc}`, '#FF8C42');
 
             if (petContainer) {
                 setTimeout(() => petContainer.classList.remove('bounce'), 800);
@@ -1159,7 +1178,6 @@
 
             const message = `${petData.emoji} ${pet.name || petData.name} ${randomFromArray(seasonData.activityMessages)}`;
             showToast(message, '#FFB74D');
-            announce(message);
 
             if (petContainer) {
                 petContainer.classList.add('wiggle');
@@ -1248,7 +1266,6 @@
                         gameState.season = newSeason;
                         const seasonData = SEASONS[newSeason];
                         showToast(`${seasonData.icon} ${seasonData.name} has arrived!`, '#FFB74D');
-                        announce(`The season has changed to ${seasonData.name}!`);
                         // Re-render to update seasonal decorations
                         renderPetPhase();
                         return; // renderPetPhase will handle the rest
@@ -1273,7 +1290,6 @@
 
                         if (careQualityChange.improved) {
                             showToast(`${toData.emoji} Care quality improved to ${toData.label}!`, '#66BB6A');
-                            announce(`Great job! ${petName}'s care quality is now ${toData.label}!`);
 
                             // Special message for reaching excellent
                             if (careQualityChange.to === 'excellent' && pet.growthStage === 'adult') {
@@ -1283,7 +1299,6 @@
                             }
                         } else {
                             showToast(`${toData.emoji} Care quality changed to ${toData.label}`, '#FFB74D');
-                            announce(`${petName}'s care quality is now ${toData.label}. ${toData.description}`);
                         }
 
                         // Re-render to show appearance changes (debounced to avoid rapid re-renders)
@@ -1967,6 +1982,8 @@
                 stopDecayTimer();
                 stopWeatherTimer();
                 stopGardenGrowTimer();
+                if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
+                if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
 
                 const preservedAdultsRaised = gameState.adultsRaised || 0;
                 gameState = {
@@ -2052,7 +2069,7 @@
                     const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
                                          mood === 'sad' ? 'missed you and needs some care!' :
                                          'is glad you\'re back!';
-                    announce(`Welcome back! Your ${petData.name} ${moodGreeting} The weather is ${weatherData.name.toLowerCase()}. It's ${seasonData.name}!`);
+                    announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
                 }
             } else {
                 // Reset to egg phase if not in pet phase
@@ -2082,6 +2099,8 @@
             stopDecayTimer();
             stopWeatherTimer();
             stopGardenGrowTimer();
+            if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
+            if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         });
 
         // Also handle page hide for mobile browsers
