@@ -117,6 +117,7 @@
                 console.log('Could not save game:', e);
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
                     showToast('Storage full! Progress may not be saved.', '#EF5350');
+                    announce('Storage full! Progress may not be saved.', true);
                 }
             }
         }
@@ -539,6 +540,7 @@
                     gameState.weather = newWeather;
                     const weatherData = WEATHER_TYPES[newWeather];
                     showToast(`${weatherData.icon} Weather changed to ${weatherData.name}!`, newWeather === 'sunny' ? '#FFD700' : newWeather === 'rainy' ? '#64B5F6' : '#B0BEC5');
+                    announce(`Weather changed to ${weatherData.name}`);
                     updateWeatherDisplay();
                     updatePetMood();
                 }
@@ -768,11 +770,13 @@
                 }
             });
 
-            // Show room change notification (toast container has aria-live for screen readers)
+            // Show room change notification
             if (room.bonus) {
                 showToast(`${room.icon} ${room.name}: +30% ${room.bonus.label}!`, '#4ECDC4');
+                announce(`${room.name}: +30% ${room.bonus.label}`);
             } else {
                 showToast(`${room.icon} Moved to ${room.name}`, '#4ECDC4');
+                announce(`Moved to ${room.name}`);
             }
         }
 
@@ -817,6 +821,7 @@
                         anyGrew = true;
                         if (newStage === 3) {
                             showToast(`🌱 Your ${crop.name} is ready to harvest!`, '#66BB6A');
+                            announce(`Your ${crop.name} is ready to harvest!`);
                         }
                     }
                 }
@@ -962,6 +967,7 @@
             const statDesc = statChanges.join(', ');
 
             showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}! ${statDesc}`, '#FF8C42');
+            announce(`Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}! ${statDesc}`);
 
             if (petContainer) {
                 setTimeout(() => petContainer.classList.remove('bounce'), 800);
@@ -1037,6 +1043,18 @@
             function handleEscape(e) {
                 if (e.key === 'Escape') {
                     closeOverlay();
+                }
+                if (e.key === 'Tab') {
+                    const focusable = overlay.querySelectorAll('button');
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
                 }
             }
             document.addEventListener('keydown', handleEscape);
@@ -1266,6 +1284,7 @@
                         gameState.season = newSeason;
                         const seasonData = SEASONS[newSeason];
                         showToast(`${seasonData.icon} ${seasonData.name} has arrived!`, '#FFB74D');
+                        announce(`${seasonData.name} has arrived!`);
                         // Re-render to update seasonal decorations
                         renderPetPhase();
                         return; // renderPetPhase will handle the rest
@@ -1290,15 +1309,18 @@
 
                         if (careQualityChange.improved) {
                             showToast(`${toData.emoji} Care quality improved to ${toData.label}!`, '#66BB6A');
+                            announce(`Care quality improved to ${toData.label}!`);
 
                             // Special message for reaching excellent
                             if (careQualityChange.to === 'excellent' && pet.growthStage === 'adult') {
                                 setTimeout(() => {
                                     showToast('⭐ Your pet can now evolve!', '#FFD700');
+                                    announce('Your pet can now evolve!');
                                 }, 2000);
                             }
                         } else {
                             showToast(`${toData.emoji} Care quality changed to ${toData.label}`, '#FFB74D');
+                            announce(`Care quality changed to ${toData.label}`);
                         }
 
                         // Re-render to show appearance changes (debounced to avoid rapid re-renders)
