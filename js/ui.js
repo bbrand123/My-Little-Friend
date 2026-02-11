@@ -243,17 +243,17 @@
 
             // Generate pattern options
             let patternOptions = Object.entries(PET_PATTERNS).map(([id, pattern], idx) => `
-                <button class="pattern-option ${idx === 0 ? 'selected' : ''}" data-pattern="${id}" aria-label="${pattern.name}">
+                <button class="pattern-option ${idx === 0 ? 'selected' : ''}" data-pattern="${id}" aria-label="${pattern.name}${idx === 0 ? ', selected' : ''}">
                     <span class="pattern-label">${pattern.name}</span>
                 </button>
             `).join('');
 
             // Generate accessory options (just a few basic ones to start)
             let accessoryOptions = `
-                <button class="accessory-option" data-accessory="none">None</button>
-                <button class="accessory-option" data-accessory="bow">🎀 Bow</button>
-                <button class="accessory-option" data-accessory="glasses">👓 Glasses</button>
-                <button class="accessory-option" data-accessory="partyHat">🎉 Party Hat</button>
+                <button class="accessory-option" data-accessory="none" aria-label="None">None</button>
+                <button class="accessory-option" data-accessory="bow" aria-label="Bow">🎀 Bow</button>
+                <button class="accessory-option" data-accessory="glasses" aria-label="Glasses">👓 Glasses</button>
+                <button class="accessory-option" data-accessory="partyHat" aria-label="Party Hat">🎉 Party Hat</button>
             `;
 
             overlay.innerHTML = `
@@ -325,17 +325,28 @@
             // Pattern selection
             document.querySelectorAll('.pattern-option').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.pattern-option').forEach(b => b.classList.remove('selected'));
+                    document.querySelectorAll('.pattern-option').forEach(b => {
+                        b.classList.remove('selected');
+                        const name = PET_PATTERNS[b.dataset.pattern]?.name || b.dataset.pattern;
+                        b.setAttribute('aria-label', name);
+                    });
                     btn.classList.add('selected');
+                    const selectedName = PET_PATTERNS[btn.dataset.pattern]?.name || btn.dataset.pattern;
+                    btn.setAttribute('aria-label', selectedName + ', selected');
                     selectedPattern = btn.dataset.pattern;
                 });
             });
 
             // Accessory selection
+            const accessoryNames = { none: 'None', bow: 'Bow', glasses: 'Glasses', partyHat: 'Party Hat' };
             document.querySelectorAll('.accessory-option').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.accessory-option').forEach(b => b.classList.remove('selected'));
+                    document.querySelectorAll('.accessory-option').forEach(b => {
+                        b.classList.remove('selected');
+                        b.setAttribute('aria-label', accessoryNames[b.dataset.accessory] || b.dataset.accessory);
+                    });
                     btn.classList.add('selected');
+                    btn.setAttribute('aria-label', (accessoryNames[btn.dataset.accessory] || btn.dataset.accessory) + ', selected');
                     const accessory = btn.dataset.accessory;
                     selectedAccessory = accessory === 'none' ? null : accessory;
                 });
@@ -2243,6 +2254,22 @@
             const doneBtn = document.getElementById('furniture-done');
             if (doneBtn) doneBtn.focus();
 
+            // Trap focus within modal
+            overlay.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    const focusable = overlay.querySelectorAll('button');
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            });
+
             // Handle furniture selection
             document.querySelectorAll('.furniture-option').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -2342,7 +2369,6 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', 'Pet Codex');
-            const triggerBtn = document.getElementById('codex-btn');
             overlay.innerHTML = `
                 <div class="codex-modal">
                     <h2 class="codex-title">Pet Codex</h2>
@@ -2360,7 +2386,8 @@
 
             function closeCodex() {
                 overlay.remove();
-                if (triggerBtn) triggerBtn.focus();
+                const btn = document.getElementById('codex-btn');
+                if (btn) btn.focus();
             }
 
             document.getElementById('codex-close').focus();
@@ -2402,7 +2429,6 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', 'Pet Stats');
-            const triggerBtn = document.getElementById('stats-btn');
             overlay.innerHTML = `
                 <div class="stats-modal">
                     <h2 class="stats-title">Stats & Progress</h2>
@@ -2484,7 +2510,8 @@
 
             function closeStats() {
                 overlay.remove();
-                if (triggerBtn) triggerBtn.focus();
+                const btn = document.getElementById('stats-btn');
+                if (btn) btn.focus();
             }
 
             document.getElementById('stats-close').focus();
