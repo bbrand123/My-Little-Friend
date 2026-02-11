@@ -988,6 +988,9 @@
             cuddle: '#FFB4A2'
         };
 
+        // Track whether an action animation is playing (guards idle anims)
+        let actionAnimating = false;
+
         // Track button cooldowns
         let actionCooldown = false;
         let actionCooldownTimer = null;
@@ -1239,10 +1242,21 @@
             updateWellnessBar();
             updateGrowthDisplay();
 
-            // Remove animation class
+            // Remove animation class on animationend (avoids flash from idle anim overlap)
+            const actionAnimClasses = ['bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim'];
+            actionAnimating = true;
+            const onAnimEnd = () => {
+                petContainer.removeEventListener('animationend', onAnimEnd);
+                actionAnimClasses.forEach(c => petContainer.classList.remove(c));
+                actionAnimating = false;
+            };
+            petContainer.addEventListener('animationend', onAnimEnd);
+            // Fallback timeout in case animationend doesn't fire (e.g., display:none)
             setTimeout(() => {
-                petContainer.classList.remove('bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim');
-            }, 800);
+                petContainer.removeEventListener('animationend', onAnimEnd);
+                actionAnimClasses.forEach(c => petContainer.classList.remove(c));
+                actionAnimating = false;
+            }, 1200);
 
             // Hide feedback
             if (feedback) {
@@ -1599,6 +1613,9 @@
                 const petContainer = document.getElementById('pet-container');
                 if (!petContainer) return;
 
+                // Skip if an action animation is playing to avoid flash
+                if (actionAnimating) { scheduleBlink(); return; }
+
                 petContainer.classList.add('idle-blink');
                 setTimeout(() => {
                     petContainer.classList.remove('idle-blink');
@@ -1615,6 +1632,9 @@
                 if (gameState.phase !== 'pet') return;
                 const petContainer = document.getElementById('pet-container');
                 if (!petContainer) return;
+
+                // Skip if an action animation is playing to avoid flash
+                if (actionAnimating) { scheduleTwitch(); return; }
 
                 petContainer.classList.add('idle-twitch');
                 setTimeout(() => {
@@ -1776,7 +1796,11 @@
                     showStatChange('hunger-bubble', bonus);
                     showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
                     announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
-                    if (petContainer) setTimeout(() => petContainer.classList.remove('bounce'), 800);
+                    if (petContainer) {
+                        const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
+                        petContainer.addEventListener('animationend', onEnd);
+                        setTimeout(() => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); }, 1200);
+                    }
                     if (typeof pet.careActions !== 'number') pet.careActions = 0;
                     pet.careActions++;
                     updateNeedDisplays();
