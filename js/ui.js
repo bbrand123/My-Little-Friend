@@ -2634,8 +2634,9 @@
                 closeModal();
                 cleanupAllMiniGames();
                 stopDecayTimer();
-                stopWeatherTimer();
                 stopGardenGrowTimer();
+                if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
+                if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
 
                 const preservedAdultsRaised = gameState.adultsRaised || 0;
                 const preservedFurniture = gameState.furniture || {

@@ -25,9 +25,9 @@
             }
         };
 
+        // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
+        // via startGardenGrowTimer(), and stopped during cleanup/reset.
         let gardenGrowInterval = null;
-
-        let weatherInterval = null;
 
         // Track room bonus toast per session — only show bonus detail the first few times
         const roomBonusToastCount = {};
@@ -609,21 +609,8 @@
             return '';
         }
 
-        function startWeatherTimer() {
-            if (weatherInterval) clearInterval(weatherInterval);
-            weatherInterval = setInterval(() => {
-                if (gameState.phase === 'pet' && !document.hidden) {
-                    checkWeatherChange();
-                }
-            }, 60000); // Check every minute
-        }
-
-        function stopWeatherTimer() {
-            if (weatherInterval) {
-                clearInterval(weatherInterval);
-                weatherInterval = null;
-            }
-        }
+        // Weather changes are checked inside startDecayTimer() via checkWeatherChange(),
+        // so no separate weather timer is needed.
 
         // Generate stars for nighttime
         function generateStarsHTML() {
@@ -928,6 +915,64 @@
             }
         }
 
+        function removeCrop(plotIndex) {
+            const garden = gameState.garden;
+            if (!garden.plots[plotIndex]) return;
+
+            const plot = garden.plots[plotIndex];
+            if (plot.stage >= 3) return; // Ready crops should be harvested, not removed
+
+            const crop = GARDEN_CROPS[plot.cropId];
+
+            const existing = document.querySelector('.remove-crop-overlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.className = 'remove-crop-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', `Remove ${crop.name}?`);
+
+            overlay.innerHTML = `
+                <div class="remove-crop-dialog">
+                    <p class="remove-crop-message">${crop.seedEmoji} Remove this ${crop.name}?</p>
+                    <div class="remove-crop-buttons">
+                        <button class="remove-crop-btn cancel" id="remove-crop-cancel">Keep</button>
+                        <button class="remove-crop-btn confirm" id="remove-crop-confirm">Remove</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const cancelBtn = document.getElementById('remove-crop-cancel');
+            const confirmBtn = document.getElementById('remove-crop-confirm');
+            cancelBtn.focus();
+
+            function closeOverlay() {
+                document.removeEventListener('keydown', handleEscape);
+                overlay.remove();
+            }
+
+            function handleEscape(e) {
+                if (e.key === 'Escape') closeOverlay();
+            }
+            document.addEventListener('keydown', handleEscape);
+
+            confirmBtn.addEventListener('click', () => {
+                closeOverlay();
+                garden.plots[plotIndex] = null;
+                showToast(`Removed ${crop.name}.`, '#EF5350');
+                saveGame();
+                if (gameState.currentRoom === 'garden') {
+                    renderGardenUI();
+                }
+            });
+
+            cancelBtn.addEventListener('click', closeOverlay);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+        }
+
         function feedFromGarden(cropId) {
             const garden = gameState.garden;
             if (!garden.inventory[cropId] || garden.inventory[cropId] <= 0) return;
@@ -1112,6 +1157,7 @@
                             <span class="garden-plot-emoji">${stageEmoji}</span>
                             ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
                             <span class="garden-plot-status">${statusLine}</span>
+                            ${!isReady ? `<button class="garden-plot-remove" data-remove-plot="${i}" aria-label="Remove ${crop.name}" title="Remove crop">✕</button>` : ''}
                         </div>
                     `;
                 }
@@ -1163,6 +1209,15 @@
                         e.preventDefault();
                         plotEl.click();
                     }
+                });
+            });
+
+            // Add event listeners to remove buttons
+            gardenSection.querySelectorAll('[data-remove-plot]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the plot click handler
+                    const plotIdx = parseInt(btn.getAttribute('data-remove-plot'));
+                    removeCrop(plotIdx);
                 });
             });
 
@@ -1545,277 +1600,13 @@
             }
         });
 
-        // ==================== PET CODEX ====================
-
-        function showPetCodex() {
-            const adultsRaised = gameState.adultsRaised || 0;
-            const allTypes = Object.keys(PET_TYPES);
-
-            let cardsHTML = allTypes.map(type => {
-                const data = PET_TYPES[type];
-                const isUnlocked = !data.mythical || adultsRaised >= (data.unlockRequirement || 0);
-                const isMythical = data.mythical;
-                let cardClass = 'codex-card';
-                let tagHTML = '';
-
-                if (isMythical && isUnlocked) {
-                    cardClass += ' mythical-unlocked';
-                    tagHTML = '<span class="codex-card-tag mythical-tag">Mythical</span>';
-                } else if (isMythical && !isUnlocked) {
-                    cardClass += ' locked';
-                    tagHTML = `<span class="codex-card-tag locked-tag">${data.unlockMessage || 'Locked'}</span>`;
-                } else {
-                    cardClass += ' unlocked';
-                    tagHTML = '<span class="codex-card-tag unlocked-tag">Unlocked</span>';
-                }
-
-                return `
-                    <div class="${cardClass}">
-                        <span class="codex-card-emoji">${isUnlocked ? data.emoji : '❓'}</span>
-                        <span class="codex-card-name">${isUnlocked ? data.name : '???'}</span>
-                        ${tagHTML}
-                    </div>
-                `;
-            }).join('');
-
-            // Mythical unlock progress
-            const mythicalTypes = allTypes.filter(t => PET_TYPES[t].mythical);
-            let unlockHTML = mythicalTypes.map(type => {
-                const data = PET_TYPES[type];
-                const req = data.unlockRequirement || 0;
-                const progress = Math.min(100, Math.round((adultsRaised / req) * 100));
-                const isComplete = adultsRaised >= req;
-                return `
-                    <div class="codex-unlock-item">
-                        <span>${data.emoji} ${data.name}</span>
-                        <span>${adultsRaised}/${req}</span>
-                        <div class="codex-unlock-bar">
-                            <div class="codex-unlock-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progress}%"></div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            const overlay = document.createElement('div');
-            overlay.className = 'codex-overlay';
-            overlay.setAttribute('role', 'dialog');
-            overlay.setAttribute('aria-modal', 'true');
-            overlay.setAttribute('aria-label', 'Pet Codex');
-            overlay.innerHTML = `
-                <div class="codex-modal">
-                    <h2 class="codex-title">Pet Codex</h2>
-                    <p class="codex-subtitle">${allTypes.filter(t => !PET_TYPES[t].mythical || adultsRaised >= (PET_TYPES[t].unlockRequirement || 0)).length}/${allTypes.length} species discovered</p>
-                    <div class="codex-grid">${cardsHTML}</div>
-                    <div class="codex-unlock-section">
-                        <div class="codex-unlock-title">Mythical Unlock Progress</div>
-                        ${unlockHTML}
-                        <p style="font-size: 0.65rem; color: #888; margin-top: 8px;">Raise pets to adult stage to unlock mythical species!</p>
-                    </div>
-                    <button class="codex-close-btn" id="codex-close">Close</button>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-
-            document.getElementById('codex-close').focus();
-            document.getElementById('codex-close').addEventListener('click', () => overlay.remove());
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
-        }
-
-        // ==================== STATS SCREEN ====================
-
-        function showStatsScreen() {
-            const pet = gameState.pet;
-            const petData = pet ? PET_TYPES[pet.type] : null;
-            const adultsRaised = gameState.adultsRaised || 0;
-            const careActions = pet ? (pet.careActions || 0) : 0;
-            const growthStage = pet ? (pet.growthStage || 'baby') : 'baby';
-            const stageData = GROWTH_STAGES[growthStage];
-            const unlockedCount = Object.keys(PET_TYPES).filter(t => !PET_TYPES[t].mythical || adultsRaised >= (PET_TYPES[t].unlockRequirement || 0)).length;
-            const totalCount = Object.keys(PET_TYPES).length;
-
-            const roomBonusesHTML = Object.keys(ROOMS).map(key => {
-                const room = ROOMS[key];
-                return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${room.bonus.label}</div>`;
-            }).join('');
-
-            const overlay = document.createElement('div');
-            overlay.className = 'stats-overlay';
-            overlay.setAttribute('role', 'dialog');
-            overlay.setAttribute('aria-modal', 'true');
-            overlay.setAttribute('aria-label', 'Pet Stats');
-            overlay.innerHTML = `
-                <div class="stats-modal">
-                    <h2 class="stats-title">Stats & Progress</h2>
-                    <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}` : 'No pet yet'}</p>
-                    <div class="stats-grid">
-                        <div class="stats-card">
-                            <div class="stats-card-icon">${stageData.emoji}</div>
-                            <div class="stats-card-value">${stageData.label}</div>
-                            <div class="stats-card-label">Growth Stage</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">💝</div>
-                            <div class="stats-card-value">${careActions}</div>
-                            <div class="stats-card-label">Care Actions</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">⭐</div>
-                            <div class="stats-card-value">${adultsRaised}</div>
-                            <div class="stats-card-label">Adults Raised</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">📖</div>
-                            <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
-                            <div class="stats-card-label">Species Found</div>
-                        </div>
-                    </div>
-                    ${pet ? `
-                        <div class="stats-section-title">Current Pet Wellness</div>
-                        <div class="stats-grid">
-                            <div class="stats-card"><div class="stats-card-icon">🍎</div><div class="stats-card-value">${pet.hunger}%</div><div class="stats-card-label">Food</div></div>
-                            <div class="stats-card"><div class="stats-card-icon">🛁</div><div class="stats-card-value">${pet.cleanliness}%</div><div class="stats-card-label">Bath</div></div>
-                            <div class="stats-card"><div class="stats-card-icon">💖</div><div class="stats-card-value">${pet.happiness}%</div><div class="stats-card-label">Happy</div></div>
-                            <div class="stats-card"><div class="stats-card-icon">😴</div><div class="stats-card-value">${pet.energy}%</div><div class="stats-card-label">Energy</div></div>
-                        </div>
-                    ` : ''}
-                    <div class="stats-section-title">Room Bonuses</div>
-                    <div class="stats-room-bonuses">${roomBonusesHTML}</div>
-                    <button class="stats-close-btn" id="stats-close">Close</button>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-
-            document.getElementById('stats-close').focus();
-            document.getElementById('stats-close').addEventListener('click', () => overlay.remove());
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
-        }
-
-        // ==================== NEW PET ====================
-
-        function startNewPet() {
-            const pet = gameState.pet;
-            const petData = pet ? PET_TYPES[pet.type] : null;
-            const growthStage = pet ? (pet.growthStage || 'baby') : 'baby';
-            const stageData = GROWTH_STAGES[growthStage];
-            const careActions = pet ? (pet.careActions || 0) : 0;
-            const adultsRaised = gameState.adultsRaised || 0;
-            const petName = pet && petData ? escapeHTML(pet.name || petData.name) : pet ? escapeHTML(pet.name || 'Pet') : '';
-
-            // Build pet summary for the modal
-            let summaryHTML = '';
-            if (pet && petData) {
-                summaryHTML = `
-                    <div class="new-pet-summary">
-                        <div class="new-pet-summary-emoji">${petData.emoji}</div>
-                        <div class="new-pet-summary-name">${petName}</div>
-                        <div class="new-pet-summary-stats">
-                            <span class="new-pet-summary-stat">${stageData.emoji} ${stageData.label}</span>
-                            <span class="new-pet-summary-stat">💝 ${careActions} actions</span>
-                            <span class="new-pet-summary-stat">⭐ ${adultsRaised} adults raised</span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Remove existing modal
-            const existingModal = document.querySelector('.modal-overlay');
-            if (existingModal) existingModal.remove();
-
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-modal', 'true');
-            modal.setAttribute('aria-labelledby', 'modal-title');
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-icon" aria-hidden="true">🥚</div>
-                    <h2 class="modal-title" id="modal-title">Say goodbye to ${petName || 'your pet'}?</h2>
-                    ${summaryHTML}
-                    <p class="modal-message">Start a new egg adventure?</p>
-                    <div class="modal-buttons">
-                        <button class="modal-btn cancel" id="modal-cancel">Keep Playing</button>
-                        <button class="modal-btn confirm" id="modal-confirm">New Egg</button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-
-            const cancelBtn = document.getElementById('modal-cancel');
-            const confirmBtn = document.getElementById('modal-confirm');
-            cancelBtn.focus();
-
-            function handleEscape(e) { if (e.key === 'Escape') { closeAndCancel(); } }
-            document.addEventListener('keydown', handleEscape);
-
-            function closeModal() {
-                document.removeEventListener('keydown', handleEscape);
-                modal.remove();
-            }
-            function closeAndCancel() {
-                closeModal();
-                const newPetBtn = document.getElementById('new-pet-btn');
-                if (newPetBtn) newPetBtn.focus();
-            }
-
-            confirmBtn.addEventListener('click', () => {
-                closeModal();
-                cleanupAllMiniGames();
-                stopDecayTimer();
-                stopWeatherTimer();
-                stopGardenGrowTimer();
-                if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
-                if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
-
-                const preservedAdultsRaised = gameState.adultsRaised || 0;
-                gameState = {
-                    phase: 'egg',
-                    pet: null,
-                    eggTaps: 0,
-                    lastUpdate: Date.now(),
-                    timeOfDay: getTimeOfDay(),
-                    currentRoom: 'bedroom',
-                    weather: getRandomWeather(),
-                    lastWeatherChange: Date.now(),
-                    season: getCurrentSeason(),
-                    adultsRaised: preservedAdultsRaised,
-                    garden: {
-                        plots: [],
-                        inventory: {},
-                        lastGrowTick: Date.now()
-                    }
-                };
-                saveGame();
-                announce('Starting fresh with a new egg!', true);
-                renderEggPhase();
-            });
-
-            cancelBtn.addEventListener('click', closeAndCancel);
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeAndCancel(); });
-
-            // Trap focus within modal
-            modal.addEventListener('keydown', (e) => {
-                if (e.key === 'Tab') {
-                    const focusable = modal.querySelectorAll('button');
-                    const first = focusable[0];
-                    const last = focusable[focusable.length - 1];
-                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-                }
-            });
-
-            announce(`Say goodbye to ${petName || 'your pet'}?`);
-        }
+        // showPetCodex(), showStatsScreen(), and startNewPet() are defined in ui.js
 
         // ==================== INITIALIZATION ====================
 
         function init() {
             // Stop any existing timers
             stopDecayTimer();
-            stopWeatherTimer();
             stopGardenGrowTimer();
 
             const saved = loadGame();
@@ -1882,7 +1673,6 @@
         window.addEventListener('beforeunload', () => {
             saveGame();
             stopDecayTimer();
-            stopWeatherTimer();
             stopGardenGrowTimer();
             if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
             if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
