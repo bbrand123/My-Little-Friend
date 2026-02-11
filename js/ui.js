@@ -1049,10 +1049,15 @@
 
             switch (action) {
                 case 'feed': {
-                    // Check if garden has crops available - if so, open feed menu
+                    // Check if garden has crops available
                     const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
                     const availableCrops = Object.keys(gardenInv).filter(k => gardenInv[k] > 0);
-                    if (availableCrops.length > 0) {
+                    if (availableCrops.length === 1) {
+                        // Quick feed: only one crop type, skip the menu
+                        feedFromGarden(availableCrops[0]);
+                        break;
+                    } else if (availableCrops.length > 1) {
+                        // Multiple crop types: show the feed menu
                         openFeedMenu();
                         // Reset cooldown since we opened a menu
                         actionCooldown = false;

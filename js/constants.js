@@ -682,3 +682,20 @@ const GARDEN_CROPS = {
 
 const MAX_GARDEN_PLOTS = 6;
 
+// Progressive plot unlocking thresholds (harvests needed for each plot)
+// Plots 1-2 are free, then unlock at 2, 5, 10, 18 total harvests
+const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 0, 2, 5, 10, 18];
+
+function getUnlockedPlotCount(totalHarvests) {
+    const harvests = typeof totalHarvests === 'number' ? totalHarvests : 0;
+    let unlocked = 0;
+    for (let i = 0; i < GARDEN_PLOT_UNLOCK_THRESHOLDS.length; i++) {
+        if (harvests >= GARDEN_PLOT_UNLOCK_THRESHOLDS[i]) {
+            unlocked = i + 1;
+        } else {
+            break;
+        }
+    }
+    return Math.min(unlocked, MAX_GARDEN_PLOTS);
+}
+
