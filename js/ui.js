@@ -384,6 +384,7 @@
                 overlay.remove();
                 renderPetPhase();
                 showToast(`Welcome home, ${gameState.pet.name}!`, '#4ECDC4');
+                announce(`Welcome home, ${gameState.pet.name}!`);
             }
 
             submitBtn.addEventListener('click', () => finishNaming(input.value, false));
@@ -932,8 +933,6 @@
             if (!container) {
                 container = document.createElement('div');
                 container.id = 'toast-container';
-                container.setAttribute('aria-live', 'polite');
-                container.setAttribute('aria-atomic', 'false');
                 document.body.appendChild(container);
             }
             if (!container.classList.contains('toast-container')) {
@@ -1173,6 +1172,7 @@
                 pet.growthStage = newStage;
                 const stageData = GROWTH_STAGES[newStage];
                 showToast(`${stageData.emoji} ${pet.name || petData.name} grew into a ${stageData.label}!`, '#FFD700');
+                announce(`${pet.name || petData.name} grew into a ${stageData.label}!`);
 
                 // Track adults raised for mythical unlocks
                 if (newStage === 'adult') {
@@ -1185,6 +1185,7 @@
                         if (typeData.mythical && gameState.adultsRaised === typeData.unlockRequirement) {
                             setTimeout(() => {
                                 showToast(`${typeData.emoji} ${typeData.name} unlocked! A mythical pet is now available!`, '#DDA0DD');
+                                announce(`${typeData.name} unlocked! A mythical pet is now available!`);
                             }, 1500);
                         }
                     });
@@ -1717,6 +1718,18 @@
 
             function handleEsc(e) {
                 if (e.key === 'Escape') closeMenu();
+                if (e.key === 'Tab') {
+                    const focusable = overlay.querySelectorAll('button');
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
             }
             document.addEventListener('keydown', handleEsc);
 
@@ -1937,6 +1950,7 @@
             document.addEventListener('keydown', handleEscape);
 
             showToast(`🎉 ${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`, '#FFB74D');
+            announce(`${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`);
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
@@ -2007,6 +2021,7 @@
             document.addEventListener('keydown', handleEscape);
 
             showToast(`✨ Evolution! Your pet evolved into ${petName}!`, '#FFD700');
+            announce(`Evolution! Your pet evolved into ${petName}!`);
         }
 
         function createConfetti() {
