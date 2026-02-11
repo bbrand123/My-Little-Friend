@@ -974,7 +974,9 @@
             announce(`Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}! ${statDesc}`);
 
             if (petContainer) {
-                setTimeout(() => petContainer.classList.remove('bounce'), 800);
+                const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
+                petContainer.addEventListener('animationend', onEnd);
+                setTimeout(() => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); }, 1200);
             }
 
             updateNeedDisplays();
@@ -1203,7 +1205,9 @@
 
             if (petContainer) {
                 petContainer.classList.add('wiggle');
-                setTimeout(() => petContainer.classList.remove('wiggle'), 800);
+                const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('wiggle'); };
+                petContainer.addEventListener('animationend', onEnd);
+                setTimeout(() => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('wiggle'); }, 1200);
             }
             if (sparkles) createHearts(sparkles);
 
@@ -1467,9 +1471,8 @@
             const room = ROOMS[currentRoom];
             const isOutdoor = room ? room.isOutdoor : false;
 
-            // Remove old weather overlay
-            const oldOverlay = petArea.querySelector('.weather-overlay');
-            if (oldOverlay) oldOverlay.remove();
+            // Remove all old weather overlays (querySelectorAll to catch duplicates)
+            petArea.querySelectorAll('.weather-overlay').forEach(el => el.remove());
 
             // Remove old weather classes
             petArea.classList.remove('weather-rainy', 'weather-snowy');
