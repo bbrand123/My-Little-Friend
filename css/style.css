@@ -4230,6 +4230,104 @@
             transition: width 0.5s ease;
         }
 
+        .garden-plot-remove {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.35);
+            color: white;
+            font-size: 0.6rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .garden-plot:hover .garden-plot-remove,
+        .garden-plot:focus-within .garden-plot-remove {
+            opacity: 1;
+        }
+
+        .garden-plot-remove:hover {
+            background: #EF5350;
+        }
+
+        .garden-plot-remove:focus-visible {
+            opacity: 1;
+            outline: 2px solid #FFD54F;
+            outline-offset: 1px;
+        }
+
+        .remove-crop-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .remove-crop-dialog {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            max-width: 280px;
+            width: 85%;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .remove-crop-message {
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .remove-crop-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .remove-crop-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .remove-crop-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .remove-crop-btn.cancel {
+            background: #E0E0E0;
+            color: #333;
+        }
+
+        .remove-crop-btn.confirm {
+            background: #EF5350;
+            color: white;
+        }
+
+        .remove-crop-btn:focus-visible {
+            outline: 3px solid #FFD54F;
+            outline-offset: 2px;
+        }
+
         .garden-actions {
             display: flex;
             gap: 6px;
