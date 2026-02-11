@@ -4179,6 +4179,23 @@
             opacity: 0.8;
         }
 
+        .garden-plot.locked {
+            background: linear-gradient(180deg, #616161, #424242);
+            border-color: #333;
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .garden-plot.locked:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .garden-plot.locked .garden-plot-label {
+            font-size: 0.55rem;
+            color: rgba(255,255,255,0.7);
+        }
+
         .garden-plot.growing {
             background: linear-gradient(180deg, #795548, #5D4037);
         }

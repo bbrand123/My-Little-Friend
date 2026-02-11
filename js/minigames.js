@@ -11,6 +11,18 @@
 
         const MINIGAME_EXIT_CONFIRM_SCORE = 3;
 
+        // Restore idle animations and room earcons after a mini-game ends
+        function restorePostMiniGameState() {
+            if (gameState.phase === 'pet') {
+                if (typeof startIdleAnimations === 'function') {
+                    startIdleAnimations();
+                }
+                if (typeof SoundManager !== 'undefined' && gameState.currentRoom) {
+                    SoundManager.enterRoom(gameState.currentRoom);
+                }
+            }
+        }
+
         function requestMiniGameExit(score, onConfirm) {
             const safeScore = Number.isFinite(score) ? Math.max(0, score) : 0;
             if (safeScore < MINIGAME_EXIT_CONFIRM_SCORE) {
@@ -433,6 +445,7 @@
                 announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}!`);
             }
 
+            restorePostMiniGameState();
             fetchState = null;
         }
 
@@ -801,6 +814,7 @@
                 announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}!`);
             }
 
+            restorePostMiniGameState();
             hideSeekState = null;
         }
 
@@ -1145,6 +1159,7 @@
                 announce(`Bubble Pop over! ${bubblePopState.score} bubbles popped! Happiness +${happinessBonus}! Cleanliness +${cleanlinessBonus}!`);
             }
 
+            restorePostMiniGameState();
             bubblePopState = null;
         }
 
@@ -1417,6 +1432,7 @@
                 announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}!`);
             }
 
+            restorePostMiniGameState();
             matchingState = null;
         }
 
@@ -1768,6 +1784,7 @@
                 simonAudioCtx = null;
             }
 
+            restorePostMiniGameState();
             simonState = null;
         }
 
@@ -2166,5 +2183,6 @@
                 announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}!`);
             }
 
+            restorePostMiniGameState();
             coloringState = null;
         }

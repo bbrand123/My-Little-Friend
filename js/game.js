@@ -222,12 +222,27 @@
                         parsed.garden = {
                             plots: [],
                             inventory: {},
-                            lastGrowTick: Date.now()
+                            lastGrowTick: Date.now(),
+                            totalHarvests: 0
                         };
                     }
                     if (!parsed.garden.plots) parsed.garden.plots = [];
                     if (!parsed.garden.inventory) parsed.garden.inventory = {};
                     if (!parsed.garden.lastGrowTick) parsed.garden.lastGrowTick = Date.now();
+                    if (typeof parsed.garden.totalHarvests !== 'number') {
+                        // Infer minimum harvests from existing state to keep used plots unlocked
+                        let inferredHarvests = 0;
+                        const invTotal = Object.values(parsed.garden.inventory || {}).reduce((s, c) => s + c, 0);
+                        const highestUsedPlot = parsed.garden.plots.reduce((max, p, i) => p ? i : max, -1);
+                        if (highestUsedPlot >= 0 || invTotal > 0) {
+                            // Ensure enough harvests to unlock all plots that have crops
+                            for (let pi = 0; pi <= highestUsedPlot && pi < GARDEN_PLOT_UNLOCK_THRESHOLDS.length; pi++) {
+                                inferredHarvests = Math.max(inferredHarvests, GARDEN_PLOT_UNLOCK_THRESHOLDS[pi]);
+                            }
+                            inferredHarvests = Math.max(inferredHarvests, invTotal);
+                        }
+                        parsed.garden.totalHarvests = inferredHarvests;
+                    }
 
                     // Apply garden growth for time passed
                     if (parsed.garden.plots.length > 0 && parsed.garden.lastGrowTick) {
@@ -832,6 +847,9 @@
         function plantSeed(plotIndex, cropId) {
             const garden = gameState.garden;
             if (plotIndex >= MAX_GARDEN_PLOTS) return;
+            // Prevent planting in locked plots
+            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0);
+            if (plotIndex >= unlockedPlots) return;
 
             // Extend plots array if needed
             while (garden.plots.length <= plotIndex) {
@@ -897,7 +915,18 @@
             }
             garden.inventory[plot.cropId]++;
 
-            showToast(`${crop.seedEmoji} Harvested a ${crop.name}!`, '#FF8C42');
+            // Track total harvests for progressive plot unlocking
+            if (typeof garden.totalHarvests !== 'number') garden.totalHarvests = 0;
+            garden.totalHarvests++;
+
+            // Check if a new plot was unlocked
+            const prevUnlocked = getUnlockedPlotCount(garden.totalHarvests - 1);
+            const newUnlocked = getUnlockedPlotCount(garden.totalHarvests);
+            if (newUnlocked > prevUnlocked) {
+                showToast(`${crop.seedEmoji} Harvested a ${crop.name}! New garden plot unlocked!`, '#FF8C42');
+            } else {
+                showToast(`${crop.seedEmoji} Harvested a ${crop.name}!`, '#FF8C42');
+            }
 
             if (gameState.pet) {
                 gameState.pet.happiness = clamp(gameState.pet.happiness + 8, 0, 100);
@@ -1124,9 +1153,20 @@
 
             // Render plots
             let plotsHTML = '';
+            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0);
             for (let i = 0; i < MAX_GARDEN_PLOTS; i++) {
                 const plot = garden.plots[i] || null;
-                if (!plot) {
+                const isLocked = i >= unlockedPlots;
+                if (isLocked) {
+                    const threshold = GARDEN_PLOT_UNLOCK_THRESHOLDS[i] || 0;
+                    const remaining = threshold - (garden.totalHarvests || 0);
+                    plotsHTML += `
+                        <div class="garden-plot locked" aria-label="Locked plot. Harvest ${remaining} more crop${remaining !== 1 ? 's' : ''} to unlock.">
+                            <span class="garden-plot-emoji">🔒</span>
+                            <span class="garden-plot-label">${remaining} harvest${remaining !== 1 ? 's' : ''} to unlock</span>
+                        </div>
+                    `;
+                } else if (!plot) {
                     plotsHTML += `
                         <div class="garden-plot empty" data-plot="${i}" role="button" tabindex="0" aria-label="Empty garden plot. Click to plant a seed.">
                             <span class="garden-plot-emoji">➕</span>
@@ -1188,9 +1228,11 @@
                 ${inventoryHTML}
             `;
 
-            // Add event listeners to plots
+            // Add event listeners to plots (skip locked plots which have no data-plot)
             gardenSection.querySelectorAll('.garden-plot').forEach(plotEl => {
+                if (plotEl.classList.contains('locked')) return;
                 const plotIdx = parseInt(plotEl.getAttribute('data-plot'));
+                if (isNaN(plotIdx)) return;
                 plotEl.addEventListener('click', () => {
                     const plot = garden.plots[plotIdx] || null;
                     if (!plot) {
@@ -1627,7 +1669,7 @@
 
             // Ensure garden state exists
             if (!gameState.garden || typeof gameState.garden !== 'object') {
-                gameState.garden = { plots: [], inventory: {}, lastGrowTick: Date.now() };
+                gameState.garden = { plots: [], inventory: {}, lastGrowTick: Date.now(), totalHarvests: 0 };
             }
 
             // Ensure adultsRaised exists
