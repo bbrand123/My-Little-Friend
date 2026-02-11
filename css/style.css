@@ -4160,6 +4160,12 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
+        .garden-plot:focus-visible {
+            outline: 3px solid #FFD54F;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 5px rgba(255, 213, 79, 0.3);
+        }
+
         .garden-plot.empty {
             background: linear-gradient(180deg, #A1887F, #8D6E63);
             border-style: dashed;

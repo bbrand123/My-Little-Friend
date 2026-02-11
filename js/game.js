@@ -29,6 +29,10 @@
 
         let weatherInterval = null;
 
+        // Track room bonus toast per session — only show bonus detail the first few times
+        const roomBonusToastCount = {};
+        const MAX_ROOM_BONUS_TOASTS = 3;
+
         // ==================== UTILITY FUNCTIONS ====================
 
         function randomFromArray(arr) {
@@ -737,7 +741,7 @@
                 // Update room label
                 const label = document.getElementById('room-label');
                 if (label) {
-                    label.innerHTML = `${room.icon}<span class="status-text">${room.name}</span>`;
+                    label.innerHTML = `<span aria-hidden="true">${room.icon}</span><span class="status-text">${room.name}</span>`;
                     label.setAttribute('aria-label', `Room: ${room.name}`);
                 }
 
@@ -770,10 +774,15 @@
                 }
             });
 
-            // Show room change notification
+            // Show room change notification — limit bonus toasts to first few per session
             if (room.bonus) {
-                showToast(`${room.icon} ${room.name}: +30% ${room.bonus.label}!`, '#4ECDC4');
-                announce(`${room.name}: +30% ${room.bonus.label}`);
+                roomBonusToastCount[roomId] = (roomBonusToastCount[roomId] || 0) + 1;
+                if (roomBonusToastCount[roomId] <= MAX_ROOM_BONUS_TOASTS) {
+                    showToast(`${room.icon} ${room.name}: +30% ${room.bonus.label}!`, '#4ECDC4');
+                    announce(`${room.name}: +30% ${room.bonus.label}`);
+                } else {
+                    announce(`Moved to ${room.name}`);
+                }
             } else {
                 showToast(`${room.icon} Moved to ${room.name}`, '#4ECDC4');
                 announce(`Moved to ${room.name}`);
@@ -1104,8 +1113,8 @@
                             <span class="garden-plot-emoji">${stageEmoji}</span>
                             <span class="garden-plot-label">${crop.name}</span>
                             ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
-                            ${!isReady ? `<span class="garden-plot-timer">${timerText}${plot.watered ? ' 💧' : ''}</span>` : ''}
-                            <span class="garden-plot-label">${isReady ? '🎉 Harvest!' : ''}</span>
+                            ${!isReady ? `<span class="garden-plot-timer">${timerText}${plot.watered ? ' <span aria-hidden="true">💧</span>' : ''}</span>` : ''}
+                            <span class="garden-plot-label">${isReady ? '<span aria-hidden="true">🎉</span> Harvest!' : ''}</span>
                         </div>
                     `;
                 }
@@ -1124,14 +1133,14 @@
                 });
                 inventoryHTML = `
                     <div class="garden-inventory">
-                        <strong>🧺 Harvested Food:</strong> <span style="font-size:0.65rem;color:#888;">(tap to feed pet)</span>
+                        <strong><span aria-hidden="true">🧺</span> Harvested Food:</strong> <span style="font-size:0.65rem;color:#888;">(tap to feed pet)</span>
                         <div class="garden-inventory-items">${itemsHTML}</div>
                     </div>
                 `;
             }
 
             gardenSection.innerHTML = `
-                <div class="garden-title">🌱 ${seasonData ? seasonData.icon : ''} My Garden</div>
+                <div class="garden-title"><span aria-hidden="true">🌱 ${seasonData ? seasonData.icon : ''}</span> My Garden</div>
                 <div class="garden-plots">${plotsHTML}</div>
                 ${inventoryHTML}
             `;
