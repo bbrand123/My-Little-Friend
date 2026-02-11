@@ -103,7 +103,7 @@
 
             overlay.innerHTML = `
                 <div class="minigame-menu">
-                    <h2 class="minigame-menu-title" id="minigame-menu-title">🎮 Mini Games</h2>
+                    <h2 class="minigame-menu-title" id="minigame-menu-title"><span aria-hidden="true">🎮</span> Mini Games</h2>
                     <p class="minigame-menu-subtitle">Pick a game to play with your pet!</p>
                     <div class="minigame-list">
                         ${cardsHTML}
@@ -1367,7 +1367,7 @@
                 else if (moves <= 12) message += 'Great job!';
                 else if (moves <= 18) message += 'Well done!';
                 else message += 'You did it!';
-                instruction.textContent = message;
+                instruction.innerHTML = wrapEmojiForAria(message);
                 instruction.classList.add('highlight');
             }
 

@@ -251,9 +251,9 @@
             // Generate accessory options (just a few basic ones to start)
             let accessoryOptions = `
                 <button class="accessory-option" data-accessory="none" aria-label="None">None</button>
-                <button class="accessory-option" data-accessory="bow" aria-label="Bow">🎀 Bow</button>
-                <button class="accessory-option" data-accessory="glasses" aria-label="Glasses">👓 Glasses</button>
-                <button class="accessory-option" data-accessory="partyHat" aria-label="Party Hat">🎉 Party Hat</button>
+                <button class="accessory-option" data-accessory="bow" aria-label="Bow"><span aria-hidden="true">🎀</span> Bow</button>
+                <button class="accessory-option" data-accessory="glasses" aria-label="Glasses"><span aria-hidden="true">👓</span> Glasses</button>
+                <button class="accessory-option" data-accessory="partyHat" aria-label="Party Hat"><span aria-hidden="true">🎉</span> Party Hat</button>
             `;
 
             overlay.innerHTML = `
@@ -469,10 +469,10 @@
             const weatherMoodNote = getWeatherMoodMessage(pet, weather);
 
             const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
-            const roomLabelHTML = `<span class="status-pill room-label" id="room-label" aria-label="Room: ${room.name}">${room.icon}<span class="status-text">${room.name}</span></span>`;
-            const timeIndicatorHTML = `<span class="status-pill time-indicator" id="time-indicator" aria-label="Time: ${timeLabel}">${timeIcon}<span class="status-text">${timeLabel}</span></span>`;
-            const weatherBadgeHTML = `<span class="status-pill weather-badge ${weather}" id="weather-badge" aria-label="Weather: ${weatherData.name}">${weatherData.icon}<span class="status-text">${weatherData.name}</span></span>`;
-            const seasonBadgeHTML = `<span class="status-pill season-badge ${season}" id="season-badge" aria-label="Season: ${seasonData.name}">${seasonData.icon}<span class="status-text">${seasonData.name}</span></span>`;
+            const roomLabelHTML = `<span class="status-pill room-label" id="room-label" aria-label="Room: ${room.name}"><span aria-hidden="true">${room.icon}</span><span class="status-text">${room.name}</span></span>`;
+            const timeIndicatorHTML = `<span class="status-pill time-indicator" id="time-indicator" aria-label="Time: ${timeLabel}"><span aria-hidden="true">${timeIcon}</span><span class="status-text">${timeLabel}</span></span>`;
+            const weatherBadgeHTML = `<span class="status-pill weather-badge ${weather}" id="weather-badge" aria-label="Weather: ${weatherData.name}"><span aria-hidden="true">${weatherData.icon}</span><span class="status-text">${weatherData.name}</span></span>`;
+            const seasonBadgeHTML = `<span class="status-pill season-badge ${season}" id="season-badge" aria-label="Season: ${seasonData.name}"><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${seasonData.name}</span></span>`;
             const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
             const miniNeedsHTML = `
                 <div class="mini-needs" role="group" aria-label="Quick pet status">
@@ -615,9 +615,9 @@
                                         </div>
                                     </div>
 
-                                    ${actionProgress >= 100 && timeProgress < 100 ? `<p class="growth-tip">💡 Your pet needs more time to grow. Keep caring!</p>` : ''}
-                                    ${timeProgress >= 100 && actionProgress < 100 ? `<p class="growth-tip">💡 Your pet needs more care. Interact more!</p>` : ''}
-                                    ${actionProgress >= 100 && timeProgress >= 100 ? `<p class="growth-tip ready">🎉 Ready to grow! Will evolve soon!</p>` : ''}
+                                    ${actionProgress >= 100 && timeProgress < 100 ? `<p class="growth-tip"><span aria-hidden="true">💡</span> Your pet needs more time to grow. Keep caring!</p>` : ''}
+                                    ${timeProgress >= 100 && actionProgress < 100 ? `<p class="growth-tip"><span aria-hidden="true">💡</span> Your pet needs more care. Interact more!</p>` : ''}
+                                    ${actionProgress >= 100 && timeProgress >= 100 ? `<p class="growth-tip ready"><span aria-hidden="true">🎉</span> Ready to grow! Will evolve soon!</p>` : ''}
                                 </div>
                             `;
                         })()}
@@ -937,6 +937,16 @@
 
         // ==================== TOAST NOTIFICATIONS ====================
 
+        const MAX_VISIBLE_TOASTS = 3;
+
+        // Wrap emoji characters in aria-hidden spans so screen readers skip them
+        function wrapEmojiForAria(text) {
+            // Match common emoji: emoticons, symbols, pictographs, transport, misc, flags, modifiers
+            const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+            const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return escaped.replace(emojiRegex, '<span aria-hidden="true">$1</span>');
+        }
+
         function showToast(message, color = '#66BB6A') {
             let container = document.getElementById('toast-container');
 
@@ -950,10 +960,19 @@
                 container.classList.add('toast-container');
             }
 
+            // Limit visible toasts — remove oldest when at max
+            const existingToasts = container.querySelectorAll('.toast');
+            if (existingToasts.length >= MAX_VISIBLE_TOASTS) {
+                const toRemove = existingToasts.length - MAX_VISIBLE_TOASTS + 1;
+                for (let i = 0; i < toRemove; i++) {
+                    existingToasts[i].remove();
+                }
+            }
+
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
-            toast.textContent = message;
+            toast.innerHTML = wrapEmojiForAria(message);
             container.appendChild(toast);
 
             // Remove after animation completes
@@ -1914,10 +1933,10 @@
                     <div class="celebration-header">
                         <div class="celebration-icon">${rewardData.title}</div>
                     </div>
-                    <h2 class="modal-title" id="celebration-title">${stageEmoji} ${safePetName} is now a ${stageLabel}! ${stageEmoji}</h2>
+                    <h2 class="modal-title" id="celebration-title"><span aria-hidden="true">${stageEmoji}</span> ${safePetName} is now a ${stageLabel}! <span aria-hidden="true">${stageEmoji}</span></h2>
                     <p class="modal-message celebration-message">${rewardData.message}</p>
                     <div class="rewards-display">
-                        <p class="reward-title">🎁 ${rewardData.unlockMessage}</p>
+                        <p class="reward-title"><span aria-hidden="true">🎁</span> ${rewardData.unlockMessage}</p>
                         <div class="reward-accessories">
                             ${rewardData.accessories.map(accId => {
                                 const acc = ACCESSORIES[accId];
@@ -1927,7 +1946,7 @@
                     </div>
                     <div class="modal-buttons">
                         <button class="modal-btn confirm celebration-btn" id="celebration-ok">
-                            🎊 Celebrate! 🎊
+                            <span aria-hidden="true">🎊</span> Celebrate! <span aria-hidden="true">🎊</span>
                         </button>
                     </div>
                 </div>
@@ -1982,19 +2001,19 @@
             modal.innerHTML = `
                 <div class="modal-content celebration-content">
                     <div class="celebration-header">
-                        <div class="celebration-icon evolution-icon">✨ EVOLUTION! ✨</div>
+                        <div class="celebration-icon evolution-icon"><span aria-hidden="true">✨</span> EVOLUTION! <span aria-hidden="true">✨</span></div>
                     </div>
                     <h2 class="modal-title" id="evolution-title">${evolutionData.emoji} ${safePetName} ${evolutionData.emoji}</h2>
                     <p class="modal-message celebration-message">
                         Thanks to your ${qualityLabel.toLowerCase()} care, your pet has evolved into a special form!
                     </p>
                     <div class="evolution-display">
-                        <div class="evolution-sparkle">✨🌟⭐🌟✨</div>
+                        <div class="evolution-sparkle" aria-hidden="true">✨🌟⭐🌟✨</div>
                         <p class="evolution-subtitle">A rare and beautiful transformation!</p>
                     </div>
                     <div class="modal-buttons">
                         <button class="modal-btn confirm celebration-btn evolution-btn" id="evolution-ok">
-                            ⭐ Amazing! ⭐
+                            <span aria-hidden="true">⭐</span> Amazing! <span aria-hidden="true">⭐</span>
                         </button>
                     </div>
                 </div>
@@ -2124,30 +2143,30 @@
             overlay.setAttribute('aria-labelledby', 'tutorial-title');
             overlay.innerHTML = `
                 <div class="naming-modal">
-                    <h2 class="naming-modal-title" id="tutorial-title">🎉 Welcome to Pet Care Buddy!</h2>
+                    <h2 class="naming-modal-title" id="tutorial-title"><span aria-hidden="true">🎉</span> Welcome to Pet Care Buddy!</h2>
                     <div class="tutorial-content">
                         <div class="tutorial-step">
-                            <span class="tutorial-icon">🥚</span>
+                            <span class="tutorial-icon" aria-hidden="true">🥚</span>
                             <h3>Hatch Your Pet</h3>
                             <p>Tap the egg 5 times to hatch a surprise pet! Different egg colors hint at what's inside.</p>
                         </div>
                         <div class="tutorial-step">
-                            <span class="tutorial-icon">🎨</span>
+                            <span class="tutorial-icon" aria-hidden="true">🎨</span>
                             <h3>Customize</h3>
                             <p>Choose your pet's colors, patterns, and accessories to make them unique!</p>
                         </div>
                         <div class="tutorial-step">
-                            <span class="tutorial-icon">💖</span>
+                            <span class="tutorial-icon" aria-hidden="true">💖</span>
                             <h3>Care & Play</h3>
                             <p>Keep your pet happy by feeding, bathing, playing, and putting them to bed. Watch the 4 need bubbles!</p>
                         </div>
                         <div class="tutorial-step">
-                            <span class="tutorial-icon">🏠</span>
+                            <span class="tutorial-icon" aria-hidden="true">🏠</span>
                             <h3>Explore Rooms</h3>
                             <p>Visit different rooms for bonuses: Kitchen gives +30% food, Bathroom +30% cleaning, and more!</p>
                         </div>
                         <div class="tutorial-step">
-                            <span class="tutorial-icon">⭐</span>
+                            <span class="tutorial-icon" aria-hidden="true">⭐</span>
                             <h3>Grow Together</h3>
                             <p>As you care for your pet, they'll grow from Baby → Child → Adult. Raise adults to unlock mythical pets!</p>
                         </div>
