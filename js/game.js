@@ -738,12 +738,7 @@
                     decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
                 }
 
-                // Update room label
-                const label = document.getElementById('room-label');
-                if (label) {
-                    label.innerHTML = `<span aria-hidden="true">${room.icon}</span><span class="status-text">${room.name}</span>`;
-                    label.setAttribute('aria-label', `Room: ${room.name}`);
-                }
+                // Room label removed from status bar (room nav already highlights active room)
 
                 // Show/hide outdoor elements based on room type
                 const isOutdoor = room.isOutdoor;
@@ -1107,14 +1102,14 @@
                     const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining * (plot.watered ? 0.5 : 1));
                     const timerText = isReady ? '' : (minsRemaining > 0 ? `~${minsRemaining}m left` : 'Almost...');
 
+                    // Simplified: emoji + progress bar + one status line
+                    const statusLine = isReady ? 'Harvest!' : `${progress}%${plot.watered ? ' 💧' : ''}`;
                     plotsHTML += `
                         <div class="garden-plot ${plotClass}" data-plot="${i}" role="button" tabindex="0"
                              aria-label="${crop.name} - ${statusLabel}">
                             <span class="garden-plot-emoji">${stageEmoji}</span>
-                            <span class="garden-plot-label">${crop.name}</span>
                             ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
-                            ${!isReady ? `<span class="garden-plot-timer">${timerText}${plot.watered ? ' <span aria-hidden="true">💧</span>' : ''}</span>` : ''}
-                            <span class="garden-plot-label">${isReady ? '<span aria-hidden="true">🎉</span> Harvest!' : ''}</span>
+                            <span class="garden-plot-status">${statusLine}</span>
                         </div>
                     `;
                 }
@@ -1362,6 +1357,21 @@
             }, 30000); // Every 30 seconds
         }
 
+        function updateContextIndicator() {
+            const el = document.getElementById('context-indicator');
+            if (!el) return;
+            const weather = WEATHER_TYPES[gameState.weather] ? gameState.weather : 'sunny';
+            const weatherData = WEATHER_TYPES[weather];
+            const timeOfDay = gameState.timeOfDay || getTimeOfDay();
+            const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
+            const timeIcon = getTimeIcon(timeOfDay);
+            const season = SEASONS[gameState.season] ? gameState.season : getCurrentSeason();
+            const seasonData = SEASONS[season];
+            const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
+            el.innerHTML = `<span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${contextLabel}</span>`;
+            el.setAttribute('aria-label', contextLabel);
+        }
+
         function updateDayNightDisplay() {
             const petArea = document.querySelector('.pet-area');
             if (!petArea) return;
@@ -1382,13 +1392,8 @@
             // Update room background for new time of day
             petArea.style.background = getRoomBackground(currentRoom, timeOfDay);
 
-            // Update time indicator
-            const timeIndicator = document.getElementById('time-indicator');
-            if (timeIndicator) {
-                const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
-                timeIndicator.innerHTML = `${getTimeIcon(timeOfDay)}<span class="status-text">${timeLabel}</span>`;
-                timeIndicator.setAttribute('aria-label', `Time: ${timeLabel}`);
-            }
+            // Update context indicator (collapsed weather + time + season)
+            updateContextIndicator();
 
             // Update room decor for time of day
             const decor = petArea.querySelector('.room-decor');
@@ -1478,13 +1483,8 @@
                 if (overlay) petArea.appendChild(overlay);
             }
 
-            // Update weather badge
-            const oldBadge = document.getElementById('weather-badge');
-            if (oldBadge) {
-                oldBadge.className = `status-pill weather-badge ${weather}`;
-                oldBadge.setAttribute('aria-label', `Weather: ${weatherData.name}`);
-                oldBadge.innerHTML = `${weatherData.icon}<span class="status-text">${weatherData.name}</span>`;
-            }
+            // Update context indicator (collapsed weather + time + season)
+            updateContextIndicator();
         }
 
         function stopDecayTimer() {

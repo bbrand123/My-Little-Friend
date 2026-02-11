@@ -469,10 +469,9 @@
             const weatherMoodNote = getWeatherMoodMessage(pet, weather);
 
             const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
-            const roomLabelHTML = `<span class="status-pill room-label" id="room-label" aria-label="Room: ${room.name}"><span aria-hidden="true">${room.icon}</span><span class="status-text">${room.name}</span></span>`;
-            const timeIndicatorHTML = `<span class="status-pill time-indicator" id="time-indicator" aria-label="Time: ${timeLabel}"><span aria-hidden="true">${timeIcon}</span><span class="status-text">${timeLabel}</span></span>`;
-            const weatherBadgeHTML = `<span class="status-pill weather-badge ${weather}" id="weather-badge" aria-label="Weather: ${weatherData.name}"><span aria-hidden="true">${weatherData.icon}</span><span class="status-text">${weatherData.name}</span></span>`;
-            const seasonBadgeHTML = `<span class="status-pill season-badge ${season}" id="season-badge" aria-label="Season: ${seasonData.name}"><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${seasonData.name}</span></span>`;
+            // Collapsed context indicator: weather + time + season in one pill
+            const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
+            const contextIndicatorHTML = `<span class="status-pill context-indicator" id="context-indicator" aria-label="${contextLabel}"><span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${contextLabel}</span></span>`;
             const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
             const miniNeedsHTML = `
                 <div class="mini-needs" role="group" aria-label="Quick pet status">
@@ -514,10 +513,7 @@
                         </button>
                     </div>
                     <div class="status-stack" role="status" aria-label="Game status">
-                        ${roomLabelHTML}
-                        ${timeIndicatorHTML}
-                        ${weatherBadgeHTML}
-                        ${seasonBadgeHTML}
+                        ${contextIndicatorHTML}
                         ${roomBonusLabel ? `<span class="status-pill room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
                     </div>
                     ${miniNeedsHTML}
@@ -1646,7 +1642,7 @@
             idleAnimTimers.push(timerId);
         }
 
-        // Night mode sleep nudge: show Zzz icon near pet
+        // Night mode sleep nudge: show Zzz icon only when energy is low at night
         function checkNightSleepNudge() {
             if (gameState.phase !== 'pet' || !gameState.pet) return;
             const petContainer = document.getElementById('pet-container');
@@ -1654,12 +1650,14 @@
 
             const timeOfDay = gameState.timeOfDay || getTimeOfDay();
             const existingNudge = document.querySelector('.sleep-nudge-icon');
+            const energy = gameState.pet.energy;
+            const shouldShow = timeOfDay === 'night' && energy <= 50;
 
-            if (timeOfDay === 'night') {
+            if (shouldShow) {
                 if (!existingNudge) {
                     const nudge = document.createElement('div');
                     nudge.className = 'sleep-nudge-icon';
-                    nudge.setAttribute('aria-label', 'It is nighttime. Consider putting your pet to sleep.');
+                    nudge.setAttribute('aria-label', 'Your pet is tired. Consider putting them to sleep.');
                     nudge.setAttribute('role', 'img');
                     nudge.innerHTML = '<span class="sleep-nudge-z z1">Z</span><span class="sleep-nudge-z z2">z</span><span class="sleep-nudge-z z3">z</span>';
                     petContainer.appendChild(nudge);
