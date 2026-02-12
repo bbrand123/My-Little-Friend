@@ -96,7 +96,7 @@
                 return `<span class="${cls}">${c.label} ${sign}${c.amount}</span>`;
             }).join('');
             anchor.appendChild(el);
-            setTimeout(() => el.remove(), 1500);
+            setTimeout(() => el.remove(), 2000);
         }
 
         // Update wellness bar display

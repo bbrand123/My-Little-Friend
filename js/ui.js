@@ -955,7 +955,7 @@
             container.appendChild(toast);
 
             // Remove after animation completes
-            setTimeout(() => toast.remove(), 2500);
+            setTimeout(() => toast.remove(), 3500);
         }
 
         // Toast color map for actions
@@ -1972,11 +1972,11 @@
             function closeModal() {
                 popModalEscape(closeModal);
                 modal.remove();
-                // Trigger confetti cleanup
+                // Trigger confetti cleanup (8s accounts for max 5s animation + 2s delay)
                 setTimeout(() => {
                     const confettiContainer = document.querySelector('.confetti-container');
                     if (confettiContainer) confettiContainer.remove();
-                }, 5000);
+                }, 8000);
             }
 
             okBtn.addEventListener('click', closeModal);
@@ -2038,11 +2038,11 @@
                 if (typeof renderPetPhase === 'function') {
                     renderPetPhase();
                 }
-                // Trigger confetti cleanup
+                // Trigger confetti cleanup (8s accounts for max 5s animation + 2s delay)
                 setTimeout(() => {
                     const confettiContainer = document.querySelector('.confetti-container');
                     if (confettiContainer) confettiContainer.remove();
-                }, 5000);
+                }, 8000);
             }
 
             okBtn.addEventListener('click', closeModal);
