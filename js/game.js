@@ -77,12 +77,14 @@
             return `${w}% Needs care`;
         }
 
-        // Floating stat change indicator
+        // Floating stat change indicator (visual only — hidden from screen readers
+        // to avoid announcing each +N bubble inside the progressbar element)
         function showStatChange(bubbleId, amount) {
             const bubble = document.getElementById(bubbleId);
             if (!bubble) return;
             const el = document.createElement('div');
             el.className = `stat-change ${amount >= 0 ? 'positive' : 'negative'}`;
+            el.setAttribute('aria-hidden', 'true');
             el.textContent = amount >= 0 ? `+${amount}` : `${amount}`;
             bubble.appendChild(el);
             setTimeout(() => el.remove(), 1200);
@@ -102,13 +104,31 @@
             val.style.color = w >= 60 ? '#66BB6A' : w >= 35 ? '#FFA726' : '#EF5350';
         }
 
+        let _announceQueue = [];
+        let _announceTimer = null;
+
         function announce(message, assertive = false) {
-            const announcer = document.getElementById(assertive ? 'live-announcer-assertive' : 'live-announcer');
-            if (!announcer) return;
-            announcer.textContent = '';
-            setTimeout(() => {
-                announcer.textContent = message;
-            }, 100);
+            if (assertive) {
+                // Assertive messages bypass the queue — they're critical
+                const announcer = document.getElementById('live-announcer-assertive');
+                if (!announcer) return;
+                announcer.textContent = '';
+                setTimeout(() => { announcer.textContent = message; }, 100);
+                return;
+            }
+
+            // Queue polite messages and flush as a single combined announcement
+            _announceQueue.push(message);
+            if (_announceTimer) clearTimeout(_announceTimer);
+            _announceTimer = setTimeout(() => {
+                const announcer = document.getElementById('live-announcer');
+                if (!announcer) { _announceQueue = []; _announceTimer = null; return; }
+                const combined = _announceQueue.join('. ');
+                _announceQueue = [];
+                _announceTimer = null;
+                announcer.textContent = '';
+                setTimeout(() => { announcer.textContent = combined; }, 100);
+            }, 300);
         }
 
         // ==================== SAVE/LOAD ====================
@@ -1418,7 +1438,7 @@
                     // Check for growth milestones
                     checkGrowthMilestone(pet);
 
-                    updateNeedDisplays();
+                    updateNeedDisplays(true);
                     updatePetMood();
                     updateWellnessBar();
                     saveGame();
