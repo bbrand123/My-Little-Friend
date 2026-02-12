@@ -431,7 +431,6 @@
                 return;
             }
             const mood = getMood(pet);
-            const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
 
             // Update time of day
             gameState.timeOfDay = getTimeOfDay();
@@ -479,9 +478,6 @@
             const seasonData = SEASONS[season];
             const seasonalDecorHTML = isOutdoor && seasonData ? `<div class="seasonal-decor" aria-hidden="true">${getSeasonalDecor(season, timeOfDay)}</div>` : '';
 
-            // Weather mood note
-            const weatherMoodNote = getWeatherMoodMessage(pet, weather);
-
             const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
             // Collapsed context indicator: weather + time + season in one pill
             const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
@@ -502,17 +498,17 @@
             content.innerHTML = `
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
                     <div class="top-action-buttons" role="group" aria-label="Top actions">
-                        <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog">
-                            <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
+                        <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" aria-label="Codex">
+                            <span class="top-action-btn-icon" aria-hidden="true">📖</span><span class="top-action-btn-label"> Codex</span>
                         </button>
-                        <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog">
-                            <span class="top-action-btn-icon" aria-hidden="true">📊</span> Stats
+                        <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" aria-label="Stats">
+                            <span class="top-action-btn-icon" aria-hidden="true">📊</span><span class="top-action-btn-label"> Stats</span>
                         </button>
-                        <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog">
-                            <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
+                        <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" aria-label="Decor">
+                            <span class="top-action-btn-icon" aria-hidden="true">🛋️</span><span class="top-action-btn-label"> Decor</span>
                         </button>
-                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}">
-                            <span class="top-action-btn-icon" aria-hidden="true">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span> Sound
+                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}" aria-label="Sound">
+                            <span class="top-action-btn-icon" aria-hidden="true">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span><span class="top-action-btn-label"> Sound</span>
                         </button>
                     </div>
                     <div class="status-stack" role="status" aria-label="Game status">
@@ -566,20 +562,6 @@
 
                             const overallProgress = Math.min(actionProgress, timeProgress);
 
-                            const actionsNeeded = Math.max(0, nextActionsThreshold - pet.careActions);
-                            const hoursNeeded = Math.max(0, nextHoursThreshold - ageInHours);
-
-                            let hint = '';
-                            if (actionProgress >= 100 && timeProgress >= 100) {
-                                hint = '<span class="growth-hint ready">🎉 Ready to grow!</span>';
-                            } else if (actionProgress >= 100) {
-                                hint = `<span class="growth-hint">⏰ ${Math.round(hoursNeeded)}h left</span>`;
-                            } else if (timeProgress >= 100) {
-                                hint = `<span class="growth-hint">💪 ${actionsNeeded} actions left</span>`;
-                            } else {
-                                hint = `<span class="growth-hint">💪${Math.round(actionProgress)}% · ⏰${Math.round(timeProgress)}%</span>`;
-                            }
-
                             return `
                                 <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%">
                                     <div class="growth-compact-row">
@@ -591,12 +573,10 @@
                                         </div>
                                         <span class="growth-compact-pct">${Math.round(overallProgress)}%</span>
                                     </div>
-                                    ${hint}
                                 </div>
                             `;
                         })()}
                     </div>
-                    <p class="pet-mood" id="pet-mood" aria-live="polite">${petDisplayName} ${moodMessage}${weatherMoodNote ? `<span class="weather-mood-note">${weatherData.icon} ${petDisplayName} ${weatherMoodNote}</span>` : ''}</p>
                     <div class="room-decor" aria-hidden="true">${roomDecor}</div>
                 </div>
 
@@ -663,11 +643,6 @@
                         excellent: 'Amazing care! Your pet can evolve once they reach adult stage. ✨'
                     };
 
-                    const neglectCount = pet.neglectCount || 0;
-                    const avgStats = pet.careHistory && pet.careHistory.length > 0
-                        ? Math.round(pet.careHistory.slice(-20).reduce((sum, e) => sum + e.average, 0) / Math.min(20, pet.careHistory.length))
-                        : Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
-
                     const tipText = careQualityTips[careQuality] || careQualityTips.average;
 
                     return `
@@ -690,16 +665,6 @@
                                 </div>
                             </div>
 
-                            <div class="care-stats-detail">
-                                <div class="care-stat-item">
-                                    <span class="care-stat-label">Average Stats:</span>
-                                    <span class="care-stat-value ${avgStats >= 80 ? 'excellent' : avgStats >= 60 ? 'good' : avgStats >= 35 ? 'average' : 'poor'}">${avgStats}%</span>
-                                </div>
-                                <div class="care-stat-item">
-                                    <span class="care-stat-label">Neglect Count:</span>
-                                    <span class="care-stat-value ${neglectCount <= 2 ? 'excellent' : neglectCount <= 5 ? 'good' : neglectCount <= 10 ? 'average' : 'poor'}">${neglectCount}</span>
-                                </div>
-                            </div>
 
                             ${pet.evolutionStage === 'evolved' ? `
                                 <div class="evolution-badge-display">
@@ -727,7 +692,7 @@
                                 const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
                                 const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
                                 return `<button class="action-btn feed" id="feed-btn">
-                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('feed'))} Food${getRoomBonus('feed') > 1 ? ' (bonus!)' : ''}</span>
+                                <span class="action-btn-tooltip">Restores food</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
                                 ${cropBadge}
@@ -735,19 +700,19 @@
                             </button>`;
                             })()}
                             <button class="action-btn wash" id="wash-btn">
-                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('wash'))} Bath${getRoomBonus('wash') > 1 ? ' (bonus!)' : ''}</span>
+                                <span class="action-btn-tooltip">Cleans your pet</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn sleep" id="sleep-btn">
-                                <span class="action-btn-tooltip">+${Math.round(25 * getRoomBonus('sleep'))}-${Math.round(40 * getRoomBonus('sleep'))} Energy${getRoomBonus('sleep') > 1 ? ' (bonus!)' : ''}</span>
+                                <span class="action-btn-tooltip">Restores energy</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn">
-                                <span class="action-btn-tooltip">+15 Happy, +5 Energy</span>
+                                <span class="action-btn-tooltip">Boosts happiness</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
@@ -758,25 +723,25 @@
                         <div class="action-group-label">Fun & Play</div>
                         <div class="action-group-buttons" role="group" aria-label="Fun and play buttons">
                             <button class="action-btn play" id="play-btn">
-                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('play'))} Happy${getRoomBonus('play') > 1 ? ' (bonus!)' : ''}</span>
+                                <span class="action-btn-tooltip">Boosts happiness</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn exercise" id="exercise-btn">
-                                <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('exercise'))} Happy, -10 Energy${getRoomBonus('exercise') > 1 ? ' (bonus!)' : ''}</span>
+                                <span class="action-btn-tooltip">Happiness up, energy down</span>
                                 <span class="btn-icon" aria-hidden="true">🏃</span>
                                 <span>Exercise</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn treat" id="treat-btn">
-                                <span class="action-btn-tooltip">+25 Happy, +10 Food</span>
+                                <span class="action-btn-tooltip">A tasty snack</span>
                                 <span class="btn-icon" aria-hidden="true">🍪</span>
                                 <span>Treat</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
-                                <span class="action-btn-tooltip">6 games to play!</span>
+                                <span class="action-btn-tooltip">Play mini-games</span>
                                 <span class="btn-icon" aria-hidden="true">🎮</span>
                                 <span>Games</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
@@ -793,7 +758,7 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn groom" id="groom-btn">
-                                <span class="action-btn-tooltip">+${Math.round(15 * getRoomBonus('groom'))} Bath, +${Math.round(10 * getRoomBonus('groom'))} Happy${getRoomBonus('groom') > 1 ? ' (bonus!)' : ''}</span>
+                                <span class="action-btn-tooltip">Cleans and cheers up</span>
                                 <span class="btn-icon" aria-hidden="true">✂️</span>
                                 <span>Groom</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
@@ -1229,31 +1194,11 @@
             const petData = PET_TYPES[pet.type];
             if (!petData) return;
             const mood = getMood(pet);
-            const moodMessage = randomFromArray(MOOD_MESSAGES[mood]);
 
-            // Update pet SVG
+            // Update pet SVG expression
             const petContainer = document.getElementById('pet-container');
             if (!petContainer) return;
             petContainer.innerHTML = generatePetSVG(pet, mood);
-
-            // Update mood text with weather and time-of-day notes
-            const petDisplayName = pet.name || petData.name;
-            const safePetName = escapeHTML(petDisplayName);
-            const weather = WEATHER_TYPES[gameState.weather] ? gameState.weather : 'sunny';
-            if (weather !== gameState.weather) {
-                gameState.weather = weather;
-            }
-            const weatherData = WEATHER_TYPES[weather];
-            const weatherMoodNote = getWeatherMoodMessage(pet, weather);
-            const timeMoodNote = getTimeMoodMessage(pet);
-            const petMoodEl = document.getElementById('pet-mood');
-            if (petMoodEl) {
-                let noteHTML = '';
-                if (weatherMoodNote) noteHTML += `<span class="weather-mood-note">${weatherData.icon} ${safePetName} ${weatherMoodNote}</span>`;
-                if (timeMoodNote) noteHTML += `<span class="weather-mood-note">${getTimeIcon(gameState.timeOfDay)} ${safePetName} ${timeMoodNote}</span>`;
-                petMoodEl.innerHTML = `${safePetName} ${moodMessage}${noteHTML}`;
-            }
-
         }
 
         function updateGrowthDisplay() {
