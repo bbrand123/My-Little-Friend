@@ -447,6 +447,9 @@
             });
         }
 
+        let _petPhaseTimersRunning = false;
+        let _petPhaseLastRoom = null;
+
         function renderPetPhase() {
             const content = document.getElementById('game-content');
             const pet = gameState.pet;
@@ -877,19 +880,27 @@
                 }
             });
 
-            // Start decay timer (which also checks weather) and garden grow timer
-            startDecayTimer();
-            startGardenGrowTimer();
+            // Only restart timers, earcons, and idle animations when they aren't
+            // already running, or when the room has changed.  renderPetPhase() is
+            // called from ~10 code paths; unconditionally restarting caused audible
+            // earcon fade-out/fade-in glitches and brief timer gaps.
+            const roomChanged = (_petPhaseLastRoom !== currentRoom);
+            if (!_petPhaseTimersRunning) {
+                startDecayTimer();
+                startGardenGrowTimer();
+                _petPhaseTimersRunning = true;
+            }
 
-            // Start room earcon
             if (typeof SoundManager !== 'undefined') {
                 SoundManager.enterRoom(currentRoom);
             }
 
-            // Start idle micro-animations
-            if (typeof startIdleAnimations === 'function') {
-                startIdleAnimations();
+            if (roomChanged || !_petPhaseTimersRunning) {
+                if (typeof startIdleAnimations === 'function') {
+                    startIdleAnimations();
+                }
             }
+            _petPhaseLastRoom = currentRoom;
 
             // Notify VoiceOver that the screen content has changed
             // Setting focus to the game-content container helps VoiceOver
@@ -1638,6 +1649,16 @@
             if (standardBtn) {
                 standardBtn.addEventListener('click', () => {
                     closeMenu();
+
+                    // Set global action cooldown (same as careAction) so that
+                    // subsequent care actions respect the 600ms cooldown window.
+                    actionCooldown = true;
+                    if (actionCooldownTimer) clearTimeout(actionCooldownTimer);
+                    actionCooldownTimer = setTimeout(() => {
+                        actionCooldown = false;
+                        actionCooldownTimer = null;
+                    }, ACTION_COOLDOWN_MS);
+
                     const bonus = Math.round(20 * getRoomBonus('feed'));
                     pet.hunger = clamp(pet.hunger + bonus, 0, 100);
                     const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
@@ -2519,6 +2540,8 @@
                 cleanupAllMiniGames();
                 stopDecayTimer();
                 stopGardenGrowTimer();
+                _petPhaseTimersRunning = false;
+                _petPhaseLastRoom = null;
                 if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
                 if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
 
