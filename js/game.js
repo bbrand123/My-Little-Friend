@@ -846,21 +846,19 @@
         function evolvePet(pet) {
             if (!canEvolve(pet)) return false;
 
-            pet.evolutionStage = 'evolved';
             const evolutionData = PET_EVOLUTIONS[pet.type];
+            if (!evolutionData) return false;
 
-            if (evolutionData) {
-                // Store evolution title separately so the user-chosen name is preserved
-                pet.evolutionTitle = evolutionData.name;
+            pet.evolutionStage = 'evolved';
 
-                // Show evolution celebration
-                showEvolutionCelebration(pet, evolutionData);
+            // Store evolution title separately so the user-chosen name is preserved
+            pet.evolutionTitle = evolutionData.name;
 
-                saveGame();
-                return true;
-            }
+            // Show evolution celebration
+            showEvolutionCelebration(pet, evolutionData);
 
-            return false;
+            saveGame();
+            return true;
         }
 
         // Get time icon based on time of day

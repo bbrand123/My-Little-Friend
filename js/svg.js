@@ -85,6 +85,16 @@
             return '#' + toHex(nr) + toHex(ng) + toHex(nb);
         }
 
+        // Sanitize color values to prevent XSS injection through SVG attributes
+        function sanitizeColor(color) {
+            if (!color || typeof color !== 'string') return '#888888';
+            // Allow only valid hex colors, named CSS colors (letters only), and rgb/hsl functions with safe chars
+            if (/^#[0-9a-fA-F]{3,8}$/.test(color)) return color;
+            if (/^[a-zA-Z]{1,30}$/.test(color)) return color;
+            if (/^(rgb|hsl)a?\(\s*[\d.,\s%]+\)$/.test(color)) return color;
+            return '#888888';
+        }
+
         // Apply care variant effects to color
         function applyCareVariant(color, variant, isEvolved) {
             if (!color) return color;
@@ -303,6 +313,60 @@
                             </g>
                         `;
                         break;
+                    case 'topHat':
+                        accessoryHTML += `
+                            <g transform="translate(50, 8)">
+                                <rect x="-12" y="-18" width="24" height="18" rx="2" fill="#222" stroke="#111" stroke-width="1"/>
+                                <rect x="-16" y="0" width="32" height="4" rx="2" fill="#222" stroke="#111" stroke-width="1"/>
+                                <rect x="-10" y="-4" width="20" height="3" rx="1" fill="#8B0000"/>
+                            </g>
+                        `;
+                        break;
+                    case 'ribbonBow':
+                        accessoryHTML += `
+                            <g transform="translate(65, 18)">
+                                <path d="M-10,-5 Q-14,0 -10,5 Q-12,0 -10,-5" fill="#FF85A2"/>
+                                <path d="M10,-5 Q14,0 10,5 Q12,0 10,-5" fill="#FF85A2"/>
+                                <circle cx="0" cy="0" r="3" fill="#FF1493"/>
+                                <path d="M0,3 L-2,10" stroke="#FF85A2" stroke-width="1.5" fill="none"/>
+                                <path d="M0,3 L2,10" stroke="#FF85A2" stroke-width="1.5" fill="none"/>
+                            </g>
+                        `;
+                        break;
+                    case 'collar':
+                        accessoryHTML += `
+                            <g transform="translate(50, 65)">
+                                <ellipse cx="0" cy="0" rx="20" ry="5" fill="none" stroke="#CC3333" stroke-width="3"/>
+                                <circle cx="0" cy="5" r="4" fill="#FFD700" stroke="#DAA520" stroke-width="1"/>
+                            </g>
+                        `;
+                        break;
+                    case 'bandana':
+                        accessoryHTML += `
+                            <g transform="translate(50, 62)">
+                                <path d="M-22,0 L0,8 L22,0" fill="#E74C3C" stroke="#C0392B" stroke-width="1"/>
+                                <path d="M-18,-2 L18,-2" stroke="#E74C3C" stroke-width="3"/>
+                            </g>
+                        `;
+                        break;
+                    case 'superhero':
+                        accessoryHTML += `
+                            <g transform="translate(50, 55)">
+                                <path d="M-10,-10 L-25,10 L-15,5 L-10,15 L0,0 L10,15 L15,5 L25,10 L10,-10 Z" fill="#E53935" opacity="0.85"/>
+                            </g>
+                        `;
+                        break;
+                    case 'wizard':
+                        accessoryHTML += `
+                            <g transform="translate(50, 5)">
+                                <polygon points="-14,0 14,0 0,-28" fill="#5C4D9A" stroke="#3E3570" stroke-width="1"/>
+                                <circle cx="0" cy="-28" r="3" fill="#FFD700"/>
+                                <circle cx="-5" cy="-10" r="2" fill="#FFD700" opacity="0.7"/>
+                                <circle cx="6" cy="-16" r="1.5" fill="#FFD700" opacity="0.6"/>
+                                <rect x="-16" y="0" width="32" height="4" rx="2" fill="#5C4D9A" stroke="#3E3570" stroke-width="1"/>
+                            </g>
+                        `;
+                        break;
                 }
             });
 
@@ -311,7 +375,7 @@
 
         function generatePetSVG(pet, mood) {
             const type = pet.type;
-            let baseColor = pet.color;
+            let baseColor = sanitizeColor(pet.color);
             const growthStage = pet.growthStage || 'baby';
             const stageData = GROWTH_STAGES[growthStage];
             const scale = stageData ? stageData.scale : 1.0;

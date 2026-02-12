@@ -289,6 +289,8 @@
                 });
             }
 
+            let _enterRoomSeq = 0;
+
             async function enterRoom(roomId) {
                 if (!isEnabled) return;
                 if (roomId === currentRoom) return;
@@ -296,20 +298,32 @@
                 const ctx = getContext();
                 if (!ctx) return;
 
+                const seq = ++_enterRoomSeq;
+
                 // Fade out current earcon
                 if (currentEarcon) {
                     const oldEarcon = currentEarcon;
+                    currentEarcon = null;
                     await fadeOut(oldEarcon.gainNode, ctx);
                     oldEarcon.stop();
-                    currentEarcon = null;
                 }
+
+                // If another enterRoom call arrived while we were fading out, bail
+                if (seq !== _enterRoomSeq) return;
 
                 currentRoom = roomId;
                 const factory = earconFactories[roomId];
                 if (!factory) return;
 
-                currentEarcon = factory(ctx);
-                fadeIn(currentEarcon.gainNode, ctx);
+                try {
+                    currentEarcon = factory(ctx);
+                    fadeIn(currentEarcon.gainNode, ctx);
+                } catch (e) {
+                    // AudioContext may be closed or invalid — reset so future
+                    // room changes can retry instead of being permanently silenced
+                    currentEarcon = null;
+                    currentRoom = null;
+                }
             }
 
             function stopAll() {

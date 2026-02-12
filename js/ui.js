@@ -1910,7 +1910,7 @@
             createConfetti();
             createCelebrationFlash();
             triggerPetCelebrationPulse();
-            SoundManager.playSFX(SoundManager.sfx.celebration);
+            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Unlock accessories as rewards
             if (rewardData.accessories && pet) {
@@ -1943,7 +1943,7 @@
                     <div class="rewards-display">
                         <p class="reward-title"><span aria-hidden="true">🎁</span> ${rewardData.unlockMessage}</p>
                         <div class="reward-accessories">
-                            ${rewardData.accessories.map(accId => {
+                            ${(rewardData.accessories || []).map(accId => {
                                 const acc = ACCESSORIES[accId];
                                 return acc ? `<span class="reward-item">${acc.emoji} ${acc.name}</span>` : '';
                             }).join('')}
@@ -1988,7 +1988,7 @@
             createConfetti();
             createCelebrationFlash();
             triggerPetCelebrationPulse();
-            SoundManager.playSFX(SoundManager.sfx.celebration);
+            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Create evolution modal
             const modal = document.createElement('div');
@@ -2683,7 +2683,11 @@
                 const newTypes = getUnlockedPetTypes();
                 const newPetType = randomFromArray(newTypes);
                 const newEggType = getEggTypeForPet(newPetType);
-                gameState = {
+                // Clear all existing properties and assign new ones on the same
+                // object so that in-flight closures / timer callbacks that
+                // captured the gameState reference keep working.
+                Object.keys(gameState).forEach(k => delete gameState[k]);
+                Object.assign(gameState, {
                     phase: 'egg',
                     pet: null,
                     eggTaps: 0,
@@ -2710,7 +2714,7 @@
                     activePetIndex: 0,
                     relationships: {},
                     nextPetId: 1
-                };
+                });
                 saveGame();
                 announce('Starting fresh with a new egg!', true);
                 renderEggPhase();
