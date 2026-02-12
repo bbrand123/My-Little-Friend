@@ -1008,14 +1008,11 @@
             cancelBtn.focus();
 
             function closeOverlay() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeOverlay);
                 overlay.remove();
             }
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') closeOverlay();
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeOverlay);
 
             confirmBtn.addEventListener('click', () => {
                 closeOverlay();
@@ -1151,7 +1148,7 @@
             document.body.appendChild(overlay);
 
             function closeOverlay() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeOverlay);
                 if (overlay && overlay.parentNode) overlay.remove();
             }
 
@@ -1168,10 +1165,10 @@
                 if (e.target === overlay) closeOverlay();
             });
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeOverlay();
-                }
+            pushModalEscape(closeOverlay);
+
+            // Focus trap for Tab key
+            overlay.addEventListener('keydown', (e) => {
                 if (e.key === 'Tab') {
                     const focusable = overlay.querySelectorAll('button');
                     const first = focusable[0];
@@ -1184,8 +1181,7 @@
                         first.focus();
                     }
                 }
-            }
-            document.addEventListener('keydown', handleEscape);
+            });
 
             const firstSeed = overlay.querySelector('.seed-option');
             if (firstSeed) firstSeed.focus();

@@ -688,6 +688,27 @@ const MAX_GARDEN_PLOTS = 6;
 // Plots 1-2 are free, then unlock at 2, 5, 10, 18 total harvests
 const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 0, 2, 5, 10, 18];
 
+// ==================== MODAL ESCAPE KEY STACK ====================
+// Ensures only the topmost modal/overlay responds to the Escape key.
+const _modalEscapeStack = [];
+
+function pushModalEscape(closeFn) {
+    _modalEscapeStack.push(closeFn);
+}
+
+function popModalEscape(closeFn) {
+    const idx = _modalEscapeStack.lastIndexOf(closeFn);
+    if (idx !== -1) _modalEscapeStack.splice(idx, 1);
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && _modalEscapeStack.length > 0) {
+        e.stopImmediatePropagation();
+        const topHandler = _modalEscapeStack[_modalEscapeStack.length - 1];
+        topHandler();
+    }
+});
+
 function getUnlockedPlotCount(totalHarvests) {
     const harvests = typeof totalHarvests === 'number' ? totalHarvests : 0;
     let unlocked = 0;

@@ -659,22 +659,7 @@
         }
 
         .cooldown-count {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            font-size: 0.55rem;
-            font-weight: 800;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            padding: 1px 4px;
-            border-radius: 6px;
-            opacity: 0;
-            transition: opacity 0.1s ease;
-            pointer-events: none;
-        }
-
-        .action-btn.cooldown .cooldown-count {
-            opacity: 1;
+            display: none;
         }
 
         .action-btn:hover,
@@ -1313,7 +1298,10 @@
             background: var(--color-primary);
             color: white;
             border-color: var(--color-primary);
-            box-shadow: 0 2px 8px rgba(108, 99, 255, 0.4);
+            border-width: 2.5px;
+            box-shadow: 0 3px 10px rgba(108, 99, 255, 0.45), 0 0 0 3px rgba(108, 99, 255, 0.2);
+            transform: translateY(-2px) scale(1.05);
+            font-weight: 700;
         }
 
         .room-btn-icon {
@@ -1730,6 +1718,7 @@
                 overflow-x: auto;
                 overflow-y: hidden;
                 justify-content: flex-start;
+                gap: 12px;
                 -webkit-overflow-scrolling: touch;
                 scrollbar-width: thin;
                 scrollbar-color: rgba(0,0,0,0.15) transparent;
@@ -1749,11 +1738,12 @@
             }
 
             .action-btn {
-                min-width: 60px; /* Increased from 56px for better touch target */
-                min-height: 60px;
-                width: 60px;
-                height: 60px;
-                font-size: 0.7rem; /* Standardized font size */
+                min-width: 54px;
+                min-height: 54px;
+                width: 54px;
+                height: 54px;
+                font-size: 0.65rem;
+                border-radius: 14px;
             }
 
             .btn-icon {
@@ -5285,8 +5275,8 @@
 
         /* Room navigation improved active state */
         .room-btn.active {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 3px 10px rgba(108, 99, 255, 0.45), 0 0 0 3px rgba(108, 99, 255, 0.2);
         }
 
         /* Improved need bubble pulse for critical */
