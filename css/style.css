@@ -433,15 +433,6 @@
             margin-bottom: 4px;
         }
 
-        .pet-mood {
-            font-size: 1rem;
-            color: #3D4852;
-            font-weight: 600;
-            margin-top: 2px;
-            z-index: 2;
-            position: relative;
-            text-shadow: 0 1px 2px rgba(255,255,255,0.6);
-        }
 
         /* Needs Section - Compact Circular Indicators */
         .needs-section {
@@ -1471,14 +1462,6 @@
             filter: brightness(1.05) saturate(0.7);
         }
 
-        /* Weather mood indicator on the mood message */
-        .weather-mood-note {
-            font-size: 0.85rem;
-            color: #4A5568;
-            display: block;
-            margin-top: 2px;
-            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
-        }
 
         /* Time indicator */
         .time-indicator {
@@ -4371,18 +4354,6 @@
             color: #9C27B0;
         }
 
-        .growth-hint {
-            display: block;
-            font-size: 0.7rem;
-            color: var(--color-text-secondary);
-            text-align: center;
-            margin-top: 2px;
-        }
-
-        .growth-hint.ready {
-            color: #2E7D32;
-            font-weight: bold;
-        }
 
         /* ==================== CARE QUALITY DETAILS ==================== */
 
@@ -4393,56 +4364,6 @@
             display: block;
         }
 
-        .care-stats-detail {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin: 12px 0;
-            padding: 10px;
-            background: white;
-            border-radius: var(--radius-md);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-
-        .care-stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .care-stat-label {
-            font-size: 0.7rem;
-            color: var(--color-text-secondary);
-            font-weight: bold;
-        }
-
-        .care-stat-value {
-            font-size: 1rem;
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
-
-        .care-stat-value.excellent {
-            color: #2E7D32;
-            background: #E8F5E9;
-        }
-
-        .care-stat-value.good {
-            color: #558B2F;
-            background: #F1F8E9;
-        }
-
-        .care-stat-value.average {
-            color: #F57C00;
-            background: #FFF3E0;
-        }
-
-        .care-stat-value.poor {
-            color: #C62828;
-            background: #FFEBEE;
-        }
 
         .care-quality-tip {
             margin: 10px 0;
@@ -4480,11 +4401,6 @@
 
             .celebration-message {
                 font-size: 1rem;
-            }
-
-            .care-stats-detail {
-                flex-direction: column;
-                gap: 8px;
             }
 
         }
@@ -4875,5 +4791,16 @@
 
             .pet-area {
                 transition: none !important;
+            }
+        }
+
+        /* Hide toolbar button text labels on small screens — icons-only with aria-labels */
+        @media (max-width: 480px) {
+            .top-action-btn-label {
+                display: none;
+            }
+
+            .top-action-btn {
+                padding: 10px;
             }
         }
