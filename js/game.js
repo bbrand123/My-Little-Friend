@@ -635,8 +635,8 @@
             const evolutionData = PET_EVOLUTIONS[pet.type];
 
             if (evolutionData) {
-                // Update pet name to evolution name
-                pet.name = evolutionData.name;
+                // Store evolution title separately so the user-chosen name is preserved
+                pet.evolutionTitle = evolutionData.name;
 
                 // Show evolution celebration
                 showEvolutionCelebration(pet, evolutionData);
@@ -1488,6 +1488,7 @@
 
         let decayInterval = null;
         let lastDecayAnnouncement = 0;
+        let pendingRenderTimer = null;
 
         function startDecayTimer() {
             if (decayInterval) clearInterval(decayInterval);
@@ -1558,6 +1559,11 @@
                         gameState.season = newSeason;
                         const seasonData = SEASONS[newSeason];
                         showToast(`${seasonData.icon} ${seasonData.name} has arrived!`, '#FFB74D');
+                        // Cancel any deferred render from a previous tick's care-quality change
+                        if (pendingRenderTimer) {
+                            clearTimeout(pendingRenderTimer);
+                            pendingRenderTimer = null;
+                        }
                         // Re-render to update seasonal decorations
                         renderPetPhase();
                         return; // renderPetPhase will handle the rest
@@ -1591,9 +1597,13 @@
                             showToast(`${toData.emoji} Care quality changed to ${toData.label}`, '#FFB74D');
                         }
 
-                        // Re-render to show appearance changes (debounced to avoid rapid re-renders)
+                        // Re-render to show appearance changes (debounced to avoid rapid re-renders).
+                        // Track the timer so a synchronous renderPetPhase() (e.g. from a
+                        // season change in a later tick) can cancel it to prevent a double render.
                         if (typeof renderPetPhase === 'function' && !careQualityChange.skipRender) {
-                            setTimeout(() => {
+                            if (pendingRenderTimer) clearTimeout(pendingRenderTimer);
+                            pendingRenderTimer = setTimeout(() => {
+                                pendingRenderTimer = null;
                                 renderPetPhase();
                             }, 100);
                         }
