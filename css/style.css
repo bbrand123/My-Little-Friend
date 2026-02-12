@@ -412,100 +412,7 @@
             text-shadow: 1px 1px 0 var(--color-accent);
         }
 
-        .mood-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            margin-top: 6px;
-            letter-spacing: 0.03em;
-        }
 
-        .mood-badge.happy {
-            background: rgba(149, 232, 111, 0.25);
-            color: #4CAF50;
-            border: 1.5px solid rgba(149, 232, 111, 0.5);
-        }
-
-        .mood-badge.neutral {
-            background: rgba(255, 179, 71, 0.25);
-            color: #F57C00;
-            border: 1.5px solid rgba(255, 179, 71, 0.5);
-        }
-
-        .mood-badge.sad {
-            background: rgba(255, 107, 107, 0.25);
-            color: #E53935;
-            border: 1.5px solid rgba(255, 107, 107, 0.5);
-        }
-
-        .mood-badge.sleepy {
-            background: rgba(130, 120, 200, 0.25);
-            color: #5C4DB1;
-            border: 1.5px solid rgba(130, 120, 200, 0.5);
-        }
-
-        .mood-badge.energetic {
-            background: rgba(255, 215, 0, 0.25);
-            color: #F9A825;
-            border: 1.5px solid rgba(255, 215, 0, 0.5);
-        }
-
-        .mood-badge-emoji {
-            font-size: 0.85rem;
-        }
-
-        /* Pet badges row */
-        .pet-badges {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        /* Growth stage badge */
-        .growth-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            margin-top: 6px;
-            letter-spacing: 0.03em;
-        }
-
-        .growth-badge.baby {
-            background: rgba(255, 182, 193, 0.3);
-            color: #E91E63;
-            border: 1.5px solid rgba(255, 182, 193, 0.6);
-        }
-
-        .growth-badge.child {
-            background: rgba(129, 212, 250, 0.3);
-            color: #0288D1;
-            border: 1.5px solid rgba(129, 212, 250, 0.6);
-        }
-
-        .growth-badge.adult {
-            background: rgba(255, 215, 0, 0.3);
-            color: #F9A825;
-            border: 1.5px solid rgba(255, 215, 0, 0.6);
-        }
-
-        .growth-badge.mythical {
-            background: linear-gradient(135deg, rgba(221, 160, 221, 0.3), rgba(135, 206, 235, 0.3));
-            border: 1.5px solid rgba(221, 160, 221, 0.6);
-            color: #9C27B0;
-        }
-
-        .growth-badge-emoji {
-            font-size: 0.85rem;
-        }
 
         /* Growth progress bar */
         .growth-progress-wrap {
@@ -2109,25 +2016,6 @@
             font-weight: 700;
         }
 
-        .mini-needs {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            justify-content: center;
-            margin-top: 2px;
-        }
-
-        .mini-need {
-            --mini-color: #ccc;
-            --mini-level: 50;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: conic-gradient(var(--mini-color) calc(var(--mini-level) * 1%), rgba(0,0,0,0.12) 0);
-            mask: radial-gradient(farthest-side, transparent 60%, #000 61%);
-            -webkit-mask: radial-gradient(farthest-side, transparent 60%, #000 61%);
-            border: 1.5px solid rgba(0,0,0,0.08);
-        }
 
         .top-action-btn {
             padding: 10px 14px;
@@ -2164,19 +2052,6 @@
 
         .top-action-btn-icon {
             font-size: 0.9rem;
-        }
-
-        /* Room bonus indicator in care actions */
-        .room-bonus-indicator {
-            font-size: 0.6rem; /* Standardized font size */
-            font-weight: 700;
-            color: #0D9488;
-            background: rgba(92, 214, 204, 0.15);
-            padding: 4px 8px;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
         }
 
         /* Mini Games Button */
@@ -4820,6 +4695,16 @@
             color: #66BB6A;
             min-width: 32px;
             text-align: right;
+        }
+
+        .growth-compact-arrow {
+            font-size: 0.75rem;
+            color: #999;
+            flex-shrink: 0;
+        }
+
+        .growth-compact-label.mythical {
+            color: #9C27B0;
         }
 
         .growth-hint {
