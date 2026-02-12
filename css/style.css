@@ -38,6 +38,9 @@
             --color-text-tertiary: #999;
             --focus-outline: 3px solid #7C6BFF;
 
+            /* Consistent modal spacing */
+            --modal-padding: 24px;
+
             /* Z-index layering system */
             --z-overlay: 1000;        /* Base overlays: codex, stats, feed menu */
             --z-overlay-game: 1100;   /* Minigame overlays (opened from menu) */
@@ -93,7 +96,7 @@
             width: 100%;
             text-align: center;
             border: none;
-            margin: auto 0;
+            margin: 0;
         }
 
         /* Header */
@@ -1488,6 +1491,10 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
             .game-container {
                 padding: 16px;
                 border-radius: 18px;
@@ -1507,6 +1514,28 @@
         }
 
         @media (max-width: 480px) {
+            :root {
+                --modal-padding: 18px;
+            }
+
+            body {
+                padding: 8px;
+            }
+
+            .modal-overlay,
+            .naming-overlay,
+            .codex-overlay,
+            .stats-overlay,
+            .minigame-menu-overlay,
+            .fetch-game-overlay,
+            .hideseek-game-overlay,
+            .bubblepop-game-overlay,
+            .matching-game-overlay,
+            .simonsays-game-overlay,
+            .coloring-game-overlay {
+                padding: 12px;
+            }
+
             .game-container {
                 padding: 14px;
                 border-radius: 15px;
@@ -1609,6 +1638,20 @@
             }
         }
 
+        /* 2x2 grid for need bubbles on narrow phones */
+        @media (max-width: 374px) {
+            .needs-row {
+                display: grid;
+                grid-template-columns: repeat(2, auto);
+                justify-content: center;
+                gap: 16px 20px;
+            }
+
+            .needs-section {
+                padding-bottom: 12px;
+            }
+        }
+
         /* High contrast mode support */
         @media (prefers-contrast: high) {
             :root {
@@ -1647,7 +1690,7 @@
         .codex-modal, .stats-modal {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 24px;
+            padding: var(--modal-padding);
             max-width: 420px;
             width: 100%;
             max-height: 85vh;
@@ -2008,7 +2051,7 @@
         .minigame-menu {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 25px;
+            padding: var(--modal-padding);
             max-width: 380px;
             width: 100%;
             text-align: center;
@@ -2127,7 +2170,7 @@
         .coloring-game {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 20px;
+            padding: var(--modal-padding);
             max-width: 420px;
             width: 100%;
             text-align: center;
@@ -3041,7 +3084,7 @@
         .modal-content {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 30px;
+            padding: var(--modal-padding);
             max-width: 350px;
             width: 100%;
             text-align: center;
@@ -3245,7 +3288,7 @@
         .naming-modal {
             background: white;
             border-radius: var(--radius-lg);
-            padding: 30px;
+            padding: var(--modal-padding);
             max-width: 350px;
             width: 100%;
             text-align: center;
