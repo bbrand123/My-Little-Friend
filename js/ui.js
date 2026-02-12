@@ -986,7 +986,9 @@
             actionCooldownTimer = setTimeout(() => {
                 actionCooldown = false;
                 actionCooldownTimer = null;
-                buttons.forEach(btn => {
+                // Re-query the DOM for current buttons; the original NodeList may be
+                // stale if renderPetPhase() rebuilt the DOM during the cooldown window.
+                document.querySelectorAll('.action-btn').forEach(btn => {
                     btn.classList.remove('cooldown');
                     btn.disabled = false;
                     btn.removeAttribute('aria-disabled');
