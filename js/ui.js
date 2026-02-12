@@ -1275,11 +1275,13 @@
             saveGame();
         }
 
-        function updateNeedDisplays() {
+        function updateNeedDisplays(silent) {
             const pet = gameState.pet;
             if (!pet) return;
 
             // Helper to update a bubble indicator with enhanced warning classes
+            // When silent=true (passive decay), skip aria-valuenow updates to avoid
+            // screen readers announcing all 4 stat changes every 30s.
             function updateBubble(id, value) {
                 const bubble = document.getElementById(id);
                 if (!bubble) return;
@@ -1293,7 +1295,9 @@
                 } else if (value <= 45) {
                     bubble.classList.add('warning');
                 }
-                bubble.setAttribute('aria-valuenow', value);
+                if (!silent) {
+                    bubble.setAttribute('aria-valuenow', value);
+                }
             }
 
             // Update circular indicators
