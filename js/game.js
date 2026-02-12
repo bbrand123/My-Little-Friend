@@ -782,7 +782,8 @@
         function getWeatherMoodMessage(pet, weather) {
             if (weather === 'sunny') return '';
             const weatherData = WEATHER_TYPES[weather];
-            const room = ROOMS[gameState.currentRoom || 'bedroom'];
+            const room = ROOMS[gameState.currentRoom] || ROOMS['bedroom'];
+            if (!room) return '';
             if (room.isOutdoor) {
                 return randomFromArray(weatherData.messages);
             }
@@ -1170,6 +1171,7 @@
             if (!gameState.pet) return;
 
             const crop = GARDEN_CROPS[cropId];
+            if (!crop) return;
             garden.inventory[cropId]--;
             if (garden.inventory[cropId] <= 0) {
                 delete garden.inventory[cropId];
@@ -1200,6 +1202,7 @@
 
             if (petContainer) petContainer.classList.add('bounce');
             if (sparkles) createFoodParticles(sparkles);
+            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
 
             // Build stat change description
             let statChanges = [];
