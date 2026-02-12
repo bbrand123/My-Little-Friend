@@ -822,6 +822,33 @@
             const isCurled = mood === 'sad';
             const ariaLabel = mood === 'happy' ? 'A happy hedgehog with perky spines' : mood === 'sad' ? 'A sad hedgehog curling into a ball' : mood === 'sleepy' ? 'A sleepy hedgehog napping' : mood === 'energetic' ? 'An energetic hedgehog snuffling around' : 'A calm hedgehog';
             const spikeColor = '#8B7355';
+            if (isCurled) {
+                // Curled-up hedgehog: tight ball with spikes out, tiny face peeking
+                return `
+                    <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
+                        <!-- Spike ball (back) -->
+                        <circle cx="50" cy="55" r="30" fill="${spikeColor}"/>
+                        <!-- Spike details (radiating outward) -->
+                        <path d="M25 38 L22 26 L32 36" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <path d="M35 30 L36 17 L44 31" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <path d="M48 26 L52 13 L58 27" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <path d="M62 30 L70 19 L72 34" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <path d="M73 40 L84 34 L80 47" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <path d="M77 54 L90 52 L82 62" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <path d="M74 66 L86 70 L76 76" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
+                        <!-- Small face peeking out from curl -->
+                        <ellipse cx="28" cy="62" rx="12" ry="10" fill="${color}"/>
+                        <!-- Tiny snout -->
+                        <ellipse cx="19" cy="64" rx="5" ry="4" fill="#DEB887"/>
+                        <!-- Nose -->
+                        <circle cx="15" cy="63" r="2.5" fill="#333"/>
+                        <!-- Sad eye (peeking) -->
+                        ${generateSingleEye('sad', 27, 58)}
+                        <!-- Mouth (frown) -->
+                        <path d="M18 68 Q22 65 26 68" stroke="#333" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+                    </svg>
+                `;
+            }
             return `
                 <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <!-- Spikes (back) -->

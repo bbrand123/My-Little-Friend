@@ -119,7 +119,6 @@
             };
 
             document.addEventListener('click', dispatch, true);
-            document.addEventListener('pointerup', dispatch, true);
             document.addEventListener('touchend', dispatch, { passive: false, capture: true });
         }
 
@@ -290,6 +289,9 @@
                     <h2 class="naming-modal-title" id="naming-title">Customize Your ${petData.name}!</h2>
                     ${petData.mythical ? '<p class="naming-modal-mythical">Mythical Pet!</p>' : ''}
 
+                    <div class="pet-preview-container" id="pet-preview-container" aria-label="Live preview of your pet" style="margin:0.5em auto;width:90px;height:90px;">
+                    </div>
+
                     <div class="customization-section">
                         <h3 class="customization-title">Name</h3>
                         <input type="text" class="naming-input" id="pet-name-input"
@@ -340,6 +342,23 @@
             let selectedPattern = 'solid';
             let selectedAccessory = null;
 
+            // Live preview updater
+            const previewEl = document.getElementById('pet-preview-container');
+            function updatePreview() {
+                if (!previewEl) return;
+                const previewPet = {
+                    type: pet.type,
+                    color: selectedColor,
+                    pattern: selectedPattern,
+                    accessories: selectedAccessory ? [selectedAccessory] : [],
+                    growthStage: pet.growthStage || 'baby',
+                    careVariant: pet.careVariant || 'normal',
+                    evolutionStage: pet.evolutionStage || 'base'
+                };
+                previewEl.innerHTML = generatePetSVG(previewPet, 'happy');
+            }
+            updatePreview();
+
             // Color selection (scoped to overlay to avoid leaking to other modals)
             overlay.querySelectorAll('.color-option').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -352,6 +371,7 @@
                     btn.textContent = '✓';
                     btn.setAttribute('aria-label', getColorName(btn.dataset.color) + ', selected');
                     selectedColor = btn.dataset.color;
+                    updatePreview();
                 });
             });
 
@@ -367,6 +387,7 @@
                     const selectedName = PET_PATTERNS[btn.dataset.pattern]?.name || btn.dataset.pattern;
                     btn.setAttribute('aria-label', selectedName + ', selected');
                     selectedPattern = btn.dataset.pattern;
+                    updatePreview();
                 });
             });
 
@@ -382,6 +403,7 @@
                     btn.setAttribute('aria-label', (accessoryNames[btn.dataset.accessory] || btn.dataset.accessory) + ', selected');
                     const accessory = btn.dataset.accessory;
                     selectedAccessory = accessory === 'none' ? null : accessory;
+                    updatePreview();
                 });
             });
 
@@ -2023,7 +2045,8 @@
 
             // Add/update CSS animation using per-piece custom properties for variation
             let confettiStyle = document.getElementById('confetti-style');
-            if (!confettiStyle) {
+            if (!confettiStyle || confettiStyle.tagName !== 'STYLE') {
+                if (confettiStyle) confettiStyle.removeAttribute('id');
                 confettiStyle = document.createElement('style');
                 confettiStyle.id = 'confetti-style';
                 document.head.appendChild(confettiStyle);
@@ -2554,10 +2577,15 @@
                 const preservedMinigameScoreHistory = gameState.minigameScoreHistory || {};
                 const preservedMinigameHighScores = gameState.minigameHighScores || {};
                 const preservedMinigamePlayCounts = gameState.minigamePlayCounts || {};
+                const newTypes = getUnlockedPetTypes();
+                const newPetType = randomFromArray(newTypes);
+                const newEggType = getEggTypeForPet(newPetType);
                 gameState = {
                     phase: 'egg',
                     pet: null,
                     eggTaps: 0,
+                    eggType: newEggType,
+                    pendingPetType: newPetType,
                     lastUpdate: Date.now(),
                     timeOfDay: getTimeOfDay(),
                     currentRoom: 'bedroom',

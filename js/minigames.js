@@ -247,7 +247,7 @@
         }
 
         function handleFetchThrow(e) {
-            if (!fetchState || fetchState.phase !== 'ready') return;
+            if (!fetchState || fetchState._ended || fetchState.phase !== 'ready') return;
 
             fetchState.phase = 'thrown';
 
@@ -290,7 +290,7 @@
 
             // Phase 2: Ball drops down to ground
             fetchState._timeouts.push(setTimeout(() => {
-                if (!fetchState) return;
+                if (!fetchState || fetchState._ended) return;
                 ball.style.transition = `top ${0.35 * fetchSpeed}s cubic-bezier(0.55, 0, 1, 0.45)`;
                 ball.style.top = '155px';
                 if (shadow) {
@@ -300,7 +300,7 @@
 
             // Phase 3: Pet runs to fetch the ball
             fetchState._timeouts.push(setTimeout(() => {
-                if (!fetchState) return;
+                if (!fetchState || fetchState._ended) return;
                 fetchState.phase = 'fetching';
                 instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Running to get it!`;
                 announce('Running to get it!');
@@ -311,7 +311,7 @@
 
             // Phase 4: Pet reaches ball
             fetchState._timeouts.push(setTimeout(() => {
-                if (!fetchState) return;
+                if (!fetchState || fetchState._ended) return;
                 // Hide the ball (pet picked it up)
                 ball.style.opacity = '0';
                 ball.style.transition = 'opacity 0.15s';
@@ -328,7 +328,7 @@
 
             // Phase 5: Pet returns to start
             fetchState._timeouts.push(setTimeout(() => {
-                if (!fetchState) return;
+                if (!fetchState || fetchState._ended) return;
                 fetchState.phase = 'returning';
                 instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Bringing it back!`;
                 instruction.className = 'fetch-instruction';
@@ -341,7 +341,7 @@
 
             // Phase 6: Complete - pet is back, ready for another throw
             fetchState._timeouts.push(setTimeout(() => {
-                if (!fetchState) return;
+                if (!fetchState || fetchState._ended) return;
                 fetchState.score++;
                 fetchState.phase = 'ready';
 
@@ -387,6 +387,9 @@
         function endFetchGame() {
             if (fetchState && fetchState._escapeHandler) {
                 popModalEscape(fetchState._escapeHandler);
+            }
+            if (fetchState) {
+                fetchState._ended = true;
             }
             if (fetchState && fetchState._timeouts) {
                 fetchState._timeouts.forEach(id => clearTimeout(id));

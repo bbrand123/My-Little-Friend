@@ -580,6 +580,7 @@
             return levels[quality] || 0;
         }
 
+        let _lastMilestoneCheck = 0;
         function checkGrowthMilestone(pet) {
             if (!pet) return false;
 
@@ -588,6 +589,10 @@
             const lastStage = pet.lastGrowthStage || 'baby';
 
             if (currentStage !== lastStage) {
+                // Guard against duplicate celebration if called twice in the same tick
+                const now = Date.now();
+                if (now - _lastMilestoneCheck < 50) return false;
+                _lastMilestoneCheck = now;
                 pet.growthStage = currentStage;
                 pet.lastGrowthStage = currentStage;
 
@@ -1189,14 +1194,16 @@
             if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
             gameState.pet.careActions++;
 
+            const petData = PET_TYPES[gameState.pet.type];
+
             // Check for growth stage transition
             if (checkGrowthMilestone(gameState.pet)) {
+                showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}!`, '#FF8C42');
                 saveGame();
                 renderPetPhase();
                 return;
             }
 
-            const petData = PET_TYPES[gameState.pet.type];
             const sparkles = document.getElementById('sparkles');
             const petContainer = document.getElementById('pet-container');
 
@@ -1585,7 +1592,6 @@
 
                     // Notify user of care quality changes (after updates to avoid issues)
                     if (careQualityChange && careQualityChange.changed) {
-                        const fromData = CARE_QUALITY[careQualityChange.from];
                         const toData = CARE_QUALITY[careQualityChange.to];
                         const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
 
