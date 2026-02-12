@@ -21,7 +21,8 @@
             garden: {
                 plots: [], // { cropId, stage, growTicks, watered }
                 inventory: {}, // { cropId: count }
-                lastGrowTick: Date.now()
+                lastGrowTick: Date.now(),
+                totalHarvests: 0
             }
         };
 
@@ -523,6 +524,17 @@
                 // Update adults raised counter
                 if (currentStage === 'adult') {
                     gameState.adultsRaised = (gameState.adultsRaised || 0) + 1;
+
+                    // Check if any mythical pets just got unlocked
+                    Object.keys(PET_TYPES).forEach(typeKey => {
+                        const typeData = PET_TYPES[typeKey];
+                        if (typeData.mythical && gameState.adultsRaised === typeData.unlockRequirement) {
+                            setTimeout(() => {
+                                showToast(`${typeData.emoji} ${typeData.name} unlocked! A mythical pet is now available!`, '#DDA0DD');
+                                announce(`${typeData.name} unlocked! A mythical pet is now available!`);
+                            }, 1500);
+                        }
+                    });
                 }
 
                 saveGame();
@@ -1052,17 +1064,7 @@
             gameState.pet.careActions++;
 
             // Check for growth stage transition
-            const oldStage = gameState.pet.growthStage || 'baby';
-            const newStage = getGrowthStage(gameState.pet.careActions, getPetAge(gameState.pet));
-            if (newStage !== oldStage) {
-                gameState.pet.growthStage = newStage;
-                gameState.pet.lastGrowthStage = newStage;
-                const stageData = GROWTH_STAGES[newStage];
-                showToast(`${stageData.emoji} ${gameState.pet.name || PET_TYPES[gameState.pet.type].name} grew into a ${stageData.label}!`, '#FFD700');
-                if (newStage === 'adult') {
-                    if (typeof gameState.adultsRaised !== 'number') gameState.adultsRaised = 0;
-                    gameState.adultsRaised++;
-                }
+            if (checkGrowthMilestone(gameState.pet)) {
                 saveGame();
                 renderPetPhase();
                 return;
@@ -1343,6 +1345,13 @@
 
             const message = `${petData.emoji} ${pet.name || petData.name} ${randomFromArray(seasonData.activityMessages)}`;
             showToast(message, '#FFB74D');
+
+            // Check for growth stage transition
+            if (checkGrowthMilestone(pet)) {
+                saveGame();
+                renderPetPhase();
+                return;
+            }
 
             if (petContainer) {
                 petContainer.classList.add('wiggle');

@@ -307,10 +307,10 @@
             let selectedPattern = 'solid';
             let selectedAccessory = null;
 
-            // Color selection
-            document.querySelectorAll('.color-option').forEach(btn => {
+            // Color selection (scoped to overlay to avoid leaking to other modals)
+            overlay.querySelectorAll('.color-option').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.color-option').forEach(b => {
+                    overlay.querySelectorAll('.color-option').forEach(b => {
                         b.classList.remove('selected');
                         b.textContent = '';
                         b.setAttribute('aria-label', getColorName(b.dataset.color));
@@ -322,10 +322,10 @@
                 });
             });
 
-            // Pattern selection
-            document.querySelectorAll('.pattern-option').forEach(btn => {
+            // Pattern selection (scoped to overlay)
+            overlay.querySelectorAll('.pattern-option').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.pattern-option').forEach(b => {
+                    overlay.querySelectorAll('.pattern-option').forEach(b => {
                         b.classList.remove('selected');
                         const name = PET_PATTERNS[b.dataset.pattern]?.name || b.dataset.pattern;
                         b.setAttribute('aria-label', name);
@@ -337,11 +337,11 @@
                 });
             });
 
-            // Accessory selection
+            // Accessory selection (scoped to overlay)
             const accessoryNames = { none: 'None', bow: 'Bow', glasses: 'Glasses', partyHat: 'Party Hat' };
-            document.querySelectorAll('.accessory-option').forEach(btn => {
+            overlay.querySelectorAll('.accessory-option').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.accessory-option').forEach(b => {
+                    overlay.querySelectorAll('.accessory-option').forEach(b => {
                         b.classList.remove('selected');
                         b.setAttribute('aria-label', accessoryNames[b.dataset.accessory] || b.dataset.accessory);
                     });
@@ -536,7 +536,7 @@
                                 <span>${mood === 'happy' ? 'Happy' : mood === 'sad' ? 'Sad' : mood === 'sleepy' ? 'Sleepy' : mood === 'energetic' ? 'Energetic' : 'Okay'}</span>
                             </div>
                             ${(() => {
-                                const stage = pet.growthStage || 'adult';
+                                const stage = pet.growthStage || 'baby';
                                 const stageData = GROWTH_STAGES[stage];
                                 const ageInHours = getPetAge(pet);
                                 const progress = getGrowthProgress(pet.careActions || 0, ageInHours, stage);
@@ -551,7 +551,7 @@
                             })()}
                         </div>
                         ${(() => {
-                            const stage = pet.growthStage || 'adult';
+                            const stage = pet.growthStage || 'baby';
                             const ageInHours = getPetAge(pet);
                             const nextStage = getNextGrowthStage(stage);
                             if (!nextStage) return '';
@@ -852,6 +852,9 @@
             });
             document.getElementById('seasonal-btn').addEventListener('click', () => {
                 if (actionCooldown) return;
+                actionCooldown = true;
+                if (actionCooldownTimer) clearTimeout(actionCooldownTimer);
+                actionCooldownTimer = setTimeout(() => { actionCooldown = false; actionCooldownTimer = null; }, ACTION_COOLDOWN_MS);
                 performSeasonalActivity();
             });
             // Global delegates handle top actions and new pet button
@@ -1177,34 +1180,10 @@
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
 
-            // Check for growth stage transition
-            const oldStage = pet.growthStage || 'baby';
-            const newStage = getGrowthStage(pet.careActions, getPetAge(pet));
-            if (newStage !== oldStage) {
-                pet.growthStage = newStage;
-                pet.lastGrowthStage = newStage;
-                const stageData = GROWTH_STAGES[newStage];
-                showToast(`${stageData.emoji} ${pet.name || petData.name} grew into a ${stageData.label}!`, '#FFD700');
-                announce(`${pet.name || petData.name} grew into a ${stageData.label}!`);
-
-                // Track adults raised for mythical unlocks
-                if (newStage === 'adult') {
-                    if (typeof gameState.adultsRaised !== 'number') gameState.adultsRaised = 0;
-                    gameState.adultsRaised++;
-
-                    // Check if any mythical pets just got unlocked
-                    Object.keys(PET_TYPES).forEach(typeKey => {
-                        const typeData = PET_TYPES[typeKey];
-                        if (typeData.mythical && gameState.adultsRaised === typeData.unlockRequirement) {
-                            setTimeout(() => {
-                                showToast(`${typeData.emoji} ${typeData.name} unlocked! A mythical pet is now available!`, '#DDA0DD');
-                                announce(`${typeData.name} unlocked! A mythical pet is now available!`);
-                            }, 1500);
-                        }
-                    });
-                }
-
-                // Save and re-render to show new size and stage
+            // Check for growth stage transition (uses checkGrowthMilestone which
+            // handles lastGrowthStage tracking, birthday celebrations, and adultsRaised)
+            if (checkGrowthMilestone(pet)) {
+                // Growth happened — save and re-render to show new size/stage
                 saveGame();
                 renderPetPhase();
                 return;
@@ -1779,17 +1758,7 @@
                     pet.careActions++;
 
                     // Check for growth stage transition
-                    const oldStage = pet.growthStage || 'baby';
-                    const newStage = getGrowthStage(pet.careActions, getPetAge(pet));
-                    if (newStage !== oldStage) {
-                        pet.growthStage = newStage;
-                        pet.lastGrowthStage = newStage;
-                        const stageData = GROWTH_STAGES[newStage];
-                        showToast(`${stageData.emoji} ${pet.name || PET_TYPES[pet.type].name} grew into a ${stageData.label}!`, '#FFD700');
-                        if (newStage === 'adult') {
-                            if (typeof gameState.adultsRaised !== 'number') gameState.adultsRaised = 0;
-                            gameState.adultsRaised++;
-                        }
+                    if (checkGrowthMilestone(pet)) {
                         saveGame();
                         renderPetPhase();
                         return;
@@ -2077,7 +2046,7 @@
             const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
             const shapes = ['🎉', '🎊', '⭐', '✨', '🌟', '💫'];
 
-            // Create 50 confetti pieces
+            // Create 50 confetti pieces with individual random rotations
             for (let i = 0; i < 50; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti-piece';
@@ -2092,11 +2061,15 @@
                     confetti.style.height = (5 + Math.random() * 10) + 'px';
                 }
 
+                const rotation = 360 + Math.random() * 720;
+                const sway = (Math.random() - 0.5) * 60; // horizontal drift in px
                 confetti.style.cssText += `
                     position: absolute;
                     left: ${Math.random() * 100}%;
                     top: -20px;
                     opacity: ${0.6 + Math.random() * 0.4};
+                    --confetti-rotation: ${rotation}deg;
+                    --confetti-sway: ${sway}px;
                     animation: confetti-fall ${2 + Math.random() * 3}s linear ${Math.random() * 2}s;
                     animation-fill-mode: forwards;
                 `;
@@ -2104,7 +2077,7 @@
                 container.appendChild(confetti);
             }
 
-            // Add/update CSS animation with fresh random rotation each time
+            // Add/update CSS animation using per-piece custom properties for variation
             let confettiStyle = document.getElementById('confetti-style');
             if (!confettiStyle) {
                 confettiStyle = document.createElement('style');
@@ -2114,7 +2087,7 @@
             confettiStyle.textContent = `
                 @keyframes confetti-fall {
                     to {
-                        transform: translateY(100vh) rotate(${360 + Math.random() * 360}deg);
+                        transform: translateY(100vh) translateX(var(--confetti-sway, 0px)) rotate(var(--confetti-rotation, 720deg));
                         opacity: 0;
                     }
                 }

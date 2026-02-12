@@ -305,7 +305,7 @@
         function generatePetSVG(pet, mood) {
             const type = pet.type;
             let baseColor = pet.color;
-            const growthStage = pet.growthStage || 'adult';
+            const growthStage = pet.growthStage || 'baby';
             const stageData = GROWTH_STAGES[growthStage];
             const scale = stageData ? stageData.scale : 1.0;
 
