@@ -609,7 +609,7 @@ function getSeasonalDecor(season, timeOfDay) {
 
 function getSeasonalWeather(season) {
     const seasonData = SEASONS[season];
-    if (!seasonData) return getRandomWeather();
+    if (!seasonData) return 'sunny';
     const rand = Math.random();
     const bias = seasonData.weatherBias;
     if (rand < bias.sunny) return 'sunny';
