@@ -572,7 +572,7 @@
 
                             let hint = '';
                             if (actionProgress >= 100 && timeProgress >= 100) {
-                                hint = '<span class="growth-hint ready">🎉 Ready to evolve!</span>';
+                                hint = '<span class="growth-hint ready">🎉 Ready to grow!</span>';
                             } else if (actionProgress >= 100) {
                                 hint = `<span class="growth-hint">⏰ ${Math.round(hoursNeeded)}h left</span>`;
                             } else if (timeProgress >= 100) {
@@ -1338,7 +1338,7 @@
             }
             const compactPct = document.querySelector('.growth-compact-pct');
             if (compactPct) {
-                compactPct.textContent = `${progress}%`;
+                compactPct.textContent = `${Math.round(progress)}%`;
             }
         }
 

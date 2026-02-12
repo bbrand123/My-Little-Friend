@@ -437,6 +437,38 @@
             }
         }
 
+        function generateSingleEye(eyeStyle, x, y) {
+            switch (eyeStyle) {
+                case 'arc':
+                    return `
+                        <path d="M${x - 5} ${y} Q${x} ${y - 8} ${x + 5} ${y}" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    `;
+                case 'sad':
+                    return `
+                        <circle cx="${x}" cy="${y}" r="5" fill="#333"/>
+                        <circle cx="${x + 1}" cy="${y - 1}" r="1.5" fill="white"/>
+                        <path d="M${x - 6} ${y - 8} L${x + 4} ${y - 5}" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+                    `;
+                case 'sleepy':
+                    return `
+                        <ellipse cx="${x}" cy="${y}" rx="5" ry="3" fill="#333"/>
+                        <circle cx="${x + 1}" cy="${y}" r="1" fill="white" opacity="0.5"/>
+                        <path d="M${x - 6} ${y - 4} Q${x} ${y - 6} ${x + 6} ${y - 4}" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    `;
+                case 'energetic':
+                    return `
+                        <circle cx="${x}" cy="${y}" r="7" fill="#333"/>
+                        <circle cx="${x + 2}" cy="${y - 2}" r="3" fill="white"/>
+                        <circle cx="${x - 1}" cy="${y + 2}" r="1.5" fill="white" opacity="0.7"/>
+                    `;
+                default:
+                    return `
+                        <circle cx="${x}" cy="${y}" r="6" fill="#333"/>
+                        <circle cx="${x + 2}" cy="${y - 2}" r="2" fill="white"/>
+                    `;
+            }
+        }
+
         function generateDogSVG(color, eyeStyle, mouthPath, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy puppy wagging its tail' : mood === 'sad' ? 'A sad puppy who needs love' : mood === 'sleepy' ? 'A sleepy puppy ready for bed' : mood === 'energetic' ? 'An energetic puppy ready to play' : 'A calm puppy';
@@ -714,8 +746,7 @@
                     <!-- Scales shimmer -->
                     <ellipse cx="45" cy="48" rx="18" ry="12" fill="white" opacity="0.15"/>
                     <!-- Eyes -->
-                    ${generateEyes(eyeStyle, 35, 35, 45)}
-                    <!-- Second eye hidden (side view) -->
+                    ${generateSingleEye(eyeStyle, 35, 45)}
                     <!-- Mouth -->
                     <ellipse cx="22" cy="52" rx="3" ry="${isUp ? '4' : '2'}" fill="#333" opacity="0.6"/>
                     <!-- Cheeks -->
@@ -806,7 +837,7 @@
                     <!-- Nose -->
                     <circle cx="8" cy="57" r="4" fill="#333"/>
                     <!-- Eyes -->
-                    ${generateEyes(eyeStyle, 22, 22, 50)}
+                    ${generateSingleEye(eyeStyle, 22, 50)}
                     <!-- Mouth -->
                     <path d="M10 62 Q14 ${isUp ? '67' : '64'} 18 62" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
                     <!-- Ears -->

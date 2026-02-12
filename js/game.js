@@ -813,7 +813,7 @@
             if (room.bonus) {
                 roomBonusToastCount[roomId] = (roomBonusToastCount[roomId] || 0) + 1;
                 if (roomBonusToastCount[roomId] <= MAX_ROOM_BONUS_TOASTS) {
-                    showToast(`${room.icon} ${room.name}: +30% ${room.bonus.label}!`, '#4ECDC4');
+                    showToast(`${room.icon} ${room.name}: ${room.bonus.label}!`, '#4ECDC4');
                 } else {
                     announce(`Moved to ${room.name}`);
                 }
