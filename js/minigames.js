@@ -755,9 +755,9 @@
         let bubblePopState = null;
 
         const BUBBLE_SIZES = [
-            { size: 55, points: 1 },
-            { size: 45, points: 2 },
-            { size: 35, points: 3 }
+            { size: 58, points: 1 },
+            { size: 50, points: 2 },
+            { size: 44, points: 3 }
         ];
 
         const BUBBLE_SPLASH_EMOJIS = ['💧', '✨', '💦', '🫧', '🧼'];
