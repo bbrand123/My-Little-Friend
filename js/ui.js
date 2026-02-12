@@ -86,7 +86,6 @@
                         if (typeof SoundManager !== 'undefined') {
                             const enabled = SoundManager.toggle();
                             soundBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-                            soundBtn.setAttribute('aria-label', `Toggle ambient sounds. Currently ${enabled ? 'on' : 'off'}.`);
                             const iconSpan = soundBtn.querySelector('.top-action-btn-icon');
                             if (iconSpan) iconSpan.textContent = enabled ? '🔊' : '🔇';
                             if (enabled && gameState.currentRoom) {
@@ -503,16 +502,16 @@
             content.innerHTML = `
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
                     <div class="top-action-buttons" role="group" aria-label="Top actions">
-                        <button class="top-action-btn" id="codex-btn" type="button" aria-label="Open Pet Codex" aria-haspopup="dialog">
+                        <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog">
                             <span class="top-action-btn-icon" aria-hidden="true">📖</span> Codex
                         </button>
-                        <button class="top-action-btn" id="stats-btn" type="button" aria-label="Open Stats" aria-haspopup="dialog">
+                        <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog">
                             <span class="top-action-btn-icon" aria-hidden="true">📊</span> Stats
                         </button>
-                        <button class="top-action-btn" id="furniture-btn" type="button" aria-label="Customize Furniture" aria-haspopup="dialog">
+                        <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog">
                             <span class="top-action-btn-icon" aria-hidden="true">🛋️</span> Decor
                         </button>
-                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-label="Toggle ambient sounds. Currently ${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'on' : 'off'}." aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}">
+                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}">
                             <span class="top-action-btn-icon" aria-hidden="true">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span> Sound
                         </button>
                     </div>
@@ -609,7 +608,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🍎</span>
                             <span class="need-bubble-value" id="hunger-value">${pet.hunger}%</span>
-                            <span class="need-bubble-label" aria-hidden="true">Food</span>
+                            <span class="need-bubble-label">Food</span>
                         </div>
                         <div class="need-bubble ${needClass(pet.cleanliness)}" id="clean-bubble"
                              role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100"
@@ -617,7 +616,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🛁</span>
                             <span class="need-bubble-value" id="clean-value">${pet.cleanliness}%</span>
-                            <span class="need-bubble-label" aria-hidden="true">Bath</span>
+                            <span class="need-bubble-label">Bath</span>
                         </div>
                         <div class="need-bubble ${needClass(pet.happiness)}" id="happy-bubble"
                              role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100"
@@ -625,7 +624,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">💖</span>
                             <span class="need-bubble-value" id="happy-value">${pet.happiness}%</span>
-                            <span class="need-bubble-label" aria-hidden="true">Happy</span>
+                            <span class="need-bubble-label">Happy</span>
                         </div>
                         <div class="need-bubble ${needClass(pet.energy)}" id="energy-bubble"
                              role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100"
@@ -633,7 +632,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">😴</span>
                             <span class="need-bubble-value" id="energy-value">${pet.energy}%</span>
-                            <span class="need-bubble-label" aria-hidden="true">Energy</span>
+                            <span class="need-bubble-label">Energy</span>
                         </div>
                     </div>
                 </section>
@@ -727,7 +726,7 @@
                                 const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
                                 const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
                                 const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
-                                return `<button class="action-btn feed" id="feed-btn" aria-label="Feed your pet. Current hunger: ${pet.hunger}%${totalCrops > 0 ? '. ' + totalCrops + ' garden crops available.' : ''}">
+                                return `<button class="action-btn feed" id="feed-btn">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('feed'))} Food${getRoomBonus('feed') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
@@ -735,19 +734,19 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>`;
                             })()}
-                            <button class="action-btn wash" id="wash-btn" aria-label="Wash your pet. Current cleanliness: ${pet.cleanliness}%">
+                            <button class="action-btn wash" id="wash-btn">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('wash'))} Bath${getRoomBonus('wash') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn sleep" id="sleep-btn" aria-label="Put your pet to sleep. Current energy: ${pet.energy}%">
+                            <button class="action-btn sleep" id="sleep-btn">
                                 <span class="action-btn-tooltip">+${Math.round(25 * getRoomBonus('sleep'))}-${Math.round(40 * getRoomBonus('sleep'))} Energy${getRoomBonus('sleep') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn pet-cuddle" id="pet-btn" aria-label="Pet and cuddle your pet. Current happiness: ${pet.happiness}%">
+                            <button class="action-btn pet-cuddle" id="pet-btn">
                                 <span class="action-btn-tooltip">+15 Happy, +5 Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
@@ -758,25 +757,25 @@
                     <div class="action-group">
                         <div class="action-group-label">Fun & Play</div>
                         <div class="action-group-buttons" role="group" aria-label="Fun and play buttons">
-                            <button class="action-btn play" id="play-btn" aria-label="Play with your pet. Current happiness: ${pet.happiness}%">
+                            <button class="action-btn play" id="play-btn">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('play'))} Happy${getRoomBonus('play') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn exercise" id="exercise-btn" aria-label="Exercise your pet - take a walk or play fetch">
+                            <button class="action-btn exercise" id="exercise-btn">
                                 <span class="action-btn-tooltip">+${Math.round(20 * getRoomBonus('exercise'))} Happy, -10 Energy${getRoomBonus('exercise') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">🏃</span>
                                 <span>Exercise</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn treat" id="treat-btn" aria-label="Give your pet a special treat for bonus happiness">
+                            <button class="action-btn treat" id="treat-btn">
                                 <span class="action-btn-tooltip">+25 Happy, +10 Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍪</span>
                                 <span>Treat</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn mini-games" id="minigames-btn" aria-label="Open mini games to play with your pet">
+                            <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
                                 <span class="action-btn-tooltip">6 games to play!</span>
                                 <span class="btn-icon" aria-hidden="true">🎮</span>
                                 <span>Games</span>
@@ -787,13 +786,13 @@
                     <div class="action-group">
                         <div class="action-group-label">Wellness</div>
                         <div class="action-group-buttons" role="group" aria-label="Wellness buttons">
-                            <button class="action-btn medicine" id="medicine-btn" aria-label="Give medicine to help your pet feel better">
+                            <button class="action-btn medicine" id="medicine-btn">
                                 <span class="action-btn-tooltip">Boosts all stats</span>
                                 <span class="btn-icon" aria-hidden="true">🩹</span>
                                 <span>Medicine</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn groom" id="groom-btn" aria-label="Groom your pet - brush fur and trim nails">
+                            <button class="action-btn groom" id="groom-btn">
                                 <span class="action-btn-tooltip">+${Math.round(15 * getRoomBonus('groom'))} Bath, +${Math.round(10 * getRoomBonus('groom'))} Happy${getRoomBonus('groom') > 1 ? ' (bonus!)' : ''}</span>
                                 <span class="btn-icon" aria-hidden="true">✂️</span>
                                 <span>Groom</span>
@@ -804,7 +803,7 @@
                     <div class="action-group">
                         <div class="action-group-label">${seasonData.icon} Seasonal</div>
                         <div class="action-group-buttons" role="group" aria-label="Seasonal activity buttons">
-                            <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" aria-label="${seasonData.activityName} - seasonal activity">
+                            <button class="action-btn seasonal ${season}-activity" id="seasonal-btn">
                                 <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
                                 <span>${seasonData.activityName}</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
@@ -1208,44 +1207,6 @@
             if (cleanVal) cleanVal.textContent = `${pet.cleanliness}%`;
             if (happyVal) happyVal.textContent = `${pet.happiness}%`;
             if (energyVal) energyVal.textContent = `${pet.energy}%`;
-
-            // Update button labels with more descriptive text
-            const hungerDesc = pet.hunger <= 25 ? 'very low' : pet.hunger <= 50 ? 'low' : pet.hunger <= 75 ? 'good' : 'full';
-            const cleanDesc = pet.cleanliness <= 25 ? 'very dirty' : pet.cleanliness <= 50 ? 'needs washing' : pet.cleanliness <= 75 ? 'clean' : 'sparkly clean';
-            const happyDesc = pet.happiness <= 25 ? 'sad' : pet.happiness <= 50 ? 'bored' : pet.happiness <= 75 ? 'happy' : 'very happy';
-            const curTimeForEnergy = gameState.timeOfDay || 'day';
-            const isNightForEnergy = curTimeForEnergy === 'night' || curTimeForEnergy === 'sunset';
-            const energyDesc = pet.energy <= 25 ? 'exhausted' : pet.energy <= 50 ? (isNightForEnergy ? 'sleepy - bedtime!' : 'tired') : pet.energy <= 75 ? 'rested' : 'full of energy';
-
-            const feedBtn = document.getElementById('feed-btn');
-            const washBtn = document.getElementById('wash-btn');
-            const playBtn = document.getElementById('play-btn');
-            const sleepBtn = document.getElementById('sleep-btn');
-            if (feedBtn) feedBtn.setAttribute('aria-label', `Feed your pet. Hunger level: ${pet.hunger}%, ${hungerDesc}`);
-            if (washBtn) washBtn.setAttribute('aria-label', `Wash your pet. Cleanliness: ${pet.cleanliness}%, ${cleanDesc}`);
-            if (playBtn) playBtn.setAttribute('aria-label', `Play with your pet. Happiness: ${pet.happiness}%, ${happyDesc}`);
-            if (sleepBtn) sleepBtn.setAttribute('aria-label', `Put your pet to sleep${isNightForEnergy ? ' (extra effective at night!)' : ''}. Energy: ${pet.energy}%, ${energyDesc}`);
-
-            // Update medicine button with overall wellness description
-            const avgWellness = Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
-            const wellnessDesc = avgWellness <= 25 ? 'not feeling well' : avgWellness <= 50 ? 'could feel better' : avgWellness <= 75 ? 'feeling good' : 'feeling great';
-            const medicineBtn = document.getElementById('medicine-btn');
-            if (medicineBtn) medicineBtn.setAttribute('aria-label', `Give medicine to help your pet feel better. Pet is ${wellnessDesc}`);
-
-            // Update groom button - grooming helps cleanliness and happiness
-            const groomDesc = pet.cleanliness <= 50 ? 'could use some grooming' : 'looking good';
-            const groomBtn = document.getElementById('groom-btn');
-            if (groomBtn) groomBtn.setAttribute('aria-label', `Groom your pet - brush fur and trim nails. Cleanliness: ${pet.cleanliness}%, ${groomDesc}`);
-
-            // Update exercise button - exercise boosts happiness but uses energy
-            const exerciseDesc = pet.energy <= 25 ? 'too tired to exercise' : pet.happiness <= 50 ? 'needs some exercise' : 'enjoying activities';
-            const exerciseBtn = document.getElementById('exercise-btn');
-            if (exerciseBtn) exerciseBtn.setAttribute('aria-label', `Exercise your pet - take a walk or play fetch. Happiness: ${pet.happiness}%, ${exerciseDesc}`);
-
-            // Update pet/cuddle button - petting gives affection
-            const cuddleDesc = pet.happiness <= 50 ? 'wants cuddles' : 'loves your attention';
-            const petBtn = document.getElementById('pet-btn');
-            if (petBtn) petBtn.setAttribute('aria-label', `Pet and cuddle your pet. Happiness: ${pet.happiness}%, ${cuddleDesc}`);
 
             // Update mini needs (quick status)
             function updateMini(id, value, label) {
@@ -1729,6 +1690,9 @@
         // ==================== MODAL ====================
 
         function showModal(title, message, icon, onConfirm, onCancel) {
+            // Capture the element that triggered the modal for focus restoration
+            const triggerEl = document.activeElement;
+
             // Remove any existing modal
             const existingModal = document.querySelector('.modal-overlay');
             if (existingModal) existingModal.remove();
@@ -1773,6 +1737,10 @@
             function closeModal() {
                 popModalEscape(escapeClose);
                 modal.remove();
+                // Return focus to the element that opened the modal
+                if (triggerEl && typeof triggerEl.focus === 'function' && document.contains(triggerEl)) {
+                    triggerEl.focus();
+                }
             }
 
             confirmBtn.addEventListener('click', () => {
@@ -1809,8 +1777,6 @@
                     }
                 }
             });
-
-            announce(title + '. ' + message);
         }
 
         // ==================== CELEBRATION MODALS ====================
@@ -1877,6 +1843,12 @@
                 modal.remove();
                 const confettiContainer = document.querySelector('.confetti-container');
                 if (confettiContainer) confettiContainer.remove();
+                // Return focus to the game content area
+                const gameContent = document.getElementById('game-content');
+                if (gameContent) {
+                    gameContent.setAttribute('tabindex', '-1');
+                    gameContent.focus({ preventScroll: true });
+                }
             }
 
             okBtn.addEventListener('click', closeModal);
@@ -1885,8 +1857,6 @@
             });
 
             pushModalEscape(closeModal);
-
-            showToast(`🎉 ${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`, '#FFB74D');
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
@@ -1947,8 +1917,6 @@
             });
 
             pushModalEscape(closeModal);
-
-            showToast(`✨ Evolution! Your pet evolved into ${petName}!`, '#FFD700');
         }
 
         function createConfetti() {
@@ -2567,8 +2535,6 @@
                     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
                 }
             });
-
-            announce(`Say goodbye to ${petName || 'your pet'}?`);
         }
 
         // Ensure activation delegates are active even if render binding fails
