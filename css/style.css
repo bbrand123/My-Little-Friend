@@ -32,6 +32,12 @@
             --shadow: 0 8px 30px rgba(0,0,0,0.08);
             --radius: 22px;
             --focus-outline: 3px solid #7C6BFF;
+
+            /* Z-index layering system */
+            --z-overlay: 1000;        /* Base overlays: codex, stats, feed menu */
+            --z-overlay-game: 1100;   /* Minigame overlays (opened from menu) */
+            --z-overlay-dialog: 1200; /* Confirmation dialogs: naming, seed picker, remove crop */
+            --z-overlay-alert: 1300;  /* Top-level alerts: minigame exit confirmation */
         }
 
         body {
@@ -66,16 +72,7 @@
             outline: var(--focus-outline);
         }
 
-        /* Focus styles for accessibility */
-        *:focus {
-            outline: var(--focus-outline);
-            outline-offset: 3px;
-        }
-
-        *:focus:not(:focus-visible) {
-            outline: none;
-        }
-
+        /* Focus styles for accessibility — only show outline on keyboard navigation */
         *:focus-visible {
             outline: var(--focus-outline);
             outline-offset: 3px;
@@ -1279,17 +1276,10 @@
         }
 
         .room-btn:hover,
-        .room-btn:focus,
         .room-btn:focus-visible {
             transform: translateY(-2px);
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
             border-color: var(--color-primary);
-            outline: 3px solid var(--color-primary);
-            outline-offset: 2px;
-        }
-
-        /* Ensure VoiceOver focus is visible on iOS */
-        .room-btn:focus:not(:focus-visible) {
             outline: 3px solid var(--color-primary);
             outline-offset: 2px;
         }
@@ -1680,6 +1670,16 @@
 
             .need-bubble-value {
                 font-size: 0.6rem;
+                bottom: -14px;
+            }
+
+            .need-bubble-label {
+                bottom: -22px;
+                font-size: 0.55rem;
+            }
+
+            .needs-section {
+                padding-bottom: 20px;
             }
 
             .action-btn {
@@ -1737,6 +1737,20 @@
                 font-size: 1.1rem;
             }
 
+            .need-bubble-value {
+                bottom: -12px;
+                font-size: 0.55rem;
+            }
+
+            .need-bubble-label {
+                bottom: -18px;
+                font-size: 0.5rem;
+            }
+
+            .needs-section {
+                padding-bottom: 18px;
+            }
+
             .action-btn {
                 min-width: 54px;
                 min-height: 54px;
@@ -1788,7 +1802,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -2139,18 +2153,11 @@
         }
 
         .top-action-btn:hover,
-        .top-action-btn:focus,
         .top-action-btn:focus-visible {
             border-color: var(--color-secondary);
             color: var(--color-secondary);
             transform: translateY(-1px);
             box-shadow: 0 3px 8px rgba(92, 214, 204, 0.15);
-            outline: 3px solid var(--color-secondary);
-            outline-offset: 2px;
-        }
-
-        /* Ensure VoiceOver focus is visible on iOS */
-        .top-action-btn:focus:not(:focus-visible) {
             outline: 3px solid var(--color-secondary);
             outline-offset: 2px;
         }
@@ -2188,7 +2195,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -2287,7 +2294,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-game);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -2491,7 +2498,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-game);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -2715,7 +2722,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-game);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -2926,7 +2933,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-game);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -3097,7 +3104,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-game);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -3329,7 +3336,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-game);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -3474,13 +3481,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-dialog);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
 
         .minigame-exit-modal {
-            z-index: 1200;
+            z-index: var(--z-overlay-alert);
         }
 
         @keyframes fadeIn {
@@ -3686,7 +3693,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-dialog);
             padding: 20px;
             animation: fadeIn 0.2s ease;
         }
@@ -4244,7 +4251,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-dialog);
             animation: fadeIn 0.2s ease;
         }
 
@@ -4379,7 +4386,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay-dialog);
             animation: fadeIn 0.2s ease;
         }
 
@@ -5037,7 +5044,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: var(--z-overlay);
             padding: 20px;
             animation: fadeInOverlay 0.2s ease;
         }
