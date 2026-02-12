@@ -991,36 +991,18 @@
                 btn.setAttribute('aria-disabled', 'true');
             });
 
-            const cooldownEnd = Date.now() + ACTION_COOLDOWN_MS;
             if (actionCooldownTimer) {
-                clearInterval(actionCooldownTimer);
+                clearTimeout(actionCooldownTimer);
                 actionCooldownTimer = null;
             }
 
-            const updateCooldownLabels = () => {
-                const remaining = cooldownEnd - Date.now();
-                const seconds = Math.max(0, remaining / 1000);
-                const label = remaining > 0 ? seconds.toFixed(1) : '';
-                buttons.forEach(btn => {
-                    const labelEl = btn.querySelector('.cooldown-count');
-                    if (labelEl) labelEl.textContent = label;
-                });
-                if (remaining <= 0) {
-                    clearInterval(actionCooldownTimer);
-                    actionCooldownTimer = null;
-                }
-            };
-            updateCooldownLabels();
-            actionCooldownTimer = setInterval(updateCooldownLabels, 100);
-
-            setTimeout(() => {
+            actionCooldownTimer = setTimeout(() => {
                 actionCooldown = false;
+                actionCooldownTimer = null;
                 buttons.forEach(btn => {
                     btn.classList.remove('cooldown');
                     btn.disabled = false;
                     btn.removeAttribute('aria-disabled');
-                    const labelEl = btn.querySelector('.cooldown-count');
-                    if (labelEl) labelEl.textContent = '';
                 });
             }, ACTION_COOLDOWN_MS);
 
@@ -1045,13 +1027,15 @@
                         openFeedMenu();
                         // Reset cooldown since we opened a menu
                         actionCooldown = false;
+                        if (actionCooldownTimer) {
+                            clearTimeout(actionCooldownTimer);
+                            actionCooldownTimer = null;
+                        }
                         const btns = document.querySelectorAll('.action-btn');
                         btns.forEach(btn => {
                             btn.classList.remove('cooldown');
                             btn.disabled = false;
                             btn.removeAttribute('aria-disabled');
-                            const labelEl = btn.querySelector('.cooldown-count');
-                            if (labelEl) labelEl.textContent = '';
                         });
                         return;
                     }
@@ -1746,15 +1730,17 @@
             document.body.appendChild(overlay);
 
             function closeMenu() {
-                document.removeEventListener('keydown', handleEsc);
+                popModalEscape(closeMenu);
                 overlay.remove();
                 // Restore focus to feed button
                 const feedBtn = document.getElementById('feed-btn');
                 if (feedBtn) feedBtn.focus();
             }
 
-            function handleEsc(e) {
-                if (e.key === 'Escape') closeMenu();
+            pushModalEscape(closeMenu);
+
+            // Focus trap for Tab key
+            overlay.addEventListener('keydown', (e) => {
                 if (e.key === 'Tab') {
                     const focusable = overlay.querySelectorAll('button');
                     const first = focusable[0];
@@ -1767,8 +1753,7 @@
                         first.focus();
                     }
                 }
-            }
-            document.addEventListener('keydown', handleEsc);
+            });
 
             // Standard meal
             const standardBtn = overlay.querySelector('[data-feed="standard"]');
@@ -1875,17 +1860,15 @@
             // Focus the cancel button (safer option for children)
             cancelBtn.focus();
 
-            // Handle Escape key
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeModal();
-                    if (onCancel) onCancel();
-                }
+            function escapeClose() {
+                closeModal();
+                if (onCancel) onCancel();
             }
-            document.addEventListener('keydown', handleEscape);
+
+            pushModalEscape(escapeClose);
 
             function closeModal() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(escapeClose);
                 modal.remove();
             }
 
@@ -1987,7 +1970,7 @@
             okBtn.focus();
 
             function closeModal() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeModal);
                 modal.remove();
                 // Trigger confetti cleanup
                 setTimeout(() => {
@@ -2001,12 +1984,7 @@
                 if (e.target === modal) closeModal();
             });
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeModal();
-                }
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeModal);
 
             showToast(`🎉 ${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`, '#FFB74D');
             announce(`${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`);
@@ -2054,7 +2032,7 @@
             okBtn.focus();
 
             function closeModal() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeModal);
                 modal.remove();
                 // Re-render to show evolved appearance
                 if (typeof renderPetPhase === 'function') {
@@ -2072,12 +2050,7 @@
                 if (e.target === modal) closeModal();
             });
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeModal();
-                }
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeModal);
 
             showToast(`✨ Evolution! Your pet evolved into ${petName}!`, '#FFD700');
             announce(`Evolution! Your pet evolved into ${petName}!`);
@@ -2211,7 +2184,7 @@
             const skipBtn = document.getElementById('tutorial-skip');
 
             function closeTutorial() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeTutorial);
                 overlay.remove();
                 // Mark tutorial as seen
                 try {
@@ -2224,10 +2197,7 @@
             doneBtn.addEventListener('click', closeTutorial);
             skipBtn.addEventListener('click', closeTutorial);
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') closeTutorial();
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeTutorial);
         }
 
         // ==================== FURNITURE CUSTOMIZATION ====================
@@ -2341,7 +2311,7 @@
             });
 
             function closeFurniture() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeFurniture);
                 overlay.remove();
                 renderPetPhase(); // Re-render to show changes
                 setTimeout(() => {
@@ -2355,10 +2325,7 @@
                 closeFurniture();
             });
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') closeFurniture();
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeFurniture);
         }
 
         // ==================== PET CODEX ====================
@@ -2434,6 +2401,7 @@
             document.body.appendChild(overlay);
 
             function closeCodex() {
+                popModalEscape(closeCodex);
                 overlay.remove();
                 const btn = document.getElementById('codex-btn');
                 if (btn) btn.focus();
@@ -2442,7 +2410,7 @@
             document.getElementById('codex-close').focus();
             document.getElementById('codex-close').addEventListener('click', () => closeCodex());
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeCodex(); });
-            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCodex(); });
+            pushModalEscape(closeCodex);
         }
 
         // ==================== STATS SCREEN ====================
@@ -2558,6 +2526,7 @@
             document.body.appendChild(overlay);
 
             function closeStats() {
+                popModalEscape(closeStats);
                 overlay.remove();
                 const btn = document.getElementById('stats-btn');
                 if (btn) btn.focus();
@@ -2566,7 +2535,7 @@
             document.getElementById('stats-close').focus();
             document.getElementById('stats-close').addEventListener('click', () => closeStats());
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStats(); });
-            overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStats(); });
+            pushModalEscape(closeStats);
         }
 
         // ==================== NEW PET ====================
@@ -2625,11 +2594,8 @@
             const confirmBtn = document.getElementById('modal-confirm');
             cancelBtn.focus();
 
-            function handleEscape(e) { if (e.key === 'Escape') { closeAndCancel(); } }
-            document.addEventListener('keydown', handleEscape);
-
             function closeModal() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeAndCancel);
                 modal.remove();
             }
             function closeAndCancel() {
@@ -2637,6 +2603,8 @@
                 const newPetBtn = document.getElementById('new-pet-btn');
                 if (newPetBtn) newPetBtn.focus();
             }
+
+            pushModalEscape(closeAndCancel);
 
             confirmBtn.addEventListener('click', () => {
                 closeModal();

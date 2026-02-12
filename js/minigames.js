@@ -62,19 +62,14 @@
             if (cancelBtn) cancelBtn.focus();
 
             function closeModal() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeModal);
                 modal.remove();
                 if (returnFocusEl && document.contains(returnFocusEl)) {
                     returnFocusEl.focus();
                 }
             }
 
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeModal();
-                }
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeModal);
 
             if (confirmBtn) {
                 confirmBtn.addEventListener('click', () => {
@@ -129,7 +124,7 @@
             const triggerBtn = document.getElementById('minigames-btn');
 
             function closeMenu() {
-                document.removeEventListener('keydown', handleEscape);
+                popModalEscape(closeMenu);
                 if (overlay && overlay.parentNode) overlay.remove();
                 if (triggerBtn) triggerBtn.focus();
             }
@@ -149,13 +144,7 @@
                 });
             });
 
-            // Escape to close
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    closeMenu();
-                }
-            }
-            document.addEventListener('keydown', handleEscape);
+            pushModalEscape(closeMenu);
 
             // Focus first game card
             const firstCard = overlay.querySelector('.minigame-card');
@@ -269,14 +258,19 @@
                 requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
             });
 
-            // Escape to exit
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
                     requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
                 }
+            });
+
+            // Escape to exit
+            function fetchEscapeHandler() {
+                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
             }
-            document.addEventListener('keydown', handleEscape);
-            fetchState._handleEscape = handleEscape;
+            pushModalEscape(fetchEscapeHandler);
+            fetchState._escapeHandler = fetchEscapeHandler;
 
             throwBtn.focus();
         }
@@ -410,8 +404,8 @@
         }
 
         function endFetchGame() {
-            if (fetchState && fetchState._handleEscape) {
-                document.removeEventListener('keydown', fetchState._handleEscape);
+            if (fetchState && fetchState._escapeHandler) {
+                popModalEscape(fetchState._escapeHandler);
             }
             if (fetchState && fetchState._timeouts) {
                 fetchState._timeouts.forEach(id => clearTimeout(id));
@@ -597,14 +591,19 @@
                 requestMiniGameExit(hideSeekState ? hideSeekState.treatsFound : 0, () => endHideSeekGame());
             });
 
-            // Escape to exit
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
                     requestMiniGameExit(hideSeekState ? hideSeekState.treatsFound : 0, () => endHideSeekGame());
                 }
+            });
+
+            // Escape to exit
+            function hideSeekEscapeHandler() {
+                requestMiniGameExit(hideSeekState ? hideSeekState.treatsFound : 0, () => endHideSeekGame());
             }
-            document.addEventListener('keydown', handleEscape);
-            hideSeekState._handleEscape = handleEscape;
+            pushModalEscape(hideSeekEscapeHandler);
+            hideSeekState._escapeHandler = hideSeekEscapeHandler;
 
             // Focus the first hiding spot
             const firstSpot = overlay.querySelector('.hideseek-hiding-spot');
@@ -771,8 +770,8 @@
         }
 
         function endHideSeekGame() {
-            if (hideSeekState && hideSeekState._handleEscape) {
-                document.removeEventListener('keydown', hideSeekState._handleEscape);
+            if (hideSeekState && hideSeekState._escapeHandler) {
+                popModalEscape(hideSeekState._escapeHandler);
             }
 
             if (hideSeekState && hideSeekState.timerId) {
@@ -879,13 +878,11 @@
             });
 
             // Escape to close
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
-                }
+            function bubblePopEscapeHandler() {
+                requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
             }
-            document.addEventListener('keydown', handleEscape);
-            bubblePopState._handleEscape = handleEscape;
+            pushModalEscape(bubblePopEscapeHandler);
+            bubblePopState._escapeHandler = bubblePopEscapeHandler;
 
             // Focus done button
             overlay.querySelector('#bubblepop-done').focus();
@@ -1110,8 +1107,8 @@
             if (bubblePopState && bubblePopState.spawnInterval) clearInterval(bubblePopState.spawnInterval);
             if (bubblePopState && bubblePopState._autoEndTimeout) clearTimeout(bubblePopState._autoEndTimeout);
 
-            if (bubblePopState && bubblePopState._handleEscape) {
-                document.removeEventListener('keydown', bubblePopState._handleEscape);
+            if (bubblePopState && bubblePopState._escapeHandler) {
+                popModalEscape(bubblePopState._escapeHandler);
             }
 
             const overlay = document.querySelector('.bubblepop-game-overlay');
@@ -1252,13 +1249,11 @@
             });
 
             // Escape to close
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    requestMiniGameExit(matchingState ? matchingState.matchesFound : 0, () => endMatchingGame());
-                }
+            function matchingEscapeHandler() {
+                requestMiniGameExit(matchingState ? matchingState.matchesFound : 0, () => endMatchingGame());
             }
-            document.addEventListener('keydown', handleEscape);
-            matchingState._handleEscape = handleEscape;
+            pushModalEscape(matchingEscapeHandler);
+            matchingState._escapeHandler = matchingEscapeHandler;
 
             // Focus first card
             const firstCard = overlay.querySelector('.matching-card');
@@ -1373,8 +1368,8 @@
 
         function endMatchingGame() {
             if (matchingState && matchingState._autoEndTimeout) clearTimeout(matchingState._autoEndTimeout);
-            if (matchingState && matchingState._handleEscape) {
-                document.removeEventListener('keydown', matchingState._handleEscape);
+            if (matchingState && matchingState._escapeHandler) {
+                popModalEscape(matchingState._escapeHandler);
             }
             if (matchingState && matchingState._timeouts) {
                 matchingState._timeouts.forEach(id => clearTimeout(id));
@@ -1541,14 +1536,12 @@
             });
 
             // Escape to close
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
-                    requestMiniGameExit(rounds, () => endSimonSaysGame());
-                }
+            function simonEscapeHandler() {
+                const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                requestMiniGameExit(rounds, () => endSimonSaysGame());
             }
-            document.addEventListener('keydown', handleEscape);
-            simonState._handleEscape = handleEscape;
+            pushModalEscape(simonEscapeHandler);
+            simonState._escapeHandler = simonEscapeHandler;
 
             // Focus done button
             overlay.querySelector('#simon-done').focus();
@@ -1713,8 +1706,8 @@
             if (simonState && simonState.playbackTimer) clearTimeout(simonState.playbackTimer);
             if (simonState && simonState._autoEndTimeout) clearTimeout(simonState._autoEndTimeout);
 
-            if (simonState && simonState._handleEscape) {
-                document.removeEventListener('keydown', simonState._handleEscape);
+            if (simonState && simonState._escapeHandler) {
+                popModalEscape(simonState._escapeHandler);
             }
 
             const overlay = document.querySelector('.simonsays-game-overlay');
@@ -1890,14 +1883,12 @@
             });
 
             // Escape to close
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    const colored = coloringState ? coloringState.regionsColored.size : 0;
-                    requestMiniGameExit(colored, () => endColoringGame());
-                }
+            function coloringEscapeHandler() {
+                const colored = coloringState ? coloringState.regionsColored.size : 0;
+                requestMiniGameExit(colored, () => endColoringGame());
             }
-            document.addEventListener('keydown', handleEscape);
-            coloringState._handleEscape = handleEscape;
+            pushModalEscape(coloringEscapeHandler);
+            coloringState._escapeHandler = coloringEscapeHandler;
 
             // Focus done button
             overlay.querySelector('#coloring-done').focus();
@@ -2106,8 +2097,8 @@
         }
 
         function endColoringGame() {
-            if (coloringState && coloringState._handleEscape) {
-                document.removeEventListener('keydown', coloringState._handleEscape);
+            if (coloringState && coloringState._escapeHandler) {
+                popModalEscape(coloringState._escapeHandler);
             }
 
             const overlay = document.querySelector('.coloring-game-overlay');
