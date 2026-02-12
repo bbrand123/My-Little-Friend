@@ -15,9 +15,10 @@ const ASSETS = [
 // Install — cache all core assets
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+        caches.open(CACHE_NAME)
+            .then((cache) => cache.addAll(ASSETS))
+            .then(() => self.skipWaiting())
     );
-    self.skipWaiting();
 });
 
 // Activate — clean up old caches
@@ -32,24 +33,28 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch — serve from cache, fall back to network
+// Fetch — stale-while-revalidate: serve cached immediately, update in background
 self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            return fetch(event.request).then((response) => {
-                // Cache successful same-origin responses
+            // Always fetch from network to update cache for next load
+            const fetchPromise = fetch(event.request).then((response) => {
                 if (response.ok && event.request.url.startsWith(self.location.origin)) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                 }
                 return response;
+            }).catch(() => null);
+
+            // Return cached immediately if available, otherwise wait for network
+            return cached || fetchPromise.then((response) => {
+                if (response) return response;
+                // Offline fallback
+                if (event.request.mode === 'navigate') {
+                    return caches.match('./index.html');
+                }
+                return new Response('', { status: 503, statusText: 'Service Unavailable' });
             });
-        }).catch(() => {
-            // Offline fallback for navigation requests
-            if (event.request.mode === 'navigate') {
-                return caches.match('./index.html');
-            }
         })
     );
 });

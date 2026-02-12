@@ -1104,7 +1104,7 @@
             }, ACTION_COOLDOWN_MS);
 
             const pet = gameState.pet;
-            const petData = PET_TYPES[pet.type];
+            const petData = PET_TYPES[pet.type] || { emoji: '🐾', name: 'Pet' };
             const petContainer = document.getElementById('pet-container');
             const sparkles = document.getElementById('sparkles');
             let message = '';
@@ -1250,9 +1250,9 @@
             // Check for growth stage transition (uses checkGrowthMilestone which
             // handles lastGrowthStage tracking, birthday celebrations, and adultsRaised)
             if (checkGrowthMilestone(pet)) {
-                // Growth happened — save and re-render to show new size/stage
-                saveGame();
-                renderPetPhase();
+                // Growth happened — checkGrowthMilestone already saves internally.
+                // Defer re-render so celebration modal is not disrupted.
+                setTimeout(() => renderPetPhase(), 100);
                 return;
             }
 
@@ -1386,6 +1386,7 @@
         }
 
         function addParticle(container, element, duration) {
+            if (!container) return;
             enforceParticleLimit(container);
             container.appendChild(element);
             setTimeout(() => element.remove(), duration);
