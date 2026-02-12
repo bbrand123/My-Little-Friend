@@ -473,14 +473,6 @@
             const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
             const contextIndicatorHTML = `<span class="status-pill context-indicator" id="context-indicator" aria-label="${contextLabel}"><span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${contextLabel}</span></span>`;
             const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
-            const miniNeedsHTML = `
-                <div class="mini-needs" role="group" aria-label="Quick pet status">
-                    <span class="mini-need" id="mini-hunger" aria-label="Food ${pet.hunger}%" title="Food ${pet.hunger}%" style="--mini-color:${getNeedColor(pet.hunger)};--mini-level:${pet.hunger};"></span>
-                    <span class="mini-need" id="mini-clean" aria-label="Bath ${pet.cleanliness}%" title="Bath ${pet.cleanliness}%" style="--mini-color:${getNeedColor(pet.cleanliness)};--mini-level:${pet.cleanliness};"></span>
-                    <span class="mini-need" id="mini-happy" aria-label="Happy ${pet.happiness}%" title="Happy ${pet.happiness}%" style="--mini-color:${getNeedColor(pet.happiness)};--mini-level:${pet.happiness};"></span>
-                    <span class="mini-need" id="mini-energy" aria-label="Energy ${pet.energy}%" title="Energy ${pet.energy}%" style="--mini-color:${getNeedColor(pet.energy)};--mini-level:${pet.energy};"></span>
-                </div>
-            `;
 
             // Helper: need bubble class based on level
             function needClass(val) {
@@ -492,9 +484,6 @@
 
             const petDisplayName = escapeHTML(pet.name || petData.name);
 
-            // Room bonus indicator for tooltip
-            const currentRoomData = ROOMS[currentRoom];
-            const roomBonusLabel = currentRoomData && currentRoomData.bonus ? currentRoomData.bonus.label : '';
 
             content.innerHTML = `
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
@@ -514,9 +503,7 @@
                     </div>
                     <div class="status-stack" role="status" aria-label="Game status">
                         ${contextIndicatorHTML}
-                        ${roomBonusLabel ? `<span class="status-pill room-bonus-indicator" aria-label="Room bonus: ${roomBonusLabel}">${currentRoomData.icon} ${roomBonusLabel}</span>` : ''}
                     </div>
-                    ${miniNeedsHTML}
                 </div>
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
@@ -530,38 +517,28 @@
                     </div>
                     <div class="pet-info">
                         <p class="pet-name">${petData.emoji} ${petDisplayName}</p>
-                        <div class="pet-badges">
-                            <div class="mood-badge ${mood}" id="mood-badge">
-                                <span class="mood-badge-emoji">${mood === 'happy' ? '😊' : mood === 'sad' ? '😢' : mood === 'sleepy' ? '😴' : mood === 'energetic' ? '⚡' : '😐'}</span>
-                                <span>${mood === 'happy' ? 'Happy' : mood === 'sad' ? 'Sad' : mood === 'sleepy' ? 'Sleepy' : mood === 'energetic' ? 'Energetic' : 'Okay'}</span>
-                            </div>
-                            ${(() => {
-                                const stage = pet.growthStage || 'baby';
-                                const stageData = GROWTH_STAGES[stage];
-                                const ageInHours = getPetAge(pet);
-                                const progress = getGrowthProgress(pet.careActions || 0, ageInHours, stage);
-                                const nextStage = getNextGrowthStage(stage);
-                                const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
-                                return `
-                                    <div class="growth-badge ${stage}${isMythical ? ' mythical' : ''}" id="growth-badge" aria-label="Growth stage: ${stageData.label}${nextStage ? ', ' + progress + '% to next stage' : ', fully grown'}">
-                                        <span class="growth-badge-emoji">${stageData.emoji}</span>
-                                        <span>${stageData.label}</span>
-                                    </div>
-                                `;
-                            })()}
-                        </div>
                         ${(() => {
                             const stage = pet.growthStage || 'baby';
+                            const stageData = GROWTH_STAGES[stage];
                             const ageInHours = getPetAge(pet);
                             const nextStage = getNextGrowthStage(stage);
-                            if (!nextStage) return '';
+                            const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
+
+                            if (!nextStage) {
+                                return `
+                                    <div class="growth-progress-wrap" id="growth-progress-section" aria-label="Growth stage: ${stageData.label}, fully grown">
+                                        <div class="growth-compact-row">
+                                            <span class="growth-compact-label${isMythical ? ' mythical' : ''}">${stageData.emoji} ${stageData.label} — Fully Grown</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }
 
                             const currentActionsThreshold = GROWTH_STAGES[stage].actionsNeeded;
                             const nextActionsThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
                             const currentHoursThreshold = GROWTH_STAGES[stage].hoursNeeded;
                             const nextHoursThreshold = GROWTH_STAGES[nextStage].hoursNeeded;
 
-                            // Calculate progress with safety checks for division by zero
                             const actionDiff = nextActionsThreshold - currentActionsThreshold;
                             const hourDiff = nextHoursThreshold - currentHoursThreshold;
 
@@ -578,7 +555,6 @@
                             const actionsNeeded = Math.max(0, nextActionsThreshold - pet.careActions);
                             const hoursNeeded = Math.max(0, nextHoursThreshold - ageInHours);
 
-                            // Compact hint: show limiting factor
                             let hint = '';
                             if (actionProgress >= 100 && timeProgress >= 100) {
                                 hint = '<span class="growth-hint ready">🎉 Ready to evolve!</span>';
@@ -591,8 +567,10 @@
                             }
 
                             return `
-                                <div class="growth-progress-wrap" aria-label="Growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%">
+                                <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%">
                                     <div class="growth-compact-row">
+                                        <span class="growth-compact-label${isMythical ? ' mythical' : ''}">${stageData.emoji} ${stageData.label}</span>
+                                        <span class="growth-compact-arrow">→</span>
                                         <span class="growth-compact-label">${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
                                         <div class="growth-compact-bar">
                                             <div class="growth-compact-fill" style="width:${overallProgress}%;"></div>
@@ -708,12 +686,6 @@
                                     <span class="care-stat-value ${neglectCount <= 2 ? 'excellent' : neglectCount <= 5 ? 'good' : neglectCount <= 10 ? 'average' : 'poor'}">${neglectCount}</span>
                                 </div>
                             </div>
-
-                            ${careQuality !== 'excellent' ? `
-                                <div class="care-quality-tip">
-                                    💡 ${careQualityTips[careQuality]}
-                                </div>
-                            ` : ''}
 
                             ${pet.evolutionStage === 'evolved' ? `
                                 <div class="evolution-badge-display">
@@ -1342,14 +1314,6 @@
                 petMoodEl.innerHTML = `${safePetName} ${moodMessage}${noteHTML}`;
             }
 
-            // Update mood badge
-            const badge = document.getElementById('mood-badge');
-            if (badge) {
-                const moodEmoji = { happy: '😊', neutral: '😐', sad: '😢', sleepy: '😴', energetic: '⚡' };
-                const moodLabel = { happy: 'Happy', neutral: 'Okay', sad: 'Sad', sleepy: 'Sleepy', energetic: 'Energetic' };
-                badge.className = `mood-badge ${mood}`;
-                badge.innerHTML = `<span class="mood-badge-emoji">${moodEmoji[mood] || '😐'}</span><span>${moodLabel[mood] || 'Okay'}</span>`;
-            }
         }
 
         function updateGrowthDisplay() {
@@ -1361,12 +1325,6 @@
             const progress = getGrowthProgress(pet.careActions || 0, getPetAge(pet), stage);
             const nextStage = getNextGrowthStage(stage);
             const isMythical = PET_TYPES[pet.type] && PET_TYPES[pet.type].mythical;
-
-            const badge = document.getElementById('growth-badge');
-            if (badge) {
-                badge.className = `growth-badge ${stage}${isMythical ? ' mythical' : ''}`;
-                badge.innerHTML = `<span class="growth-badge-emoji">${stageData.emoji}</span><span>${stageData.label}</span>`;
-            }
 
             const compactFill = document.querySelector('.growth-compact-fill');
             if (compactFill) {
@@ -2409,6 +2367,13 @@
             const evolutionStage = pet ? (pet.evolutionStage || 'base') : 'base';
             const isEvolved = evolutionStage === 'evolved';
 
+            const careQualityTips = {
+                poor: 'Keep stats above 35% and avoid letting any stat drop below 20% to improve care quality.',
+                average: 'Keep stats above 60% and minimize neglect (stats below 20%) to reach Good care.',
+                good: 'Maintain stats above 80% with minimal neglect to reach Excellent care!',
+                excellent: 'Amazing care! Your pet can evolve once they reach adult stage.'
+            };
+
             const roomBonusesHTML = Object.keys(ROOMS).map(key => {
                 const room = ROOMS[key];
                 return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${room.bonus.label}</div>`;
@@ -2446,6 +2411,10 @@
                             <div class="stats-card-value">${careActions}</div>
                             <div class="stats-card-label">Care Actions</div>
                         </div>
+                    </div>
+
+                    <div class="care-quality-tip">
+                        💡 ${careQualityTips[careQuality] || careQualityTips.average}
                     </div>
 
                     ${pet ? `
