@@ -688,6 +688,160 @@ const MAX_GARDEN_PLOTS = 6;
 // Plots 1-2 are free, then unlock at 2, 5, 10, 18 total harvests
 const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 0, 2, 5, 10, 18];
 
+// ==================== MULTI-PET SYSTEM ====================
+
+const MAX_PETS = 4; // Maximum number of pets a player can have at once
+
+// ==================== PET INTERACTIONS ====================
+
+const PET_INTERACTIONS = {
+    playTogether: {
+        name: 'Play Together',
+        emoji: '⚽',
+        description: 'Pets play and have fun together!',
+        effects: { happiness: 15, energy: -8 },
+        relationshipGain: 8,
+        cooldown: 60000, // 1 minute
+        messages: [
+            'are chasing each other around!',
+            'are playing tag together!',
+            'are having a blast together!',
+            'are tumbling around happily!',
+            'are bouncing and playing!'
+        ]
+    },
+    shareFood: {
+        name: 'Share Meal',
+        emoji: '🍽️',
+        description: 'Pets share a meal together!',
+        effects: { hunger: 12, happiness: 8 },
+        relationshipGain: 6,
+        cooldown: 60000,
+        messages: [
+            'are sharing a yummy meal!',
+            'are eating side by side!',
+            'are munching together happily!',
+            'are enjoying lunch together!',
+            'are sharing snacks!'
+        ]
+    },
+    groomEachOther: {
+        name: 'Groom Each Other',
+        emoji: '✨',
+        description: 'Pets groom and clean each other!',
+        effects: { cleanliness: 12, happiness: 10 },
+        relationshipGain: 7,
+        cooldown: 60000,
+        messages: [
+            'are grooming each other so sweetly!',
+            'are helping each other look their best!',
+            'are taking care of each other!',
+            'are making each other sparkly clean!',
+            'are brushing each other gently!'
+        ]
+    },
+    napTogether: {
+        name: 'Nap Together',
+        emoji: '💤',
+        description: 'Pets cuddle up for a cozy nap!',
+        effects: { energy: 18, happiness: 8 },
+        relationshipGain: 10,
+        cooldown: 90000,
+        messages: [
+            'are cuddling up for a cozy nap!',
+            'are sleeping side by side!',
+            'are snuggling together peacefully!',
+            'are dozing off together!',
+            'are sharing a warm nap!'
+        ]
+    },
+    explore: {
+        name: 'Explore Together',
+        emoji: '🗺️',
+        description: 'Pets go on a little adventure!',
+        effects: { happiness: 18, energy: -10, hunger: -5 },
+        relationshipGain: 12,
+        cooldown: 120000, // 2 minutes
+        messages: [
+            'went on an adventure and found something cool!',
+            'explored the area and had a great time!',
+            'discovered a secret spot together!',
+            'went exploring and made wonderful memories!',
+            'had an exciting little expedition!'
+        ]
+    }
+};
+
+// ==================== RELATIONSHIP SYSTEM ====================
+
+const RELATIONSHIP_LEVELS = {
+    stranger: {
+        label: 'Stranger',
+        emoji: '🤝',
+        minPoints: 0,
+        description: 'Just met! Time to get to know each other.',
+        interactionBonus: 1.0
+    },
+    acquaintance: {
+        label: 'Acquaintance',
+        emoji: '👋',
+        minPoints: 20,
+        description: 'Starting to warm up to each other!',
+        interactionBonus: 1.1
+    },
+    friend: {
+        label: 'Friend',
+        emoji: '😊',
+        minPoints: 50,
+        description: 'Good pals who enjoy hanging out!',
+        interactionBonus: 1.2
+    },
+    closeFriend: {
+        label: 'Close Friend',
+        emoji: '💛',
+        minPoints: 100,
+        description: 'Best buddies who love being together!',
+        interactionBonus: 1.3
+    },
+    bestFriend: {
+        label: 'Best Friend',
+        emoji: '💖',
+        minPoints: 180,
+        description: 'Inseparable! The closest bond possible!',
+        interactionBonus: 1.5
+    },
+    family: {
+        label: 'Family',
+        emoji: '🏠',
+        minPoints: 250,
+        description: 'A true family bond! They consider each other family!',
+        interactionBonus: 1.7
+    }
+};
+
+const RELATIONSHIP_ORDER = ['stranger', 'acquaintance', 'friend', 'closeFriend', 'bestFriend', 'family'];
+
+function getRelationshipLevel(points) {
+    let level = 'stranger';
+    for (const [key, data] of Object.entries(RELATIONSHIP_LEVELS)) {
+        if (points >= data.minPoints) {
+            level = key;
+        }
+    }
+    return level;
+}
+
+function getRelationshipProgress(points) {
+    const currentLevel = getRelationshipLevel(points);
+    const currentIdx = RELATIONSHIP_ORDER.indexOf(currentLevel);
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= RELATIONSHIP_ORDER.length) return 100;
+    const currentMin = RELATIONSHIP_LEVELS[currentLevel].minPoints;
+    const nextMin = RELATIONSHIP_LEVELS[RELATIONSHIP_ORDER[nextIdx]].minPoints;
+    const range = nextMin - currentMin;
+    return Math.min(100, Math.max(0, ((points - currentMin) / range) * 100));
+}
+
 // ==================== MODAL ESCAPE KEY STACK ====================
 // Ensures only the topmost modal/overlay responds to the Escape key.
 const _modalEscapeStack = [];

@@ -26,7 +26,13 @@
             },
             minigamePlayCounts: {}, // { gameId: playCount } — tracks replays for difficulty scaling
             minigameHighScores: {}, // { gameId: bestScore } — persisted best scores
-            minigameScoreHistory: {} // { gameId: [score, score, score] } — last 3 scores per game
+            minigameScoreHistory: {}, // { gameId: [score, score, score] } — last 3 scores per game
+            // Multi-pet system
+            pets: [], // Array of all pet objects
+            activePetIndex: 0, // Index of the currently active/displayed pet
+            relationships: {}, // { "petId1-petId2": { points, lastInteraction, interactionHistory } }
+            adoptingAdditional: false, // True when adopting an additional egg (don't reset state)
+            nextPetId: 1 // Auto-incrementing ID for unique pet identification
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -189,6 +195,8 @@
 
         function saveGame() {
             try {
+                // Sync active pet to pets array before saving
+                syncActivePetToArray();
                 gameState.lastUpdate = Date.now();
                 localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
             } catch (e) {
@@ -328,6 +336,38 @@
                         parsed.garden.totalHarvests = inferredHarvests;
                     }
 
+                    // Add multi-pet system fields if missing (for existing saves)
+                    if (!Array.isArray(parsed.pets)) {
+                        parsed.pets = parsed.pet ? [parsed.pet] : [];
+                    }
+                    if (typeof parsed.activePetIndex !== 'number') {
+                        parsed.activePetIndex = 0;
+                    }
+                    if (!parsed.relationships || typeof parsed.relationships !== 'object') {
+                        parsed.relationships = {};
+                    }
+                    if (typeof parsed.nextPetId !== 'number') {
+                        // Assign IDs to any existing pets that don't have them
+                        let maxId = 0;
+                        parsed.pets.forEach(p => {
+                            if (p && typeof p.id === 'number' && p.id > maxId) maxId = p.id;
+                        });
+                        parsed.pets.forEach(p => {
+                            if (p && typeof p.id !== 'number') {
+                                maxId++;
+                                p.id = maxId;
+                            }
+                        });
+                        parsed.nextPetId = maxId + 1;
+                    }
+                    // Ensure active pet is in sync with pets array
+                    if (parsed.pets.length > 0) {
+                        if (parsed.activePetIndex >= parsed.pets.length) {
+                            parsed.activePetIndex = 0;
+                        }
+                        parsed.pet = parsed.pets[parsed.activePetIndex];
+                    }
+
                     // Apply garden growth for time passed
                     if (parsed.garden.plots.length > 0 && parsed.garden.lastGrowTick) {
                         const gardenTimePassed = Date.now() - parsed.garden.lastGrowTick;
@@ -354,35 +394,53 @@
                     parsed.timeOfDay = getTimeOfDay();
 
                     // Apply time-based changes for needs (offline time simulation)
-                    if (parsed.pet && parsed.lastUpdate) {
+                    // Apply to ALL pets, not just the active one
+                    if (parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
                         const minutesPassed = timePassed / 60000;
                         const decay = Math.floor(minutesPassed / 2);
                         if (decay > 0) {
-                            const oldStats = {
-                                hunger: parsed.pet.hunger,
-                                cleanliness: parsed.pet.cleanliness,
-                                happiness: parsed.pet.happiness,
-                                energy: parsed.pet.energy
-                            };
+                            const petsToDecay = parsed.pets && parsed.pets.length > 0 ? parsed.pets : (parsed.pet ? [parsed.pet] : []);
+                            let activeOldStats = null;
+                            petsToDecay.forEach((p, idx) => {
+                                if (!p) return;
+                                const oldStats = {
+                                    hunger: p.hunger,
+                                    cleanliness: p.cleanliness,
+                                    happiness: p.happiness,
+                                    energy: p.energy
+                                };
+                                if (idx === parsed.activePetIndex) activeOldStats = oldStats;
 
-                            // Hunger decays faster while away (pet gets hungry)
-                            parsed.pet.hunger = clamp(parsed.pet.hunger - Math.floor(decay * 1.5), 0, 100);
-                            // Cleanliness decays slower (pet isn't doing much)
-                            parsed.pet.cleanliness = clamp(parsed.pet.cleanliness - Math.floor(decay * 0.5), 0, 100);
-                            // Happiness decays at normal rate
-                            parsed.pet.happiness = clamp(parsed.pet.happiness - decay, 0, 100);
-                            // Energy RECOVERS while away (pet is resting)
-                            parsed.pet.energy = clamp(parsed.pet.energy + Math.floor(decay * 0.75), 0, 100);
+                                // Hunger decays faster while away (pet gets hungry)
+                                p.hunger = clamp(p.hunger - Math.floor(decay * 1.5), 0, 100);
+                                // Cleanliness decays slower (pet isn't doing much)
+                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5), 0, 100);
+                                // Happiness decays at normal rate
+                                p.happiness = clamp(p.happiness - decay, 0, 100);
+                                // Energy RECOVERS while away (pet is resting)
+                                p.energy = clamp(p.energy + Math.floor(decay * 0.75), 0, 100);
 
-                            // Store offline changes for welcome-back summary
-                            if (minutesPassed >= 5) {
+                                // Pets with friends get a small happiness bonus while away
+                                if (parsed.pets.length > 1 && parsed.relationships) {
+                                    const friendBonus = Math.min(5, Math.floor(decay * 0.2));
+                                    p.happiness = clamp(p.happiness + friendBonus, 0, 100);
+                                }
+                            });
+
+                            // Sync active pet reference
+                            if (parsed.pets.length > 0) {
+                                parsed.pet = parsed.pets[parsed.activePetIndex];
+                            }
+
+                            // Store offline changes for welcome-back summary (active pet only)
+                            if (minutesPassed >= 5 && parsed.pet && activeOldStats) {
                                 parsed._offlineChanges = {
                                     minutes: Math.round(minutesPassed),
-                                    hunger: parsed.pet.hunger - oldStats.hunger,
-                                    cleanliness: parsed.pet.cleanliness - oldStats.cleanliness,
-                                    happiness: parsed.pet.happiness - oldStats.happiness,
-                                    energy: parsed.pet.energy - oldStats.energy
+                                    hunger: parsed.pet.hunger - activeOldStats.hunger,
+                                    cleanliness: parsed.pet.cleanliness - activeOldStats.cleanliness,
+                                    happiness: parsed.pet.happiness - activeOldStats.happiness,
+                                    energy: parsed.pet.energy - activeOldStats.energy
                                 };
                             }
                         }
@@ -449,7 +507,12 @@
             const petData = PET_TYPES[type];
             const color = randomFromArray(petData.colors);
 
+            // Assign a unique ID to each pet
+            const petId = gameState.nextPetId || (gameState.pets ? gameState.pets.length + 1 : 1);
+            gameState.nextPetId = petId + 1;
+
             return {
+                id: petId,
                 type: type,
                 name: petData.name,
                 color: color,
@@ -469,6 +532,153 @@
                 evolutionStage: 'base', // 'base' or 'evolved'
                 lastGrowthStage: 'baby', // Track last stage for birthday celebrations
                 unlockedAccessories: [] // Accessories unlocked through milestones
+            };
+        }
+
+        // ==================== MULTI-PET HELPERS ====================
+
+        function getActivePet() {
+            return gameState.pet;
+        }
+
+        function getPetCount() {
+            return gameState.pets ? gameState.pets.length : (gameState.pet ? 1 : 0);
+        }
+
+        function canAdoptMore() {
+            return getPetCount() < MAX_PETS;
+        }
+
+        function switchActivePet(index) {
+            if (!gameState.pets || index < 0 || index >= gameState.pets.length) return false;
+            // Save current pet stats back to pets array
+            if (gameState.pet && gameState.activePetIndex < gameState.pets.length) {
+                gameState.pets[gameState.activePetIndex] = gameState.pet;
+            }
+            gameState.activePetIndex = index;
+            gameState.pet = gameState.pets[index];
+            saveGame();
+            return true;
+        }
+
+        function syncActivePetToArray() {
+            if (gameState.pet && gameState.pets && gameState.activePetIndex < gameState.pets.length) {
+                gameState.pets[gameState.activePetIndex] = gameState.pet;
+            }
+        }
+
+        function addPetToFamily(pet) {
+            if (!gameState.pets) gameState.pets = [];
+            gameState.pets.push(pet);
+            // Initialize relationships with all existing pets
+            if (!gameState.relationships) gameState.relationships = {};
+            for (let i = 0; i < gameState.pets.length - 1; i++) {
+                const existingPet = gameState.pets[i];
+                const key = getRelationshipKey(existingPet.id, pet.id);
+                if (!gameState.relationships[key]) {
+                    gameState.relationships[key] = {
+                        points: 0,
+                        lastInteraction: 0,
+                        interactionCount: 0
+                    };
+                }
+            }
+        }
+
+        function getRelationshipKey(id1, id2) {
+            return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+        }
+
+        function getRelationship(pet1Id, pet2Id) {
+            if (!gameState.relationships) gameState.relationships = {};
+            const key = getRelationshipKey(pet1Id, pet2Id);
+            if (!gameState.relationships[key]) {
+                gameState.relationships[key] = {
+                    points: 0,
+                    lastInteraction: 0,
+                    interactionCount: 0
+                };
+            }
+            return gameState.relationships[key];
+        }
+
+        function addRelationshipPoints(pet1Id, pet2Id, points) {
+            const rel = getRelationship(pet1Id, pet2Id);
+            const prevLevel = getRelationshipLevel(rel.points);
+            rel.points = Math.max(0, Math.min(300, rel.points + points));
+            const newLevel = getRelationshipLevel(rel.points);
+            rel.interactionCount = (rel.interactionCount || 0) + 1;
+            rel.lastInteraction = Date.now();
+
+            // Return level change info
+            if (prevLevel !== newLevel) {
+                const prevIdx = RELATIONSHIP_ORDER.indexOf(prevLevel);
+                const newIdx = RELATIONSHIP_ORDER.indexOf(newLevel);
+                return {
+                    changed: true,
+                    from: prevLevel,
+                    to: newLevel,
+                    improved: newIdx > prevIdx
+                };
+            }
+            return { changed: false };
+        }
+
+        // Perform an interaction between two pets
+        function performPetInteraction(interactionId, pet1Index, pet2Index) {
+            const interaction = PET_INTERACTIONS[interactionId];
+            if (!interaction) return null;
+
+            const pet1 = gameState.pets[pet1Index];
+            const pet2 = gameState.pets[pet2Index];
+            if (!pet1 || !pet2) return null;
+
+            // Check cooldown
+            const rel = getRelationship(pet1.id, pet2.id);
+            const now = Date.now();
+            if (now - rel.lastInteraction < interaction.cooldown) {
+                return { success: false, reason: 'cooldown' };
+            }
+
+            // Get relationship bonus
+            const levelData = RELATIONSHIP_LEVELS[getRelationshipLevel(rel.points)];
+            const bonus = levelData ? levelData.interactionBonus : 1.0;
+
+            // Apply effects to both pets
+            for (const [stat, amount] of Object.entries(interaction.effects)) {
+                const boosted = Math.round(amount * bonus);
+                if (pet1[stat] !== undefined) pet1[stat] = clamp(pet1[stat] + boosted, 0, 100);
+                if (pet2[stat] !== undefined) pet2[stat] = clamp(pet2[stat] + boosted, 0, 100);
+            }
+
+            // Increment care actions for both
+            pet1.careActions = (pet1.careActions || 0) + 1;
+            pet2.careActions = (pet2.careActions || 0) + 1;
+
+            // Add relationship points
+            const relChange = addRelationshipPoints(pet1.id, pet2.id, interaction.relationshipGain);
+
+            // Sync active pet
+            if (gameState.activePetIndex === pet1Index) {
+                gameState.pet = pet1;
+            } else if (gameState.activePetIndex === pet2Index) {
+                gameState.pet = pet2;
+            }
+
+            // Pick a random message
+            const message = randomFromArray(interaction.messages);
+            const pet1Name = pet1.name || PET_TYPES[pet1.type].name;
+            const pet2Name = pet2.name || PET_TYPES[pet2.type].name;
+
+            saveGame();
+
+            return {
+                success: true,
+                message: `${pet1Name} & ${pet2Name} ${message}`,
+                interaction: interaction,
+                relationshipChange: relChange,
+                pet1Name: pet1Name,
+                pet2Name: pet2Name
             };
         }
 
@@ -1537,6 +1747,20 @@
                         pet.cleanliness = clamp(pet.cleanliness - weatherData.cleanlinessDecayModifier, 0, 100);
                     }
 
+                    // Apply passive decay to non-active pets (gentler rate)
+                    if (gameState.pets && gameState.pets.length > 1) {
+                        gameState.pets.forEach((p, idx) => {
+                            if (!p || idx === gameState.activePetIndex) return;
+                            p.hunger = clamp(p.hunger - 1, 0, 100);
+                            p.cleanliness = clamp(p.cleanliness - 0.5, 0, 100);
+                            p.happiness = clamp(p.happiness - 0.5, 0, 100);
+                            p.energy = clamp(p.energy - 0.5, 0, 100);
+                            // Pets with companions are slightly happier
+                            p.happiness = clamp(p.happiness + 0.3, 0, 100);
+                        });
+                        syncActivePetToArray();
+                    }
+
                     // Check for weather changes
                     checkWeatherChange();
 
@@ -1794,10 +2018,17 @@
 
                     const saved = loadGame();
                     if (saved && saved.pet) {
-                        gameState.pet.hunger = saved.pet.hunger;
-                        gameState.pet.cleanliness = saved.pet.cleanliness;
-                        gameState.pet.happiness = saved.pet.happiness;
-                        gameState.pet.energy = saved.pet.energy;
+                        // Restore all pets (decay was applied to all in loadGame)
+                        if (saved.pets && saved.pets.length > 0) {
+                            gameState.pets = saved.pets;
+                            gameState.activePetIndex = saved.activePetIndex || 0;
+                            gameState.pet = gameState.pets[gameState.activePetIndex];
+                        } else {
+                            gameState.pet.hunger = saved.pet.hunger;
+                            gameState.pet.cleanliness = saved.pet.cleanliness;
+                            gameState.pet.happiness = saved.pet.happiness;
+                            gameState.pet.energy = saved.pet.energy;
+                        }
 
                         // Restore garden state (growth may have happened while away)
                         if (saved.garden) {
@@ -1879,6 +2110,30 @@
             // Ensure adultsRaised exists
             if (typeof gameState.adultsRaised !== 'number') {
                 gameState.adultsRaised = 0;
+            }
+
+            // Ensure multi-pet fields exist
+            if (!Array.isArray(gameState.pets)) {
+                gameState.pets = gameState.pet ? [gameState.pet] : [];
+            }
+            if (typeof gameState.activePetIndex !== 'number') {
+                gameState.activePetIndex = 0;
+            }
+            if (!gameState.relationships) {
+                gameState.relationships = {};
+            }
+            if (typeof gameState.nextPetId !== 'number') {
+                let maxId = 0;
+                gameState.pets.forEach(p => {
+                    if (p && typeof p.id === 'number' && p.id > maxId) maxId = p.id;
+                });
+                gameState.pets.forEach(p => {
+                    if (p && typeof p.id !== 'number') {
+                        maxId++;
+                        p.id = maxId;
+                    }
+                });
+                gameState.nextPetId = maxId + 1;
             }
 
             if (gameState.phase === 'pet' && gameState.pet) {
