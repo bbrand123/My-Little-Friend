@@ -471,7 +471,7 @@
             const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
             // Collapsed context indicator: weather + time + season in one pill
             const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
-            const contextIndicatorHTML = `<span class="status-pill context-indicator" id="context-indicator" aria-label="${contextLabel}"><span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${contextLabel}</span></span>`;
+            const contextIndicatorHTML = `<span class="status-pill context-indicator" id="context-indicator" aria-label="${contextLabel}"><span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text" aria-hidden="true">${contextLabel}</span></span>`;
             const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
 
             // Helper: need bubble class based on level
@@ -659,7 +659,7 @@
                     return `
                         <div class="care-quality-wrap" aria-label="Care quality and age">
                             <div class="care-quality-row">
-                                <div class="care-quality-badge ${careQuality}" title="${qualityData.description}: ${tipText}">
+                                <div class="care-quality-badge ${careQuality}" aria-label="${qualityData.label}: ${qualityData.description}. ${tipText}">
                                     <span class="care-quality-emoji">${qualityData.emoji}</span>
                                     <div class="care-quality-text">
                                         <span class="care-quality-label">Care Quality</span>
@@ -667,7 +667,7 @@
                                         <span class="care-quality-hint">${qualityData.description}</span>
                                     </div>
                                 </div>
-                                <div class="pet-age-badge" title="Time since hatching. Pets grow based on both age and care!">
+                                <div class="pet-age-badge" aria-label="Age: ${ageDisplay}. Time since hatching. Pets grow based on both age and care.">
                                     <span class="pet-age-emoji">🎂</span>
                                     <div class="pet-age-text">
                                         <span class="pet-age-label">Age</span>
@@ -693,7 +693,7 @@
                                 </div>
                             ` : ''}
                             ${canEvolve(pet) ? `
-                                <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet to their special form!" title="Your excellent care has unlocked evolution!">
+                                <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet to their special form!">
                                     ⭐ Evolve ${petDisplayName}! ⭐
                                 </button>
                             ` : ''}

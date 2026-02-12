@@ -2083,6 +2083,15 @@
             margin-bottom: 18px;
         }
 
+        .minigame-menu-keyboard-note {
+            font-size: 0.75rem;
+            color: var(--color-text-tertiary);
+            background: var(--color-bg-secondary, #f5f5f5);
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin-bottom: 14px;
+        }
+
         .minigame-list {
             display: flex;
             flex-wrap: wrap;
@@ -2826,9 +2835,10 @@
         }
 
         .simonsays-pad:focus {
-            outline: 3px solid white;
-            outline-offset: -3px;
+            outline: 3px solid #222;
+            outline-offset: 3px;
             z-index: 2;
+            box-shadow: 0 0 0 2px white;
         }
 
         .simonsays-pad[data-color="green"] {

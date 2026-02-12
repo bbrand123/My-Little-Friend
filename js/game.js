@@ -1236,7 +1236,7 @@
                             <span class="garden-plot-emoji">${stageEmoji}</span>
                             ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
                             <span class="garden-plot-status">${statusLine}</span>
-                            ${!isReady ? `<button class="garden-plot-remove" data-remove-plot="${i}" aria-label="Remove ${crop.name}" title="Remove crop">✕</button>` : ''}
+                            ${!isReady ? `<button class="garden-plot-remove" data-remove-plot="${i}" aria-label="Remove ${crop.name}">✕</button>` : ''}
                         </div>
                     `;
                 }
@@ -1509,7 +1509,7 @@
             const season = SEASONS[gameState.season] ? gameState.season : getCurrentSeason();
             const seasonData = SEASONS[season];
             const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
-            el.innerHTML = `<span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text">${contextLabel}</span>`;
+            el.innerHTML = `<span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text" aria-hidden="true">${contextLabel}</span>`;
             el.setAttribute('aria-label', contextLabel);
         }
 
