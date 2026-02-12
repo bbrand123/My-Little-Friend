@@ -44,6 +44,7 @@
             overlay.setAttribute('aria-labelledby', 'minigame-menu-title');
 
             const highScores = gameState.minigameHighScores || {};
+            const scoreHistory = gameState.minigameScoreHistory || {};
             const scoreLabels = {
                 fetch: 'catches',
                 hideseek: 'treats',
@@ -58,11 +59,18 @@
                 const best = highScores[game.id];
                 const label = scoreLabels[game.id] || '';
                 const bestHTML = best ? `<span class="minigame-card-best">Best: ${best}${label ? ' ' + label : ''}</span>` : '';
+                const history = scoreHistory[game.id];
+                let historyHTML = '';
+                if (history && history.length > 0) {
+                    const historyItems = history.map(s => `${s}`).join(', ');
+                    historyHTML = `<span class="minigame-card-history">Recent: ${historyItems}</span>`;
+                }
                 cardsHTML += `
-                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name} - ${game.description}${best ? '. Best: ' + best + ' ' + label : ''}">
+                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name} - ${game.description}${best ? '. Best: ' + best + ' ' + label : ''}${history && history.length ? '. Recent scores: ' + history.join(', ') : ''}">
                         <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
                         <span class="minigame-card-name">${game.name}</span>
                         ${bestHTML}
+                        ${historyHTML}
                     </button>
                 `;
             });
@@ -314,6 +322,7 @@
 
                 // Show a reward particle
                 showFetchReward(field, targetX);
+                if (typeof hapticBuzz === 'function') hapticBuzz(50);
                 SoundManager.playSFX(SoundManager.sfx.catch);
             }, 2000 * fetchSpeed));
 
@@ -676,6 +685,7 @@
 
                 instruction.textContent = `Found a treat! ${hideSeekState.treatEmoji}`;
                 instruction.className = 'hideseek-instruction highlight';
+                if (typeof hapticBuzz === 'function') hapticBuzz(50);
                 SoundManager.playSFX(SoundManager.sfx.hit);
 
                 announce(`Found a treat! ${hideSeekState.treatsFound} of ${hideSeekState.totalTreats} found.`);
@@ -1007,6 +1017,7 @@
             const points = parseInt(bubble.dataset.points) || 1;
 
             bubblePopState.score += points;
+            if (typeof hapticBuzz === 'function') hapticBuzz(30);
             SoundManager.playSFX(SoundManager.sfx.bubblePop);
 
             // Update score display
@@ -1296,6 +1307,7 @@
                     card1.matched = true;
                     card2.matched = true;
                     matchingState.matchesFound++;
+                    if (typeof hapticBuzz === 'function') hapticBuzz(50);
                     SoundManager.playSFX(SoundManager.sfx.match);
 
                     const scoreEl = document.getElementById('matching-score');
@@ -1666,6 +1678,7 @@
                 // Correct!
                 simonState.playerIndex++;
                 simonState.score++;
+                if (typeof hapticBuzz === 'function') hapticBuzz(30);
 
                 // Update score
                 const scoreEl = document.getElementById('simon-score');

@@ -2180,6 +2180,15 @@
             text-shadow: none;
         }
 
+        .minigame-card-history {
+            display: block;
+            font-size: 0.6rem;
+            font-weight: 400;
+            color: #999;
+            margin-top: 1px;
+            text-shadow: none;
+        }
+
         .minigame-close-btn {
             padding: 10px 28px;
             border: none;
@@ -3742,6 +3751,81 @@
             z-index: 1;
             pointer-events: none;
             opacity: 0.7;
+        }
+
+        /* ===== Seasonal ambient background animations ===== */
+        .seasonal-ambient-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .seasonal-particle {
+            position: absolute;
+            top: -1.2rem;
+            pointer-events: none;
+        }
+
+        /* Winter: drifting snowflakes */
+        .winter-flake {
+            color: rgba(255, 255, 255, 0.7);
+            animation: seasonal-snowdrift linear infinite;
+        }
+
+        @keyframes seasonal-snowdrift {
+            0%   { transform: translateY(0) translateX(0) rotate(0deg); }
+            25%  { transform: translateY(25%) translateX(8px) rotate(90deg); }
+            50%  { transform: translateY(50%) translateX(-6px) rotate(180deg); }
+            75%  { transform: translateY(75%) translateX(10px) rotate(270deg); }
+            100% { transform: translateY(calc(100% + 2rem)) translateX(0) rotate(360deg); opacity: 0; }
+        }
+
+        /* Autumn: gently swaying falling leaves */
+        .autumn-leaf {
+            font-size: 0.8rem;
+            animation: seasonal-leaffall linear infinite;
+        }
+
+        @keyframes seasonal-leaffall {
+            0%   { transform: translateY(0) translateX(0) rotate(0deg); }
+            20%  { transform: translateY(20%) translateX(15px) rotate(45deg); }
+            40%  { transform: translateY(40%) translateX(-10px) rotate(-30deg); }
+            60%  { transform: translateY(60%) translateX(12px) rotate(60deg); }
+            80%  { transform: translateY(80%) translateX(-8px) rotate(-15deg); }
+            100% { transform: translateY(calc(100% + 2rem)) translateX(5px) rotate(30deg); opacity: 0; }
+        }
+
+        /* Summer: soft pulsing sun rays */
+        .summer-ray {
+            top: 0;
+            width: 2px;
+            height: 45%;
+            background: linear-gradient(to bottom, rgba(255, 223, 100, 0.35), transparent);
+            border-radius: 0 0 50% 50%;
+            animation: seasonal-sunray ease-in-out infinite;
+        }
+
+        @keyframes seasonal-sunray {
+            0%, 100% { opacity: 0; transform: scaleY(0.6); }
+            50%      { opacity: 1; transform: scaleY(1); }
+        }
+
+        /* Spring: floating flower petals */
+        .spring-petal {
+            font-size: 0.7rem;
+            animation: seasonal-petalfloat linear infinite;
+        }
+
+        @keyframes seasonal-petalfloat {
+            0%   { transform: translateY(0) translateX(0) rotate(0deg); }
+            30%  { transform: translateY(30%) translateX(12px) rotate(40deg); }
+            60%  { transform: translateY(60%) translateX(-8px) rotate(-20deg); }
+            100% { transform: translateY(calc(100% + 2rem)) translateX(6px) rotate(60deg); opacity: 0; }
         }
 
         /* Seasonal activity button */

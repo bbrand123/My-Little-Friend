@@ -25,7 +25,8 @@
                 totalHarvests: 0
             },
             minigamePlayCounts: {}, // { gameId: playCount } — tracks replays for difficulty scaling
-            minigameHighScores: {}  // { gameId: bestScore } — persisted best scores
+            minigameHighScores: {}, // { gameId: bestScore } — persisted best scores
+            minigameScoreHistory: {} // { gameId: [score, score, score] } — last 3 scores per game
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -35,6 +36,14 @@
         // Track room bonus toast per session — only show bonus detail the first few times
         const roomBonusToastCount = {};
         const MAX_ROOM_BONUS_TOASTS = 3;
+
+        // ==================== HAPTIC FEEDBACK ====================
+        // Short vibration on supported mobile devices for tactile satisfaction
+        function hapticBuzz(ms) {
+            try {
+                if (navigator.vibrate) navigator.vibrate(ms || 50);
+            } catch (e) { /* unsupported — silently ignore */ }
+        }
 
         // ==================== UTILITY FUNCTIONS ====================
 
@@ -55,11 +64,20 @@
         function updateMinigameHighScore(gameId, score) {
             if (!gameState.minigameHighScores) gameState.minigameHighScores = {};
             const current = gameState.minigameHighScores[gameId] || 0;
-            if (score > current) {
+            const isNewBest = score > current;
+            if (isNewBest) {
                 gameState.minigameHighScores[gameId] = score;
-                return true;
             }
-            return false;
+
+            // Record in score history (keep last 3)
+            if (!gameState.minigameScoreHistory) gameState.minigameScoreHistory = {};
+            if (!gameState.minigameScoreHistory[gameId]) gameState.minigameScoreHistory[gameId] = [];
+            gameState.minigameScoreHistory[gameId].push(score);
+            if (gameState.minigameScoreHistory[gameId].length > 3) {
+                gameState.minigameScoreHistory[gameId].shift();
+            }
+
+            return isNewBest;
         }
 
         function randomFromArray(arr) {
@@ -278,6 +296,9 @@
                     }
                     if (!parsed.minigameHighScores || typeof parsed.minigameHighScores !== 'object') {
                         parsed.minigameHighScores = {};
+                    }
+                    if (!parsed.minigameScoreHistory || typeof parsed.minigameScoreHistory !== 'object') {
+                        parsed.minigameScoreHistory = {};
                     }
 
                     // Add garden if missing (for existing saves)
@@ -572,6 +593,7 @@
 
                 // Show birthday celebration
                 if (currentStage !== 'baby') {
+                    hapticBuzz(100);
                     showBirthdayCelebration(currentStage, pet);
                 }
 
@@ -684,6 +706,58 @@
                     flakes += `<div class="snowflake" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;">${char}</div>`;
                 }
                 return `<div class="weather-overlay">${flakes}</div>`;
+            }
+            return '';
+        }
+
+        // Seasonal ambient particles for the pet area background
+        // Subtle CSS-animated overlays: snowflakes (winter), falling leaves (autumn),
+        // sun rays (summer), floating petals (spring)
+        function generateSeasonalAmbientHTML(season) {
+            if (season === 'winter') {
+                let flakes = '';
+                for (let i = 0; i < 12; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 6;
+                    const duration = 4 + Math.random() * 4;
+                    const size = 0.5 + Math.random() * 0.6;
+                    flakes += `<div class="seasonal-particle winter-flake" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;font-size:${size}rem;opacity:${0.3 + Math.random() * 0.4};">❄</div>`;
+                }
+                return `<div class="seasonal-ambient-overlay" aria-hidden="true">${flakes}</div>`;
+            }
+            if (season === 'autumn') {
+                let leaves = '';
+                const leafChars = ['🍂', '🍁', '🍃'];
+                for (let i = 0; i < 8; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 8;
+                    const duration = 5 + Math.random() * 5;
+                    const char = leafChars[Math.floor(Math.random() * leafChars.length)];
+                    leaves += `<div class="seasonal-particle autumn-leaf" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;opacity:${0.35 + Math.random() * 0.35};">${char}</div>`;
+                }
+                return `<div class="seasonal-ambient-overlay" aria-hidden="true">${leaves}</div>`;
+            }
+            if (season === 'summer') {
+                let rays = '';
+                for (let i = 0; i < 4; i++) {
+                    const left = 10 + Math.random() * 80;
+                    const delay = Math.random() * 4;
+                    const duration = 3 + Math.random() * 3;
+                    rays += `<div class="seasonal-particle summer-ray" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;"></div>`;
+                }
+                return `<div class="seasonal-ambient-overlay" aria-hidden="true">${rays}</div>`;
+            }
+            if (season === 'spring') {
+                let petals = '';
+                const petalChars = ['🌸', '🌷', '✿'];
+                for (let i = 0; i < 8; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 8;
+                    const duration = 5 + Math.random() * 5;
+                    const char = petalChars[Math.floor(Math.random() * petalChars.length)];
+                    petals += `<div class="seasonal-particle spring-petal" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;opacity:${0.3 + Math.random() * 0.35};">${char}</div>`;
+                }
+                return `<div class="seasonal-ambient-overlay" aria-hidden="true">${petals}</div>`;
             }
             return '';
         }
@@ -805,8 +879,9 @@
             gameState.currentRoom = roomId;
             saveGame();
 
-            // Play room-specific earcon
+            // Play room transition whoosh/chime then start room-specific earcon
             if (typeof SoundManager !== 'undefined') {
+                SoundManager.playSFX(SoundManager.sfx.roomTransition);
                 SoundManager.enterRoom(roomId);
             }
 
