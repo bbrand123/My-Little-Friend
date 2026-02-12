@@ -93,6 +93,28 @@
                             }
                         }
                     }, event);
+                    return;
+                }
+
+                const darkModeBtn = target.closest('#dark-mode-btn');
+                if (darkModeBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(darkModeBtn, () => {
+                        const html = document.documentElement;
+                        const current = html.getAttribute('data-theme');
+                        const isDark = current === 'dark' ||
+                            (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                        const newTheme = isDark ? 'light' : 'dark';
+                        html.setAttribute('data-theme', newTheme);
+                        try { localStorage.setItem('petCareBuddy_theme', newTheme); } catch (e) {}
+                        // Update button state
+                        darkModeBtn.setAttribute('aria-pressed', newTheme === 'dark' ? 'true' : 'false');
+                        const iconSpan = darkModeBtn.querySelector('.top-action-btn-icon');
+                        if (iconSpan) iconSpan.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+                        // Update meta theme-color
+                        const meta = document.querySelector('meta[name="theme-color"]');
+                        if (meta) meta.content = newTheme === 'dark' ? '#1a1a2e' : '#A8D8EA';
+                    }, event);
                 }
             };
 
@@ -509,6 +531,9 @@
                         </button>
                         <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}" aria-label="Sound">
                             <span class="top-action-btn-icon" aria-hidden="true">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span><span class="top-action-btn-label"> Sound</span>
+                        </button>
+                        <button class="top-action-btn" id="dark-mode-btn" type="button" aria-pressed="${document.documentElement.getAttribute('data-theme') === 'dark' ? 'true' : 'false'}" aria-label="Dark mode">
+                            <span class="top-action-btn-icon" aria-hidden="true">${document.documentElement.getAttribute('data-theme') === 'dark' || (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches) ? '🌙' : '☀️'}</span><span class="top-action-btn-label"> Theme</span>
                         </button>
                     </div>
                     <div class="status-stack" role="status" aria-label="Game status">

@@ -4857,7 +4857,7 @@
 
         /* Subtle breathing animation on pet container when idle */
         .pet-container {
-            animation: idleBreath 4s ease-in-out infinite;
+            animation: idleBreath 3s ease-in-out infinite;
         }
 
         /* Override breathing when action or idle animations play */
@@ -4877,8 +4877,8 @@
         }
 
         @keyframes idleBreath {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-1px); }
+            0%, 100% { transform: scale(1.0) translateY(0); }
+            50% { transform: scale(1.02) translateY(-1px); }
         }
 
         /* Improved action button hover states */
@@ -4959,5 +4959,282 @@
 
             .top-action-btn {
                 padding: 10px;
+            }
+        }
+
+        /* ==================== DARK MODE ==================== */
+
+        [data-theme="dark"] {
+            --color-bg: #1a1a2e;
+            --color-text: #e0e0e0;
+            --color-text-light: #ffffff;
+            --color-text-secondary: #aaa;
+            --color-text-tertiary: #888;
+            --shadow: 0 8px 30px rgba(0,0,0,0.3);
+            --focus-outline: 3px solid #9D8FFF;
+        }
+
+        [data-theme="dark"] body {
+            background: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        [data-theme="dark"] .game-container {
+            background: #24243e;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+
+        [data-theme="dark"] .game-title {
+            text-shadow: 2px 2px 0 rgba(255, 224, 102, 0.3);
+        }
+
+        [data-theme="dark"] .top-action-btn {
+            background: #2e2e4a;
+            border-color: #444;
+            color: #bbb;
+        }
+
+        [data-theme="dark"] .top-action-btn:hover,
+        [data-theme="dark"] .top-action-btn:focus-visible {
+            border-color: var(--color-secondary);
+            color: var(--color-secondary);
+        }
+
+        [data-theme="dark"] .status-pill {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ccc;
+        }
+
+        /* Dark mode surfaces — override hardcoded white backgrounds */
+        [data-theme="dark"] .action-btn {
+            color: #fff;
+        }
+
+        [data-theme="dark"] .need-bubble {
+            background: #2e2e4a;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+        }
+
+        [data-theme="dark"] .need-bubble-label {
+            color: #bbb;
+        }
+
+        [data-theme="dark"] .need-ring-bg {
+            stroke: #3a3a5a;
+        }
+
+        [data-theme="dark"] .wellness-bar {
+            background: #2e2e4a;
+        }
+
+        [data-theme="dark"] .new-pet-btn {
+            background: #2e2e4a;
+            border-color: #555;
+            color: #ccc;
+        }
+
+        [data-theme="dark"] .new-pet-btn:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        [data-theme="dark"] .action-group-label {
+            color: #aaa;
+        }
+
+        /* Dark mode modals */
+        [data-theme="dark"] .modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        [data-theme="dark"] .modal-content,
+        [data-theme="dark"] .naming-overlay,
+        [data-theme="dark"] .codex-overlay,
+        [data-theme="dark"] .stats-overlay,
+        [data-theme="dark"] .furniture-overlay,
+        [data-theme="dark"] .minigame-menu-overlay .minigame-menu-content,
+        [data-theme="dark"] .naming-card {
+            background: #24243e;
+            color: var(--color-text);
+        }
+
+        [data-theme="dark"] .codex-card,
+        [data-theme="dark"] .stats-content,
+        [data-theme="dark"] .furniture-content {
+            background: #24243e;
+        }
+
+        [data-theme="dark"] .codex-entry,
+        [data-theme="dark"] .stat-card,
+        [data-theme="dark"] .furniture-option {
+            background: #2e2e4a;
+            border-color: #444;
+        }
+
+        [data-theme="dark"] .codex-entry.undiscovered {
+            background: #1e1e36;
+        }
+
+        /* Dark mode form elements */
+        [data-theme="dark"] .naming-input {
+            background: #2e2e4a;
+            border-color: #555;
+            color: var(--color-text);
+        }
+
+        [data-theme="dark"] .modal-btn.cancel {
+            background: #3a3a5a;
+            color: #ccc;
+        }
+
+        /* Dark mode toast */
+        [data-theme="dark"] .toast {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        /* Dark mode minigame areas */
+        [data-theme="dark"] .minigame-overlay {
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        [data-theme="dark"] .minigame-container {
+            background: #24243e;
+            color: var(--color-text);
+        }
+
+        /* Dark mode garden */
+        [data-theme="dark"] .garden-plot {
+            background: #2e2e4a;
+            border-color: #444;
+        }
+
+        [data-theme="dark"] .garden-inventory-item {
+            background: #2e2e4a;
+        }
+
+        /* Dark mode room nav */
+        [data-theme="dark"] .room-btn {
+            background: #2e2e4a;
+            border-color: #444;
+            color: #bbb;
+        }
+
+        [data-theme="dark"] .room-btn.active {
+            background: #3a3a5a;
+            border-color: var(--color-secondary);
+            color: var(--color-secondary);
+        }
+
+        /* Dark mode growth progress */
+        [data-theme="dark"] .growth-progress-bar {
+            background: #3a3a5a;
+        }
+
+        [data-theme="dark"] .pet-name {
+            color: var(--color-text);
+        }
+
+        /* Dark mode seed picker and dialogs */
+        [data-theme="dark"] .seed-picker-overlay .seed-picker-content,
+        [data-theme="dark"] .crop-confirm-overlay .crop-confirm-content {
+            background: #24243e;
+            color: var(--color-text);
+        }
+
+        [data-theme="dark"] .seed-option {
+            background: #2e2e4a;
+            border-color: #444;
+        }
+
+        [data-theme="dark"] .seed-option:hover {
+            border-color: var(--color-secondary);
+        }
+
+        /* Dark mode skip link */
+        [data-theme="dark"] .skip-link {
+            background: var(--color-primary);
+        }
+
+        /* Auto dark mode for users who haven't set a preference */
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]):not([data-theme="dark"]) {
+                --color-bg: #1a1a2e;
+                --color-text: #e0e0e0;
+                --color-text-secondary: #aaa;
+                --color-text-tertiary: #888;
+                --shadow: 0 8px 30px rgba(0,0,0,0.3);
+                --focus-outline: 3px solid #9D8FFF;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) body {
+                background: var(--color-bg);
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .game-container {
+                background: #24243e;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .game-title {
+                text-shadow: 2px 2px 0 rgba(255, 224, 102, 0.3);
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .top-action-btn {
+                background: #2e2e4a;
+                border-color: #444;
+                color: #bbb;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .need-bubble {
+                background: #2e2e4a;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .modal-content,
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .naming-overlay,
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .naming-card {
+                background: #24243e;
+                color: #e0e0e0;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .new-pet-btn {
+                background: #2e2e4a;
+                border-color: #555;
+                color: #ccc;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .room-btn {
+                background: #2e2e4a;
+                border-color: #444;
+                color: #bbb;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .room-btn.active {
+                background: #3a3a5a;
+                border-color: var(--color-secondary);
+                color: var(--color-secondary);
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .action-group-label {
+                color: #aaa;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .naming-input {
+                background: #2e2e4a;
+                border-color: #555;
+                color: #e0e0e0;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .modal-btn.cancel {
+                background: #3a3a5a;
+                color: #ccc;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .wellness-bar {
+                background: #2e2e4a;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .status-pill {
+                background: rgba(255, 255, 255, 0.08);
+                color: #ccc;
             }
         }
