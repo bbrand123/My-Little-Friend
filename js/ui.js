@@ -1034,7 +1034,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.feed);
                     petContainer.classList.add('bounce');
                     createFoodParticles(sparkles);
-                    showStatChangeSummary([{label:'Hunger', amount:feedBonus}]);
                     break;
                 }
                 case 'wash': {
@@ -1043,7 +1042,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     petContainer.classList.add('sparkle');
                     createBubbles(sparkles);
-                    showStatChangeSummary([{label:'Clean', amount:washBonus}]);
                     break;
                 }
                 case 'play': {
@@ -1052,7 +1050,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     petContainer.classList.add('wiggle');
                     createHearts(sparkles);
-                    showStatChangeSummary([{label:'Happy', amount:playBonus}]);
                     break;
                 }
                 case 'sleep': {
@@ -1075,7 +1072,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.sleep);
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
-                    showStatChangeSummary([{label:'Energy', amount:sleepBonus}]);
                     break;
                 }
                 case 'medicine':
@@ -1087,12 +1083,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
                     petContainer.classList.add('heal-anim');
                     createMedicineParticles(sparkles);
-                    showStatChangeSummary([
-                        {label:'Hunger', amount:10},
-                        {label:'Clean', amount:10},
-                        {label:'Happy', amount:15},
-                        {label:'Energy', amount:10}
-                    ]);
                     break;
                 case 'groom': {
                     // Grooming - brush fur/feathers and trim nails
@@ -1104,10 +1094,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
                     petContainer.classList.add('groom-anim');
                     createGroomParticles(sparkles);
-                    showStatChangeSummary([
-                        {label:'Clean', amount:groomClean},
-                        {label:'Happy', amount:groomHappy}
-                    ]);
                     break;
                 }
                 case 'exercise': {
@@ -1119,11 +1105,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
                     petContainer.classList.add('exercise-anim');
                     createExerciseParticles(sparkles);
-                    showStatChangeSummary([
-                        {label:'Happy', amount:exBonus},
-                        {label:'Energy', amount:-10},
-                        {label:'Hunger', amount:-5}
-                    ]);
                     break;
                 }
                 case 'treat': {
@@ -1134,10 +1115,6 @@
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
                     petContainer.classList.add('treat-anim');
                     createTreatParticles(sparkles, treat.emoji);
-                    showStatChangeSummary([
-                        {label:'Happy', amount:25},
-                        {label:'Hunger', amount:10}
-                    ]);
                     break;
                 }
                 case 'cuddle':
@@ -1147,10 +1124,6 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     petContainer.classList.add('cuddle-anim');
                     createCuddleParticles(sparkles);
-                    showStatChangeSummary([
-                        {label:'Happy', amount:15},
-                        {label:'Energy', amount:5}
-                    ]);
                     break;
             }
 
@@ -1344,21 +1317,37 @@
 
         // ==================== PARTICLE EFFECTS ====================
 
+        // Global particle cap — limits simultaneous particles to reduce DOM clutter
+        const MAX_PARTICLES = 4;
+
+        function enforceParticleLimit(container) {
+            const particles = container.children;
+            while (particles.length > MAX_PARTICLES) {
+                particles[0].remove();
+            }
+        }
+
+        function addParticle(container, element, duration) {
+            enforceParticleLimit(container);
+            container.appendChild(element);
+            setTimeout(() => element.remove(), duration);
+        }
+
         function createSparkles(container, count) {
-            for (let i = 0; i < count; i++) {
+            const n = Math.min(count, MAX_PARTICLES);
+            for (let i = 0; i < n; i++) {
                 const sparkle = document.createElement('div');
                 sparkle.className = 'sparkle-particle';
                 sparkle.style.left = `${30 + Math.random() * 40}%`;
                 sparkle.style.top = `${30 + Math.random() * 40}%`;
                 sparkle.style.background = ['#FFD700', '#FF69B4', '#87CEEB', '#98FB98'][Math.floor(Math.random() * 4)];
-                container.appendChild(sparkle);
-                setTimeout(() => sparkle.remove(), 1000);
+                addParticle(container, sparkle, 1000);
             }
         }
 
         function createFoodParticles(container) {
             const foods = ['🍎', '🥕', '🍪', '🥬', '🌾'];
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'sparkle-particle';
                 particle.textContent = foods[Math.floor(Math.random() * foods.length)];
@@ -1366,40 +1355,37 @@
                 particle.style.top = `${40 + Math.random() * 30}%`;
                 particle.style.background = 'transparent';
                 particle.style.fontSize = '1.5rem';
-                container.appendChild(particle);
-                setTimeout(() => particle.remove(), 1000);
+                addParticle(container, particle, 1000);
             }
         }
 
         function createBubbles(container) {
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 4; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble-particle';
                 bubble.style.left = `${20 + Math.random() * 60}%`;
                 bubble.style.top = `${30 + Math.random() * 40}%`;
                 bubble.style.animationDelay = `${Math.random() * 0.3}s`;
-                container.appendChild(bubble);
-                setTimeout(() => bubble.remove(), 1500);
+                addParticle(container, bubble, 1500);
             }
         }
 
         function createHearts(container) {
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const heart = document.createElement('div');
                 heart.className = 'heart-particle';
                 heart.textContent = '❤️';
                 heart.style.left = `${25 + Math.random() * 50}%`;
                 heart.style.top = `${35 + Math.random() * 30}%`;
                 heart.style.animationDelay = `${Math.random() * 0.3}s`;
-                container.appendChild(heart);
-                setTimeout(() => heart.remove(), 1200);
+                addParticle(container, heart, 1200);
             }
         }
 
         function createZzz(container) {
-            // Create Zzz particles
-            const zzzTexts = ['Z', 'z', 'Z'];
-            for (let i = 0; i < 3; i++) {
+            // Create Zzz particles (2 letters + 1 star = 3 total)
+            const zzzTexts = ['Z', 'z'];
+            for (let i = 0; i < 2; i++) {
                 const zzz = document.createElement('div');
                 zzz.className = 'zzz-particle';
                 zzz.textContent = zzzTexts[i];
@@ -1407,95 +1393,81 @@
                 zzz.style.top = `${30 + i * 5}%`;
                 zzz.style.animationDelay = `${i * 0.3}s`;
                 zzz.style.fontSize = `${1.5 - i * 0.2}rem`;
-                container.appendChild(zzz);
-                setTimeout(() => zzz.remove(), 1800);
+                addParticle(container, zzz, 1800);
             }
-            // Create star particles
+            // Single star particle
             const stars = ['⭐', '✨', '🌟'];
-            for (let i = 0; i < 4; i++) {
-                const star = document.createElement('div');
-                star.className = 'star-particle';
-                star.textContent = stars[Math.floor(Math.random() * stars.length)];
-                star.style.left = `${20 + Math.random() * 60}%`;
-                star.style.top = `${25 + Math.random() * 40}%`;
-                star.style.animationDelay = `${Math.random() * 0.5}s`;
-                container.appendChild(star);
-                setTimeout(() => star.remove(), 1500);
-            }
+            const star = document.createElement('div');
+            star.className = 'star-particle';
+            star.textContent = stars[Math.floor(Math.random() * stars.length)];
+            star.style.left = `${20 + Math.random() * 60}%`;
+            star.style.top = `${25 + Math.random() * 40}%`;
+            star.style.animationDelay = `${Math.random() * 0.5}s`;
+            addParticle(container, star, 1500);
         }
 
         function createMedicineParticles(container) {
-            // Gentle, friendly healing symbols - bandaids, hearts, sparkles, rainbows
-            const healingSymbols = ['🩹', '💕', '✨', '🌈', '💖', '⭐'];
-            for (let i = 0; i < 6; i++) {
+            const healingSymbols = ['🩹', '💕', '✨', '🌈'];
+            for (let i = 0; i < 3; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'medicine-particle';
                 particle.textContent = healingSymbols[i % healingSymbols.length];
                 particle.style.left = `${20 + Math.random() * 60}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.15}s`;
-                container.appendChild(particle);
-                setTimeout(() => particle.remove(), 1600);
+                addParticle(container, particle, 1600);
             }
         }
 
         function createGroomParticles(container) {
-            // Grooming symbols - scissors, sparkles, nail care, bow, hearts
-            const groomSymbols = ['✂️', '✨', '💫', '💅', '🎀', '💜'];
-            for (let i = 0; i < 6; i++) {
+            const groomSymbols = ['✂️', '✨', '💫'];
+            for (let i = 0; i < 3; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'groom-particle';
                 particle.textContent = groomSymbols[i % groomSymbols.length];
                 particle.style.left = `${20 + Math.random() * 60}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.15}s`;
-                container.appendChild(particle);
-                setTimeout(() => particle.remove(), 1600);
+                addParticle(container, particle, 1600);
             }
         }
 
         function createExerciseParticles(container) {
-            // Exercise symbols - running, ball, paw prints, fetch stick
-            const exerciseSymbols = ['🎾', '🦴', '🐾', '💨', '⭐', '🏃'];
-            for (let i = 0; i < 6; i++) {
+            const exerciseSymbols = ['🎾', '🦴', '🐾'];
+            for (let i = 0; i < 3; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'exercise-particle';
                 particle.textContent = exerciseSymbols[i % exerciseSymbols.length];
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.12}s`;
-                container.appendChild(particle);
-                setTimeout(() => particle.remove(), 1600);
+                addParticle(container, particle, 1600);
             }
         }
 
         function createTreatParticles(container, treatEmoji) {
-            // Treat symbols - the chosen treat plus sparkles, stars, hearts
-            const symbols = [treatEmoji, '✨', '⭐', '💖', treatEmoji, '🌟'];
-            for (let i = 0; i < 6; i++) {
+            const symbols = [treatEmoji, '✨', '⭐'];
+            for (let i = 0; i < 3; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'treat-particle';
                 particle.textContent = symbols[i % symbols.length];
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${20 + Math.random() * 45}%`;
                 particle.style.animationDelay = `${i * 0.12}s`;
-                container.appendChild(particle);
-                setTimeout(() => particle.remove(), 1700);
+                addParticle(container, particle, 1700);
             }
         }
 
         function createCuddleParticles(container) {
-            // Cuddle symbols - hearts, sparkles, warm emojis
-            const cuddleSymbols = ['💕', '💗', '✨', '🥰', '💖', '💛'];
-            for (let i = 0; i < 7; i++) {
+            const cuddleSymbols = ['💕', '💗', '✨'];
+            for (let i = 0; i < 3; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'cuddle-particle';
                 particle.textContent = cuddleSymbols[i % cuddleSymbols.length];
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${20 + Math.random() * 45}%`;
                 particle.style.animationDelay = `${i * 0.1}s`;
-                container.appendChild(particle);
-                setTimeout(() => particle.remove(), 1700);
+                addParticle(container, particle, 1700);
             }
         }
 
@@ -1710,7 +1682,6 @@
                     const sparkles = document.getElementById('sparkles');
                     if (petContainer) petContainer.classList.add('bounce');
                     if (sparkles) createFoodParticles(sparkles);
-                    showStatChangeSummary([{label:'Hunger', amount:bonus}]);
                     showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
                     if (petContainer) {
                         const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
@@ -2001,8 +1972,8 @@
             const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
             const shapes = ['🎉', '🎊', '⭐', '✨', '🌟', '💫'];
 
-            // Create 50 confetti pieces with individual random rotations
-            for (let i = 0; i < 50; i++) {
+            // Create 20 confetti pieces with individual random rotations
+            for (let i = 0; i < 20; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti-piece';
 

@@ -47,7 +47,7 @@
 
         body {
             font-family: 'Nunito', 'Comic Sans MS', 'Chalkboard', 'Arial Rounded MT Bold', sans-serif;
-            background: linear-gradient(135deg, var(--color-bg) 0%, #FFE8E4 50%, #E8F4FD 100%);
+            background: var(--color-bg);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -134,7 +134,7 @@
             position: relative;
             overflow: hidden;
             transition: background 2s ease;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
+            box-shadow: none;
         }
 
         /* Ground with grass texture */
@@ -552,7 +552,7 @@
             justify-content: center;
             gap: 3px;
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.10);
             color: white;
             text-shadow: 0 1px 2px rgba(0,0,0,0.15);
             font-family: inherit;
@@ -565,13 +565,13 @@
 
         .action-btn:hover,
         .action-btn:focus {
-            transform: translateY(-4px) scale(1.06);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.13);
         }
 
         .action-btn:active {
             transform: translateY(-1px) scale(0.98);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.10);
         }
 
         .action-btn:disabled {
@@ -605,39 +605,39 @@
         }
 
         .action-btn.feed {
-            background: linear-gradient(145deg, var(--color-button-feed), #F28B4A);
+            background: var(--color-button-feed);
         }
 
         .action-btn.wash {
-            background: linear-gradient(145deg, var(--color-button-wash), #4AADE0);
+            background: var(--color-button-wash);
         }
 
         .action-btn.play {
-            background: linear-gradient(145deg, var(--color-button-play), #5CC06A);
+            background: var(--color-button-play);
         }
 
         .action-btn.sleep {
-            background: linear-gradient(145deg, var(--color-button-sleep), #8E70C8);
+            background: var(--color-button-sleep);
         }
 
         .action-btn.medicine {
-            background: linear-gradient(145deg, var(--color-button-medicine), #E88BA8);
+            background: var(--color-button-medicine);
         }
 
         .action-btn.groom {
-            background: linear-gradient(145deg, var(--color-button-groom), #B688D4);
+            background: var(--color-button-groom);
         }
 
         .action-btn.exercise {
-            background: linear-gradient(145deg, var(--color-button-exercise), #F0A04A);
+            background: var(--color-button-exercise);
         }
 
         .action-btn.treat {
-            background: linear-gradient(145deg, var(--color-button-treat), #F278A8);
+            background: var(--color-button-treat);
         }
 
         .action-btn.pet-cuddle {
-            background: linear-gradient(145deg, var(--color-button-pet), #F0A090);
+            background: var(--color-button-pet);
         }
 
         .btn-icon {
@@ -1125,23 +1125,23 @@
 
         /* Day/Night cycle styles */
         .pet-area.daytime {
-            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            background: linear-gradient(180deg, #87CEEB, #98FB98);
         }
 
         .pet-area.sunset {
-            background: linear-gradient(180deg, #FF7E5F 0%, #FEB47B 50%, #98FB98 100%);
+            background: linear-gradient(180deg, #FF7E5F, #FEB47B);
         }
 
         .pet-area.nighttime {
-            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: linear-gradient(180deg, #1a1a2e, #0f3460);
         }
 
         .pet-area.nighttime::after {
-            background: linear-gradient(180deg, #2d4a22 0%, #1a3015 100%);
+            background: linear-gradient(180deg, #2d4a22, #1a3015);
         }
 
         .pet-area.sunrise {
-            background: linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #98FB98 100%);
+            background: linear-gradient(180deg, #ffecd2, #fcb69f);
         }
 
         /* ==================== ROOM NAVIGATION ==================== */
@@ -1359,7 +1359,7 @@
             height: 35px;
             background: #FFFACD;
             border-radius: 50%;
-            box-shadow: 0 0 15px rgba(255, 250, 205, 0.6);
+            box-shadow: 0 0 10px rgba(255, 250, 205, 0.4);
             z-index: 0;
         }
 
@@ -1372,7 +1372,7 @@
             height: 40px;
             background: #FFD700;
             border-radius: 50%;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
             z-index: 0;
         }
 
@@ -1864,20 +1864,20 @@
             padding: 10px 28px;
             border: none;
             border-radius: var(--radius-md);
-            background: linear-gradient(145deg, var(--color-secondary), #45B7AA);
+            background: var(--color-secondary);
             color: white;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
             font-family: inherit;
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 3px 10px rgba(92, 214, 204, 0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.10);
         }
 
         .codex-close-btn:hover, .stats-close-btn:hover,
         .codex-close-btn:focus, .stats-close-btn:focus {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(92, 214, 204, 0.4);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.13);
         }
 
         /* Improved new pet modal with pet summary */
@@ -2003,7 +2003,7 @@
 
         /* Mini Games Button */
         .action-btn.mini-games {
-            background: linear-gradient(135deg, #7C4DFF, #536DFE);
+            background: #7C4DFF;
         }
 
         /* Mini Games Menu Modal */
@@ -2559,7 +2559,7 @@
             transition: transform 0.1s ease;
             background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.3) 30%, rgba(173,216,255,0.3) 60%, rgba(173,216,255,0.1) 100%);
             border: 2px solid rgba(255,255,255,0.6);
-            box-shadow: inset 0 -3px 6px rgba(173,216,255,0.3), 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
 
         .bubblepop-bubble::after {
@@ -3182,14 +3182,14 @@
 
         /* ===== Enhanced Critical Need Warnings ===== */
         .need-bubble.critical {
-            animation: criticalPulse 1s ease-in-out infinite;
-            box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.4);
+            animation: criticalPulse 1.2s ease-in-out infinite;
+            outline: 3px solid rgba(239, 83, 80, 0.5);
+            outline-offset: 2px;
         }
 
         @keyframes criticalPulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.5); }
-            50% { box-shadow: 0 0 12px 4px rgba(239, 83, 80, 0.35); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.5); }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
         .need-bubble.critical .need-bubble-icon {
@@ -3202,7 +3202,8 @@
         }
 
         .need-bubble.warning {
-            box-shadow: 0 0 8px 2px rgba(255, 167, 38, 0.25);
+            outline: 2px solid rgba(255, 167, 38, 0.35);
+            outline-offset: 1px;
         }
 
         /* ===== Toast Notifications ===== */
@@ -3921,17 +3922,17 @@
         }
 
         .garden-btn.plant-btn {
-            background: linear-gradient(135deg, #81C784, #66BB6A);
+            background: #66BB6A;
             color: white;
         }
 
         .garden-btn.water-btn {
-            background: linear-gradient(135deg, #4FC3F7, #29B6F6);
+            background: #4FC3F7;
             color: white;
         }
 
         .garden-btn.harvest-btn {
-            background: linear-gradient(135deg, #FFB74D, #FFA726);
+            background: #FFB74D;
             color: white;
         }
 
@@ -4086,23 +4087,22 @@
 
         .care-quality-badge.poor {
             border-color: #EF5350;
-            background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+            background: #FFEBEE;
         }
 
         .care-quality-badge.average {
             border-color: #FFB74D;
-            background: linear-gradient(135deg, #FFF8E1 0%, #FFE082 100%);
+            background: #FFF8E1;
         }
 
         .care-quality-badge.good {
             border-color: #66BB6A;
-            background: linear-gradient(135deg, #E8F5E9 0%, #A5D6A7 100%);
+            background: #E8F5E9;
         }
 
         .care-quality-badge.excellent {
             border-color: #FFD700;
-            background: linear-gradient(135deg, #FFFDE7 0%, #FFF9C4 100%);
-            box-shadow: 0 2px 12px rgba(255,215,0,0.3);
+            background: #FFFDE7;
         }
 
         .care-quality-emoji,
@@ -4148,20 +4148,20 @@
             padding: 16px 24px;
             border: none;
             border-radius: var(--radius-lg);
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            background: #FFD700;
             color: white;
             font-family: inherit;
             font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 16px rgba(255,215,0,0.4);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.12);
             transition: all 0.3s ease;
         }
 
         .evolution-btn:hover {
-            background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+            background: #FFA500;
             transform: translateY(-2px) scale(1.03);
-            box-shadow: 0 10px 35px rgba(255,215,0,0.6);
+            box-shadow: 0 5px 14px rgba(0,0,0,0.15);
         }
 
         .evolution-btn:active {
@@ -4181,15 +4181,15 @@
         /* ==================== CELEBRATION MODALS ==================== */
 
         .celebration-modal .modal-content {
-            background: linear-gradient(135deg, #FFF9E6 0%, #FFE8CC 100%);
+            background: #FFF9E6;
             border: 4px solid #FFD700;
-            box-shadow: 0 10px 30px rgba(255,215,0,0.4);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
 
         .evolution-modal .modal-content {
-            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            background: #E8F5E9;
             border: 4px solid #66BB6A;
-            box-shadow: 0 10px 30px rgba(102,187,106,0.4);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
 
         .celebration-header {
@@ -4283,7 +4283,7 @@
         }
 
         .celebration-btn {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            background: #FFD700;
             border: none;
             color: white;
             font-size: 1.2rem;
@@ -4291,22 +4291,22 @@
             border-radius: var(--radius-md);
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 16px rgba(255,215,0,0.4);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.12);
             transition: all 0.3s ease;
         }
 
         .celebration-btn:hover {
-            background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+            background: #FFA500;
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255,215,0,0.6);
+            box-shadow: 0 5px 14px rgba(0,0,0,0.15);
         }
 
         .evolution-btn {
-            background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
+            background: #66BB6A;
         }
 
         .evolution-btn:hover {
-            background: linear-gradient(135deg, #43A047 0%, #2E7D32 100%);
+            background: #43A047;
         }
 
         /* ==================== PET CARE VARIANTS ==================== */
@@ -4447,7 +4447,7 @@
         .care-quality-tip {
             margin: 10px 0;
             padding: 10px 14px;
-            background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+            background: #E3F2FD;
             border-left: 4px solid #2196F3;
             border-radius: var(--radius-sm);
             font-size: 0.85rem;
@@ -4814,20 +4814,7 @@
             overflow: visible;
         }
 
-        .action-btn::after {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: inherit;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-            box-shadow: 0 0 0 3px currentColor;
-        }
-
-        .action-btn:hover::after {
-            opacity: 0.15;
-        }
+        /* Hover ring handled by outline instead of stacked box-shadow pseudo-element */
 
         /* Room navigation improved active state */
         .room-btn.active {
@@ -4835,15 +4822,7 @@
             box-shadow: 0 3px 10px rgba(108, 99, 255, 0.35);
         }
 
-        /* Improved need bubble pulse for critical */
-        .need-bubble.critical {
-            animation: criticalPulse 1.2s ease-in-out infinite;
-        }
-
-        @keyframes criticalPulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 83, 80, 0); }
-            50% { transform: scale(1.03); box-shadow: 0 0 0 4px rgba(239, 83, 80, 0.2); }
-        }
+        /* Improved need bubble pulse for critical — uses outline, no box-shadow */
 
         /* Smooth transition on room switch */
         .room-btn {
