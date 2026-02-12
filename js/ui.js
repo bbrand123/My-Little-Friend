@@ -1033,7 +1033,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.feed);
                     petContainer.classList.add('bounce');
                     createFoodParticles(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.feed);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
                     break;
                 }
                 case 'wash': {
@@ -1042,7 +1042,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     petContainer.classList.add('sparkle');
                     createBubbles(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.wash);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.wash);
                     break;
                 }
                 case 'play': {
@@ -1051,7 +1051,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     petContainer.classList.add('wiggle');
                     createHearts(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.play);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.play);
                     break;
                 }
                 case 'sleep': {
@@ -1074,7 +1074,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.sleep);
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.sleep);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.sleep);
                     break;
                 }
                 case 'medicine':
@@ -1086,7 +1086,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
                     petContainer.classList.add('heal-anim');
                     createMedicineParticles(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.medicine);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.medicine);
                     break;
                 case 'groom': {
                     // Grooming - brush fur/feathers and trim nails
@@ -1098,7 +1098,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
                     petContainer.classList.add('groom-anim');
                     createGroomParticles(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.groom);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.groom);
                     break;
                 }
                 case 'exercise': {
@@ -1110,7 +1110,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
                     petContainer.classList.add('exercise-anim');
                     createExerciseParticles(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.exercise);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.exercise);
                     break;
                 }
                 case 'treat': {
@@ -1121,7 +1121,7 @@
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
                     petContainer.classList.add('treat-anim');
                     createTreatParticles(sparkles, treat.emoji);
-                    SoundManager.playSFX(SoundManager.sfx.treat);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.treat);
                     break;
                 }
                 case 'cuddle':
@@ -1131,7 +1131,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     petContainer.classList.add('cuddle-anim');
                     createCuddleParticles(sparkles);
-                    SoundManager.playSFX(SoundManager.sfx.cuddle);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
             }
 
@@ -1426,6 +1426,11 @@
 
         let idleAnimTimers = [];
 
+        function removeIdleTimer(id) {
+            const idx = idleAnimTimers.indexOf(id);
+            if (idx !== -1) idleAnimTimers.splice(idx, 1);
+        }
+
         function stopIdleAnimations() {
             idleAnimTimers.forEach(id => clearTimeout(id));
             idleAnimTimers = [];
@@ -1447,6 +1452,7 @@
         function scheduleBlink() {
             const delay = 2000 + Math.random() * 6000;
             const timerId = setTimeout(() => {
+                removeIdleTimer(timerId);
                 if (gameState.phase !== 'pet') return;
                 const petContainer = document.getElementById('pet-container');
                 if (!petContainer) return;
@@ -1467,6 +1473,7 @@
         function scheduleTwitch() {
             const delay = 4000 + Math.random() * 2000;
             const timerId = setTimeout(() => {
+                removeIdleTimer(timerId);
                 if (gameState.phase !== 'pet') return;
                 const petContainer = document.getElementById('pet-container');
                 if (!petContainer) return;
@@ -1496,7 +1503,10 @@
             }
 
             // Re-check every 5 seconds
-            const timerId = setTimeout(checkLowEnergyAnim, 5000);
+            const timerId = setTimeout(() => {
+                removeIdleTimer(timerId);
+                checkLowEnergyAnim();
+            }, 5000);
             idleAnimTimers.push(timerId);
         }
 
@@ -1524,7 +1534,10 @@
                 if (existingNudge) existingNudge.remove();
             }
 
-            const timerId = setTimeout(checkNightSleepNudge, 30000);
+            const timerId = setTimeout(() => {
+                removeIdleTimer(timerId);
+                checkNightSleepNudge();
+            }, 30000);
             idleAnimTimers.push(timerId);
         }
 
@@ -1632,6 +1645,7 @@
                     const sparkles = document.getElementById('sparkles');
                     if (petContainer) petContainer.classList.add('bounce');
                     if (sparkles) createFoodParticles(sparkles);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
                     showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
                     if (petContainer) {
                         const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
@@ -2327,7 +2341,8 @@
 
             const roomBonusesHTML = Object.keys(ROOMS).map(key => {
                 const room = ROOMS[key];
-                return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${room.bonus.label}</div>`;
+                const bonusLabel = room.bonus ? room.bonus.label : 'No bonus';
+                return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${bonusLabel}</div>`;
             }).join('');
 
             const overlay = document.createElement('div');
