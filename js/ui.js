@@ -89,7 +89,6 @@
                             soundBtn.setAttribute('aria-label', `Toggle ambient sounds. Currently ${enabled ? 'on' : 'off'}.`);
                             const iconSpan = soundBtn.querySelector('.top-action-btn-icon');
                             if (iconSpan) iconSpan.textContent = enabled ? '🔊' : '🔇';
-                            showToast(enabled ? '🔊 Ambient sounds on' : '🔇 Ambient sounds off', '#4ECDC4');
                             if (enabled && gameState.currentRoom) {
                                 SoundManager.enterRoom(gameState.currentRoom);
                             }
@@ -188,10 +187,12 @@
             // Add sparkles
             if (sparkles) createSparkles(sparkles, 5);
 
-            // Announce progress
+            // Announce progress — only on first tap and penultimate tap to avoid rapid-fire announcements
             const remaining = 5 - gameState.eggTaps;
-            if (remaining > 0) {
-                announce(`Tap ${gameState.eggTaps} of 5. ${remaining} more to hatch!`);
+            if (gameState.eggTaps === 1) {
+                announce(`Tap 1 of 5. ${remaining} more to hatch!`);
+            } else if (gameState.eggTaps === 4) {
+                announce('One more tap to hatch!');
             }
 
             if (gameState.eggTaps >= 5) {
@@ -395,7 +396,6 @@
                 overlay.remove();
                 renderPetPhase();
                 showToast(`Welcome home, ${gameState.pet.name}!`, '#4ECDC4');
-                announce(`Welcome home, ${gameState.pet.name}!`);
             }
 
             submitBtn.addEventListener('click', () => finishNaming(input.value, false));
@@ -1020,7 +1020,6 @@
                     petContainer.classList.add('bounce');
                     createFoodParticles(sparkles);
                     showStatChangeSummary([{label:'Hunger', amount:feedBonus}]);
-                    announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
                     break;
                 }
                 case 'wash': {
@@ -1030,7 +1029,6 @@
                     petContainer.classList.add('sparkle');
                     createBubbles(sparkles);
                     showStatChangeSummary([{label:'Clean', amount:washBonus}]);
-                    announce(`Washed your pet! Cleanliness is now ${pet.cleanliness}%`);
                     break;
                 }
                 case 'play': {
@@ -1040,7 +1038,6 @@
                     petContainer.classList.add('wiggle');
                     createHearts(sparkles);
                     showStatChangeSummary([{label:'Happy', amount:playBonus}]);
-                    announce(`Played with your pet! Happiness is now ${pet.happiness}%`);
                     break;
                 }
                 case 'sleep': {
@@ -1064,7 +1061,6 @@
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
                     showStatChangeSummary([{label:'Energy', amount:sleepBonus}]);
-                    announce(`${sleepAnnounce} Energy is now ${pet.energy}%`);
                     break;
                 }
                 case 'medicine':
@@ -1082,7 +1078,6 @@
                         {label:'Happy', amount:15},
                         {label:'Energy', amount:10}
                     ]);
-                    announce(`You gave your pet medicine! Your pet feels much better now!`);
                     break;
                 case 'groom': {
                     // Grooming - brush fur/feathers and trim nails
@@ -1098,7 +1093,6 @@
                         {label:'Clean', amount:groomClean},
                         {label:'Happy', amount:groomHappy}
                     ]);
-                    announce(`Groomed your pet! Looking beautiful and feeling happy!`);
                     break;
                 }
                 case 'exercise': {
@@ -1115,7 +1109,6 @@
                         {label:'Energy', amount:-10},
                         {label:'Hunger', amount:-5}
                     ]);
-                    announce(`Exercised your pet! Happiness is now ${pet.happiness}% but energy dropped to ${pet.energy}%`);
                     break;
                 }
                 case 'treat': {
@@ -1130,7 +1123,6 @@
                         {label:'Happy', amount:25},
                         {label:'Hunger', amount:10}
                     ]);
-                    announce(`Gave your pet a ${treat.name}! Happiness is now ${pet.happiness}%`);
                     break;
                 }
                 case 'cuddle':
@@ -1144,7 +1136,6 @@
                         {label:'Happy', amount:15},
                         {label:'Energy', amount:5}
                     ]);
-                    announce(`You pet and cuddled your pet! Happiness is now ${pet.happiness}%`);
                     break;
             }
 
@@ -1706,7 +1697,6 @@
                     if (sparkles) createFoodParticles(sparkles);
                     showStatChangeSummary([{label:'Hunger', amount:bonus}]);
                     showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
-                    announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
                     if (petContainer) {
                         const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
                         petContainer.addEventListener('animationend', onEnd);
@@ -1914,7 +1904,6 @@
             pushModalEscape(closeModal);
 
             showToast(`🎉 ${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`, '#FFB74D');
-            announce(`${petName} grew to ${stageLabel}! ${rewardData.unlockMessage}`);
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
@@ -1980,7 +1969,6 @@
             pushModalEscape(closeModal);
 
             showToast(`✨ Evolution! Your pet evolved into ${petName}!`, '#FFD700');
-            announce(`Evolution! Your pet evolved into ${petName}!`);
         }
 
         function createConfetti() {
