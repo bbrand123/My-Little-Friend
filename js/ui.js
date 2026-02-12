@@ -1054,8 +1054,9 @@
                     const availableCrops = Object.keys(gardenInv).filter(k => gardenInv[k] > 0);
                     if (availableCrops.length === 1) {
                         // Quick feed: only one crop type, skip the menu
+                        // Return early since feedFromGarden handles careActions increment itself
                         feedFromGarden(availableCrops[0]);
-                        break;
+                        return;
                     } else if (availableCrops.length > 1) {
                         // Multiple crop types: show the feed menu
                         openFeedMenu();
@@ -1204,6 +1205,7 @@
             const newStage = getGrowthStage(pet.careActions, getPetAge(pet));
             if (newStage !== oldStage) {
                 pet.growthStage = newStage;
+                pet.lastGrowthStage = newStage;
                 const stageData = GROWTH_STAGES[newStage];
                 showToast(`${stageData.emoji} ${pet.name || petData.name} grew into a ${stageData.label}!`, '#FFD700');
                 announce(`${pet.name || petData.name} grew into a ${stageData.label}!`);
@@ -1808,6 +1810,24 @@
                     }
                     if (typeof pet.careActions !== 'number') pet.careActions = 0;
                     pet.careActions++;
+
+                    // Check for growth stage transition
+                    const oldStage = pet.growthStage || 'baby';
+                    const newStage = getGrowthStage(pet.careActions, getPetAge(pet));
+                    if (newStage !== oldStage) {
+                        pet.growthStage = newStage;
+                        pet.lastGrowthStage = newStage;
+                        const stageData = GROWTH_STAGES[newStage];
+                        showToast(`${stageData.emoji} ${pet.name || PET_TYPES[pet.type].name} grew into a ${stageData.label}!`, '#FFD700');
+                        if (newStage === 'adult') {
+                            if (typeof gameState.adultsRaised !== 'number') gameState.adultsRaised = 0;
+                            gameState.adultsRaised++;
+                        }
+                        saveGame();
+                        renderPetPhase();
+                        return;
+                    }
+
                     updateNeedDisplays();
                     updatePetMood();
                     updateWellnessBar();
@@ -2129,20 +2149,21 @@
                 container.appendChild(confetti);
             }
 
-            // Add CSS animation if not already added
-            if (!document.getElementById('confetti-style')) {
-                const style = document.createElement('style');
-                style.id = 'confetti-style';
-                style.textContent = `
-                    @keyframes confetti-fall {
-                        to {
-                            transform: translateY(100vh) rotate(${360 + Math.random() * 360}deg);
-                            opacity: 0;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
+            // Add/update CSS animation with fresh random rotation each time
+            let confettiStyle = document.getElementById('confetti-style');
+            if (!confettiStyle) {
+                confettiStyle = document.createElement('style');
+                confettiStyle.id = 'confetti-style';
+                document.head.appendChild(confettiStyle);
             }
+            confettiStyle.textContent = `
+                @keyframes confetti-fall {
+                    to {
+                        transform: translateY(100vh) rotate(${360 + Math.random() * 360}deg);
+                        opacity: 0;
+                    }
+                }
+            `;
 
             document.body.appendChild(container);
         }
@@ -2664,7 +2685,8 @@
                     garden: {
                         plots: [],
                         inventory: {},
-                        lastGrowTick: Date.now()
+                        lastGrowTick: Date.now(),
+                        totalHarvests: 0
                     }
                 };
                 saveGame();
