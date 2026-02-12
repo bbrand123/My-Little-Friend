@@ -998,6 +998,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.feed);
                     petContainer.classList.add('bounce');
                     createFoodParticles(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.feed);
                     break;
                 }
                 case 'wash': {
@@ -1006,6 +1007,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     petContainer.classList.add('sparkle');
                     createBubbles(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.wash);
                     break;
                 }
                 case 'play': {
@@ -1014,6 +1016,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     petContainer.classList.add('wiggle');
                     createHearts(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.play);
                     break;
                 }
                 case 'sleep': {
@@ -1036,6 +1039,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.sleep);
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.sleep);
                     break;
                 }
                 case 'medicine':
@@ -1047,6 +1051,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
                     petContainer.classList.add('heal-anim');
                     createMedicineParticles(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.medicine);
                     break;
                 case 'groom': {
                     // Grooming - brush fur/feathers and trim nails
@@ -1058,6 +1063,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
                     petContainer.classList.add('groom-anim');
                     createGroomParticles(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.groom);
                     break;
                 }
                 case 'exercise': {
@@ -1069,6 +1075,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
                     petContainer.classList.add('exercise-anim');
                     createExerciseParticles(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.exercise);
                     break;
                 }
                 case 'treat': {
@@ -1079,6 +1086,7 @@
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
                     petContainer.classList.add('treat-anim');
                     createTreatParticles(sparkles, treat.emoji);
+                    SoundManager.playSFX(SoundManager.sfx.treat);
                     break;
                 }
                 case 'cuddle':
@@ -1088,6 +1096,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     petContainer.classList.add('cuddle-anim');
                     createCuddleParticles(sparkles);
+                    SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
             }
 
@@ -1730,8 +1739,11 @@
             const rewardData = BIRTHDAY_REWARDS[growthStage];
             if (!rewardData) return;
 
-            // Add confetti animation
+            // Add confetti animation + screen flash + pet scale-up
             createConfetti();
+            createCelebrationFlash();
+            triggerPetCelebrationPulse();
+            SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Unlock accessories as rewards
             if (rewardData.accessories && pet) {
@@ -1805,8 +1817,11 @@
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
-            // Add confetti animation
+            // Add confetti animation + screen flash + pet scale-up
             createConfetti();
+            createCelebrationFlash();
+            triggerPetCelebrationPulse();
+            SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Create evolution modal
             const modal = document.createElement('div');
@@ -1862,6 +1877,26 @@
             });
 
             pushModalEscape(closeModal);
+        }
+
+        function createCelebrationFlash() {
+            const flash = document.createElement('div');
+            flash.className = 'celebration-flash';
+            flash.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(flash);
+            setTimeout(() => flash.remove(), 600);
+        }
+
+        function triggerPetCelebrationPulse() {
+            const petContainer = document.getElementById('pet-container');
+            if (!petContainer) return;
+            petContainer.classList.add('celebration-pulse');
+            petContainer.addEventListener('animationend', function handler() {
+                petContainer.classList.remove('celebration-pulse');
+                petContainer.removeEventListener('animationend', handler);
+            });
+            // Fallback removal
+            setTimeout(() => petContainer.classList.remove('celebration-pulse'), 1500);
         }
 
         function createConfetti() {
