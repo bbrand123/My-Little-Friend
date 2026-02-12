@@ -18,6 +18,12 @@
                 if (typeof SoundManager !== 'undefined' && gameState.currentRoom) {
                     SoundManager.enterRoom(gameState.currentRoom);
                 }
+                // Return focus to the mini-games button so keyboard/screen reader
+                // users don't lose their place after a game ends
+                const minigamesBtn = document.getElementById('minigames-btn');
+                if (minigamesBtn) {
+                    minigamesBtn.focus();
+                }
             }
         }
 
