@@ -138,9 +138,12 @@
                 progressDots += `<div class="egg-progress-dot ${i < gameState.eggTaps ? 'filled' : ''}" aria-hidden="true"></div>`;
             }
 
+            const isAdopting = gameState.adoptingAdditional && gameState.pets && gameState.pets.length > 0;
+
             content.innerHTML = `
                 <div class="pet-area" role="region" aria-label="Egg hatching area">
                     <div class="sparkles" id="sparkles"></div>
+                    ${isAdopting ? `<div class="adopt-banner">🥚 Adopting pet #${gameState.pets.length + 1}!</div>` : ''}
                     <button class="egg-container" id="egg-button"
                             aria-label="Tap the ${eggData.name} to help it hatch! Tapped ${gameState.eggTaps} of 5 times. ${5 - gameState.eggTaps} more taps needed."
                             aria-describedby="tap-hint">
@@ -151,6 +154,7 @@
                         ${progressDots}
                     </div>
                     <p class="tap-hint" id="tap-hint">Tap the egg to hatch it!</p>
+                    ${isAdopting ? `<button class="cancel-adopt-btn" id="cancel-adopt-btn" type="button">Cancel & Return to Pets</button>` : ''}
                 </div>
             `;
 
@@ -171,6 +175,23 @@
 
             eggButton.addEventListener('click', onEggClick);
             eggButton.addEventListener('keydown', onEggKeydown);
+
+            // Cancel adoption button
+            const cancelAdoptBtn = document.getElementById('cancel-adopt-btn');
+            if (cancelAdoptBtn) {
+                cancelAdoptBtn.addEventListener('click', () => {
+                    gameState.adoptingAdditional = false;
+                    gameState.phase = 'pet';
+                    gameState.eggTaps = 0;
+                    // Restore active pet
+                    if (gameState.pets.length > 0) {
+                        gameState.pet = gameState.pets[gameState.activePetIndex];
+                    }
+                    saveGame();
+                    renderPetPhase();
+                    showToast('Returned to your pets!', '#4ECDC4');
+                });
+            }
 
             // Maintain focus for keyboard users / VoiceOver
             if (maintainFocus) {
@@ -238,14 +259,22 @@
             // Haptic buzz for the big hatch moment
             if (typeof hapticBuzz === 'function') hapticBuzz(120);
 
-            gameState.pet = createPet();
+            const newPet = createPet();
+            gameState.pet = newPet;
             gameState.phase = 'pet';
+            gameState.adoptingAdditional = false;
+
+            // Add to pets array
+            addPetToFamily(newPet);
+            gameState.activePetIndex = gameState.pets.length - 1;
+
             saveGame();
 
-            const petData = PET_TYPES[gameState.pet.type];
+            const petData = PET_TYPES[newPet.type];
             const isMythical = petData.mythical;
             const mythicalNote = isMythical ? ' A mythical creature!' : '';
-            announce(`Congratulations! You hatched a baby ${petData.name}! ${petData.emoji}${mythicalNote}`, true);
+            const familyNote = gameState.pets.length > 1 ? ' Welcome to the family!' : '';
+            announce(`Congratulations! You hatched a baby ${petData.name}! ${petData.emoji}${mythicalNote}${familyNote}`, true);
 
             showNamingModal(petData);
         }
@@ -572,6 +601,7 @@
                         ${contextIndicatorHTML}
                     </div>
                 </div>
+                ${generatePetSwitcherHTML()}
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
                     ${roomPatternHTML}
@@ -835,10 +865,29 @@
                     </div>
                 </section>
 
+                ${gameState.pets && gameState.pets.length >= 2 ? `
+                <section class="actions-section" aria-label="Social actions">
+                    <div class="action-group">
+                        <div class="action-group-label">🐾 Social</div>
+                        <div class="action-group-buttons" role="group" aria-label="Social interaction buttons">
+                            <button class="action-btn interact-btn" id="interact-btn" aria-haspopup="dialog">
+                                <span class="action-btn-tooltip">Pets interact together</span>
+                                <span class="btn-icon" aria-hidden="true">🤝</span>
+                                <span>Interact</span>
+                            </button>
+                            <button class="action-btn social-hub-btn" id="social-hub-btn" aria-haspopup="dialog">
+                                <span class="action-btn-tooltip">View relationships</span>
+                                <span class="btn-icon" aria-hidden="true">🏠</span>
+                                <span>Social Hub</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>` : ''}
+
                 ${currentRoom === 'garden' ? '<section class="garden-section" id="garden-section" aria-label="Garden"></section>' : ''}
 
-                <button class="new-pet-btn" id="new-pet-btn" type="button" aria-label="Start over with a new egg">
-                    🥚 New Pet
+                <button class="new-pet-btn" id="new-pet-btn" type="button" aria-label="${canAdoptMore() ? 'Adopt new egg or start over' : 'Start over with a new egg'}">
+                    🥚 ${canAdoptMore() ? 'Adopt / New Pet' : 'New Pet'}
                 </button>
             `;
 
@@ -866,6 +915,32 @@
                 actionCooldownTimer = setTimeout(() => { actionCooldown = false; actionCooldownTimer = null; }, ACTION_COOLDOWN_MS);
                 performSeasonalActivity();
             });
+            // Social interaction buttons
+            const interactBtn = document.getElementById('interact-btn');
+            if (interactBtn) {
+                interactBtn.addEventListener('click', () => showInteractionMenu());
+            }
+            const socialHubBtn = document.getElementById('social-hub-btn');
+            if (socialHubBtn) {
+                socialHubBtn.addEventListener('click', () => showSocialHub());
+            }
+
+            // Pet switcher tab handling
+            document.querySelectorAll('.pet-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const idx = parseInt(tab.dataset.petIndex);
+                    if (idx === gameState.activePetIndex) return;
+                    syncActivePetToArray();
+                    if (switchActivePet(idx)) {
+                        renderPetPhase();
+                        const petData = PET_TYPES[gameState.pet.type];
+                        if (petData) {
+                            showToast(`Switched to ${gameState.pet.name || petData.name}!`, '#4ECDC4');
+                        }
+                    }
+                });
+            });
+
             // Global delegates handle top actions and new pet button
 
             // Evolution button if available
@@ -2453,20 +2528,30 @@
                                 <div class="stats-card-value">${isEvolved ? 'Evolved' : 'Base'}</div>
                                 <div class="stats-card-label">Form</div>
                             </div>
-                            <div class="stats-card">
-                                <div class="stats-card-icon">🏆</div>
-                                <div class="stats-card-value">${adultsRaised}</div>
-                                <div class="stats-card-label">Adults Raised</div>
-                            </div>
                         </div>
                     ` : ''}
 
-                    <div class="stats-section-title">Collection</div>
+                    <div class="stats-section-title">Collection & Family</div>
                     <div class="stats-grid">
                         <div class="stats-card">
                             <div class="stats-card-icon">📖</div>
                             <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
                             <div class="stats-card-label">Species Found</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="stats-card-icon">🐾</div>
+                            <div class="stats-card-value">${gameState.pets ? gameState.pets.length : (pet ? 1 : 0)}/${MAX_PETS}</div>
+                            <div class="stats-card-label">Pet Family</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="stats-card-icon">🤝</div>
+                            <div class="stats-card-value">${Object.keys(gameState.relationships || {}).length}</div>
+                            <div class="stats-card-label">Relationships</div>
+                        </div>
+                        <div class="stats-card">
+                            <div class="stats-card-icon">🏆</div>
+                            <div class="stats-card-value">${adultsRaised}</div>
+                            <div class="stats-card-label">Adults Raised</div>
                         </div>
                     </div>
 
@@ -2500,6 +2585,8 @@
             const careActions = pet ? (pet.careActions || 0) : 0;
             const adultsRaised = gameState.adultsRaised || 0;
             const petName = pet && petData ? escapeHTML(pet.name || petData.name) : pet ? escapeHTML(pet.name || 'Pet') : '';
+            const petCount = getPetCount();
+            const canAdopt = canAdoptMore();
 
             // Build pet summary for the modal
             let summaryHTML = '';
@@ -2511,7 +2598,7 @@
                         <div class="new-pet-summary-stats">
                             <span class="new-pet-summary-stat">${stageData.emoji} ${stageData.label}</span>
                             <span class="new-pet-summary-stat">💝 ${careActions} actions</span>
-                            <span class="new-pet-summary-stat">⭐ ${adultsRaised} adults raised</span>
+                            <span class="new-pet-summary-stat">🐾 ${petCount}/${MAX_PETS} pets</span>
                         </div>
                     </div>
                 `;
@@ -2527,15 +2614,21 @@
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'modal-title');
 
+            // Build buttons - show adopt option if room available
+            let buttonsHTML = `<button class="modal-btn cancel" id="modal-cancel">Keep Playing</button>`;
+            if (canAdopt) {
+                buttonsHTML += `<button class="modal-btn confirm adopt-btn" id="modal-adopt">🥚 Adopt Egg</button>`;
+            }
+            buttonsHTML += `<button class="modal-btn confirm reset-btn" id="modal-confirm">Start Over</button>`;
+
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-icon" aria-hidden="true">🥚</div>
-                    <h2 class="modal-title" id="modal-title">Say goodbye to ${petName || 'your pet'}?</h2>
+                    <h2 class="modal-title" id="modal-title">${canAdopt ? 'Grow Your Family!' : 'Start Fresh?'}</h2>
                     ${summaryHTML}
-                    <p class="modal-message">Start a new egg adventure?</p>
-                    <div class="modal-buttons">
-                        <button class="modal-btn cancel" id="modal-cancel">Keep Playing</button>
-                        <button class="modal-btn confirm" id="modal-confirm">New Egg</button>
+                    <p class="modal-message">${canAdopt ? `You can adopt another egg (${petCount}/${MAX_PETS} pets) or start completely fresh!` : `You have ${MAX_PETS} pets already. Start over for a fresh adventure?`}</p>
+                    <div class="modal-buttons modal-buttons-col">
+                        ${buttonsHTML}
                     </div>
                 </div>
             `;
@@ -2544,6 +2637,7 @@
 
             const cancelBtn = document.getElementById('modal-cancel');
             const confirmBtn = document.getElementById('modal-confirm');
+            const adoptBtn = document.getElementById('modal-adopt');
             cancelBtn.focus();
 
             function closeModal() {
@@ -2558,6 +2652,15 @@
 
             pushModalEscape(closeAndCancel);
 
+            // Adopt additional egg - keeps all existing pets
+            if (adoptBtn) {
+                adoptBtn.addEventListener('click', () => {
+                    closeModal();
+                    adoptNewEgg();
+                });
+            }
+
+            // Start over - full reset
             confirmBtn.addEventListener('click', () => {
                 closeModal();
                 cleanupAllMiniGames();
@@ -2602,7 +2705,11 @@
                         inventory: {},
                         lastGrowTick: Date.now(),
                         totalHarvests: 0
-                    }
+                    },
+                    pets: [],
+                    activePetIndex: 0,
+                    relationships: {},
+                    nextPetId: 1
                 };
                 saveGame();
                 announce('Starting fresh with a new egg!', true);
@@ -2622,6 +2729,340 @@
                     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
                 }
             });
+        }
+
+        // ==================== ADOPT NEW EGG ====================
+
+        function adoptNewEgg() {
+            if (!canAdoptMore()) {
+                showToast(`You already have ${MAX_PETS} pets! That's the maximum.`, '#FFA726');
+                return;
+            }
+
+            // Save current pet back to array
+            syncActivePetToArray();
+
+            // Transition to egg phase while preserving all existing state
+            gameState.adoptingAdditional = true;
+            const newTypes = getUnlockedPetTypes();
+            const newPetType = randomFromArray(newTypes);
+            const newEggType = getEggTypeForPet(newPetType);
+            gameState.phase = 'egg';
+            gameState.eggTaps = 0;
+            gameState.eggType = newEggType;
+            gameState.pendingPetType = newPetType;
+
+            // Stop timers during egg phase
+            stopDecayTimer();
+            _petPhaseTimersRunning = false;
+            if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
+
+            saveGame();
+            announce('Adopting a new egg! Tap to hatch your new family member!', true);
+            renderEggPhase();
+        }
+
+        // ==================== PET SWITCHER ====================
+
+        function generatePetSwitcherHTML() {
+            if (!gameState.pets || gameState.pets.length <= 1) return '';
+
+            let tabs = '';
+            gameState.pets.forEach((p, idx) => {
+                if (!p) return;
+                const petData = PET_TYPES[p.type];
+                if (!petData) return;
+                const isActive = idx === gameState.activePetIndex;
+                const name = escapeHTML(p.name || petData.name);
+                const wellness = Math.round((p.hunger + p.cleanliness + p.happiness + p.energy) / 4);
+                const wellnessColor = wellness >= 60 ? '#66BB6A' : wellness >= 35 ? '#FFA726' : '#EF5350';
+                tabs += `
+                    <button class="pet-tab ${isActive ? 'active' : ''}" data-pet-index="${idx}"
+                            aria-label="${name} - ${wellness}% wellness${isActive ? ' (active)' : ''}"
+                            aria-pressed="${isActive}">
+                        <span class="pet-tab-emoji">${petData.emoji}</span>
+                        <span class="pet-tab-name">${name}</span>
+                        <span class="pet-tab-wellness" style="background: ${wellnessColor};">${wellness}%</span>
+                    </button>
+                `;
+            });
+
+            return `
+                <nav class="pet-switcher" role="tablist" aria-label="Switch between your pets">
+                    ${tabs}
+                </nav>
+            `;
+        }
+
+        // ==================== PET INTERACTION SYSTEM ====================
+
+        function showInteractionMenu() {
+            if (!gameState.pets || gameState.pets.length < 2) {
+                showToast('You need at least 2 pets for interactions! Adopt another egg!', '#FFA726');
+                return;
+            }
+
+            const existing = document.querySelector('.interaction-overlay');
+            if (existing) existing.remove();
+
+            const activePet = gameState.pet;
+            const activePetData = PET_TYPES[activePet.type];
+            const activeName = escapeHTML(activePet.name || activePetData.name);
+
+            // Build partner selection
+            let partnerHTML = '';
+            gameState.pets.forEach((p, idx) => {
+                if (!p || idx === gameState.activePetIndex) return;
+                const pd = PET_TYPES[p.type];
+                if (!pd) return;
+                const name = escapeHTML(p.name || pd.name);
+                const rel = getRelationship(activePet.id, p.id);
+                const level = getRelationshipLevel(rel.points);
+                const levelData = RELATIONSHIP_LEVELS[level];
+                partnerHTML += `
+                    <button class="interaction-partner" data-partner-index="${idx}">
+                        <span class="interaction-partner-emoji">${pd.emoji}</span>
+                        <span class="interaction-partner-name">${name}</span>
+                        <span class="interaction-partner-rel">${levelData.emoji} ${levelData.label}</span>
+                    </button>
+                `;
+            });
+
+            // Build interaction options
+            let actionsHTML = '';
+            for (const [id, interaction] of Object.entries(PET_INTERACTIONS)) {
+                actionsHTML += `
+                    <button class="interaction-action" data-interaction="${id}">
+                        <span class="interaction-action-emoji">${interaction.emoji}</span>
+                        <div class="interaction-action-info">
+                            <span class="interaction-action-name">${interaction.name}</span>
+                            <span class="interaction-action-desc">${interaction.description}</span>
+                        </div>
+                    </button>
+                `;
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'interaction-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Pet Interactions');
+
+            overlay.innerHTML = `
+                <div class="interaction-modal">
+                    <h2 class="interaction-title">🐾 Pet Interactions</h2>
+                    <p class="interaction-subtitle">Choose a partner for ${activeName}</p>
+
+                    <div class="interaction-section">
+                        <h3 class="interaction-section-title">Choose Partner</h3>
+                        <div class="interaction-partners">${partnerHTML}</div>
+                    </div>
+
+                    <div class="interaction-section">
+                        <h3 class="interaction-section-title">Choose Activity</h3>
+                        <div class="interaction-actions">${actionsHTML}</div>
+                    </div>
+
+                    <button class="interaction-close" id="interaction-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            let selectedPartnerIdx = null;
+            let selectedInteraction = null;
+
+            // Partner selection
+            overlay.querySelectorAll('.interaction-partner').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    overlay.querySelectorAll('.interaction-partner').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedPartnerIdx = parseInt(btn.dataset.partnerIndex);
+                    tryPerformInteraction();
+                });
+            });
+
+            // Action selection
+            overlay.querySelectorAll('.interaction-action').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    overlay.querySelectorAll('.interaction-action').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedInteraction = btn.dataset.interaction;
+                    tryPerformInteraction();
+                });
+            });
+
+            function tryPerformInteraction() {
+                if (selectedPartnerIdx === null || !selectedInteraction) return;
+
+                const result = performPetInteraction(selectedInteraction, gameState.activePetIndex, selectedPartnerIdx);
+                if (!result) return;
+
+                if (!result.success) {
+                    if (result.reason === 'cooldown') {
+                        showToast('These pets need a short break before interacting again!', '#FFA726');
+                    }
+                    return;
+                }
+
+                // Show result
+                const interaction = result.interaction;
+                showToast(`${interaction.emoji} ${result.message}`, '#4ECDC4');
+
+                // Show relationship level up
+                if (result.relationshipChange && result.relationshipChange.changed && result.relationshipChange.improved) {
+                    const newLevelData = RELATIONSHIP_LEVELS[result.relationshipChange.to];
+                    setTimeout(() => {
+                        showToast(`${newLevelData.emoji} ${result.pet1Name} & ${result.pet2Name} are now ${newLevelData.label}s!`, '#FFD700');
+                    }, 1500);
+                }
+
+                closeInteraction();
+                updateNeedDisplays();
+                updatePetMood();
+                updateWellnessBar();
+
+                // Check growth milestones for both pets
+                checkGrowthMilestone(gameState.pets[gameState.activePetIndex]);
+                checkGrowthMilestone(gameState.pets[selectedPartnerIdx]);
+
+                saveGame();
+                renderPetPhase();
+            }
+
+            function closeInteraction() {
+                popModalEscape(closeInteraction);
+                overlay.remove();
+            }
+
+            document.getElementById('interaction-close').addEventListener('click', closeInteraction);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeInteraction(); });
+            pushModalEscape(closeInteraction);
+
+            // Focus first partner
+            const firstPartner = overlay.querySelector('.interaction-partner');
+            if (firstPartner) firstPartner.focus();
+        }
+
+        // ==================== SOCIAL HUB ====================
+
+        function showSocialHub() {
+            if (!gameState.pets || gameState.pets.length < 2) {
+                showToast('Adopt more pets to see their relationships!', '#FFA726');
+                return;
+            }
+
+            const existing = document.querySelector('.social-overlay');
+            if (existing) existing.remove();
+
+            const overlay = document.createElement('div');
+            overlay.className = 'social-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Pet Social Hub');
+
+            // Build relationship cards for all pet pairs
+            let relCardsHTML = '';
+            for (let i = 0; i < gameState.pets.length; i++) {
+                for (let j = i + 1; j < gameState.pets.length; j++) {
+                    const p1 = gameState.pets[i];
+                    const p2 = gameState.pets[j];
+                    if (!p1 || !p2) continue;
+
+                    const p1Data = PET_TYPES[p1.type];
+                    const p2Data = PET_TYPES[p2.type];
+                    if (!p1Data || !p2Data) continue;
+
+                    const p1Name = escapeHTML(p1.name || p1Data.name);
+                    const p2Name = escapeHTML(p2.name || p2Data.name);
+                    const rel = getRelationship(p1.id, p2.id);
+                    const level = getRelationshipLevel(rel.points);
+                    const levelData = RELATIONSHIP_LEVELS[level];
+                    const progress = getRelationshipProgress(rel.points);
+                    const nextIdx = RELATIONSHIP_ORDER.indexOf(level) + 1;
+                    const nextLevel = nextIdx < RELATIONSHIP_ORDER.length ? RELATIONSHIP_LEVELS[RELATIONSHIP_ORDER[nextIdx]] : null;
+
+                    relCardsHTML += `
+                        <div class="social-card">
+                            <div class="social-card-pets">
+                                <div class="social-card-pet">
+                                    <span class="social-card-emoji">${p1Data.emoji}</span>
+                                    <span class="social-card-name">${p1Name}</span>
+                                </div>
+                                <span class="social-card-heart">${levelData.emoji}</span>
+                                <div class="social-card-pet">
+                                    <span class="social-card-emoji">${p2Data.emoji}</span>
+                                    <span class="social-card-name">${p2Name}</span>
+                                </div>
+                            </div>
+                            <div class="social-card-level">
+                                <span class="social-card-level-label">${levelData.label}</span>
+                                <span class="social-card-level-desc">${levelData.description}</span>
+                            </div>
+                            <div class="social-card-progress">
+                                <div class="social-card-bar">
+                                    <div class="social-card-bar-fill" style="width: ${progress}%;"></div>
+                                </div>
+                                ${nextLevel ? `<span class="social-card-next">Next: ${nextLevel.emoji} ${nextLevel.label}</span>` : '<span class="social-card-next">Max level!</span>'}
+                            </div>
+                            <div class="social-card-stats">
+                                <span>Interactions: ${rel.interactionCount || 0}</span>
+                                <span>Points: ${Math.round(rel.points)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Family overview
+            const totalPets = gameState.pets.length;
+            const totalRelationships = Object.keys(gameState.relationships || {}).length;
+            let familyCount = 0;
+            let bestFriendCount = 0;
+            for (const rel of Object.values(gameState.relationships || {})) {
+                const level = getRelationshipLevel(rel.points);
+                if (level === 'family') familyCount++;
+                if (level === 'bestFriend') bestFriendCount++;
+            }
+
+            overlay.innerHTML = `
+                <div class="social-modal">
+                    <h2 class="social-title">🏠 Social Hub</h2>
+                    <p class="social-subtitle">Your pet family & friendships</p>
+
+                    <div class="social-overview">
+                        <div class="social-stat">
+                            <span class="social-stat-value">${totalPets}</span>
+                            <span class="social-stat-label">Pets</span>
+                        </div>
+                        <div class="social-stat">
+                            <span class="social-stat-value">${familyCount}</span>
+                            <span class="social-stat-label">Family Bonds</span>
+                        </div>
+                        <div class="social-stat">
+                            <span class="social-stat-value">${bestFriendCount}</span>
+                            <span class="social-stat-label">Best Friends</span>
+                        </div>
+                    </div>
+
+                    <div class="social-section-title">Relationships</div>
+                    <div class="social-cards">${relCardsHTML || '<p class="social-empty">Adopt more pets to build relationships!</p>'}</div>
+
+                    <button class="social-close" id="social-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeSocial() {
+                popModalEscape(closeSocial);
+                overlay.remove();
+            }
+
+            document.getElementById('social-close').focus();
+            document.getElementById('social-close').addEventListener('click', closeSocial);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSocial(); });
+            pushModalEscape(closeSocial);
         }
 
         // Ensure activation delegates are active even if render binding fails

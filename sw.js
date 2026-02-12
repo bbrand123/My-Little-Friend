@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pet-care-buddy-v1';
+const CACHE_NAME = 'pet-care-buddy-v2';
 const ASSETS = [
     './',
     './index.html',
