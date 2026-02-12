@@ -1071,13 +1071,6 @@
             if (petContainer) petContainer.classList.add('bounce');
             if (sparkles) createFoodParticles(sparkles);
 
-            // Show consolidated stat change indicator
-            const cropChanges = [];
-            if (crop.hungerValue) cropChanges.push({label:'Hunger', amount:crop.hungerValue});
-            if (crop.happinessValue) cropChanges.push({label:'Happy', amount:crop.happinessValue});
-            if (crop.energyValue) cropChanges.push({label:'Energy', amount:crop.energyValue});
-            if (cropChanges.length) showStatChangeSummary(cropChanges);
-
             // Build stat change description
             let statChanges = [];
             if (crop.hungerValue) statChanges.push(`Hunger +${crop.hungerValue}`);
