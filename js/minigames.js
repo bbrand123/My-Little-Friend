@@ -43,12 +43,26 @@
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-labelledby', 'minigame-menu-title');
 
+            const highScores = gameState.minigameHighScores || {};
+            const scoreLabels = {
+                fetch: 'catches',
+                hideseek: 'treats',
+                bubblepop: 'pops',
+                matching: 'score',
+                simonsays: 'rounds',
+                coloring: ''
+            };
+
             let cardsHTML = '';
             MINI_GAMES.forEach(game => {
+                const best = highScores[game.id];
+                const label = scoreLabels[game.id] || '';
+                const bestHTML = best ? `<span class="minigame-card-best">Best: ${best}${label ? ' ' + label : ''}</span>` : '';
                 cardsHTML += `
-                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name} - ${game.description}">
+                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name} - ${game.description}${best ? '. Best: ' + best + ' ' + label : ''}">
                         <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
                         <span class="minigame-card-name">${game.name}</span>
+                        ${bestHTML}
                     </button>
                 `;
             });
@@ -133,6 +147,8 @@
                 }
                 return;
             }
+            incrementMinigamePlayCount('fetch');
+            const fetchDiff = getMinigameDifficulty('fetch');
             fetchState = {
                 score: 0,
                 phase: 'ready', // 'ready', 'thrown', 'fetching', 'returning'
@@ -140,6 +156,7 @@
                 ballY: 160,
                 petX: 45,
                 targetX: 0,
+                difficulty: fetchDiff,
                 _timeouts: []
             };
 
@@ -243,6 +260,7 @@
             instruction.textContent = 'Nice throw!';
             instruction.className = 'fetch-instruction highlight';
             announce('Nice throw!');
+            SoundManager.playSFX(SoundManager.sfx.throw);
 
             // Ball arc animation - first goes up, then lands
             ball.style.transition = 'none';
@@ -259,15 +277,18 @@
                 shadow.style.opacity = '0.05';
             }
 
+            // Speed multiplier: higher difficulty = faster animation
+            const fetchSpeed = 1 / fetchState.difficulty;
+
             // Phase 2: Ball drops down to ground
             fetchState._timeouts.push(setTimeout(() => {
                 if (!fetchState) return;
-                ball.style.transition = 'top 0.35s cubic-bezier(0.55, 0, 1, 0.45)';
+                ball.style.transition = `top ${0.35 * fetchSpeed}s cubic-bezier(0.55, 0, 1, 0.45)`;
                 ball.style.top = '155px';
                 if (shadow) {
                     shadow.style.opacity = '0.15';
                 }
-            }, 700));
+            }, 700 * fetchSpeed));
 
             // Phase 3: Pet runs to fetch the ball
             fetchState._timeouts.push(setTimeout(() => {
@@ -278,7 +299,7 @@
 
                 pet.classList.add('running');
                 pet.style.left = (targetX - 5) + '%';
-            }, 1100));
+            }, 1100 * fetchSpeed));
 
             // Phase 4: Pet reaches ball
             fetchState._timeouts.push(setTimeout(() => {
@@ -293,7 +314,8 @@
 
                 // Show a reward particle
                 showFetchReward(field, targetX);
-            }, 2000));
+                SoundManager.playSFX(SoundManager.sfx.catch);
+            }, 2000 * fetchSpeed));
 
             // Phase 5: Pet returns to start
             fetchState._timeouts.push(setTimeout(() => {
@@ -306,7 +328,7 @@
                 pet.classList.remove('running');
                 pet.classList.add('returning');
                 pet.style.left = '45%';
-            }, 2400));
+            }, 2400 * fetchSpeed));
 
             // Phase 6: Complete - pet is back, ready for another throw
             fetchState._timeouts.push(setTimeout(() => {
@@ -340,7 +362,7 @@
                 if (throwBtn) throwBtn.disabled = false;
 
                 announce(`Great fetch! Score: ${fetchState.score}. Throw again!`);
-            }, 3400));
+            }, 3400 * fetchSpeed));
         }
 
         function showFetchReward(container, xPercent) {
@@ -371,13 +393,17 @@
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(fetchState.score * 2, 10), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger - Math.min(fetchState.score, 5), 0, 100);
 
+                const isNewBest = updateMinigameHighScore('fetch', fetchState.score);
+                const bestMsg = isNewBest ? ' New best!' : '';
+
                 // Update displays
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}!`);
+                announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}!${bestMsg}`);
+                if (isNewBest) showToast(`New high score in Fetch: ${fetchState.score}!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -412,8 +438,11 @@
                 }
                 return;
             }
-            const totalTreats = 5;
-            const spotCount = 8;
+            incrementMinigamePlayCount('hideseek');
+            const hideSeekDiff = getMinigameDifficulty('hideseek');
+            // More treats to find with difficulty, less time
+            const totalTreats = Math.min(5 + Math.floor((hideSeekDiff - 1) * 5), 8);
+            const spotCount = Math.min(8 + Math.floor((hideSeekDiff - 1) * 4), 12);
 
             // Pick random hiding spots from available objects
             const shuffled = [...HIDESEEK_OBJECTS].sort(() => Math.random() - 0.5);
@@ -445,8 +474,9 @@
                     searched: false
                 })),
                 treatEmoji: treatEmoji,
-                timeLeft: 30,
+                timeLeft: Math.max(15, Math.round(30 / hideSeekDiff)),
                 timerId: null,
+                difficulty: hideSeekDiff,
                 phase: 'playing' // 'playing', 'finished'
             };
 
@@ -646,6 +676,7 @@
 
                 instruction.textContent = `Found a treat! ${hideSeekState.treatEmoji}`;
                 instruction.className = 'hideseek-instruction highlight';
+                SoundManager.playSFX(SoundManager.sfx.hit);
 
                 announce(`Found a treat! ${hideSeekState.treatsFound} of ${hideSeekState.totalTreats} found.`);
 
@@ -672,6 +703,7 @@
 
                 instruction.textContent = 'Nothing here... keep looking!';
                 instruction.className = 'hideseek-instruction';
+                SoundManager.playSFX(SoundManager.sfx.miss);
 
                 announce('Nothing under this one. Keep searching!');
             }
@@ -738,12 +770,16 @@
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger + Math.min(hideSeekState.treatsFound * 2, 10), 0, 100);
 
+                const isNewBest = updateMinigameHighScore('hideseek', hideSeekState.treatsFound);
+                const bestMsg = isNewBest ? ' New best!' : '';
+
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}!`);
+                announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}!${bestMsg}`);
+                if (isNewBest) showToast(`New high score in Hide & Seek: ${hideSeekState.treatsFound}!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -768,6 +804,8 @@
             const existing = document.querySelector('.bubblepop-game-overlay');
             if (existing) existing.remove();
 
+            incrementMinigamePlayCount('bubblepop');
+            const bubbleDiff = getMinigameDifficulty('bubblepop');
             bubblePopState = {
                 score: 0,
                 timeLeft: 30,
@@ -776,6 +814,7 @@
                 spawnInterval: null,
                 timerInterval: null,
                 floatIntervals: [],
+                difficulty: bubbleDiff,
                 active: true
             };
 
@@ -869,18 +908,20 @@
         function startBubbleSpawner() {
             if (!bubblePopState) return;
 
+            const spawnRate = Math.max(300, Math.round(800 / (bubblePopState.difficulty || 1)));
             bubblePopState.spawnInterval = setInterval(() => {
                 if (!bubblePopState || !bubblePopState.active) return;
 
                 const field = document.getElementById('bubblepop-field');
                 if (!field) return;
 
-                // Keep between 4-8 bubbles on screen
+                // Keep bubbles on screen — max scales with difficulty
+                const maxBubbles = Math.min(8 + Math.floor(((bubblePopState.difficulty || 1) - 1) * 5), 14);
                 const currentBubbles = field.querySelectorAll('.bubblepop-bubble:not(.popping)');
-                if (currentBubbles.length < 8) {
+                if (currentBubbles.length < maxBubbles) {
                     spawnBubble();
                 }
-            }, 800);
+            }, spawnRate);
         }
 
         function spawnBubble() {
@@ -944,7 +985,8 @@
                 }
             });
 
-            // Auto-remove bubble after a while if not popped
+            // Auto-remove bubble after a while if not popped — shorter at higher difficulty
+            const bubbleLifetime = Math.max(2000, Math.round((4000 + Math.random() * 3000) / (bubblePopState.difficulty || 1)));
             setTimeout(() => {
                 if (bubble.parentNode && !bubble.classList.contains('popping')) {
                     bubble.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
@@ -954,7 +996,7 @@
                         if (bubble.parentNode) bubble.remove();
                     }, 500);
                 }
-            }, 4000 + Math.random() * 3000);
+            }, bubbleLifetime);
         }
 
         function popBubble(bubble) {
@@ -965,6 +1007,7 @@
             const points = parseInt(bubble.dataset.points) || 1;
 
             bubblePopState.score += points;
+            SoundManager.playSFX(SoundManager.sfx.bubblePop);
 
             // Update score display
             const scoreEl = document.getElementById('bubblepop-score');
@@ -1076,12 +1119,16 @@
                 gameState.pet.cleanliness = clamp(gameState.pet.cleanliness + cleanlinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(bubblePopState.score, 10), 0, 100);
 
+                const isNewBest = updateMinigameHighScore('bubblepop', bubblePopState.score);
+                const bestMsg = isNewBest ? ' New best!' : '';
+
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Bubble Pop over! ${bubblePopState.score} bubbles popped! Happiness +${happinessBonus}! Cleanliness +${cleanlinessBonus}!`);
+                announce(`Bubble Pop over! ${bubblePopState.score} bubbles popped! Happiness +${happinessBonus}! Cleanliness +${cleanlinessBonus}!${bestMsg}`);
+                if (isNewBest) showToast(`New high score in Bubble Pop: ${bubblePopState.score}!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -1118,9 +1165,14 @@
             const existing = document.querySelector('.matching-game-overlay');
             if (existing) existing.remove();
 
-            // Pick 6 random items to make 12 cards (6 pairs)
+            incrementMinigamePlayCount('matching');
+            const matchDiff = getMinigameDifficulty('matching');
+            // Scale pairs: 6 at base, up to 10 at max difficulty (capped by available items)
+            const pairCount = Math.min(6 + Math.floor((matchDiff - 1) * 4), MATCHING_ITEMS.length);
+
+            // Pick random items to make pairs
             const shuffledItems = [...MATCHING_ITEMS].sort(() => Math.random() - 0.5);
-            const selected = shuffledItems.slice(0, 6);
+            const selected = shuffledItems.slice(0, pairCount);
             const cards = [...selected, ...selected]
                 .sort(() => Math.random() - 0.5)
                 .map((item, index) => ({
@@ -1135,8 +1187,9 @@
                 cards: cards,
                 flippedCards: [],
                 matchesFound: 0,
-                totalPairs: 6,
+                totalPairs: pairCount,
                 moves: 0,
+                difficulty: matchDiff,
                 locked: false,
                 _timeouts: []
             };
@@ -1167,7 +1220,7 @@
             overlay.innerHTML = `
                 <div class="matching-game">
                     <h2 class="matching-game-title">🃏 Matching Game!</h2>
-                    <p class="matching-game-score" id="matching-score" aria-live="polite">Pairs found: 0 / 6</p>
+                    <p class="matching-game-score" id="matching-score" aria-live="polite">Pairs found: 0 / ${matchingState.totalPairs}</p>
                     <p class="matching-game-moves" id="matching-moves">Moves: 0</p>
                     <div class="matching-grid" id="matching-grid">
                         ${cardsHTML}
@@ -1243,6 +1296,7 @@
                     card1.matched = true;
                     card2.matched = true;
                     matchingState.matchesFound++;
+                    SoundManager.playSFX(SoundManager.sfx.match);
 
                     const scoreEl = document.getElementById('matching-score');
                     if (scoreEl) scoreEl.textContent = `Pairs found: ${matchingState.matchesFound} / ${matchingState.totalPairs}`;
@@ -1273,6 +1327,7 @@
                     }
                 } else {
                     // No match - flip back after a delay
+                    SoundManager.playSFX(SoundManager.sfx.miss);
                     matchingState._timeouts.push(setTimeout(() => {
                         if (!matchingState) return;
                         card1.flipped = false;
@@ -1343,12 +1398,20 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
 
+                // Score for matching: fewer moves = better. Use pairs * 100 / moves for a score ratio
+                const matchScore = matchingState.matchesFound === matchingState.totalPairs
+                    ? Math.max(1, Math.round(matchingState.totalPairs * 100 / matchingState.moves))
+                    : 0;
+                const isNewBest = matchScore > 0 && updateMinigameHighScore('matching', matchScore);
+                const bestMsg = isNewBest ? ' New best!' : '';
+
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}!`);
+                announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}!${bestMsg}`);
+                if (isNewBest) showToast(`New high score in Matching: ${matchScore}!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -1415,6 +1478,8 @@
             const existing = document.querySelector('.simonsays-game-overlay');
             if (existing) existing.remove();
 
+            incrementMinigamePlayCount('simonsays');
+            const simonDiff = getMinigameDifficulty('simonsays');
             simonState = {
                 pattern: [],
                 playerIndex: 0,
@@ -1424,6 +1489,7 @@
                 phase: 'watching', // 'watching', 'playing', 'gameover'
                 playbackIndex: 0,
                 playbackTimer: null,
+                difficulty: simonDiff,
                 active: true
             };
 
@@ -1532,7 +1598,8 @@
 
             // Play the pattern
             simonState.playbackIndex = 0;
-            const speed = Math.max(350, 600 - simonState.round * 25);
+            const baseSpeed = Math.max(350, 600 - simonState.round * 25);
+            const speed = Math.max(200, Math.round(baseSpeed / (simonState.difficulty || 1)));
 
             setTimeout(() => simonPlayPattern(speed), 400);
         }
@@ -1680,12 +1747,16 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
 
+                const isNewBest = updateMinigameHighScore('simonsays', roundsCompleted);
+                const bestMsg = isNewBest ? ' New best!' : '';
+
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Simon Says over! Reached round ${simonState.highestRound}! Happiness +${happinessBonus}!`);
+                announce(`Simon Says over! Reached round ${simonState.highestRound}! Happiness +${happinessBonus}!${bestMsg}`);
+                if (isNewBest) showToast(`New high score in Simon Says: Round ${roundsCompleted}!`, '#FFD700');
             }
 
             // Clean up audio context
@@ -1728,6 +1799,7 @@
             const existing = document.querySelector('.coloring-game-overlay');
             if (existing) existing.remove();
 
+            incrementMinigamePlayCount('coloring');
             coloringState = {
                 selectedColor: COLORING_PALETTE[0].hex,
                 regionsColored: new Set(),

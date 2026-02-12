@@ -23,7 +23,9 @@
                 inventory: {}, // { cropId: count }
                 lastGrowTick: Date.now(),
                 totalHarvests: 0
-            }
+            },
+            minigamePlayCounts: {}, // { gameId: playCount } — tracks replays for difficulty scaling
+            minigameHighScores: {}  // { gameId: bestScore } — persisted best scores
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -35,6 +37,30 @@
         const MAX_ROOM_BONUS_TOASTS = 3;
 
         // ==================== UTILITY FUNCTIONS ====================
+
+        // Get difficulty multiplier for a minigame based on how many times it's been played
+        // Each replay bumps difficulty by 10%, capped at 2x (10 replays)
+        function getMinigameDifficulty(gameId) {
+            const plays = (gameState.minigamePlayCounts && gameState.minigamePlayCounts[gameId]) || 0;
+            return 1 + Math.min(plays, 10) * 0.1;
+        }
+
+        // Increment play count for a minigame
+        function incrementMinigamePlayCount(gameId) {
+            if (!gameState.minigamePlayCounts) gameState.minigamePlayCounts = {};
+            gameState.minigamePlayCounts[gameId] = (gameState.minigamePlayCounts[gameId] || 0) + 1;
+        }
+
+        // Update high score for a minigame, returns true if it's a new best
+        function updateMinigameHighScore(gameId, score) {
+            if (!gameState.minigameHighScores) gameState.minigameHighScores = {};
+            const current = gameState.minigameHighScores[gameId] || 0;
+            if (score > current) {
+                gameState.minigameHighScores[gameId] = score;
+                return true;
+            }
+            return false;
+        }
 
         function randomFromArray(arr) {
             return arr[Math.floor(Math.random() * arr.length)];
@@ -245,6 +271,14 @@
 
                     // Add season if missing (for existing saves)
                     parsed.season = getCurrentSeason();
+
+                    // Add minigame tracking if missing (for existing saves)
+                    if (!parsed.minigamePlayCounts || typeof parsed.minigamePlayCounts !== 'object') {
+                        parsed.minigamePlayCounts = {};
+                    }
+                    if (!parsed.minigameHighScores || typeof parsed.minigameHighScores !== 'object') {
+                        parsed.minigameHighScores = {};
+                    }
 
                     // Add garden if missing (for existing saves)
                     if (!parsed.garden || typeof parsed.garden !== 'object') {
