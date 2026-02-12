@@ -112,6 +112,7 @@
                 <div class="minigame-menu">
                     <h2 class="minigame-menu-title" id="minigame-menu-title"><span aria-hidden="true">🎮</span> Mini Games</h2>
                     <p class="minigame-menu-subtitle">Pick a game to play with your pet!</p>
+                    <p class="minigame-menu-keyboard-note"><span aria-hidden="true">⌨️</span> Keyboard: Use Tab to navigate, Enter or Space to play</p>
                     <div class="minigame-list">
                         ${cardsHTML}
                     </div>
@@ -296,6 +297,7 @@
             // Animate ball flying to the right with an arc
             instruction.textContent = 'Nice throw!';
             instruction.className = 'fetch-instruction highlight';
+            announce('Nice throw!');
 
             // Ball arc animation - first goes up, then lands
             ball.style.transition = 'none';
@@ -327,6 +329,7 @@
                 if (!fetchState) return;
                 fetchState.phase = 'fetching';
                 instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Running to get it!`;
+                announce('Running to get it!');
 
                 pet.classList.add('running');
                 pet.style.left = (targetX - 5) + '%';
@@ -341,6 +344,7 @@
 
                 instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Got it!`;
                 instruction.className = 'fetch-instruction highlight';
+                announce('Got it!');
 
                 // Show a reward particle
                 showFetchReward(field, targetX);
@@ -352,6 +356,7 @@
                 fetchState.phase = 'returning';
                 instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Bringing it back!`;
                 instruction.className = 'fetch-instruction';
+                announce('Bringing it back!');
 
                 pet.classList.remove('running');
                 pet.classList.add('returning');
@@ -1054,9 +1059,11 @@
                 const instruction = document.getElementById('bubblepop-instruction');
                 if (instruction) {
                     const messages = ['Splashy!', 'So bubbly!', 'Pop pop pop!', 'Bath time fun!', 'Squeaky clean!', 'Bubble master!'];
-                    instruction.textContent = randomFromArray(messages);
+                    const msg = randomFromArray(messages);
+                    instruction.textContent = msg;
                     instruction.classList.add('highlight');
                     setTimeout(() => instruction.classList.remove('highlight'), 500);
+                    announce(`${msg} ${bubblePopState.score} bubbles popped!`);
                 }
             }
 
@@ -1096,6 +1103,7 @@
             if (instruction) {
                 instruction.textContent = `🛁 Bath time over! ${bubblePopState.score} bubbles popped!`;
                 instruction.classList.add('highlight');
+                announce(`Bath time over! ${bubblePopState.score} bubbles popped!`);
             }
 
             // Auto-end after showing results
@@ -1304,9 +1312,11 @@
                     const instruction = document.getElementById('matching-instruction');
                     if (instruction) {
                         const messages = ['Great match!', 'You found one!', 'Awesome!', 'Well done!', 'Nice pair!', 'Super!'];
-                        instruction.textContent = randomFromArray(messages);
+                        const msg = randomFromArray(messages);
+                        instruction.textContent = msg;
                         instruction.classList.add('highlight');
                         setTimeout(() => instruction.classList.remove('highlight'), 500);
+                        announce(`${msg} ${matchingState.matchesFound} of ${matchingState.totalPairs} pairs found.`);
                     }
 
                     matchingState.flippedCards = [];
@@ -1331,7 +1341,9 @@
                         const instruction = document.getElementById('matching-instruction');
                         if (instruction) {
                             const messages = ['Try again!', 'Keep looking!', 'Almost!', 'Not quite!', 'So close!'];
-                            instruction.textContent = randomFromArray(messages);
+                            const msg = randomFromArray(messages);
+                            instruction.textContent = msg;
+                            announce(msg);
                         }
 
                         matchingState.flippedCards = [];
@@ -1567,6 +1579,7 @@
             if (instruction) {
                 instruction.textContent = 'Watch the pattern...';
                 instruction.className = 'simonsays-instruction watching';
+                announce(`Round ${simonState.round}. Watch the pattern.`);
             }
 
             // Disable pads during playback
