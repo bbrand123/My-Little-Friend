@@ -332,17 +332,38 @@
                     // Update time of day
                     parsed.timeOfDay = getTimeOfDay();
 
-                    // Apply time-based decay for needs
+                    // Apply time-based changes for needs (offline time simulation)
                     if (parsed.pet && parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
                         const minutesPassed = timePassed / 60000;
-                        // Decrease needs by 1 point per 2 minutes (slower decay for young children)
                         const decay = Math.floor(minutesPassed / 2);
                         if (decay > 0) {
-                            parsed.pet.hunger = clamp(parsed.pet.hunger - decay, 0, 100);
-                            parsed.pet.cleanliness = clamp(parsed.pet.cleanliness - decay, 0, 100);
+                            const oldStats = {
+                                hunger: parsed.pet.hunger,
+                                cleanliness: parsed.pet.cleanliness,
+                                happiness: parsed.pet.happiness,
+                                energy: parsed.pet.energy
+                            };
+
+                            // Hunger decays faster while away (pet gets hungry)
+                            parsed.pet.hunger = clamp(parsed.pet.hunger - Math.floor(decay * 1.5), 0, 100);
+                            // Cleanliness decays slower (pet isn't doing much)
+                            parsed.pet.cleanliness = clamp(parsed.pet.cleanliness - Math.floor(decay * 0.5), 0, 100);
+                            // Happiness decays at normal rate
                             parsed.pet.happiness = clamp(parsed.pet.happiness - decay, 0, 100);
-                            parsed.pet.energy = clamp(parsed.pet.energy - decay, 0, 100);
+                            // Energy RECOVERS while away (pet is resting)
+                            parsed.pet.energy = clamp(parsed.pet.energy + Math.floor(decay * 0.75), 0, 100);
+
+                            // Store offline changes for welcome-back summary
+                            if (minutesPassed >= 5) {
+                                parsed._offlineChanges = {
+                                    minutes: Math.round(minutesPassed),
+                                    hunger: parsed.pet.hunger - oldStats.hunger,
+                                    cleanliness: parsed.pet.cleanliness - oldStats.cleanliness,
+                                    happiness: parsed.pet.happiness - oldStats.happiness,
+                                    energy: parsed.pet.energy - oldStats.energy
+                                };
+                            }
                         }
                     }
                     return parsed;
@@ -1714,6 +1735,16 @@
         // ==================== INITIALIZATION ====================
 
         function init() {
+            // Initialize dark mode from saved preference
+            try {
+                const savedTheme = localStorage.getItem('petCareBuddy_theme');
+                if (savedTheme) {
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                    const meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.content = savedTheme === 'dark' ? '#1a1a2e' : '#A8D8EA';
+                }
+            } catch (e) {}
+
             // Stop any existing timers
             stopDecayTimer();
             stopGardenGrowTimer();
@@ -1755,6 +1786,25 @@
                                          mood === 'sad' ? 'missed you and needs some care!' :
                                          'is glad you\'re back!';
                     announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
+                }
+                // Show offline time summary if pet was away for a while
+                if (gameState._offlineChanges) {
+                    const oc = gameState._offlineChanges;
+                    const hrs = Math.floor(oc.minutes / 60);
+                    const mins = oc.minutes % 60;
+                    const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                    const parts = [];
+                    if (oc.hunger !== 0) parts.push(`Hunger ${oc.hunger > 0 ? '+' : ''}${oc.hunger}`);
+                    if (oc.energy !== 0) parts.push(`Energy ${oc.energy > 0 ? '+' : ''}${oc.energy}`);
+                    if (oc.happiness !== 0) parts.push(`Happiness ${oc.happiness > 0 ? '+' : ''}${oc.happiness}`);
+                    if (oc.cleanliness !== 0) parts.push(`Clean ${oc.cleanliness > 0 ? '+' : ''}${oc.cleanliness}`);
+                    if (parts.length > 0) {
+                        setTimeout(() => {
+                            showToast(`Away ${timeStr}: ${parts.join(', ')}`, '#7C6BFF');
+                        }, 800);
+                    }
+                    delete gameState._offlineChanges;
+                    saveGame();
                 }
             } else {
                 // Reset to egg phase if not in pet phase
