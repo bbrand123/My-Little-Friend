@@ -7,7 +7,10 @@
         // Helper function to adjust color brightness
         function adjustColorBrightness(hexColor, percent) {
             // Convert hex to RGB
-            const hex = hexColor.replace('#', '');
+            let hex = hexColor.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            }
             const r = parseInt(hex.substring(0, 2), 16);
             const g = parseInt(hex.substring(2, 4), 16);
             const b = parseInt(hex.substring(4, 6), 16);
@@ -29,7 +32,10 @@
         // Helper function to adjust color saturation
         function adjustColorSaturation(hexColor, percent) {
             // Convert hex to RGB
-            const hex = hexColor.replace('#', '');
+            let hex = hexColor.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            }
             const r = parseInt(hex.substring(0, 2), 16) / 255;
             const g = parseInt(hex.substring(2, 4), 16) / 255;
             const b = parseInt(hex.substring(4, 6), 16) / 255;
@@ -231,7 +237,13 @@
         function generatePatternOverlay(pattern, color) {
             if (!pattern || pattern === 'solid') return '';
 
-            const darkerColor = color ? `${color}88` : '#00000033';
+            let darkerColor = 'rgba(0,0,0,0.2)';
+            if (color) {
+                let ch = color.replace('#', '');
+                if (ch.length === 3) ch = ch[0]+ch[0]+ch[1]+ch[1]+ch[2]+ch[2];
+                if (ch.length >= 6) ch = ch.substring(0, 6);
+                darkerColor = `rgba(${parseInt(ch.substring(0,2),16)},${parseInt(ch.substring(2,4),16)},${parseInt(ch.substring(4,6),16)},0.53)`;
+            }
 
             switch (pattern) {
                 case 'spotted':
@@ -413,23 +425,24 @@
                     break;
             }
 
-            const petSVGs = {
-                dog: generateDogSVG(color, eyeStyle, mouthPath, mood),
-                cat: generateCatSVG(color, eyeStyle, mouthPath, mood),
-                bunny: generateBunnySVG(color, eyeStyle, mouthPath, mood),
-                bird: generateBirdSVG(color, eyeStyle, mouthPath, mood),
-                hamster: generateHamsterSVG(color, eyeStyle, mouthPath, mood),
-                turtle: generateTurtleSVG(color, eyeStyle, mouthPath, mood),
-                fish: generateFishSVG(color, eyeStyle, mouthPath, mood),
-                frog: generateFrogSVG(color, eyeStyle, mouthPath, mood),
-                hedgehog: generateHedgehogSVG(color, eyeStyle, mouthPath, mood),
-                panda: generatePandaSVG(color, eyeStyle, mouthPath, mood),
-                penguin: generatePenguinSVG(color, eyeStyle, mouthPath, mood),
-                unicorn: generateUnicornSVG(color, eyeStyle, mouthPath, mood),
-                dragon: generateDragonSVG(color, eyeStyle, mouthPath, mood)
+            const petGenerators = {
+                dog: generateDogSVG,
+                cat: generateCatSVG,
+                bunny: generateBunnySVG,
+                bird: generateBirdSVG,
+                hamster: generateHamsterSVG,
+                turtle: generateTurtleSVG,
+                fish: generateFishSVG,
+                frog: generateFrogSVG,
+                hedgehog: generateHedgehogSVG,
+                panda: generatePandaSVG,
+                penguin: generatePenguinSVG,
+                unicorn: generateUnicornSVG,
+                dragon: generateDragonSVG
             };
 
-            let svg = petSVGs[type] || petSVGs.dog;
+            const generator = petGenerators[type] || generateDogSVG;
+            let svg = generator(color, eyeStyle, mouthPath, mood);
 
             // Apply growth stage class for size
             let classes = `pet-svg growth-${growthStage}`;
@@ -960,7 +973,7 @@
                     <!-- Body -->
                     <ellipse cx="50" cy="70" rx="30" ry="25" fill="${color}"/>
                     <!-- Belly -->
-                    <ellipse cx="50" cy="72" rx="20" ry="17" fill="${color}"/>
+                    <ellipse cx="50" cy="72" rx="20" ry="17" fill="white"/>
                     <!-- Arms (black) -->
                     <ellipse cx="22" cy="65" rx="10" ry="14" fill="#333" transform="rotate(15 22 65)"/>
                     <ellipse cx="78" cy="65" rx="10" ry="14" fill="#333" transform="rotate(-15 78 65)"/>

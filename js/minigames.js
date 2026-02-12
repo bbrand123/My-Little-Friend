@@ -1,5 +1,14 @@
         // ==================== MINI GAMES ====================
 
+        // Fisher-Yates shuffle for unbiased randomization
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
         const MINI_GAMES = [
             { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' },
             { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen!' },
@@ -268,7 +277,7 @@
             instruction.textContent = 'Nice throw!';
             instruction.className = 'fetch-instruction highlight';
             announce('Nice throw!');
-            SoundManager.playSFX(SoundManager.sfx.throw);
+            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.throw);
 
             // Ball arc animation - first goes up, then lands
             ball.style.transition = 'none';
@@ -323,7 +332,7 @@
                 // Show a reward particle
                 showFetchReward(field, targetX);
                 if (typeof hapticBuzz === 'function') hapticBuzz(50);
-                SoundManager.playSFX(SoundManager.sfx.catch);
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.catch);
             }, 2000 * fetchSpeed));
 
             // Phase 5: Pet returns to start
@@ -364,6 +373,8 @@
                 pet.classList.remove('returning');
                 pet.style.transition = 'none';
                 pet.style.left = '45%';
+                pet.offsetHeight; // force reflow
+                pet.style.transition = '';
 
                 instruction.textContent = 'Throw again! Tap the field!';
                 instruction.className = 'fetch-instruction highlight';
@@ -457,7 +468,7 @@
             const spotCount = Math.min(8 + Math.floor((hideSeekDiff - 1) * 4), 12);
 
             // Pick random hiding spots from available objects
-            const shuffled = [...HIDESEEK_OBJECTS].sort(() => Math.random() - 0.5);
+            const shuffled = shuffleArray([...HIDESEEK_OBJECTS]);
             const spots = shuffled.slice(0, spotCount);
 
             // Assign positions that don't overlap
@@ -466,7 +477,7 @@
             // Pick which spots have treats hidden under them
             const treatIndices = [];
             const indexPool = Array.from({ length: spotCount }, (_, i) => i);
-            indexPool.sort(() => Math.random() - 0.5);
+            shuffleArray(indexPool);
             for (let i = 0; i < totalTreats; i++) {
                 treatIndices.push(indexPool[i]);
             }
@@ -504,15 +515,19 @@
             for (let i = 0; i < count; i++) {
                 let attempts = 0;
                 let pos;
+                let currentMinDist = minDist;
                 do {
                     pos = {
                         x: 8 + Math.random() * 72,
                         y: 5 + Math.random() * 65
                     };
                     attempts++;
+                    // Progressively relax distance to avoid giving up with overlap
+                    if (attempts === 50) currentMinDist = minDist * 0.6;
+                    if (attempts === 80) currentMinDist = minDist * 0.3;
                 } while (
-                    attempts < 50 &&
-                    positions.some(p => Math.hypot(p.x - pos.x, p.y - pos.y) < minDist)
+                    attempts < 100 &&
+                    positions.some(p => Math.hypot(p.x - pos.x, p.y - pos.y) < currentMinDist)
                 );
                 positions.push(pos);
             }
@@ -641,7 +656,7 @@
             // Move pet toward the tapped spot
             if (petEl) {
                 petEl.style.left = spot.x + '%';
-                petEl.style.bottom = (80 - spot.y) + '%';
+                petEl.style.top = spot.y + '%';
             }
 
             if (spot.hasTreat) {
@@ -689,7 +704,7 @@
                 instruction.textContent = `Found a treat! ${hideSeekState.treatEmoji}`;
                 instruction.className = 'hideseek-instruction highlight';
                 if (typeof hapticBuzz === 'function') hapticBuzz(50);
-                SoundManager.playSFX(SoundManager.sfx.hit);
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.hit);
 
                 announce(`Found a treat! ${hideSeekState.treatsFound} of ${hideSeekState.totalTreats} found.`);
 
@@ -716,7 +731,7 @@
 
                 instruction.textContent = 'Nothing here... keep looking!';
                 instruction.className = 'hideseek-instruction';
-                SoundManager.playSFX(SoundManager.sfx.miss);
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
 
                 announce('Nothing under this one. Keep searching!');
             }
@@ -1026,7 +1041,7 @@
 
             bubblePopState.score += points;
             if (typeof hapticBuzz === 'function') hapticBuzz(30);
-            SoundManager.playSFX(SoundManager.sfx.bubblePop);
+            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.bubblePop);
 
             // Update score display
             const scoreEl = document.getElementById('bubblepop-score');
@@ -1190,10 +1205,9 @@
             const pairCount = Math.min(6 + Math.floor((matchDiff - 1) * 4), MATCHING_ITEMS.length);
 
             // Pick random items to make pairs
-            const shuffledItems = [...MATCHING_ITEMS].sort(() => Math.random() - 0.5);
+            const shuffledItems = shuffleArray([...MATCHING_ITEMS]);
             const selected = shuffledItems.slice(0, pairCount);
-            const cards = [...selected, ...selected]
-                .sort(() => Math.random() - 0.5)
+            const cards = shuffleArray([...selected, ...selected])
                 .map((item, index) => ({
                     id: index,
                     emoji: item.emoji,
@@ -1316,7 +1330,7 @@
                     card2.matched = true;
                     matchingState.matchesFound++;
                     if (typeof hapticBuzz === 'function') hapticBuzz(50);
-                    SoundManager.playSFX(SoundManager.sfx.match);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.match);
 
                     const scoreEl = document.getElementById('matching-score');
                     if (scoreEl) scoreEl.textContent = `Pairs found: ${matchingState.matchesFound} / ${matchingState.totalPairs}`;
@@ -1347,7 +1361,7 @@
                     }
                 } else {
                     // No match - flip back after a delay
-                    SoundManager.playSFX(SoundManager.sfx.miss);
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
                     matchingState._timeouts.push(setTimeout(() => {
                         if (!matchingState) return;
                         card1.flipped = false;
@@ -1765,7 +1779,7 @@
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
-                const roundsCompleted = simonState.highestRound;
+                const roundsCompleted = Math.max(simonState.highestRound, simonState.score > 0 ? 1 : 0);
                 const happinessBonus = Math.min(roundsCompleted * 4, 30);
                 const energyCost = Math.min(roundsCompleted * 2, 10);
 

@@ -27,7 +27,7 @@
                     }
                 }
                 if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
+                    audioCtx.resume().catch(() => {});
                 }
                 return audioCtx;
             }
@@ -40,6 +40,7 @@
                 gainNode.connect(masterGain);
 
                 let stopped = false;
+                let timerId = null;
 
                 function playBubble() {
                     if (stopped) return;
@@ -65,9 +66,10 @@
 
                     osc.start(ctx.currentTime);
                     osc.stop(ctx.currentTime + 0.2);
+                    osc.onended = () => { osc.disconnect(); filter.disconnect(); bubbleGain.disconnect(); };
 
                     if (!stopped) {
-                        setTimeout(playBubble, 200 + Math.random() * 500);
+                        timerId = setTimeout(playBubble, 200 + Math.random() * 500);
                     }
                 }
 
@@ -77,6 +79,7 @@
                     gainNode,
                     stop() {
                         stopped = true;
+                        if (timerId) { clearTimeout(timerId); timerId = null; }
                     }
                 };
             }
@@ -88,6 +91,7 @@
                 gainNode.connect(masterGain);
 
                 let stopped = false;
+                let timerId = null;
                 const chimeFreqs = [523.25, 587.33, 659.25, 783.99, 880]; // C5, D5, E5, G5, A5
 
                 function playChime() {
@@ -107,9 +111,10 @@
 
                     osc.start(ctx.currentTime);
                     osc.stop(ctx.currentTime + 1.3);
+                    osc.onended = () => { osc.disconnect(); chimeGain.disconnect(); };
 
                     if (!stopped) {
-                        setTimeout(playChime, 800 + Math.random() * 1500);
+                        timerId = setTimeout(playChime, 800 + Math.random() * 1500);
                     }
                 }
 
@@ -119,6 +124,7 @@
                     gainNode,
                     stop() {
                         stopped = true;
+                        if (timerId) { clearTimeout(timerId); timerId = null; }
                     }
                 };
             }
@@ -130,6 +136,8 @@
                 gainNode.connect(masterGain);
 
                 let stopped = false;
+                let clinkTimerId = null;
+                let initTimerId = null;
 
                 // Constant low stove hum
                 const humOsc = ctx.createOscillator();
@@ -168,19 +176,23 @@
 
                     osc.start(ctx.currentTime);
                     osc.stop(ctx.currentTime + 0.1);
+                    osc.onended = () => { osc.disconnect(); filter.disconnect(); clinkGain.disconnect(); };
 
                     if (!stopped) {
-                        setTimeout(playClink, 2000 + Math.random() * 3000);
+                        clinkTimerId = setTimeout(playClink, 2000 + Math.random() * 3000);
                     }
                 }
 
-                setTimeout(() => { if (!stopped) playClink(); }, 1000);
+                initTimerId = setTimeout(() => { if (!stopped) playClink(); }, 1000);
 
                 return {
                     gainNode,
                     stop() {
                         stopped = true;
+                        if (clinkTimerId) { clearTimeout(clinkTimerId); clinkTimerId = null; }
+                        if (initTimerId) { clearTimeout(initTimerId); initTimerId = null; }
                         try { humOsc.stop(); } catch (e) { /* already stopped */ }
+                        humOsc.disconnect(); humFilter.disconnect(); humGain.disconnect();
                     }
                 };
             }
@@ -218,6 +230,7 @@
                     gainNode,
                     stop() {
                         try { osc1.stop(); osc2.stop(); } catch (e) { /* already stopped */ }
+                        osc1.disconnect(); osc2.disconnect(); filter.disconnect(); oscGain.disconnect();
                     }
                 };
             }
@@ -229,6 +242,7 @@
                 gainNode.connect(masterGain);
 
                 let stopped = false;
+                let timerId = null;
 
                 function playChirp() {
                     if (stopped) return;
@@ -249,9 +263,10 @@
 
                     osc.start(ctx.currentTime);
                     osc.stop(ctx.currentTime + 0.2);
+                    osc.onended = () => { osc.disconnect(); chirpGain.disconnect(); };
 
                     if (!stopped) {
-                        setTimeout(playChirp, 1500 + Math.random() * 3000);
+                        timerId = setTimeout(playChirp, 1500 + Math.random() * 3000);
                     }
                 }
 
@@ -261,6 +276,7 @@
                     gainNode,
                     stop() {
                         stopped = true;
+                        if (timerId) { clearTimeout(timerId); timerId = null; }
                     }
                 };
             }
@@ -306,6 +322,7 @@
                     currentEarcon = null;
                     await fadeOut(oldEarcon.gainNode, ctx);
                     oldEarcon.stop();
+                    try { oldEarcon.gainNode.disconnect(); } catch (e) { /* already disconnected */ }
                 }
 
                 // If another enterRoom call arrived while we were fading out, bail
@@ -391,7 +408,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME, t + i * 0.12);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.1);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.12);
                     osc.stop(t + i * 0.12 + 0.12);
                 });
@@ -414,7 +431,7 @@
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
                 osc.connect(filter);
                 filter.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.4);
             }
@@ -430,7 +447,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.8, t + i * 0.08);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.08 + 0.12);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.08);
                     osc.stop(t + i * 0.08 + 0.15);
                 });
@@ -447,7 +464,7 @@
                 g.gain.setValueAtTime(SFX_VOLUME * 0.6, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
                 osc.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.65);
             }
@@ -469,7 +486,7 @@
                 g.gain.setValueAtTime(SFX_VOLUME * 0.5, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
                 osc.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 lfo.start(t);
                 osc.start(t);
                 osc.stop(t + 0.45);
@@ -487,7 +504,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.6, t + i * 0.1);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.25);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.1);
                     osc.stop(t + i * 0.1 + 0.3);
                 });
@@ -512,7 +529,7 @@
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.08);
                     src.connect(filter);
                     filter.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     src.start(t + i * 0.1);
                 }
             }
@@ -528,7 +545,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.3, t + i * 0.06);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.06 + 0.08);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.06);
                     osc.stop(t + i * 0.06 + 0.1);
                 });
@@ -545,7 +562,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.5, t + i * 0.06);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.06 + 0.15);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.06);
                     osc.stop(t + i * 0.06 + 0.2);
                 });
@@ -562,7 +579,7 @@
                 g.gain.setValueAtTime(SFX_VOLUME, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
                 osc.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.15);
             }
@@ -577,7 +594,7 @@
                 g.gain.setValueAtTime(SFX_VOLUME * 0.5, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
                 osc.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.25);
             }
@@ -594,7 +611,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.7, t + i * 0.12);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.3);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.12);
                     osc.stop(t + i * 0.12 + 0.35);
                 });
@@ -607,7 +624,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + 0.48);
                     g.gain.exponentialRampToValueAtTime(0.01, t + 1.2);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + 0.48);
                     osc.stop(t + 1.3);
                 });
@@ -625,7 +642,7 @@
                 g.gain.setValueAtTime(SFX_VOLUME * 0.6, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
                 osc.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.1);
             }
@@ -641,7 +658,7 @@
                     g.gain.setValueAtTime(SFX_VOLUME * 0.6, t + i * 0.1);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.2);
                     osc.connect(g);
-                    g.connect(ctx.destination);
+                    g.connect(masterGain);
                     osc.start(t + i * 0.1);
                     osc.stop(t + i * 0.1 + 0.25);
                 });
@@ -659,7 +676,7 @@
                 g.gain.setValueAtTime(SFX_VOLUME * 0.7, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
                 osc.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.25);
             }
@@ -685,7 +702,7 @@
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
                 src.connect(filter);
                 filter.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 src.start(t);
                 // Soft chime overtone
                 const osc = ctx.createOscillator();
@@ -695,7 +712,7 @@
                 og.gain.setValueAtTime(SFX_VOLUME * 0.15, t + 0.05);
                 og.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
                 osc.connect(og);
-                og.connect(ctx.destination);
+                og.connect(masterGain);
                 osc.start(t + 0.05);
                 osc.stop(t + 0.35);
             }
@@ -719,8 +736,17 @@
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
                 src.connect(filter);
                 filter.connect(g);
-                g.connect(ctx.destination);
+                g.connect(masterGain);
                 src.start(t);
+            }
+
+            function destroy() {
+                stopAll();
+                if (audioCtx) {
+                    audioCtx.close().catch(() => {});
+                    audioCtx = null;
+                    masterGain = null;
+                }
             }
 
             return {
@@ -731,6 +757,7 @@
                 getContext,
                 initOnInteraction,
                 playSFX,
+                destroy,
                 sfx: {
                     feed: sfxFeed,
                     wash: sfxWash,
@@ -755,3 +782,6 @@
 
         // Initialize sound on first interaction
         SoundManager.initOnInteraction();
+
+        // Clean up AudioContext on page unload to prevent context leak on hot reload
+        window.addEventListener('pagehide', () => { SoundManager.destroy(); });
