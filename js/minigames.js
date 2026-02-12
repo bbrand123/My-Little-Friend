@@ -9,8 +9,6 @@
             { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds!' }
         ];
 
-        const MINIGAME_EXIT_CONFIRM_SCORE = 3;
-
         // Restore idle animations and room earcons after a mini-game ends
         function restorePostMiniGameState() {
             if (gameState.phase === 'pet') {
@@ -23,68 +21,9 @@
             }
         }
 
+        // Exit immediately — the exit button is already an intentional action
         function requestMiniGameExit(score, onConfirm) {
-            const safeScore = Number.isFinite(score) ? Math.max(0, score) : 0;
-            if (safeScore < MINIGAME_EXIT_CONFIRM_SCORE) {
-                onConfirm();
-                return;
-            }
-            showMiniGameExitConfirm(safeScore, onConfirm);
-        }
-
-        function showMiniGameExitConfirm(score, onConfirm) {
-            const existing = document.querySelector('.minigame-exit-modal');
-            if (existing) return;
-
-            const returnFocusEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay minigame-exit-modal';
-            modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-modal', 'true');
-            modal.setAttribute('aria-labelledby', 'minigame-exit-title');
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-icon" aria-hidden="true">⚠️</div>
-                    <h2 class="modal-title" id="minigame-exit-title">Exit the mini game?</h2>
-                    <p class="modal-message">You have a score of ${score}. If you leave now, this round will end.</p>
-                    <div class="modal-buttons">
-                        <button class="modal-btn cancel" id="minigame-exit-cancel">Keep Playing</button>
-                        <button class="modal-btn confirm" id="minigame-exit-confirm">Exit Game</button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-
-            const cancelBtn = document.getElementById('minigame-exit-cancel');
-            const confirmBtn = document.getElementById('minigame-exit-confirm');
-            if (cancelBtn) cancelBtn.focus();
-
-            function closeModal() {
-                popModalEscape(closeModal);
-                modal.remove();
-                if (returnFocusEl && document.contains(returnFocusEl)) {
-                    returnFocusEl.focus();
-                }
-            }
-
-            pushModalEscape(closeModal);
-
-            if (confirmBtn) {
-                confirmBtn.addEventListener('click', () => {
-                    closeModal();
-                    onConfirm();
-                });
-            }
-
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', closeModal);
-            }
-
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal();
-            });
+            onConfirm();
         }
 
         function openMiniGamesMenu() {

@@ -278,17 +278,22 @@
                         </div>
                     </div>
 
-                    <div class="customization-section">
-                        <h3 class="customization-title">Choose Pattern</h3>
-                        <div class="pattern-options" id="pattern-options">
-                            ${patternOptions}
+                    <button class="advanced-toggle" id="advanced-toggle" type="button" aria-expanded="false" aria-controls="advanced-options">
+                        Advanced Options <span class="advanced-toggle-arrow" aria-hidden="true">&#9654;</span>
+                    </button>
+                    <div class="advanced-options" id="advanced-options" hidden>
+                        <div class="customization-section">
+                            <h3 class="customization-title">Choose Pattern</h3>
+                            <div class="pattern-options" id="pattern-options">
+                                ${patternOptions}
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="customization-section">
-                        <h3 class="customization-title">Add Accessory (Optional)</h3>
-                        <div class="accessory-options" id="accessory-options">
-                            ${accessoryOptions}
+                        <div class="customization-section">
+                            <h3 class="customization-title">Add Accessory (Optional)</h3>
+                            <div class="accessory-options" id="accessory-options">
+                                ${accessoryOptions}
+                            </div>
                         </div>
                     </div>
 
@@ -351,6 +356,16 @@
                     const accessory = btn.dataset.accessory;
                     selectedAccessory = accessory === 'none' ? null : accessory;
                 });
+            });
+
+            // Advanced options toggle
+            const advancedToggle = document.getElementById('advanced-toggle');
+            const advancedPanel = document.getElementById('advanced-options');
+            advancedToggle.addEventListener('click', () => {
+                const expanded = advancedPanel.hidden;
+                advancedPanel.hidden = !expanded;
+                advancedToggle.setAttribute('aria-expanded', String(expanded));
+                advancedToggle.querySelector('.advanced-toggle-arrow').textContent = expanded ? '\u25BC' : '\u25B6';
             });
 
             // Text-to-speech
@@ -1889,11 +1904,8 @@
             function closeModal() {
                 popModalEscape(closeModal);
                 modal.remove();
-                // Trigger confetti cleanup (8s accounts for max 5s animation + 2s delay)
-                setTimeout(() => {
-                    const confettiContainer = document.querySelector('.confetti-container');
-                    if (confettiContainer) confettiContainer.remove();
-                }, 8000);
+                const confettiContainer = document.querySelector('.confetti-container');
+                if (confettiContainer) confettiContainer.remove();
             }
 
             okBtn.addEventListener('click', closeModal);
@@ -1954,11 +1966,8 @@
                 if (typeof renderPetPhase === 'function') {
                     renderPetPhase();
                 }
-                // Trigger confetti cleanup (8s accounts for max 5s animation + 2s delay)
-                setTimeout(() => {
-                    const confettiContainer = document.querySelector('.confetti-container');
-                    if (confettiContainer) confettiContainer.remove();
-                }, 8000);
+                const confettiContainer = document.querySelector('.confetti-container');
+                if (confettiContainer) confettiContainer.remove();
             }
 
             okBtn.addEventListener('click', closeModal);
