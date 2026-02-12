@@ -518,27 +518,6 @@
             position: relative;
         }
 
-        .growth-progress-bar {
-            width: 120px;
-            height: 6px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 3px;
-            margin: 0 auto 3px;
-            overflow: hidden;
-        }
-
-        .growth-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #FFB74D, #FF9800);
-            border-radius: 3px;
-            transition: width 0.5s ease;
-        }
-
-        .growth-progress-label {
-            font-size: 0.6rem;
-            color: var(--color-text);
-            opacity: 0.7;
-        }
 
         /* Mythical tag in naming modal */
         .naming-modal-mythical {
@@ -780,25 +759,8 @@
             line-height: 1;
         }
 
-        /* Feedback Messages */
-        .feedback-area {
-            min-height: 28px;
-            margin: 6px 0 4px;
-        }
 
-        .feedback-message {
-            font-size: 1.1rem;
-            color: var(--color-happy);
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            animation: feedbackPop 0.5s ease;
-        }
-
-        .feedback-message.show {
-            opacity: 1;
-        }
-
+        /* Pop animation reused by minigame highlights */
         @keyframes feedbackPop {
             0% { transform: scale(0.8); }
             50% { transform: scale(1.1); }
@@ -853,33 +815,35 @@
             overflow: hidden;
         }
 
-        /* Floating stat change indicators */
-        .stat-change {
+        /* Consolidated floating stat change summary bubble */
+        .stat-change-summary {
             position: absolute;
-            top: -8px;
+            bottom: 100%;
             left: 50%;
             transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            background: rgba(255,255,255,0.92);
+            border-radius: 10px;
+            padding: 4px 10px;
             font-size: 0.75rem;
             font-weight: 900;
             pointer-events: none;
             z-index: 10;
-            animation: statChangeFloat 1.2s ease-out forwards;
-            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
             white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            animation: summaryFloat 1.5s ease-out forwards;
         }
 
-        .stat-change.positive {
-            color: #2E7D32;
-        }
+        .stat-change-summary .positive { color: #2E7D32; }
+        .stat-change-summary .negative { color: #C62828; }
 
-        .stat-change.negative {
-            color: #C62828;
-        }
-
-        @keyframes statChangeFloat {
-            0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.8); }
-            20% { opacity: 1; transform: translateX(-50%) translateY(-8px) scale(1.1); }
-            100% { opacity: 0; transform: translateX(-50%) translateY(-28px) scale(0.9); }
+        @keyframes summaryFloat {
+            0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.85); }
+            15%  { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1.05); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.95); }
         }
 
         /* Overall pet wellness bar */
@@ -4823,126 +4787,54 @@
             }
         }
 
-        /* ==================== DUAL PROGRESS BARS ==================== */
+        /* ==================== COMPACT GROWTH PROGRESS ==================== */
 
-        .growth-progress-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding: 0 4px;
-        }
-
-        .growth-progress-title {
-            font-size: 0.95rem;
-            font-weight: bold;
-            color: #555;
-        }
-
-        .growth-progress-percent {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #66BB6A;
-        }
-
-        .dual-progress-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-
-        .progress-requirement {
-            background: white;
-            border-radius: 12px;
-            padding: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            transition: all 0.3s ease;
-        }
-
-        .progress-requirement.complete {
-            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-            border: 2px solid #66BB6A;
-            box-shadow: 0 4px 12px rgba(102,187,106,0.2);
-        }
-
-        .requirement-label {
+        .growth-compact-row {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 8px;
         }
 
-        .requirement-icon {
-            font-size: 1.2rem;
-        }
-
-        .requirement-text {
-            flex: 1;
-            font-size: 0.85rem;
+        .growth-compact-label {
+            font-size: 0.8rem;
             font-weight: bold;
             color: #555;
+            white-space: nowrap;
         }
 
-        .requirement-status {
-            font-size: 0.85rem;
-            font-weight: bold;
-            color: #66BB6A;
-        }
-
-        .requirement-bar {
-            width: 100%;
-            height: 8px;
+        .growth-compact-bar {
+            flex: 1;
+            height: 6px;
             background: #E0E0E0;
-            border-radius: 10px;
+            border-radius: 3px;
             overflow: hidden;
-            margin-bottom: 6px;
         }
 
-        .requirement-fill {
+        .growth-compact-fill {
             height: 100%;
-            border-radius: 10px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #66BB6A 0%, #43A047 100%);
             transition: width 0.5s ease;
         }
 
-        .requirement-fill.actions {
-            background: linear-gradient(90deg, #FF9A5C 0%, #FF6B6B 100%);
-        }
-
-        .requirement-fill.time {
-            background: linear-gradient(90deg, #64B5F6 0%, #42A5F5 100%);
-        }
-
-        .progress-requirement.complete .requirement-fill {
-            background: linear-gradient(90deg, #66BB6A 0%, #43A047 100%);
-        }
-
-        .requirement-detail {
-            font-size: 0.75rem;
-            color: #666;
-            text-align: center;
-        }
-
-        .progress-requirement.complete .requirement-detail {
-            color: #2E7D32;
-            font-weight: bold;
-        }
-
-        .growth-tip {
-            margin-top: 10px;
-            padding: 8px 12px;
-            border-radius: 8px;
+        .growth-compact-pct {
             font-size: 0.8rem;
-            text-align: center;
-            background: #FFF3E0;
-            color: #E65100;
-            border: 1px solid #FFB74D;
+            font-weight: bold;
+            color: #66BB6A;
+            min-width: 32px;
+            text-align: right;
         }
 
-        .growth-tip.ready {
-            background: #E8F5E9;
+        .growth-hint {
+            display: block;
+            font-size: 0.7rem;
+            color: #888;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .growth-hint.ready {
             color: #2E7D32;
-            border: 1px solid #66BB6A;
             font-weight: bold;
         }
 
@@ -5044,28 +4936,11 @@
                 font-size: 1rem;
             }
 
-            .dual-progress-container {
-                gap: 10px;
-            }
-
-            .progress-requirement {
-                padding: 10px;
-            }
-
-            .requirement-label {
-                font-size: 0.8rem;
-            }
-
             .care-stats-detail {
                 flex-direction: column;
                 gap: 8px;
             }
 
-            .growth-progress-header {
-                flex-direction: column;
-                gap: 4px;
-                align-items: flex-start;
-            }
         }
 
         /* ==================== IDLE MICRO-ANIMATIONS ==================== */

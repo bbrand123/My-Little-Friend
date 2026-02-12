@@ -427,15 +427,6 @@
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(fetchState.score * 2, 10), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger - Math.min(fetchState.score, 5), 0, 100);
 
-                // Show feedback on main screen
-                const petData = PET_TYPES[gameState.pet.type];
-                const feedback = document.getElementById('feedback');
-                if (feedback) {
-                    feedback.textContent = `${petData.emoji} Loved playing fetch! (${fetchState.score} catches)`;
-                    feedback.classList.add('show');
-                    setTimeout(() => feedback.classList.remove('show'), 3000);
-                }
-
                 // Update displays
                 updateNeedDisplays();
                 updatePetMood();
@@ -798,14 +789,6 @@
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger + Math.min(hideSeekState.treatsFound * 2, 10), 0, 100);
 
-                const petData = PET_TYPES[gameState.pet.type];
-                const feedback = document.getElementById('feedback');
-                if (feedback) {
-                    feedback.textContent = `${petData.emoji} Loved finding treats! (${hideSeekState.treatsFound} found)`;
-                    feedback.classList.add('show');
-                    setTimeout(() => feedback.classList.remove('show'), 3000);
-                }
-
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
@@ -1143,14 +1126,6 @@
                 gameState.pet.cleanliness = clamp(gameState.pet.cleanliness + cleanlinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(bubblePopState.score, 10), 0, 100);
 
-                const petData = PET_TYPES[gameState.pet.type];
-                const feedback = document.getElementById('feedback');
-                if (feedback) {
-                    feedback.textContent = `${petData.emoji} Loved bath time! (${bubblePopState.score} bubbles popped)`;
-                    feedback.classList.add('show');
-                    setTimeout(() => feedback.classList.remove('show'), 3000);
-                }
-
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
@@ -1415,14 +1390,6 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
-
-                const petData = PET_TYPES[gameState.pet.type];
-                const feedback = document.getElementById('feedback');
-                if (feedback) {
-                    feedback.textContent = `${petData.emoji} Loved matching! (${matchingState.matchesFound} pairs found)`;
-                    feedback.classList.add('show');
-                    setTimeout(() => feedback.classList.remove('show'), 3000);
-                }
 
                 updateNeedDisplays();
                 updatePetMood();
@@ -1761,14 +1728,6 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
-
-                const petData = PET_TYPES[gameState.pet.type];
-                const feedback = document.getElementById('feedback');
-                if (feedback) {
-                    feedback.textContent = `${petData.emoji} Loved Simon Says! (Round ${simonState.highestRound})`;
-                    feedback.classList.add('show');
-                    setTimeout(() => feedback.classList.remove('show'), 3000);
-                }
 
                 updateNeedDisplays();
                 updatePetMood();
@@ -2165,15 +2124,6 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
-
-                const petData = PET_TYPES[gameState.pet.type];
-                const feedback = document.getElementById('feedback');
-                if (feedback) {
-                    const messages = ['Beautiful art!', 'So colorful!', 'What a masterpiece!', 'Pretty!', 'Amazing colors!'];
-                    feedback.textContent = `${petData.emoji} ${randomFromArray(messages)}`;
-                    feedback.classList.add('show');
-                    setTimeout(() => feedback.classList.remove('show'), 3000);
-                }
 
                 updateNeedDisplays();
                 updatePetMood();

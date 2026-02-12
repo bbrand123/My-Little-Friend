@@ -77,17 +77,26 @@
             return `${w}% Needs care`;
         }
 
-        // Floating stat change indicator (visual only — hidden from screen readers
-        // to avoid announcing each +N bubble inside the progressbar element)
-        function showStatChange(bubbleId, amount) {
-            const bubble = document.getElementById(bubbleId);
-            if (!bubble) return;
+        // Consolidated floating stat change indicator (visual only — hidden
+        // from screen readers).  Shows a single summary bubble over the pet
+        // area instead of separate per-stat bubbles.
+        // `changes` is an array of {label, amount} objects,
+        // e.g. [{label:'Hunger', amount:10}, {label:'Energy', amount:-5}]
+        function showStatChangeSummary(changes) {
+            if (!changes || changes.length === 0) return;
+            const anchor = document.getElementById('pet-container');
+            if (!anchor) return;
+
             const el = document.createElement('div');
-            el.className = `stat-change ${amount >= 0 ? 'positive' : 'negative'}`;
+            el.className = 'stat-change-summary';
             el.setAttribute('aria-hidden', 'true');
-            el.textContent = amount >= 0 ? `+${amount}` : `${amount}`;
-            bubble.appendChild(el);
-            setTimeout(() => el.remove(), 1200);
+            el.innerHTML = changes.map(c => {
+                const sign = c.amount >= 0 ? '+' : '';
+                const cls = c.amount >= 0 ? 'positive' : 'negative';
+                return `<span class="${cls}">${c.label} ${sign}${c.amount}</span>`;
+            }).join('');
+            anchor.appendChild(el);
+            setTimeout(() => el.remove(), 1500);
         }
 
         // Update wellness bar display
@@ -1069,10 +1078,12 @@
             if (petContainer) petContainer.classList.add('bounce');
             if (sparkles) createFoodParticles(sparkles);
 
-            // Show stat change indicators
-            if (crop.hungerValue) showStatChange('hunger-bubble', crop.hungerValue);
-            if (crop.happinessValue) showStatChange('happy-bubble', crop.happinessValue);
-            if (crop.energyValue) showStatChange('energy-bubble', crop.energyValue);
+            // Show consolidated stat change indicator
+            const cropChanges = [];
+            if (crop.hungerValue) cropChanges.push({label:'Hunger', amount:crop.hungerValue});
+            if (crop.happinessValue) cropChanges.push({label:'Happy', amount:crop.happinessValue});
+            if (crop.energyValue) cropChanges.push({label:'Energy', amount:crop.energyValue});
+            if (cropChanges.length) showStatChangeSummary(cropChanges);
 
             // Build stat change description
             let statChanges = [];

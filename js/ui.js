@@ -578,42 +578,28 @@
                             const actionsNeeded = Math.max(0, nextActionsThreshold - pet.careActions);
                             const hoursNeeded = Math.max(0, nextHoursThreshold - ageInHours);
 
+                            // Compact hint: show limiting factor
+                            let hint = '';
+                            if (actionProgress >= 100 && timeProgress >= 100) {
+                                hint = '<span class="growth-hint ready">🎉 Ready to evolve!</span>';
+                            } else if (actionProgress >= 100) {
+                                hint = `<span class="growth-hint">⏰ ${Math.round(hoursNeeded)}h left</span>`;
+                            } else if (timeProgress >= 100) {
+                                hint = `<span class="growth-hint">💪 ${actionsNeeded} actions left</span>`;
+                            } else {
+                                hint = `<span class="growth-hint">💪${Math.round(actionProgress)}% · ⏰${Math.round(timeProgress)}%</span>`;
+                            }
+
                             return `
-                                <div class="growth-progress-wrap" aria-label="Growth progress to ${GROWTH_STAGES[nextStage].label}">
-                                    <div class="growth-progress-header">
-                                        <span class="growth-progress-title">Growing to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
-                                        <span class="growth-progress-percent">${Math.round(overallProgress)}%</span>
-                                    </div>
-
-                                    <div class="dual-progress-container">
-                                        <div class="progress-requirement ${actionProgress >= 100 ? 'complete' : ''}">
-                                            <div class="requirement-label">
-                                                <span class="requirement-icon">💪</span>
-                                                <span class="requirement-text">Care Actions</span>
-                                                <span class="requirement-status">${Math.round(actionProgress)}%</span>
-                                            </div>
-                                            <div class="requirement-bar">
-                                                <div class="requirement-fill actions" style="width: ${actionProgress}%;"></div>
-                                            </div>
-                                            <div class="requirement-detail">${actionsNeeded > 0 ? `${actionsNeeded} more needed` : '✓ Ready!'}</div>
+                                <div class="growth-progress-wrap" aria-label="Growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%">
+                                    <div class="growth-compact-row">
+                                        <span class="growth-compact-label">${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+                                        <div class="growth-compact-bar">
+                                            <div class="growth-compact-fill" style="width:${overallProgress}%;"></div>
                                         </div>
-
-                                        <div class="progress-requirement ${timeProgress >= 100 ? 'complete' : ''}">
-                                            <div class="requirement-label">
-                                                <span class="requirement-icon">⏰</span>
-                                                <span class="requirement-text">Time</span>
-                                                <span class="requirement-status">${Math.round(timeProgress)}%</span>
-                                            </div>
-                                            <div class="requirement-bar">
-                                                <div class="requirement-fill time" style="width: ${timeProgress}%;"></div>
-                                            </div>
-                                            <div class="requirement-detail">${hoursNeeded > 0 ? `${Math.round(hoursNeeded)}h left` : '✓ Ready!'}</div>
-                                        </div>
+                                        <span class="growth-compact-pct">${Math.round(overallProgress)}%</span>
                                     </div>
-
-                                    ${actionProgress >= 100 && timeProgress < 100 ? `<p class="growth-tip"><span aria-hidden="true">💡</span> Your pet needs more time to grow. Keep caring!</p>` : ''}
-                                    ${timeProgress >= 100 && actionProgress < 100 ? `<p class="growth-tip"><span aria-hidden="true">💡</span> Your pet needs more care. Interact more!</p>` : ''}
-                                    ${actionProgress >= 100 && timeProgress >= 100 ? `<p class="growth-tip ready"><span aria-hidden="true">🎉</span> Ready to grow! Will evolve soon!</p>` : ''}
+                                    ${hint}
                                 </div>
                             `;
                         })()}
@@ -745,9 +731,6 @@
 
                 <div class="section-divider"></div>
 
-                <div class="feedback-area">
-                    <p class="feedback-message" id="feedback" aria-live="polite"></p>
-                </div>
 
                 <section class="actions-section" aria-label="Care actions">
                     <div class="action-group">
@@ -1077,7 +1060,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.feed);
                     petContainer.classList.add('bounce');
                     createFoodParticles(sparkles);
-                    showStatChange('hunger-bubble', feedBonus);
+                    showStatChangeSummary([{label:'Hunger', amount:feedBonus}]);
                     announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
                     break;
                 }
@@ -1087,7 +1070,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     petContainer.classList.add('sparkle');
                     createBubbles(sparkles);
-                    showStatChange('clean-bubble', washBonus);
+                    showStatChangeSummary([{label:'Clean', amount:washBonus}]);
                     announce(`Washed your pet! Cleanliness is now ${pet.cleanliness}%`);
                     break;
                 }
@@ -1097,7 +1080,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     petContainer.classList.add('wiggle');
                     createHearts(sparkles);
-                    showStatChange('happy-bubble', playBonus);
+                    showStatChangeSummary([{label:'Happy', amount:playBonus}]);
                     announce(`Played with your pet! Happiness is now ${pet.happiness}%`);
                     break;
                 }
@@ -1121,7 +1104,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.sleep);
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
-                    showStatChange('energy-bubble', sleepBonus);
+                    showStatChangeSummary([{label:'Energy', amount:sleepBonus}]);
                     announce(`${sleepAnnounce} Energy is now ${pet.energy}%`);
                     break;
                 }
@@ -1134,10 +1117,12 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
                     petContainer.classList.add('heal-anim');
                     createMedicineParticles(sparkles);
-                    showStatChange('hunger-bubble', 10);
-                    showStatChange('clean-bubble', 10);
-                    showStatChange('happy-bubble', 15);
-                    showStatChange('energy-bubble', 10);
+                    showStatChangeSummary([
+                        {label:'Hunger', amount:10},
+                        {label:'Clean', amount:10},
+                        {label:'Happy', amount:15},
+                        {label:'Energy', amount:10}
+                    ]);
                     announce(`You gave your pet medicine! Your pet feels much better now!`);
                     break;
                 case 'groom': {
@@ -1150,8 +1135,10 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
                     petContainer.classList.add('groom-anim');
                     createGroomParticles(sparkles);
-                    showStatChange('clean-bubble', groomClean);
-                    showStatChange('happy-bubble', groomHappy);
+                    showStatChangeSummary([
+                        {label:'Clean', amount:groomClean},
+                        {label:'Happy', amount:groomHappy}
+                    ]);
                     announce(`Groomed your pet! Looking beautiful and feeling happy!`);
                     break;
                 }
@@ -1164,9 +1151,11 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
                     petContainer.classList.add('exercise-anim');
                     createExerciseParticles(sparkles);
-                    showStatChange('happy-bubble', exBonus);
-                    showStatChange('energy-bubble', -10);
-                    showStatChange('hunger-bubble', -5);
+                    showStatChangeSummary([
+                        {label:'Happy', amount:exBonus},
+                        {label:'Energy', amount:-10},
+                        {label:'Hunger', amount:-5}
+                    ]);
                     announce(`Exercised your pet! Happiness is now ${pet.happiness}% but energy dropped to ${pet.energy}%`);
                     break;
                 }
@@ -1178,8 +1167,10 @@
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
                     petContainer.classList.add('treat-anim');
                     createTreatParticles(sparkles, treat.emoji);
-                    showStatChange('happy-bubble', 25);
-                    showStatChange('hunger-bubble', 10);
+                    showStatChangeSummary([
+                        {label:'Happy', amount:25},
+                        {label:'Hunger', amount:10}
+                    ]);
                     announce(`Gave your pet a ${treat.name}! Happiness is now ${pet.happiness}%`);
                     break;
                 }
@@ -1190,8 +1181,10 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     petContainer.classList.add('cuddle-anim');
                     createCuddleParticles(sparkles);
-                    showStatChange('happy-bubble', 15);
-                    showStatChange('energy-bubble', 5);
+                    showStatChangeSummary([
+                        {label:'Happy', amount:15},
+                        {label:'Energy', amount:5}
+                    ]);
                     announce(`You pet and cuddled your pet! Happiness is now ${pet.happiness}%`);
                     break;
             }
@@ -1233,13 +1226,6 @@
                 return;
             }
 
-            // Show feedback
-            const feedback = document.getElementById('feedback');
-            if (feedback) {
-                feedback.textContent = `${petData.emoji} ${message}`;
-                feedback.classList.add('show');
-            }
-
             // Show toast notification
             showToast(`${petData.emoji} ${message}`, TOAST_COLORS[action] || '#66BB6A');
 
@@ -1264,13 +1250,6 @@
                 actionAnimClasses.forEach(c => petContainer.classList.remove(c));
                 actionAnimating = false;
             }, 1200);
-
-            // Hide feedback
-            if (feedback) {
-                setTimeout(() => {
-                    feedback.classList.remove('show');
-                }, 2000);
-            }
 
             saveGame();
         }
@@ -1426,14 +1405,13 @@
                 badge.innerHTML = `<span class="growth-badge-emoji">${stageData.emoji}</span><span>${stageData.label}</span>`;
             }
 
-            const fill = document.getElementById('growth-fill');
-            if (fill) {
-                fill.style.width = `${progress}%`;
+            const compactFill = document.querySelector('.growth-compact-fill');
+            if (compactFill) {
+                compactFill.style.width = `${progress}%`;
             }
-
-            const label = document.querySelector('.growth-progress-label');
-            if (label && nextStage) {
-                label.textContent = `${stageData.emoji} ${progress}% to ${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}`;
+            const compactPct = document.querySelector('.growth-compact-pct');
+            if (compactPct) {
+                compactPct.textContent = `${progress}%`;
             }
         }
 
@@ -1804,7 +1782,7 @@
                     const sparkles = document.getElementById('sparkles');
                     if (petContainer) petContainer.classList.add('bounce');
                     if (sparkles) createFoodParticles(sparkles);
-                    showStatChange('hunger-bubble', bonus);
+                    showStatChangeSummary([{label:'Hunger', amount:bonus}]);
                     showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
                     announce(`Fed your pet! Hunger is now ${pet.hunger}%`);
                     if (petContainer) {
