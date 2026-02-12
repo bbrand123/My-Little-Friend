@@ -1025,6 +1025,23 @@
             if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
             gameState.pet.careActions++;
 
+            // Check for growth stage transition
+            const oldStage = gameState.pet.growthStage || 'baby';
+            const newStage = getGrowthStage(gameState.pet.careActions, getPetAge(gameState.pet));
+            if (newStage !== oldStage) {
+                gameState.pet.growthStage = newStage;
+                gameState.pet.lastGrowthStage = newStage;
+                const stageData = GROWTH_STAGES[newStage];
+                showToast(`${stageData.emoji} ${gameState.pet.name || PET_TYPES[gameState.pet.type].name} grew into a ${stageData.label}!`, '#FFD700');
+                if (newStage === 'adult') {
+                    if (typeof gameState.adultsRaised !== 'number') gameState.adultsRaised = 0;
+                    gameState.adultsRaised++;
+                }
+                saveGame();
+                renderPetPhase();
+                return;
+            }
+
             const petData = PET_TYPES[gameState.pet.type];
             const sparkles = document.getElementById('sparkles');
             const petContainer = document.getElementById('pet-container');

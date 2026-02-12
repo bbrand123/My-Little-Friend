@@ -131,8 +131,10 @@ function getGrowthProgress(careActions, ageInHours, currentStage) {
     const nextHoursThreshold = GROWTH_STAGES[nextStage].hoursNeeded;
 
     // Progress is the minimum of time-based and action-based progress
-    const actionProgress = ((careActions - currentActionsThreshold) / (nextActionsThreshold - currentActionsThreshold)) * 100;
-    const timeProgress = ((ageInHours - currentHoursThreshold) / (nextHoursThreshold - currentHoursThreshold)) * 100;
+    const actionDiff = nextActionsThreshold - currentActionsThreshold;
+    const timeDiff = nextHoursThreshold - currentHoursThreshold;
+    const actionProgress = actionDiff > 0 ? ((careActions - currentActionsThreshold) / actionDiff) * 100 : 100;
+    const timeProgress = timeDiff > 0 ? ((ageInHours - currentHoursThreshold) / timeDiff) * 100 : 100;
 
     return Math.min(100, Math.max(0, Math.min(actionProgress, timeProgress)));
 }
