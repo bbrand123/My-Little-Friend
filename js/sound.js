@@ -650,6 +650,42 @@
                 osc.stop(t + 0.25);
             }
 
+            // Room transition: soft whoosh/chime cue when switching rooms
+            function sfxRoomTransition(ctx) {
+                const t = ctx.currentTime;
+                // Soft filtered noise whoosh
+                const bufferSize = ctx.sampleRate * 0.25;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let j = 0; j < bufferSize; j++) data[j] = Math.random() * 2 - 1;
+                const src = ctx.createBufferSource();
+                src.buffer = buffer;
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(800, t);
+                filter.frequency.exponentialRampToValueAtTime(2400, t + 0.12);
+                filter.frequency.exponentialRampToValueAtTime(600, t + 0.25);
+                filter.Q.value = 1.5;
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(SFX_VOLUME * 0.25, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+                src.connect(filter);
+                filter.connect(g);
+                g.connect(ctx.destination);
+                src.start(t);
+                // Soft chime overtone
+                const osc = ctx.createOscillator();
+                const og = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 880;
+                og.gain.setValueAtTime(SFX_VOLUME * 0.15, t + 0.05);
+                og.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+                osc.connect(og);
+                og.connect(ctx.destination);
+                osc.start(t + 0.05);
+                osc.stop(t + 0.35);
+            }
+
             // Throw: whoosh sound
             function sfxThrow(ctx) {
                 const t = ctx.currentTime;
@@ -696,7 +732,8 @@
                     bubblePop: sfxBubblePop,
                     match: sfxMatch,
                     catch: sfxCatch,
-                    throw: sfxThrow
+                    throw: sfxThrow,
+                    roomTransition: sfxRoomTransition
                 }
             };
         })();

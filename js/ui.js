@@ -201,6 +201,9 @@
             if (!eggButton) return;
             gameState.eggTaps++;
 
+            // Haptic feedback on egg tap
+            if (typeof hapticBuzz === 'function') hapticBuzz(50);
+
             // Add shake animation
             eggButton.classList.add('egg-shake');
             setTimeout(() => eggButton.classList.remove('egg-shake'), 300);
@@ -232,6 +235,9 @@
         function hatchPet() {
             // Reset egg tap cooldown
             eggTapCooldown = false;
+
+            // Haptic buzz for the big hatch moment
+            if (typeof hapticBuzz === 'function') hapticBuzz(120);
 
             gameState.pet = createPet();
             gameState.phase = 'pet';
@@ -499,6 +505,7 @@
             gameState.season = season;
             const seasonData = SEASONS[season];
             const seasonalDecorHTML = isOutdoor && seasonData ? `<div class="seasonal-decor" aria-hidden="true">${getSeasonalDecor(season, timeOfDay)}</div>` : '';
+            const seasonalAmbientHTML = typeof generateSeasonalAmbientHTML === 'function' ? generateSeasonalAmbientHTML(season) : '';
 
             const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
             // Collapsed context indicator: weather + time + season in one pill
@@ -546,6 +553,7 @@
                     ${celestialHTML}
                     ${weatherHTML}
                     ${seasonalDecorHTML}
+                    ${seasonalAmbientHTML}
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
                         ${generatePetSVG(pet, mood)}
@@ -2503,6 +2511,9 @@
                     kitchen: { decoration: 'none' },
                     bathroom: { decoration: 'none' }
                 };
+                const preservedMinigameScoreHistory = gameState.minigameScoreHistory || {};
+                const preservedMinigameHighScores = gameState.minigameHighScores || {};
+                const preservedMinigamePlayCounts = gameState.minigamePlayCounts || {};
                 gameState = {
                     phase: 'egg',
                     pet: null,
@@ -2515,6 +2526,9 @@
                     season: getCurrentSeason(),
                     adultsRaised: preservedAdultsRaised,
                     furniture: preservedFurniture,
+                    minigamePlayCounts: preservedMinigamePlayCounts,
+                    minigameHighScores: preservedMinigameHighScores,
+                    minigameScoreHistory: preservedMinigameScoreHistory,
                     garden: {
                         plots: [],
                         inventory: {},
