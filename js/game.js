@@ -1780,6 +1780,12 @@
             } else {
                 // Page is visible again, apply any decay that occurred while away
                 if (gameState.phase === 'pet' && gameState.pet) {
+                    // Pause the decay timer while we overwrite pet stats to avoid
+                    // the timer firing during or right after the load, which could
+                    // double-apply decay or have its changes overwritten.
+                    stopDecayTimer();
+                    _petPhaseTimersRunning = false;
+
                     const saved = loadGame();
                     if (saved && saved.pet) {
                         gameState.pet.hunger = saved.pet.hunger;
@@ -1814,6 +1820,10 @@
 
                         saveGame();
                     }
+
+                    // Restart the decay timer now that stats are settled
+                    startDecayTimer();
+                    _petPhaseTimersRunning = true;
                 }
             }
         });
@@ -1836,6 +1846,8 @@
             // Stop any existing timers
             stopDecayTimer();
             stopGardenGrowTimer();
+            _petPhaseTimersRunning = false;
+            _petPhaseLastRoom = null;
 
             const saved = loadGame();
             if (saved) {

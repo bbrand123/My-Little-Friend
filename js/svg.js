@@ -1,5 +1,9 @@
         // ==================== SVG GENERATION ====================
 
+        // Counter for unique SVG gradient IDs to avoid collisions when multiple SVGs coexist
+        let _svgIdCounter = 0;
+        function _svgUid() { return '_' + (++_svgIdCounter); }
+
         // Helper function to adjust color brightness
         function adjustColorBrightness(hexColor, percent) {
             // Convert hex to RGB
@@ -186,25 +190,28 @@
                 `;
             }
 
+            const uid = _svgUid();
+            const eggGradId = 'eggGradient' + uid;
+            const eggShineId = 'eggShine' + uid;
             return `
                 <svg class="egg-svg" viewBox="0 0 100 130" role="img" aria-label="${eggData.description}. Tap to help it hatch!">
                     <defs>
-                        <linearGradient id="eggGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="${eggGradId}" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" style="stop-color:${colors.shine}"/>
                             <stop offset="50%" style="stop-color:${colors.base}"/>
                             <stop offset="100%" style="stop-color:${colors.shine}"/>
                         </linearGradient>
-                        <linearGradient id="eggShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="${eggShineId}" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" style="stop-color:rgba(255,255,255,0.6)"/>
                             <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
                         </linearGradient>
                     </defs>
                     <!-- Egg body -->
-                    <ellipse cx="50" cy="70" rx="40" ry="50" fill="url(#eggGradient)" stroke="${colors.accent}" stroke-width="3"/>
+                    <ellipse cx="50" cy="70" rx="40" ry="50" fill="url(#${eggGradId})" stroke="${colors.accent}" stroke-width="3"/>
                     <!-- Pattern decorations -->
                     ${patternHTML}
                     <!-- Shine -->
-                    <ellipse cx="35" cy="45" rx="15" ry="20" fill="url(#eggShine)"/>
+                    <ellipse cx="35" cy="45" rx="15" ry="20" fill="url(#${eggShineId})"/>
                     <!-- Cracks -->
                     ${cracks.join('')}
                 </svg>
@@ -938,15 +945,18 @@
         function generateUnicornSVG(color, eyeStyle, mouthPath, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A magical happy unicorn with sparkling horn' : mood === 'sad' ? 'A sad unicorn whose horn is dim' : mood === 'sleepy' ? 'A sleepy unicorn resting peacefully' : mood === 'energetic' ? 'An energetic unicorn galloping with rainbow trail' : 'A serene unicorn';
+            const uid = _svgUid();
+            const hornGradId = 'hornGrad' + uid;
+            const maneGradId = 'maneGrad' + uid;
             return `
                 <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <defs>
-                        <linearGradient id="hornGrad" x1="0" y1="1" x2="0" y2="0">
+                        <linearGradient id="${hornGradId}" x1="0" y1="1" x2="0" y2="0">
                             <stop offset="0%" stop-color="#FFD700"/>
                             <stop offset="50%" stop-color="#FFF8DC"/>
                             <stop offset="100%" stop-color="#FFD700"/>
                         </linearGradient>
-                        <linearGradient id="maneGrad" x1="0" y1="0" x2="1" y2="1">
+                        <linearGradient id="${maneGradId}" x1="0" y1="0" x2="1" y2="1">
                             <stop offset="0%" stop-color="#FF69B4"/>
                             <stop offset="25%" stop-color="#DDA0DD"/>
                             <stop offset="50%" stop-color="#87CEEB"/>
@@ -967,18 +977,18 @@
                     <rect x="54" y="94" width="8" height="4" rx="2" fill="#DDA0DD"/>
                     <rect x="66" y="94" width="8" height="4" rx="2" fill="#DDA0DD"/>
                     <!-- Tail (rainbow) -->
-                    <path d="M80 65 Q95 55 92 ${isUp ? '42' : '52'} Q98 ${isUp ? '35' : '48'} 90 ${isUp ? '32' : '45'}" stroke="url(#maneGrad)" stroke-width="6" fill="none" stroke-linecap="round"/>
+                    <path d="M80 65 Q95 55 92 ${isUp ? '42' : '52'} Q98 ${isUp ? '35' : '48'} 90 ${isUp ? '32' : '45'}" stroke="url(#${maneGradId})" stroke-width="6" fill="none" stroke-linecap="round"/>
                     <!-- Head -->
                     <ellipse cx="50" cy="35" rx="20" ry="22" fill="${color}"/>
                     <!-- Horn -->
-                    <polygon points="50,2 44,20 56,20" fill="url(#hornGrad)" stroke="#DAA520" stroke-width="1"/>
+                    <polygon points="50,2 44,20 56,20" fill="url(#${hornGradId})" stroke="#DAA520" stroke-width="1"/>
                     <!-- Horn spiral lines -->
                     <path d="M47 16 L53 14" stroke="#DAA520" stroke-width="0.8" opacity="0.6"/>
                     <path d="M48 12 L52 10" stroke="#DAA520" stroke-width="0.8" opacity="0.6"/>
                     <path d="M49 8 L51 6" stroke="#DAA520" stroke-width="0.8" opacity="0.6"/>
                     <!-- Mane (rainbow) -->
-                    <path d="M32 22 Q25 30 28 40 Q22 45 26 52" stroke="url(#maneGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
-                    <path d="M35 20 Q28 28 30 36" stroke="url(#maneGrad)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
+                    <path d="M32 22 Q25 30 28 40 Q22 45 26 52" stroke="url(#${maneGradId})" stroke-width="5" fill="none" stroke-linecap="round"/>
+                    <path d="M35 20 Q28 28 30 36" stroke="url(#${maneGradId})" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
                     <!-- Ears -->
                     <ellipse cx="38" cy="16" rx="5" ry="10" fill="${color}" transform="rotate(-15 38 16)"/>
                     <ellipse cx="62" cy="16" rx="5" ry="10" fill="${color}" transform="rotate(15 62 16)"/>
@@ -1006,10 +1016,12 @@
         function generateDragonSVG(color, eyeStyle, mouthPath, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy baby dragon puffing little flames' : mood === 'sad' ? 'A sad dragon with drooping wings' : mood === 'sleepy' ? 'A sleepy dragon curled up with its tail' : mood === 'energetic' ? 'An energetic dragon flapping its wings' : 'A calm dragon';
+            const uid = _svgUid();
+            const fireGradId = 'fireGrad' + uid;
             return `
                 <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
                     <defs>
-                        <linearGradient id="fireGrad" x1="0" y1="1" x2="0" y2="0">
+                        <linearGradient id="${fireGradId}" x1="0" y1="1" x2="0" y2="0">
                             <stop offset="0%" stop-color="#FF4500"/>
                             <stop offset="40%" stop-color="#FF8C00"/>
                             <stop offset="100%" stop-color="#FFD700"/>
@@ -1069,7 +1081,7 @@
                     <ellipse cx="32" cy="88" rx="10" ry="6" fill="${color}"/>
                     <ellipse cx="68" cy="88" rx="10" ry="6" fill="${color}"/>
                     <!-- Fire breath when happy -->
-                    ${isUp ? '<path d="M42 50 Q35 48 30 42 Q28 38 32 35 Q30 40 34 43 Q36 46 40 48" fill="url(#fireGrad)" opacity="0.8"><animate attributeName="opacity" values="0.8;0.4;0.8" dur="0.8s" repeatCount="indefinite"/></path>' : ''}
+                    ${isUp ? `<path d="M42 50 Q35 48 30 42 Q28 38 32 35 Q30 40 34 43 Q36 46 40 48" fill="url(#${fireGradId})" opacity="0.8"><animate attributeName="opacity" values="0.8;0.4;0.8" dur="0.8s" repeatCount="indefinite"/></path>` : ''}
                     <!-- Cheeks -->
                     ${isUp ? '<circle cx="30" cy="42" r="4" fill="#FF6347" opacity="0.3"/><circle cx="70" cy="42" r="4" fill="#FF6347" opacity="0.3"/>' : ''}
                     <!-- Sleepy Zzz -->

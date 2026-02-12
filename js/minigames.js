@@ -886,10 +886,13 @@
             // Focus done button
             overlay.querySelector('#bubblepop-done').focus();
 
-            // Spawn initial batch of bubbles
-            for (let i = 0; i < 5; i++) {
-                setTimeout(() => spawnBubble(), i * 200);
-            }
+            // Spawn initial batch of bubbles after the overlay has been laid out
+            // to avoid zero-dimension reads from offsetWidth/offsetHeight.
+            requestAnimationFrame(() => {
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => spawnBubble(), i * 200);
+                }
+            });
         }
 
         function startBubblePopTimer() {
@@ -942,9 +945,11 @@
 
             const sizeData = BUBBLE_SIZES[Math.floor(Math.random() * BUBBLE_SIZES.length)];
             const bubbleSize = sizeData.size;
-            const fieldRect = field.getBoundingClientRect();
             const fieldW = field.offsetWidth;
             const fieldH = field.offsetHeight;
+
+            // Skip if the field hasn't been laid out yet (dimensions are 0)
+            if (fieldW === 0 || fieldH === 0) return;
 
             // Random position, keep within bounds and above the pet
             const x = Math.random() * (fieldW - bubbleSize - 10) + 5;
@@ -1437,23 +1442,28 @@
         const SIMON_FREQUENCIES = { green: 392, red: 523.25, yellow: 659.25, blue: 783.99 };
 
         let simonState = null;
-        let simonAudioCtx = null;
+
+        function simonGetAudioCtx() {
+            if (typeof SoundManager !== 'undefined' && SoundManager.getContext) {
+                return SoundManager.getContext();
+            }
+            return null;
+        }
 
         function simonPlayTone(color, duration) {
             try {
-                if (!simonAudioCtx) {
-                    simonAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                const osc = simonAudioCtx.createOscillator();
-                const gain = simonAudioCtx.createGain();
+                const ctx = simonGetAudioCtx();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.value = SIMON_FREQUENCIES[color];
                 gain.gain.value = 0.3;
-                gain.gain.exponentialRampToValueAtTime(0.001, simonAudioCtx.currentTime + duration / 1000);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
                 osc.connect(gain);
-                gain.connect(simonAudioCtx.destination);
+                gain.connect(ctx.destination);
                 osc.start();
-                osc.stop(simonAudioCtx.currentTime + duration / 1000);
+                osc.stop(ctx.currentTime + duration / 1000);
             } catch (e) {
                 // Audio not supported — game works visually without it
             }
@@ -1461,19 +1471,18 @@
 
         function simonPlayErrorTone() {
             try {
-                if (!simonAudioCtx) {
-                    simonAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                const osc = simonAudioCtx.createOscillator();
-                const gain = simonAudioCtx.createGain();
+                const ctx = simonGetAudioCtx();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
                 osc.type = 'sawtooth';
                 osc.frequency.value = 150;
                 gain.gain.value = 0.25;
-                gain.gain.exponentialRampToValueAtTime(0.001, simonAudioCtx.currentTime + 0.6);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
                 osc.connect(gain);
-                gain.connect(simonAudioCtx.destination);
+                gain.connect(ctx.destination);
                 osc.start();
-                osc.stop(simonAudioCtx.currentTime + 0.6);
+                osc.stop(ctx.currentTime + 0.6);
             } catch (e) {
                 // Audio not supported
             }
@@ -1772,11 +1781,7 @@
                 if (isNewBest) showToast(`New high score in Simon Says: Round ${roundsCompleted}!`, '#FFD700');
             }
 
-            // Clean up audio context
-            if (simonAudioCtx) {
-                try { simonAudioCtx.close(); } catch (e) {}
-                simonAudioCtx = null;
-            }
+            // Audio context is shared via SoundManager — no cleanup needed here
 
             restorePostMiniGameState();
             simonState = null;
@@ -1867,8 +1872,12 @@
 
             // Region click listeners
             overlay.querySelectorAll('.coloring-region').forEach(region => {
-                region.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                // Make regions keyboard-accessible
+                region.setAttribute('tabindex', '0');
+                region.setAttribute('role', 'button');
+                region.setAttribute('aria-label', 'Coloring region ' + (region.getAttribute('data-region') || ''));
+
+                function applyColor() {
                     const regionId = region.getAttribute('data-region');
                     region.setAttribute('fill', coloringState.selectedColor);
                     region.style.fill = coloringState.selectedColor;
@@ -1881,6 +1890,19 @@
                         region.style.transition = 'opacity 0.2s';
                         region.style.opacity = '1';
                     }, 50);
+                }
+
+                region.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    applyColor();
+                });
+
+                region.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        applyColor();
+                    }
                 });
 
                 region.addEventListener('mouseenter', () => {
@@ -1888,6 +1910,12 @@
                     region.style.strokeWidth = '3';
                 });
                 region.addEventListener('mouseleave', () => {
+                    region.style.strokeWidth = '2';
+                });
+                region.addEventListener('focus', () => {
+                    region.style.strokeWidth = '3';
+                });
+                region.addEventListener('blur', () => {
                     region.style.strokeWidth = '2';
                 });
             });

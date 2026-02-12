@@ -340,14 +340,14 @@
             // Initialize audio context on first user interaction
             function initOnInteraction() {
                 const handler = () => {
-                    getContext();
                     document.removeEventListener('click', handler);
                     document.removeEventListener('touchstart', handler);
                     document.removeEventListener('keydown', handler);
+                    getContext();
                 };
-                document.addEventListener('click', handler, { once: true });
-                document.addEventListener('touchstart', handler, { once: true });
-                document.addEventListener('keydown', handler, { once: true });
+                document.addEventListener('click', handler);
+                document.addEventListener('touchstart', handler);
+                document.addEventListener('keydown', handler);
             }
 
             // ==================== ACTION SOUND EFFECTS ====================
@@ -714,6 +714,7 @@
                 stopAll,
                 toggle,
                 getEnabled,
+                getContext,
                 initOnInteraction,
                 playSFX,
                 sfx: {
