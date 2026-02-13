@@ -1152,6 +1152,18 @@
                         // Quick feed: only one crop type, skip the menu
                         // Return early since feedFromGarden handles careActions increment itself
                         feedFromGarden(availableCrops[0]);
+                        // Reset cooldown since feedFromGarden handled the action directly
+                        actionCooldown = false;
+                        if (actionCooldownTimer) {
+                            clearTimeout(actionCooldownTimer);
+                            actionCooldownTimer = null;
+                        }
+                        const btns = document.querySelectorAll('.action-btn');
+                        btns.forEach(btn => {
+                            btn.classList.remove('cooldown');
+                            btn.disabled = false;
+                            btn.removeAttribute('aria-disabled');
+                        });
                         return;
                     } else if (availableCrops.length > 1) {
                         // Multiple crop types: show the feed menu
@@ -1177,8 +1189,8 @@
                     const washBonus = Math.round(20 * getRoomBonus('wash'));
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
-                    petContainer.classList.add('sparkle');
-                    createBubbles(sparkles);
+                    if (petContainer) petContainer.classList.add('sparkle');
+                    if (sparkles) createBubbles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.wash);
                     break;
                 }
@@ -1186,8 +1198,8 @@
                     const playBonus = Math.round(20 * getRoomBonus('play'));
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
-                    petContainer.classList.add('wiggle');
-                    createHearts(sparkles);
+                    if (petContainer) petContainer.classList.add('wiggle');
+                    if (sparkles) createHearts(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.play);
                     break;
                 }
@@ -1209,8 +1221,8 @@
                     sleepBonus = Math.round(sleepBonus * getRoomBonus('sleep'));
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
-                    petContainer.classList.add('sleep-anim');
-                    createZzz(sparkles);
+                    if (petContainer) petContainer.classList.add('sleep-anim');
+                    if (sparkles) createZzz(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.sleep);
                     break;
                 }
@@ -1221,8 +1233,8 @@
                     pet.happiness = clamp(pet.happiness + 15, 0, 100);
                     pet.energy = clamp(pet.energy + 10, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
-                    petContainer.classList.add('heal-anim');
-                    createMedicineParticles(sparkles);
+                    if (petContainer) petContainer.classList.add('heal-anim');
+                    if (sparkles) createMedicineParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.medicine);
                     break;
                 case 'groom': {
@@ -1233,8 +1245,8 @@
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
-                    petContainer.classList.add('groom-anim');
-                    createGroomParticles(sparkles);
+                    if (petContainer) petContainer.classList.add('groom-anim');
+                    if (sparkles) createGroomParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.groom);
                     break;
                 }
@@ -1245,8 +1257,8 @@
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
-                    petContainer.classList.add('exercise-anim');
-                    createExerciseParticles(sparkles);
+                    if (petContainer) petContainer.classList.add('exercise-anim');
+                    if (sparkles) createExerciseParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.exercise);
                     break;
                 }
@@ -1256,8 +1268,8 @@
                     pet.happiness = clamp(pet.happiness + 25, 0, 100);
                     pet.hunger = clamp(pet.hunger + 10, 0, 100);
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
-                    petContainer.classList.add('treat-anim');
-                    createTreatParticles(sparkles, treat.emoji);
+                    if (petContainer) petContainer.classList.add('treat-anim');
+                    if (sparkles) createTreatParticles(sparkles, treat.emoji);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.treat);
                     break;
                 }
@@ -1266,8 +1278,8 @@
                     pet.happiness = clamp(pet.happiness + 15, 0, 100);
                     pet.energy = clamp(pet.energy + 5, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
-                    petContainer.classList.add('cuddle-anim');
-                    createCuddleParticles(sparkles);
+                    if (petContainer) petContainer.classList.add('cuddle-anim');
+                    if (sparkles) createCuddleParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
             }
