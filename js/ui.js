@@ -763,7 +763,7 @@
                                 const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
                                 const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
                                 return `<button class="action-btn feed" id="feed-btn">
-                                <span class="action-btn-tooltip">Restores food</span>
+                                <span class="action-btn-tooltip">+Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
                                 ${cropBadge}
@@ -771,37 +771,37 @@
                             </button>`;
                             })()}
                             <button class="action-btn wash" id="wash-btn">
-                                <span class="action-btn-tooltip">Cleans your pet</span>
+                                <span class="action-btn-tooltip">+Clean</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn sleep" id="sleep-btn">
-                                <span class="action-btn-tooltip">Restores energy</span>
+                                <span class="action-btn-tooltip">+Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn">
-                                <span class="action-btn-tooltip">Boosts happiness</span>
+                                <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn play" id="play-btn">
-                                <span class="action-btn-tooltip">Boosts happiness</span>
+                                <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn treat" id="treat-btn">
-                                <span class="action-btn-tooltip">A tasty snack</span>
+                                <span class="action-btn-tooltip">+Food, +Happy</span>
                                 <span class="btn-icon" aria-hidden="true">🍪</span>
                                 <span>Treat</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
-                                <span class="action-btn-tooltip">Play mini-games</span>
+                                <span class="action-btn-tooltip">+Happy, +XP</span>
                                 <span class="btn-icon" aria-hidden="true">🎮</span>
                                 <span>Games</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
@@ -815,19 +815,19 @@
                         <div class="action-group">
                             <div class="action-group-buttons" role="group" aria-label="Additional actions">
                                 <button class="action-btn exercise" id="exercise-btn">
-                                    <span class="action-btn-tooltip">Happiness up, energy down</span>
+                                    <span class="action-btn-tooltip">+Happy, −Energy</span>
                                     <span class="btn-icon" aria-hidden="true">🏃</span>
                                     <span>Exercise</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
                                 <button class="action-btn medicine" id="medicine-btn">
-                                    <span class="action-btn-tooltip">Boosts all stats</span>
+                                    <span class="action-btn-tooltip">+All stats</span>
                                     <span class="btn-icon" aria-hidden="true">🩹</span>
                                     <span>Medicine</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
                                 <button class="action-btn groom" id="groom-btn">
-                                    <span class="action-btn-tooltip">Cleans and cheers up</span>
+                                    <span class="action-btn-tooltip">+Clean, +Happy</span>
                                     <span class="btn-icon" aria-hidden="true">✂️</span>
                                     <span>Groom</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
@@ -839,12 +839,12 @@
                                 </button>
                                 ${gameState.pets && gameState.pets.length >= 2 ? `
                                 <button class="action-btn interact-btn" id="interact-btn" aria-haspopup="dialog">
-                                    <span class="action-btn-tooltip">Pets interact together</span>
+                                    <span class="action-btn-tooltip">+Happy, +Bond</span>
                                     <span class="btn-icon" aria-hidden="true">🤝</span>
                                     <span>Interact</span>
                                 </button>
                                 <button class="action-btn social-hub-btn" id="social-hub-btn" aria-haspopup="dialog">
-                                    <span class="action-btn-tooltip">View relationships</span>
+                                    <span class="action-btn-tooltip">+Social</span>
                                     <span class="btn-icon" aria-hidden="true">🏠</span>
                                     <span>Social Hub</span>
                                 </button>` : ''}
