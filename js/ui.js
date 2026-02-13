@@ -470,8 +470,9 @@
                 const name = customName ? customName.trim() : '';
                 if (name.length > 0) {
                     gameState.pet.name = name;
-                    // Text-to-speech on submit
+                    // Text-to-speech on submit — cancel any ongoing speech first
                     if ('speechSynthesis' in window && !useDefaults) {
+                        window.speechSynthesis.cancel();
                         const utterance = new SpeechSynthesisUtterance(name);
                         utterance.rate = 0.9;
                         utterance.pitch = 1.1;
@@ -502,10 +503,17 @@
             trapFocus(overlay);
         }
 
-        let _petPhaseTimersRunning = false;
-        let _petPhaseLastRoom = null;
+        // Exposed on window so game.js can read/write these flags reliably
+        // even if files are loaded as modules in the future.
+        var _petPhaseTimersRunning = false;
+        var _petPhaseLastRoom = null;
 
         function renderPetPhase() {
+            // Clear any pending deferred render to avoid redundant double re-renders
+            if (pendingRenderTimer) {
+                clearTimeout(pendingRenderTimer);
+                pendingRenderTimer = null;
+            }
             const content = document.getElementById('game-content');
             const pet = gameState.pet;
             const petData = PET_TYPES[pet.type];
@@ -986,7 +994,8 @@
             // called from ~10 code paths; unconditionally restarting caused audible
             // earcon fade-out/fade-in glitches and brief timer gaps.
             const roomChanged = (_petPhaseLastRoom !== currentRoom);
-            if (!_petPhaseTimersRunning) {
+            const needTimerStart = !_petPhaseTimersRunning;
+            if (needTimerStart) {
                 startDecayTimer();
                 startGardenGrowTimer();
                 _petPhaseTimersRunning = true;
@@ -996,7 +1005,7 @@
                 SoundManager.enterRoom(currentRoom);
             }
 
-            if (roomChanged || !_petPhaseTimersRunning) {
+            if (roomChanged || needTimerStart) {
                 if (typeof startIdleAnimations === 'function') {
                     startIdleAnimations();
                 }
@@ -1078,6 +1087,19 @@
         let actionCooldownTimer = null;
         const ACTION_COOLDOWN_MS = 600;
 
+        // Shared standard-feed logic used by both careAction('feed') and openFeedMenu
+        function performStandardFeed(pet) {
+            const feedBonus = Math.round(20 * getRoomBonus('feed'));
+            pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
+            const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
+            const petContainer = document.getElementById('pet-container');
+            const sparkles = document.getElementById('sparkles');
+            if (petContainer) petContainer.classList.add('bounce');
+            if (sparkles) createFoodParticles(sparkles);
+            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
+            return msg;
+        }
+
         function careAction(action) {
             // Prevent rapid clicking
             if (actionCooldown) return;
@@ -1140,12 +1162,7 @@
                         });
                         return;
                     }
-                    const feedBonus = Math.round(20 * getRoomBonus('feed'));
-                    pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.feed);
-                    petContainer.classList.add('bounce');
-                    createFoodParticles(sparkles);
-                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
+                    message = performStandardFeed(pet);
                     break;
                 }
                 case 'wash': {
@@ -1183,7 +1200,7 @@
                     }
                     sleepBonus = Math.round(sleepBonus * getRoomBonus('sleep'));
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.sleep);
+                    message = sleepAnnounce;
                     petContainer.classList.add('sleep-anim');
                     createZzz(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.sleep);
@@ -1761,15 +1778,9 @@
                         actionCooldownTimer = null;
                     }, ACTION_COOLDOWN_MS);
 
-                    const bonus = Math.round(20 * getRoomBonus('feed'));
-                    pet.hunger = clamp(pet.hunger + bonus, 0, 100);
-                    const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
-                    const petContainer = document.getElementById('pet-container');
-                    const sparkles = document.getElementById('sparkles');
-                    if (petContainer) petContainer.classList.add('bounce');
-                    if (sparkles) createFoodParticles(sparkles);
-                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
+                    const msg = performStandardFeed(pet);
                     showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
+                    const petContainer = document.getElementById('pet-container');
                     if (petContainer) {
                         const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
                         petContainer.addEventListener('animationend', onEnd);
@@ -1815,7 +1826,7 @@
 
         // ==================== MODAL ====================
 
-        function showModal(title, message, icon, onConfirm, onCancel) {
+        function showModal(title, message, icon, onConfirm, onCancel, { cancelLabel = 'Cancel', confirmLabel = 'Confirm' } = {}) {
             // Capture the element that triggered the modal for focus restoration
             const triggerEl = document.activeElement;
 
@@ -1836,10 +1847,10 @@
                     <p class="modal-message">${message}</p>
                     <div class="modal-buttons">
                         <button class="modal-btn cancel" id="modal-cancel">
-                            No, Keep Pet
+                            ${escapeHTML(cancelLabel)}
                         </button>
                         <button class="modal-btn confirm" id="modal-confirm">
-                            Yes, New Egg
+                            ${escapeHTML(confirmLabel)}
                         </button>
                     </div>
                 </div>
