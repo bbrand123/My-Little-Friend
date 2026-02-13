@@ -105,6 +105,16 @@
             return div.innerHTML;
         }
 
+        // Strip HTML tags and control characters from pet names so they are
+        // safe for TTS (SpeechSynthesisUtterance) and future display paths.
+        function sanitizePetName(raw) {
+            // Remove HTML tags
+            let name = raw.replace(/<[^>]*>/g, '');
+            // Remove control characters (keep printable + common unicode)
+            name = name.replace(/[\x00-\x1F\x7F]/g, '');
+            return name.trim().slice(0, 14);
+        }
+
         // Dynamic color for need rings: green when high, yellow, orange, red when low
         function getNeedColor(value) {
             if (value > 65) return '#66BB6A';
@@ -638,7 +648,6 @@
             const prevLevel = getRelationshipLevel(rel.points);
             rel.points = Math.max(0, Math.min(300, rel.points + points));
             const newLevel = getRelationshipLevel(rel.points);
-            rel.interactionCount = (rel.interactionCount || 0) + 1;
             rel.lastInteraction = Date.now();
 
             // Return level change info
@@ -690,8 +699,9 @@
             pet1.careActions = (pet1.careActions || 0) + 1;
             pet2.careActions = (pet2.careActions || 0) + 1;
 
-            // Record per-type cooldown timestamp
+            // Record per-type cooldown timestamp and count this interaction once
             rel.lastInteractionByType[interactionId] = now;
+            rel.interactionCount = (rel.interactionCount || 0) + 1;
 
             // Add relationship points
             const relChange = addRelationshipPoints(pet1.id, pet2.id, interaction.relationshipGain);
@@ -1262,7 +1272,7 @@
                 renderGardenUI();
             }
             // Update room nav badge when crops become harvestable
-            if (anyGrew) {
+            if (anyGrew && typeof updateRoomNavBadge === 'function') {
                 updateRoomNavBadge();
             }
             saveGame();
@@ -1458,7 +1468,7 @@
 
             // Check for growth stage transition
             if (checkGrowthMilestone(gameState.pet)) {
-                showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}!`, '#FF8C42');
+                showToast(`${crop.seedEmoji} Fed ${escapeHTML(gameState.pet.name || petData.name)} a garden-fresh ${crop.name}!`, '#FF8C42');
                 saveGame();
                 renderPetPhase();
                 return;
@@ -1478,7 +1488,7 @@
             if (crop.energyValue) statChanges.push(`Energy +${crop.energyValue}`);
             const statDesc = statChanges.join(', ');
 
-            showToast(`${crop.seedEmoji} Fed ${gameState.pet.name || petData.name} a garden-fresh ${crop.name}! ${statDesc}`, '#FF8C42');
+            showToast(`${crop.seedEmoji} Fed ${escapeHTML(gameState.pet.name || petData.name)} a garden-fresh ${crop.name}! ${statDesc}`, '#FF8C42');
 
             if (petContainer) {
                 const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
@@ -1745,7 +1755,7 @@
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
 
-            const message = `${petData.emoji} ${pet.name || petData.name} ${randomFromArray(seasonData.activityMessages)}`;
+            const message = `${petData.emoji} ${escapeHTML(pet.name || petData.name)} ${randomFromArray(seasonData.activityMessages)}`;
             showToast(message, '#FFB74D');
 
             // Check for growth stage transition
@@ -2138,7 +2148,7 @@
                         updateNeedDisplays();
                         updatePetMood();
                         updateWellnessBar();
-                        updateRoomNavBadge();
+                        if (typeof updateRoomNavBadge === 'function') updateRoomNavBadge();
 
                         // Re-render garden if currently viewing it
                         if (gameState.currentRoom === 'garden') {
@@ -2231,6 +2241,11 @@
 
             if (gameState.phase === 'pet' && gameState.pet) {
                 renderPetPhase();
+                // Ensure garden timer is running even if renderPetPhase() skipped
+                // its timer-start logic (e.g. _petPhaseTimersRunning was stale).
+                if (!gardenGrowInterval) {
+                    startGardenGrowTimer();
+                }
                 const petData = PET_TYPES[gameState.pet.type];
                 if (petData) {
                     const mood = getMood(gameState.pet);

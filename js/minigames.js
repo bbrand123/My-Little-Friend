@@ -1211,14 +1211,20 @@
             // Scale pairs: 6 at base, up to 10 at max difficulty (capped by available items)
             const pairCount = Math.min(6 + Math.floor((matchDiff - 1) * 4), MATCHING_ITEMS.length);
 
-            // Pick random items to make pairs
+            // Pick random items to make pairs — assign a pairId so matching is
+            // based on pair identity rather than emoji equality alone.
             const shuffledItems = shuffleArray([...MATCHING_ITEMS]);
             const selected = shuffledItems.slice(0, pairCount);
-            const cards = shuffleArray([...selected, ...selected])
+            const paired = selected.flatMap((item, i) => [
+                { ...item, pairId: i },
+                { ...item, pairId: i }
+            ]);
+            const cards = shuffleArray(paired)
                 .map((item, index) => ({
                     id: index,
                     emoji: item.emoji,
                     name: item.name,
+                    pairId: item.pairId,
                     flipped: false,
                     matched: false
                 }));
@@ -1331,7 +1337,7 @@
                 const card1 = matchingState.cards[first];
                 const card2 = matchingState.cards[second];
 
-                if (card1.emoji === card2.emoji) {
+                if (card1.pairId === card2.pairId) {
                     // Match found!
                     card1.matched = true;
                     card2.matched = true;
