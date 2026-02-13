@@ -458,7 +458,7 @@
                     utterance.pitch = 1.1;
                     window.speechSynthesis.cancel(); // Cancel any ongoing speech
                     window.speechSynthesis.speak(utterance);
-                    showToast(`🔊 "${name}"`, '#4ECDC4');
+                    showToast(`🔊 "${escapeHTML(name)}"`, '#4ECDC4');
                 } else {
                     showToast('Text-to-speech not supported', '#FFA726');
                 }
@@ -467,7 +467,8 @@
             setTimeout(() => input.focus(), 100);
 
             function finishNaming(customName, useDefaults = false) {
-                const name = customName ? customName.trim() : '';
+                const raw = customName ? customName.trim() : '';
+                const name = raw.length > 0 ? sanitizePetName(raw) : '';
                 if (name.length > 0) {
                     gameState.pet.name = name;
                     // Text-to-speech on submit — cancel any ongoing speech first
@@ -492,7 +493,7 @@
                 saveGame();
                 overlay.remove();
                 renderPetPhase();
-                showToast(`Welcome home, ${gameState.pet.name}!`, '#4ECDC4');
+                showToast(`Welcome home, ${escapeHTML(gameState.pet.name)}!`, '#4ECDC4');
             }
 
             submitBtn.addEventListener('click', () => finishNaming(input.value, false));
@@ -917,7 +918,7 @@
                         renderPetPhase();
                         const petData = PET_TYPES[gameState.pet.type];
                         if (petData) {
-                            showToast(`Switched to ${gameState.pet.name || petData.name}!`, '#4ECDC4');
+                            showToast(`Switched to ${escapeHTML(gameState.pet.name || petData.name)}!`, '#4ECDC4');
                         }
                     }
                 });
@@ -1017,7 +1018,7 @@
             _careToastTimer = null;
             if (_careToastQueue.length === 0) return;
             const items = _careToastQueue.splice(0);
-            const petName = (gameState.pet && gameState.pet.name) || 'your pet';
+            const petName = escapeHTML((gameState.pet && gameState.pet.name) || 'your pet');
             if (items.length === 1) {
                 const { action, emoji } = items[0];
                 const verb = CARE_ACTION_VERBS[action] || action;
@@ -1803,6 +1804,9 @@
             const standardBtn = overlay.querySelector('[data-feed="standard"]');
             if (standardBtn) {
                 standardBtn.addEventListener('click', () => {
+                    // Re-read active pet at click time to avoid stale closure reference
+                    const currentPet = gameState.pet;
+                    if (!currentPet) return;
                     closeMenu();
 
                     // Set global action cooldown (same as careAction) so that
@@ -1814,19 +1818,19 @@
                         actionCooldownTimer = null;
                     }, ACTION_COOLDOWN_MS);
 
-                    const msg = performStandardFeed(pet);
-                    showToast(`${PET_TYPES[pet.type].emoji} ${msg}`, TOAST_COLORS.feed);
+                    const msg = performStandardFeed(currentPet);
+                    showToast(`${PET_TYPES[currentPet.type].emoji} ${msg}`, TOAST_COLORS.feed);
                     const petContainer = document.getElementById('pet-container');
                     if (petContainer) {
                         const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
                         petContainer.addEventListener('animationend', onEnd);
                         setTimeout(() => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); }, 1200);
                     }
-                    if (typeof pet.careActions !== 'number') pet.careActions = 0;
-                    pet.careActions++;
+                    if (typeof currentPet.careActions !== 'number') currentPet.careActions = 0;
+                    currentPet.careActions++;
 
                     // Check for growth stage transition
-                    if (checkGrowthMilestone(pet)) {
+                    if (checkGrowthMilestone(currentPet)) {
                         saveGame();
                         renderPetPhase();
                         return;
@@ -2679,12 +2683,13 @@
                 `;
             }
 
-            // Remove existing modal
-            const existingModal = document.querySelector('.modal-overlay');
+            // Remove existing new-pet modal only — avoid removing unrelated overlays
+            // like the birthday celebration (.celebration-modal).
+            const existingModal = document.querySelector('.modal-overlay.new-pet-modal');
             if (existingModal) existingModal.remove();
 
             const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
+            modal.className = 'modal-overlay new-pet-modal';
             modal.setAttribute('role', 'dialog');
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'modal-title');
