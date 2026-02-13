@@ -913,6 +913,7 @@
                     if (idx === gameState.activePetIndex) return;
                     syncActivePetToArray();
                     if (switchActivePet(idx)) {
+                        _lastGrowthMilestone = 0;
                         renderPetPhase();
                         const petData = PET_TYPES[gameState.pet.type];
                         if (petData) {
