@@ -63,7 +63,7 @@
                 bubblepop: 'pops',
                 matching: 'score',
                 simonsays: 'rounds',
-                coloring: ''
+                coloring: 'points'
             };
 
             let cardsHTML = '';
@@ -297,7 +297,7 @@
                 shadow.style.opacity = '0.05';
             }
 
-            // Speed multiplier: higher difficulty = faster animation
+            // Duration multiplier: higher difficulty → lower value → shorter timeouts → faster game
             const fetchSpeed = 1 / fetchState.difficulty;
 
             // Phase 2: Ball drops down to ground
@@ -703,8 +703,10 @@
                     setTimeout(() => petEl.classList.remove('celebrating'), 500);
                 }
 
-                instruction.textContent = `Found a treat! ${hideSeekState.treatEmoji}`;
-                instruction.className = 'hideseek-instruction highlight';
+                if (instruction) {
+                    instruction.textContent = `Found a treat! ${hideSeekState.treatEmoji}`;
+                    instruction.className = 'hideseek-instruction highlight';
+                }
                 if (typeof hapticBuzz === 'function') hapticBuzz(50);
                 if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.hit);
 
@@ -731,8 +733,10 @@
                 field.appendChild(miss);
                 setTimeout(() => miss.remove(), 700);
 
-                instruction.textContent = 'Nothing here... keep looking!';
-                instruction.className = 'hideseek-instruction';
+                if (instruction) {
+                    instruction.textContent = 'Nothing here... keep looking!';
+                    instruction.className = 'hideseek-instruction';
+                }
                 if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
 
                 announce('Nothing under this one. Keep searching!');
@@ -884,6 +888,27 @@
 
             document.body.appendChild(overlay);
 
+            // Delegated event handlers on the field for bubble clicks/keyboard
+            const field = overlay.querySelector('#bubblepop-field');
+            if (field) {
+                field.addEventListener('click', (e) => {
+                    const bubble = e.target.closest('.bubblepop-bubble');
+                    if (bubble) {
+                        e.stopPropagation();
+                        popBubble(bubble);
+                    }
+                });
+                field.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        const bubble = e.target.closest('.bubblepop-bubble');
+                        if (bubble) {
+                            e.preventDefault();
+                            popBubble(bubble);
+                        }
+                    }
+                });
+            }
+
             // Done button
             overlay.querySelector('#bubblepop-done').addEventListener('click', () => {
                 requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
@@ -910,9 +935,10 @@
             // to avoid zero-dimension reads from offsetWidth/offsetHeight.
             if (!bubblePopState._initialSpawnTimers) bubblePopState._initialSpawnTimers = [];
             requestAnimationFrame(() => {
+                if (!bubblePopState) return;
                 for (let i = 0; i < 5; i++) {
                     const id = setTimeout(() => spawnBubble(), i * 200);
-                    if (bubblePopState) bubblePopState._initialSpawnTimers.push(id);
+                    bubblePopState._initialSpawnTimers.push(id);
                 }
             });
         }
@@ -1003,24 +1029,15 @@
                 bubble.style.transform = 'scale(1)';
             });
 
-            // Gentle floating animation with random offset
-            const floatDuration = 2 + Math.random() * 2;
-            const floatDelay = Math.random() * 2;
-            bubble.style.animation = `bubbleFloat ${floatDuration}s ease-in-out ${floatDelay}s infinite`;
+            // Gentle floating animation with random offset (skip if user prefers reduced motion)
+            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!prefersReducedMotion) {
+                const floatDuration = 2 + Math.random() * 2;
+                const floatDelay = Math.random() * 2;
+                bubble.style.animation = `bubbleFloat ${floatDuration}s ease-in-out ${floatDelay}s infinite`;
+            }
 
-            // Pop on click/tap
-            bubble.addEventListener('click', (e) => {
-                e.stopPropagation();
-                popBubble(bubble);
-            });
-
-            // Pop on keyboard
-            bubble.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    popBubble(bubble);
-                }
-            });
+            // Click/keyboard handled by delegated listener on the field
 
             // Auto-remove bubble after a while if not popped — shorter at higher difficulty
             const bubbleLifetime = Math.max(2000, Math.round((4000 + Math.random() * 3000) / (bubblePopState.difficulty || 1)));
@@ -1416,7 +1433,7 @@
                 else if (moves <= 12) message += 'Great job!';
                 else if (moves <= 18) message += 'Well done!';
                 else message += 'You did it!';
-                instruction.innerHTML = wrapEmojiForAria(message);
+                instruction.textContent = message;
                 instruction.classList.add('highlight');
             }
 
