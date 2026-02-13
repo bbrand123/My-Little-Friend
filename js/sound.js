@@ -196,14 +196,16 @@
                 };
             }
 
-            // Bedroom: Soft ambient warmth - gentle low drone
+            // Bedroom: Gentle piano-like ambient with soft pad
             function createBedroomEarcon(ctx) {
                 const gainNode = ctx.createGain();
                 gainNode.gain.value = 0;
                 gainNode.connect(masterGain);
 
                 let stopped = false;
+                let noteTimerId = null;
 
+                // Soft pad drone
                 const osc1 = ctx.createOscillator();
                 const osc2 = ctx.createOscillator();
                 const filter = ctx.createBiquadFilter();
@@ -217,7 +219,7 @@
                 filter.type = 'lowpass';
                 filter.frequency.value = 200;
 
-                oscGain.gain.value = 0.06;
+                oscGain.gain.value = 0.04;
 
                 osc1.connect(filter);
                 osc2.connect(filter);
@@ -227,26 +229,79 @@
                 osc1.start();
                 osc2.start();
 
+                // Gentle piano-like notes at random intervals
+                const pianoNotes = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3]; // C4-C5 pentatonic
+                function playNote() {
+                    if (stopped) return;
+                    const osc = ctx.createOscillator();
+                    const noteGain = ctx.createGain();
+                    const noteFilter = ctx.createBiquadFilter();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = pianoNotes[Math.floor(Math.random() * pianoNotes.length)];
+
+                    noteFilter.type = 'lowpass';
+                    noteFilter.frequency.value = 800;
+
+                    noteGain.gain.setValueAtTime(0.06, ctx.currentTime);
+                    noteGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.0);
+
+                    osc.connect(noteFilter);
+                    noteFilter.connect(noteGain);
+                    noteGain.connect(gainNode);
+
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 2.2);
+                    osc.onended = () => { osc.disconnect(); noteFilter.disconnect(); noteGain.disconnect(); };
+
+                    if (!stopped) {
+                        noteTimerId = setTimeout(playNote, 3000 + Math.random() * 5000);
+                    }
+                }
+
+                noteTimerId = setTimeout(playNote, 2000);
+
                 return {
                     gainNode,
                     stop() {
                         if (stopped) return;
                         stopped = true;
+                        if (noteTimerId) { clearTimeout(noteTimerId); noteTimerId = null; }
                         try { osc1.stop(); osc2.stop(); } catch (e) { /* already stopped */ }
                         osc1.disconnect(); osc2.disconnect(); filter.disconnect(); oscGain.disconnect();
                     }
                 };
             }
 
-            // Backyard / Park: Nature sounds - birdsong-like chirps
+            // Backyard / Park: Nature sounds - birdsong chirps + gentle wind
             function createOutdoorEarcon(ctx) {
                 const gainNode = ctx.createGain();
                 gainNode.gain.value = 0;
                 gainNode.connect(masterGain);
 
                 let stopped = false;
-                let timerId = null;
+                let chirpTimerId = null;
+                let rustleTimerId = null;
 
+                // Soft wind noise base layer
+                const windBuffer = ctx.createBufferSource();
+                const windGain = ctx.createGain();
+                const windFilter = ctx.createBiquadFilter();
+                const bufferSize = ctx.sampleRate * 2;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+                windBuffer.buffer = buffer;
+                windBuffer.loop = true;
+                windFilter.type = 'lowpass';
+                windFilter.frequency.value = 400;
+                windGain.gain.value = 0.03;
+                windBuffer.connect(windFilter);
+                windFilter.connect(windGain);
+                windGain.connect(gainNode);
+                windBuffer.start();
+
+                // Birdsong chirps
                 function playChirp() {
                     if (stopped) return;
                     const osc = ctx.createOscillator();
@@ -269,17 +324,47 @@
                     osc.onended = () => { osc.disconnect(); chirpGain.disconnect(); };
 
                     if (!stopped) {
-                        timerId = setTimeout(playChirp, 1500 + Math.random() * 3000);
+                        chirpTimerId = setTimeout(playChirp, 1500 + Math.random() * 3000);
+                    }
+                }
+
+                // Occasional leaf rustle
+                function playRustle() {
+                    if (stopped) return;
+                    const rustleBuf = ctx.createBufferSource();
+                    const rustleGain = ctx.createGain();
+                    const rustleFilter = ctx.createBiquadFilter();
+                    const rBuf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+                    const rData = rBuf.getChannelData(0);
+                    for (let i = 0; i < rData.length; i++) rData[i] = (Math.random() * 2 - 1);
+                    rustleBuf.buffer = rBuf;
+                    rustleFilter.type = 'bandpass';
+                    rustleFilter.frequency.value = 2000 + Math.random() * 2000;
+                    rustleFilter.Q.value = 1;
+                    rustleGain.gain.setValueAtTime(0.04, ctx.currentTime);
+                    rustleGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+                    rustleBuf.connect(rustleFilter);
+                    rustleFilter.connect(rustleGain);
+                    rustleGain.connect(gainNode);
+                    rustleBuf.start();
+                    rustleBuf.onended = () => { rustleBuf.disconnect(); rustleFilter.disconnect(); rustleGain.disconnect(); };
+
+                    if (!stopped) {
+                        rustleTimerId = setTimeout(playRustle, 4000 + Math.random() * 6000);
                     }
                 }
 
                 playChirp();
+                rustleTimerId = setTimeout(playRustle, 2000);
 
                 return {
                     gainNode,
                     stop() {
                         stopped = true;
-                        if (timerId) { clearTimeout(timerId); timerId = null; }
+                        if (chirpTimerId) { clearTimeout(chirpTimerId); chirpTimerId = null; }
+                        if (rustleTimerId) { clearTimeout(rustleTimerId); rustleTimerId = null; }
+                        try { windBuffer.stop(); } catch (e) {}
+                        windBuffer.disconnect(); windFilter.disconnect(); windGain.disconnect();
                     }
                 };
             }
@@ -720,6 +805,103 @@
                 osc.stop(t + 0.35);
             }
 
+            // Pet voice: happy chirp (varies by pet type category)
+            function sfxPetHappy(ctx, petType) {
+                const t = ctx.currentTime;
+                const typeConfig = {
+                    dog: { freqs: [400, 550, 650], wave: 'sawtooth', duration: 0.12 },
+                    cat: { freqs: [500, 650], wave: 'sine', duration: 0.2 },
+                    bunny: { freqs: [600, 800, 700], wave: 'sine', duration: 0.1 },
+                    bird: { freqs: [1000, 1300, 1200, 1400], wave: 'sine', duration: 0.08 },
+                    hamster: { freqs: [800, 1000, 900], wave: 'triangle', duration: 0.08 },
+                    turtle: { freqs: [200, 250], wave: 'sine', duration: 0.25 },
+                    fish: { freqs: [300, 500, 400], wave: 'sine', duration: 0.1 },
+                    frog: { freqs: [250, 400, 250], wave: 'square', duration: 0.1 },
+                    hedgehog: { freqs: [600, 750, 650], wave: 'triangle', duration: 0.1 },
+                    panda: { freqs: [300, 400, 350], wave: 'sine', duration: 0.15 },
+                    penguin: { freqs: [450, 600, 500], wave: 'triangle', duration: 0.12 },
+                    unicorn: { freqs: [700, 900, 1100, 900], wave: 'sine', duration: 0.12 },
+                    dragon: { freqs: [200, 300, 250], wave: 'sawtooth', duration: 0.15 }
+                };
+                const config = typeConfig[petType] || typeConfig.dog;
+                config.freqs.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = config.wave;
+                    osc.frequency.value = freq * (0.95 + Math.random() * 0.1);
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + i * config.duration);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * config.duration + config.duration * 0.9);
+                    osc.connect(g);
+                    g.connect(masterGain);
+                    osc.start(t + i * config.duration);
+                    osc.stop(t + i * config.duration + config.duration);
+                });
+            }
+
+            // Pet voice: sad whimper
+            function sfxPetSad(ctx, petType) {
+                const t = ctx.currentTime;
+                const baseFreq = petType === 'bird' ? 600 : petType === 'dragon' ? 150 : 300;
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                const lfo = ctx.createOscillator();
+                const lfoG = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(baseFreq, t);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.6, t + 0.4);
+                lfo.type = 'sine';
+                lfo.frequency.value = 6;
+                lfoG.gain.value = 20;
+                lfo.connect(lfoG);
+                lfoG.connect(osc.frequency);
+                g.gain.setValueAtTime(SFX_VOLUME * 0.3, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                osc.connect(g);
+                g.connect(masterGain);
+                lfo.start(t);
+                osc.start(t);
+                osc.stop(t + 0.55);
+                lfo.stop(t + 0.55);
+            }
+
+            // Pet voice: excited playful sound
+            function sfxPetExcited(ctx, petType) {
+                const t = ctx.currentTime;
+                const base = petType === 'bird' ? 900 : petType === 'dragon' ? 250 : petType === 'cat' ? 500 : 400;
+                for (let i = 0; i < 3; i++) {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'triangle';
+                    const freq = base + i * (base * 0.15);
+                    osc.frequency.setValueAtTime(freq, t + i * 0.08);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 1.3, t + i * 0.08 + 0.06);
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.35, t + i * 0.08);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.08 + 0.08);
+                    osc.connect(g);
+                    g.connect(masterGain);
+                    osc.start(t + i * 0.08);
+                    osc.stop(t + i * 0.08 + 0.1);
+                }
+            }
+
+            // Achievement unlock fanfare
+            function sfxAchievement(ctx) {
+                const t = ctx.currentTime;
+                const notes = [659, 784, 988, 1319];
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.5, t + i * 0.1);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.3);
+                    osc.connect(g);
+                    g.connect(masterGain);
+                    osc.start(t + i * 0.1);
+                    osc.stop(t + i * 0.1 + 0.35);
+                });
+            }
+
             // Throw: whoosh sound
             function sfxThrow(ctx) {
                 const t = ctx.currentTime;
@@ -778,7 +960,11 @@
                     match: sfxMatch,
                     catch: sfxCatch,
                     throw: sfxThrow,
-                    roomTransition: sfxRoomTransition
+                    roomTransition: sfxRoomTransition,
+                    petHappy: sfxPetHappy,
+                    petSad: sfxPetSad,
+                    petExcited: sfxPetExcited,
+                    achievement: sfxAchievement
                 }
             };
         })();

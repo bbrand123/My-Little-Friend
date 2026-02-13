@@ -32,7 +32,12 @@
             activePetIndex: 0, // Index of the currently active/displayed pet
             relationships: {}, // { "petId1-petId2": { points, lastInteraction, interactionHistory } }
             adoptingAdditional: false, // True when adopting an additional egg (don't reset state)
-            nextPetId: 1 // Auto-incrementing ID for unique pet identification
+            nextPetId: 1, // Auto-incrementing ID for unique pet identification
+            // Achievement & daily systems
+            achievements: {}, // { achievementId: { unlocked: true, unlockedAt: timestamp } }
+            roomsVisited: {}, // { roomId: true } — tracks which rooms have been visited
+            weatherSeen: {}, // { sunny: true, rainy: true, snowy: true }
+            dailyChecklist: null // { date: 'YYYY-MM-DD', tasks: [...], progress: {...} }
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -68,6 +73,18 @@
         function incrementMinigamePlayCount(gameId) {
             if (!gameState.minigamePlayCounts) gameState.minigamePlayCounts = {};
             gameState.minigamePlayCounts[gameId] = (gameState.minigamePlayCounts[gameId] || 0) + 1;
+            // Track daily checklist progress for minigames
+            if (typeof incrementDailyProgress === 'function') {
+                const dailyCompleted = incrementDailyProgress('minigameCount');
+                dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+            }
+            // Check achievements after minigame play
+            if (typeof checkAchievements === 'function') {
+                const newAch = checkAchievements();
+                newAch.forEach(ach => {
+                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
         }
 
         // Update high score for a minigame, returns true if it's a new best
@@ -211,6 +228,79 @@
                 announcer.textContent = '';
                 setTimeout(() => { announcer.textContent = combined; }, 100);
             }, 300);
+        }
+
+        // ==================== ACHIEVEMENT SYSTEM ====================
+
+        function checkAchievements() {
+            if (!gameState.achievements) gameState.achievements = {};
+            const newUnlocks = [];
+            for (const [id, ach] of Object.entries(ACHIEVEMENTS)) {
+                if (gameState.achievements[id]) continue; // Already unlocked
+                try {
+                    if (ach.check(gameState)) {
+                        gameState.achievements[id] = { unlocked: true, unlockedAt: Date.now() };
+                        newUnlocks.push(ach);
+                    }
+                } catch (e) { /* safe guard */ }
+            }
+            return newUnlocks;
+        }
+
+        function getAchievementCount() {
+            if (!gameState.achievements) return 0;
+            return Object.values(gameState.achievements).filter(a => a.unlocked).length;
+        }
+
+        // ==================== DAILY CHECKLIST ====================
+
+        function getTodayString() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function initDailyChecklist() {
+            const today = getTodayString();
+            if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
+                gameState.dailyChecklist = {
+                    date: today,
+                    progress: { feedCount: 0, minigameCount: 0, harvestCount: 0, parkVisits: 0, totalCareActions: 0 },
+                    tasks: DAILY_TASKS.map(t => ({ id: t.id, done: false }))
+                };
+            }
+            return gameState.dailyChecklist;
+        }
+
+        function incrementDailyProgress(key, amount) {
+            const cl = initDailyChecklist();
+            if (!cl.progress[key]) cl.progress[key] = 0;
+            cl.progress[key] += (amount || 1);
+            // Check completions
+            let newlyCompleted = [];
+            DAILY_TASKS.forEach((task, idx) => {
+                if (cl.tasks[idx] && !cl.tasks[idx].done && cl.progress[task.trackKey] >= task.target) {
+                    cl.tasks[idx].done = true;
+                    newlyCompleted.push(task);
+                }
+            });
+            return newlyCompleted;
+        }
+
+        function isDailyComplete() {
+            const cl = initDailyChecklist();
+            return cl.tasks.every(t => t.done);
+        }
+
+        // Track room visits for achievements
+        function trackRoomVisit(roomId) {
+            if (!gameState.roomsVisited) gameState.roomsVisited = {};
+            gameState.roomsVisited[roomId] = true;
+        }
+
+        // Track weather for achievements
+        function trackWeather() {
+            if (!gameState.weatherSeen) gameState.weatherSeen = {};
+            gameState.weatherSeen[gameState.weather] = true;
         }
 
         // ==================== SAVE/LOAD ====================
@@ -382,6 +472,11 @@
                         });
                         parsed.nextPetId = maxId + 1;
                     }
+                    // Add achievement/daily systems if missing (for existing saves)
+                    if (!parsed.achievements || typeof parsed.achievements !== 'object') parsed.achievements = {};
+                    if (!parsed.roomsVisited || typeof parsed.roomsVisited !== 'object') parsed.roomsVisited = {};
+                    if (!parsed.weatherSeen || typeof parsed.weatherSeen !== 'object') parsed.weatherSeen = {};
+
                     // Strip transient _neglectTickCounter from pet objects (old saves)
                     parsed.pets.forEach(p => {
                         if (p) delete p._neglectTickCounter;
@@ -941,6 +1036,7 @@
                 const newWeather = getRandomWeather();
                 if (newWeather !== gameState.weather) {
                     gameState.weather = newWeather;
+                    trackWeather();
                     const weatherData = WEATHER_TYPES[newWeather];
                     showToast(`${weatherData.icon} Weather changed to ${weatherData.name}!`, newWeather === 'sunny' ? '#FFD700' : newWeather === 'rainy' ? '#64B5F6' : '#B0BEC5');
                     updateWeatherDisplay();
@@ -1146,6 +1242,19 @@
 
             const previousRoom = gameState.currentRoom;
             gameState.currentRoom = roomId;
+
+            // Track room visit for achievements and daily checklist
+            trackRoomVisit(roomId);
+            if (roomId === 'park') {
+                const dailyCompleted = incrementDailyProgress('parkVisits');
+                dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+            }
+            // Check achievements after room tracking
+            const newAchievements = checkAchievements();
+            newAchievements.forEach(ach => {
+                setTimeout(() => showToast(`${ach.icon} Achievement unlocked: ${ach.name}!`, '#FFD700'), 500);
+            });
+
             saveGame();
 
             // Play room transition whoosh/chime then start room-specific earcon
@@ -1163,6 +1272,10 @@
                 const petArea = document.querySelector('.pet-area');
 
                 if (petArea) {
+                    // Add room transition animation
+                    petArea.classList.add('room-transitioning');
+                    setTimeout(() => petArea.classList.remove('room-transitioning'), 300);
+
                     // Update room class
                     ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
                     petArea.classList.add('room-' + roomId);
@@ -1354,6 +1467,19 @@
             // Track total harvests for progressive plot unlocking
             if (typeof garden.totalHarvests !== 'number') garden.totalHarvests = 0;
             garden.totalHarvests++;
+
+            // Track daily checklist progress for harvests
+            if (typeof incrementDailyProgress === 'function') {
+                const dailyCompleted = incrementDailyProgress('harvestCount');
+                dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+            }
+            // Check achievements after harvest
+            if (typeof checkAchievements === 'function') {
+                const newAch = checkAchievements();
+                newAch.forEach(ach => {
+                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
 
             // Check if a new plot was unlocked
             const prevUnlocked = getUnlockedPlotCount(garden.totalHarvests - 1);
@@ -1839,6 +1965,10 @@
                     if (pet.energy < lowThreshold && prevEnergy >= lowThreshold) lowStats.push('energy');
                     if (lowStats.length > 0) {
                         announce(`Warning: ${petName}'s ${lowStats.join(' and ')} ${lowStats.length === 1 ? 'is' : 'are'} critically low!`, true);
+                        // Play sad pet whimper when stats drop critically
+                        if (typeof SoundManager !== 'undefined' && pet.type) {
+                            SoundManager.playSFX((ctx) => SoundManager.sfx.petSad(ctx, pet.type));
+                        }
                     }
 
                     // Apply passive decay to non-active pets (gentler rate)
@@ -2214,6 +2344,17 @@
             if (typeof gameState.adultsRaised !== 'number') {
                 gameState.adultsRaised = 0;
             }
+
+            // Initialize achievement/daily systems
+            if (!gameState.achievements) gameState.achievements = {};
+            if (!gameState.roomsVisited) gameState.roomsVisited = {};
+            if (!gameState.weatherSeen) gameState.weatherSeen = {};
+            trackWeather();
+            trackRoomVisit(gameState.currentRoom || 'bedroom');
+            initDailyChecklist();
+
+            // Run initial achievement check (in case returning player qualifies)
+            checkAchievements();
 
             // Ensure multi-pet fields exist
             if (!Array.isArray(gameState.pets)) {
