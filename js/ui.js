@@ -529,7 +529,6 @@
             // Update time of day
             gameState.timeOfDay = getTimeOfDay();
             const timeOfDay = gameState.timeOfDay;
-            const timeIcon = getTimeIcon(timeOfDay);
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
 
             // Current room
@@ -549,7 +548,6 @@
             if (weather !== gameState.weather) {
                 gameState.weather = weather;
             }
-            const weatherData = WEATHER_TYPES[weather];
             let weatherHTML = '';
             if (isOutdoor) {
                 weatherHTML = generateWeatherHTML(weather);
@@ -562,10 +560,7 @@
             const seasonData = SEASONS[season];
             // Seasonal decor and ambient particles removed to reduce visual layers
 
-            const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
-            // Collapsed context indicator: weather + time + season in one pill
-            const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
-            const contextIndicatorHTML = `<span class="status-pill context-indicator" id="context-indicator" aria-label="${contextLabel}"><span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text" aria-hidden="true">${contextLabel}</span></span>`;
+            // Context is conveyed through the pet-area visuals (weather effects, time class, room background)
 
             // Helper: need bubble class based on level
             function needClass(val) {
@@ -581,24 +576,21 @@
             content.innerHTML = `
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
                     <div class="top-action-buttons" role="group" aria-label="Top actions">
-                        <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" aria-label="Codex">
-                            <span class="top-action-btn-icon" aria-hidden="true">📖</span><span class="top-action-btn-label"> Codex</span>
+                        <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" title="Codex" aria-label="Codex">
+                            <span class="top-action-btn-icon">📖</span>
                         </button>
-                        <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" aria-label="Stats">
-                            <span class="top-action-btn-icon" aria-hidden="true">📊</span><span class="top-action-btn-label"> Stats</span>
+                        <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" title="Stats" aria-label="Stats">
+                            <span class="top-action-btn-icon">📊</span>
                         </button>
-                        <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" aria-label="Decor">
-                            <span class="top-action-btn-icon" aria-hidden="true">🛋️</span><span class="top-action-btn-label"> Decor</span>
+                        <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
+                            <span class="top-action-btn-icon">🛋️</span>
                         </button>
-                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}" aria-label="Sound">
-                            <span class="top-action-btn-icon" aria-hidden="true">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span><span class="top-action-btn-label"> Sound</span>
+                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}" title="Sound" aria-label="Sound">
+                            <span class="top-action-btn-icon">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span>
                         </button>
-                        <button class="top-action-btn" id="dark-mode-btn" type="button" aria-pressed="${document.documentElement.getAttribute('data-theme') === 'dark' ? 'true' : 'false'}" aria-label="Dark mode">
-                            <span class="top-action-btn-icon" aria-hidden="true">${document.documentElement.getAttribute('data-theme') === 'dark' || (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches) ? '🌙' : '☀️'}</span><span class="top-action-btn-label"> Theme</span>
+                        <button class="top-action-btn" id="dark-mode-btn" type="button" aria-pressed="${document.documentElement.getAttribute('data-theme') === 'dark' ? 'true' : 'false'}" title="Theme" aria-label="Theme">
+                            <span class="top-action-btn-icon">${document.documentElement.getAttribute('data-theme') === 'dark' || (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches) ? '🌙' : '☀️'}</span>
                         </button>
-                    </div>
-                    <div class="status-stack" role="status" aria-label="Game status">
-                        ${contextIndicatorHTML}
                     </div>
                 </div>
                 ${generatePetSwitcherHTML()}
@@ -672,7 +664,6 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🍎</span>
                             <span class="need-bubble-value" id="hunger-value">${pet.hunger}%</span>
-                            <span class="need-bubble-label">Food</span>
                         </div>
                         <div class="need-bubble ${needClass(pet.cleanliness)}" id="clean-bubble"
                              role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100"
@@ -680,7 +671,6 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🛁</span>
                             <span class="need-bubble-value" id="clean-value">${pet.cleanliness}%</span>
-                            <span class="need-bubble-label">Bath</span>
                         </div>
                         <div class="need-bubble ${needClass(pet.happiness)}" id="happy-bubble"
                              role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100"
@@ -688,7 +678,6 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">💖</span>
                             <span class="need-bubble-value" id="happy-value">${pet.happiness}%</span>
-                            <span class="need-bubble-label">Happy</span>
                         </div>
                         <div class="need-bubble ${needClass(pet.energy)}" id="energy-bubble"
                              role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100"
@@ -696,7 +685,6 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">😴</span>
                             <span class="need-bubble-value" id="energy-value">${pet.energy}%</span>
-                            <span class="need-bubble-label">Energy</span>
                         </div>
                     </div>
                 </section>
@@ -769,7 +757,6 @@
 
                 <section class="actions-section" aria-label="Care actions">
                     <div class="action-group">
-                        <div class="action-group-label">Basics</div>
                         <div class="action-group-buttons" role="group" aria-label="Basic care buttons">
                             ${(() => {
                                 const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
@@ -801,21 +788,10 @@
                                 <span>Pet</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                        </div>
-                    </div>
-                    <div class="action-group">
-                        <div class="action-group-label">Fun & Play</div>
-                        <div class="action-group-buttons" role="group" aria-label="Fun and play buttons">
                             <button class="action-btn play" id="play-btn">
                                 <span class="action-btn-tooltip">Boosts happiness</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                            </button>
-                            <button class="action-btn exercise" id="exercise-btn">
-                                <span class="action-btn-tooltip">Happiness up, energy down</span>
-                                <span class="btn-icon" aria-hidden="true">🏃</span>
-                                <span>Exercise</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn treat" id="treat-btn">
@@ -832,53 +808,50 @@
                             </button>
                         </div>
                     </div>
-                    <div class="action-group">
-                        <div class="action-group-label">Wellness</div>
-                        <div class="action-group-buttons" role="group" aria-label="Wellness buttons">
-                            <button class="action-btn medicine" id="medicine-btn">
-                                <span class="action-btn-tooltip">Boosts all stats</span>
-                                <span class="btn-icon" aria-hidden="true">🩹</span>
-                                <span>Medicine</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                            </button>
-                            <button class="action-btn groom" id="groom-btn">
-                                <span class="action-btn-tooltip">Cleans and cheers up</span>
-                                <span class="btn-icon" aria-hidden="true">✂️</span>
-                                <span>Groom</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="action-group">
-                        <div class="action-group-label">${seasonData.icon} Seasonal</div>
-                        <div class="action-group-buttons" role="group" aria-label="Seasonal activity buttons">
-                            <button class="action-btn seasonal ${season}-activity" id="seasonal-btn">
-                                <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
-                                <span>${seasonData.activityName}</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                            </button>
+                    <button class="more-actions-toggle" id="more-actions-toggle" type="button" aria-expanded="false" aria-controls="more-actions-panel">
+                        <span class="more-actions-toggle-icon">▸</span> More
+                    </button>
+                    <div class="more-actions-panel" id="more-actions-panel" hidden>
+                        <div class="action-group">
+                            <div class="action-group-buttons" role="group" aria-label="Additional actions">
+                                <button class="action-btn exercise" id="exercise-btn">
+                                    <span class="action-btn-tooltip">Happiness up, energy down</span>
+                                    <span class="btn-icon" aria-hidden="true">🏃</span>
+                                    <span>Exercise</span>
+                                    <span class="cooldown-count" aria-hidden="true"></span>
+                                </button>
+                                <button class="action-btn medicine" id="medicine-btn">
+                                    <span class="action-btn-tooltip">Boosts all stats</span>
+                                    <span class="btn-icon" aria-hidden="true">🩹</span>
+                                    <span>Medicine</span>
+                                    <span class="cooldown-count" aria-hidden="true"></span>
+                                </button>
+                                <button class="action-btn groom" id="groom-btn">
+                                    <span class="action-btn-tooltip">Cleans and cheers up</span>
+                                    <span class="btn-icon" aria-hidden="true">✂️</span>
+                                    <span>Groom</span>
+                                    <span class="cooldown-count" aria-hidden="true"></span>
+                                </button>
+                                <button class="action-btn seasonal ${season}-activity" id="seasonal-btn">
+                                    <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
+                                    <span>${seasonData.activityName}</span>
+                                    <span class="cooldown-count" aria-hidden="true"></span>
+                                </button>
+                                ${gameState.pets && gameState.pets.length >= 2 ? `
+                                <button class="action-btn interact-btn" id="interact-btn" aria-haspopup="dialog">
+                                    <span class="action-btn-tooltip">Pets interact together</span>
+                                    <span class="btn-icon" aria-hidden="true">🤝</span>
+                                    <span>Interact</span>
+                                </button>
+                                <button class="action-btn social-hub-btn" id="social-hub-btn" aria-haspopup="dialog">
+                                    <span class="action-btn-tooltip">View relationships</span>
+                                    <span class="btn-icon" aria-hidden="true">🏠</span>
+                                    <span>Social Hub</span>
+                                </button>` : ''}
+                            </div>
                         </div>
                     </div>
                 </section>
-
-                ${gameState.pets && gameState.pets.length >= 2 ? `
-                <section class="actions-section" aria-label="Social actions">
-                    <div class="action-group">
-                        <div class="action-group-label">🐾 Social</div>
-                        <div class="action-group-buttons" role="group" aria-label="Social interaction buttons">
-                            <button class="action-btn interact-btn" id="interact-btn" aria-haspopup="dialog">
-                                <span class="action-btn-tooltip">Pets interact together</span>
-                                <span class="btn-icon" aria-hidden="true">🤝</span>
-                                <span>Interact</span>
-                            </button>
-                            <button class="action-btn social-hub-btn" id="social-hub-btn" aria-haspopup="dialog">
-                                <span class="action-btn-tooltip">View relationships</span>
-                                <span class="btn-icon" aria-hidden="true">🏠</span>
-                                <span>Social Hub</span>
-                            </button>
-                        </div>
-                    </div>
-                </section>` : ''}
 
                 ${currentRoom === 'garden' ? '<section class="garden-section" id="garden-section" aria-label="Garden"></section>' : ''}
 
@@ -919,6 +892,18 @@
             const socialHubBtn = document.getElementById('social-hub-btn');
             if (socialHubBtn) {
                 socialHubBtn.addEventListener('click', () => showSocialHub());
+            }
+
+            // More actions toggle
+            const moreToggle = document.getElementById('more-actions-toggle');
+            if (moreToggle) {
+                moreToggle.addEventListener('click', () => {
+                    const panel = document.getElementById('more-actions-panel');
+                    const expanded = moreToggle.getAttribute('aria-expanded') === 'true';
+                    moreToggle.setAttribute('aria-expanded', String(!expanded));
+                    panel.hidden = expanded;
+                    moreToggle.querySelector('.more-actions-toggle-icon').textContent = expanded ? '▸' : '▾';
+                });
             }
 
             // Pet switcher tab handling
@@ -1670,14 +1655,13 @@
 
             // Standard meal option
             const feedBonus = Math.round(20 * getRoomBonus('feed'));
+            const standardEffectText = `+${feedBonus} Food${getRoomBonus('feed') > 1 ? ' (room bonus!)' : ''}`;
             itemsHTML += `
                 <button class="feed-menu-item standard-meal" data-feed="standard" aria-label="Standard Meal: plus ${feedBonus} hunger">
                     <span class="feed-item-icon">🍽️</span>
-                    <div class="feed-item-info">
-                        <span class="feed-item-name">Standard Meal</span>
-                        <span class="feed-item-effect">+${feedBonus} Food${getRoomBonus('feed') > 1 ? ' (room bonus!)' : ''}</span>
-                    </div>
+                    <span class="feed-item-name">Standard Meal</span>
                     <span class="feed-item-count">Unlimited</span>
+                    <span class="feed-item-effect">${standardEffectText}</span>
                 </button>
             `;
 
@@ -1696,11 +1680,9 @@
                 itemsHTML += `
                     <button class="feed-menu-item crop-item" data-feed-crop="${cropId}" aria-label="${crop.name}: ${effectText}. ${count} available.">
                         <span class="feed-item-icon">${crop.seedEmoji}</span>
-                        <div class="feed-item-info">
-                            <span class="feed-item-name">${crop.name}</span>
-                            <span class="feed-item-effect">${effectText}</span>
-                        </div>
+                        <span class="feed-item-name">${crop.name}</span>
                         <span class="feed-item-count">x${count}</span>
+                        <span class="feed-item-effect">${effectText}</span>
                     </button>
                 `;
             }
@@ -2470,35 +2452,39 @@
                     <h2 class="stats-title">Stats & Progress</h2>
                     <p class="stats-subtitle">${pet && petData ? `${petData.emoji} ${escapeHTML(pet.name || petData.name)}${isEvolved ? ' ✨' : ''}` : 'No pet yet'}</p>
 
-                    <div class="stats-section-title">Pet Overview</div>
-                    <div class="stats-grid">
-                        <div class="stats-card">
-                            <div class="stats-card-icon">${stageData.emoji}</div>
-                            <div class="stats-card-value">${stageData.label}</div>
-                            <div class="stats-card-label">Growth Stage</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">🎂</div>
-                            <div class="stats-card-value">${ageDisplay}</div>
-                            <div class="stats-card-label">Age</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">${qualityData.emoji}</div>
-                            <div class="stats-card-value">${qualityData.label}</div>
-                            <div class="stats-card-label">Care Quality</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">💝</div>
-                            <div class="stats-card-value">${careActions}</div>
-                            <div class="stats-card-label">Care Actions</div>
-                        </div>
+                    <div class="stats-tabs" role="tablist" aria-label="Stats sections">
+                        <button class="stats-tab active" role="tab" aria-selected="true" aria-controls="stats-panel-overview" id="stats-tab-overview">Overview</button>
+                        <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-panel-history" id="stats-tab-history">History</button>
+                        <button class="stats-tab" role="tab" aria-selected="false" aria-controls="stats-panel-collection" id="stats-tab-collection">Collection</button>
                     </div>
 
-                    <div class="care-quality-tip">
-                        💡 ${careQualityTips[careQuality] || careQualityTips.average}
-                    </div>
-
-                    ${pet ? `
+                    <div class="stats-panel active" id="stats-panel-overview" role="tabpanel" aria-labelledby="stats-tab-overview">
+                        <div class="stats-grid">
+                            <div class="stats-card">
+                                <div class="stats-card-icon">${stageData.emoji}</div>
+                                <div class="stats-card-value">${stageData.label}</div>
+                                <div class="stats-card-label">Growth Stage</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">🎂</div>
+                                <div class="stats-card-value">${ageDisplay}</div>
+                                <div class="stats-card-label">Age</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">${qualityData.emoji}</div>
+                                <div class="stats-card-value">${qualityData.label}</div>
+                                <div class="stats-card-label">Care Quality</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">💝</div>
+                                <div class="stats-card-value">${careActions}</div>
+                                <div class="stats-card-label">Care Actions</div>
+                            </div>
+                        </div>
+                        <div class="care-quality-tip">
+                            💡 ${careQualityTips[careQuality] || careQualityTips.average}
+                        </div>
+                        ${pet ? `
                         <div class="stats-section-title">Current Wellness</div>
                         <div class="stats-grid">
                             <div class="stats-card"><div class="stats-card-icon">🍎</div><div class="stats-card-value">${pet.hunger}%</div><div class="stats-card-label">Food</div></div>
@@ -2506,8 +2492,11 @@
                             <div class="stats-card"><div class="stats-card-icon">💖</div><div class="stats-card-value">${pet.happiness}%</div><div class="stats-card-label">Happy</div></div>
                             <div class="stats-card"><div class="stats-card-icon">😴</div><div class="stats-card-value">${pet.energy}%</div><div class="stats-card-label">Energy</div></div>
                         </div>
+                        ` : ''}
+                    </div>
 
-                        <div class="stats-section-title">Care History</div>
+                    <div class="stats-panel" id="stats-panel-history" role="tabpanel" aria-labelledby="stats-tab-history" hidden>
+                        ${pet ? `
                         <div class="stats-grid">
                             <div class="stats-card">
                                 <div class="stats-card-icon">📊</div>
@@ -2525,34 +2514,36 @@
                                 <div class="stats-card-label">Form</div>
                             </div>
                         </div>
-                    ` : ''}
+                        ` : '<p style="text-align:center;color:#888;">No pet data yet.</p>'}
+                        <div class="stats-section-title">Room Bonuses</div>
+                        <div class="stats-room-bonuses">${roomBonusesHTML}</div>
+                    </div>
 
-                    <div class="stats-section-title">Collection & Family</div>
-                    <div class="stats-grid">
-                        <div class="stats-card">
-                            <div class="stats-card-icon">📖</div>
-                            <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
-                            <div class="stats-card-label">Species Found</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">🐾</div>
-                            <div class="stats-card-value">${gameState.pets ? gameState.pets.length : (pet ? 1 : 0)}/${MAX_PETS}</div>
-                            <div class="stats-card-label">Pet Family</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">🤝</div>
-                            <div class="stats-card-value">${Object.keys(gameState.relationships || {}).length}</div>
-                            <div class="stats-card-label">Relationships</div>
-                        </div>
-                        <div class="stats-card">
-                            <div class="stats-card-icon">🏆</div>
-                            <div class="stats-card-value">${adultsRaised}</div>
-                            <div class="stats-card-label">Adults Raised</div>
+                    <div class="stats-panel" id="stats-panel-collection" role="tabpanel" aria-labelledby="stats-tab-collection" hidden>
+                        <div class="stats-grid">
+                            <div class="stats-card">
+                                <div class="stats-card-icon">📖</div>
+                                <div class="stats-card-value">${unlockedCount}/${totalCount}</div>
+                                <div class="stats-card-label">Species Found</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">🐾</div>
+                                <div class="stats-card-value">${gameState.pets ? gameState.pets.length : (pet ? 1 : 0)}/${MAX_PETS}</div>
+                                <div class="stats-card-label">Pet Family</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">🤝</div>
+                                <div class="stats-card-value">${Object.keys(gameState.relationships || {}).length}</div>
+                                <div class="stats-card-label">Relationships</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-card-icon">🏆</div>
+                                <div class="stats-card-value">${adultsRaised}</div>
+                                <div class="stats-card-label">Adults Raised</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="stats-section-title">Room Bonuses</div>
-                    <div class="stats-room-bonuses">${roomBonusesHTML}</div>
                     <button class="stats-close-btn" id="stats-close">Close</button>
                 </div>
             `;
@@ -2570,6 +2561,18 @@
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStats(); });
             pushModalEscape(closeStats);
             trapFocus(overlay);
+
+            // Stats tab switching
+            overlay.querySelectorAll('.stats-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    overlay.querySelectorAll('.stats-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+                    overlay.querySelectorAll('.stats-panel').forEach(p => { p.classList.remove('active'); p.hidden = true; });
+                    tab.classList.add('active');
+                    tab.setAttribute('aria-selected', 'true');
+                    const panel = document.getElementById(tab.getAttribute('aria-controls'));
+                    if (panel) { panel.classList.add('active'); panel.hidden = false; }
+                });
+            });
         }
 
         // ==================== NEW PET ====================
@@ -2775,17 +2778,14 @@
                 if (!petData) return;
                 const isActive = idx === gameState.activePetIndex;
                 const name = escapeHTML(p.name || petData.name);
-                const wellness = Math.round((p.hunger + p.cleanliness + p.happiness + p.energy) / 4);
-                const wellnessColor = wellness >= 60 ? '#66BB6A' : wellness >= 35 ? '#FFA726' : '#EF5350';
                 tabs += `
                     <button class="pet-tab ${isActive ? 'active' : ''}" data-pet-index="${idx}"
                             role="tab"
-                            aria-label="${name} - ${wellness}% wellness${isActive ? ' (active)' : ''}"
+                            aria-label="${name}${isActive ? ' (active)' : ''}"
                             aria-selected="${isActive}"
                             tabindex="${isActive ? '0' : '-1'}">
                         <span class="pet-tab-emoji">${petData.emoji}</span>
                         <span class="pet-tab-name">${name}</span>
-                        <span class="pet-tab-wellness" style="background: ${wellnessColor};">${wellness}%</span>
                     </button>
                 `;
             });
@@ -3018,36 +3018,10 @@
                 }
             }
 
-            // Family overview
-            const totalPets = gameState.pets.length;
-            const totalRelationships = Object.keys(gameState.relationships || {}).length;
-            let familyCount = 0;
-            let bestFriendCount = 0;
-            for (const rel of Object.values(gameState.relationships || {})) {
-                const level = getRelationshipLevel(rel.points);
-                if (level === 'family') familyCount++;
-                if (level === 'bestFriend') bestFriendCount++;
-            }
-
             overlay.innerHTML = `
                 <div class="social-modal">
                     <h2 class="social-title">🏠 Social Hub</h2>
                     <p class="social-subtitle">Your pet family & friendships</p>
-
-                    <div class="social-overview">
-                        <div class="social-stat">
-                            <span class="social-stat-value">${totalPets}</span>
-                            <span class="social-stat-label">Pets</span>
-                        </div>
-                        <div class="social-stat">
-                            <span class="social-stat-value">${familyCount}</span>
-                            <span class="social-stat-label">Family Bonds</span>
-                        </div>
-                        <div class="social-stat">
-                            <span class="social-stat-value">${bestFriendCount}</span>
-                            <span class="social-stat-label">Best Friends</span>
-                        </div>
-                    </div>
 
                     <div class="social-section-title">Relationships</div>
                     <div class="social-cards">${relCardsHTML || '<p class="social-empty">Adopt more pets to build relationships!</p>'}</div>
