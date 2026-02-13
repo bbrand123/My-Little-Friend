@@ -183,8 +183,11 @@
                     gameState.adoptingAdditional = false;
                     gameState.phase = 'pet';
                     gameState.eggTaps = 0;
-                    // Restore active pet
+                    // Restore active pet with bounds check
                     if (gameState.pets.length > 0) {
+                        if (gameState.activePetIndex >= gameState.pets.length) {
+                            gameState.activePetIndex = 0;
+                        }
                         gameState.pet = gameState.pets[gameState.activePetIndex];
                     }
                     saveGame();
@@ -496,6 +499,7 @@
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') finishNaming(input.value, false);
             });
+            trapFocus(overlay);
         }
 
         let _petPhaseTimersRunning = false;
@@ -988,7 +992,7 @@
                 _petPhaseTimersRunning = true;
             }
 
-            if (typeof SoundManager !== 'undefined') {
+            if (roomChanged && typeof SoundManager !== 'undefined') {
                 SoundManager.enterRoom(currentRoom);
             }
 
@@ -1915,6 +1919,7 @@
 
             // Unlock accessories as rewards
             if (rewardData.accessories && pet) {
+                if (!pet.unlockedAccessories) pet.unlockedAccessories = [];
                 rewardData.accessories.forEach(accessoryId => {
                     if (!pet.unlockedAccessories.includes(accessoryId)) {
                         pet.unlockedAccessories.push(accessoryId);
@@ -1982,6 +1987,7 @@
             });
 
             pushModalEscape(closeModal);
+            trapFocus(modal);
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
@@ -2045,6 +2051,7 @@
             });
 
             pushModalEscape(closeModal);
+            trapFocus(modal);
         }
 
         function createCelebrationFlash() {
@@ -2142,12 +2149,12 @@
         // ==================== MINI-GAME CLEANUP ====================
 
         function cleanupAllMiniGames() {
-            if (typeof fetchState !== 'undefined' && fetchState) endFetchGame();
-            if (typeof hideSeekState !== 'undefined' && hideSeekState) endHideSeekGame();
-            if (typeof bubblePopState !== 'undefined' && bubblePopState) endBubblePopGame();
-            if (typeof matchingState !== 'undefined' && matchingState) endMatchingGame();
-            if (typeof simonState !== 'undefined' && simonState) endSimonSaysGame();
-            if (typeof coloringState !== 'undefined' && coloringState) endColoringGame();
+            if (typeof fetchState !== 'undefined' && fetchState && typeof endFetchGame === 'function') endFetchGame();
+            if (typeof hideSeekState !== 'undefined' && hideSeekState && typeof endHideSeekGame === 'function') endHideSeekGame();
+            if (typeof bubblePopState !== 'undefined' && bubblePopState && typeof endBubblePopGame === 'function') endBubblePopGame();
+            if (typeof matchingState !== 'undefined' && matchingState && typeof endMatchingGame === 'function') endMatchingGame();
+            if (typeof simonState !== 'undefined' && simonState && typeof endSimonSaysGame === 'function') endSimonSaysGame();
+            if (typeof coloringState !== 'undefined' && coloringState && typeof endColoringGame === 'function') endColoringGame();
             // Stop idle animations and earcons during mini-games
             if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         }
@@ -2214,6 +2221,7 @@
             skipBtn.addEventListener('click', closeTutorial);
 
             pushModalEscape(closeTutorial);
+            trapFocus(overlay);
         }
 
         // ==================== FURNITURE CUSTOMIZATION ====================
@@ -2305,14 +2313,14 @@
                 }
             });
 
-            // Handle furniture selection
-            document.querySelectorAll('.furniture-option').forEach(btn => {
+            // Handle furniture selection (scoped to overlay to avoid cross-modal interference)
+            overlay.querySelectorAll('.furniture-option').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const type = btn.dataset.type;
                     const id = btn.dataset.id;
 
                     // Update selection UI
-                    document.querySelectorAll(`[data-type="${type}"]`).forEach(b => b.classList.remove('selected'));
+                    overlay.querySelectorAll(`[data-type="${type}"]`).forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
 
                     // Update game state
@@ -2427,6 +2435,7 @@
             document.getElementById('codex-close').addEventListener('click', () => closeCodex());
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeCodex(); });
             pushModalEscape(closeCodex);
+            trapFocus(overlay);
         }
 
         // ==================== STATS SCREEN ====================
@@ -2574,6 +2583,7 @@
             document.getElementById('stats-close').addEventListener('click', () => closeStats());
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStats(); });
             pushModalEscape(closeStats);
+            trapFocus(overlay);
         }
 
         // ==================== NEW PET ====================
@@ -2783,8 +2793,10 @@
                 const wellnessColor = wellness >= 60 ? '#66BB6A' : wellness >= 35 ? '#FFA726' : '#EF5350';
                 tabs += `
                     <button class="pet-tab ${isActive ? 'active' : ''}" data-pet-index="${idx}"
+                            role="tab"
                             aria-label="${name} - ${wellness}% wellness${isActive ? ' (active)' : ''}"
-                            aria-pressed="${isActive}">
+                            aria-selected="${isActive}"
+                            tabindex="${isActive ? '0' : '-1'}">
                         <span class="pet-tab-emoji">${petData.emoji}</span>
                         <span class="pet-tab-name">${name}</span>
                         <span class="pet-tab-wellness" style="background: ${wellnessColor};">${wellness}%</span>
@@ -2943,6 +2955,7 @@
             document.getElementById('interaction-close').addEventListener('click', closeInteraction);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeInteraction(); });
             pushModalEscape(closeInteraction);
+            trapFocus(overlay);
 
             // Focus first partner
             const firstPartner = overlay.querySelector('.interaction-partner');
@@ -3068,6 +3081,7 @@
             document.getElementById('social-close').addEventListener('click', closeSocial);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSocial(); });
             pushModalEscape(closeSocial);
+            trapFocus(overlay);
         }
 
         // Ensure activation delegates are active even if render binding fails
