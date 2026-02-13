@@ -10,12 +10,12 @@
         }
 
         const MINI_GAMES = [
-            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet!' },
-            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen!' },
-            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time!' },
-            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs!' },
-            { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds!' },
-            { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds!' }
+            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet! Click or press Enter to throw.' },
+            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen! Requires pointer (mouse or touch).' },
+            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time! Requires pointer (mouse or touch).' },
+            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs! Use keyboard or click.' },
+            { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds! Use keyboard or click.' },
+            { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Requires pointer (mouse or touch).' }
         ];
 
         // Restore idle animations and room earcons after a mini-game ends
@@ -178,7 +178,7 @@
             };
 
             renderFetchGame();
-            announce('Fetch game started! Tap the field to throw the ball!');
+            announce('Fetch game started! Click the field or press Enter to throw the ball!');
         }
 
         function renderFetchGame() {
@@ -199,16 +199,16 @@
                 <div class="fetch-game">
                     <h2 class="fetch-game-title">🎾 Fetch!</h2>
                     <p class="fetch-game-score" id="fetch-score">Fetched: ${fetchState.score}</p>
-                    <div class="fetch-field" id="fetch-field" role="button" aria-label="Tap to throw the ball" tabindex="0">
-                        <div class="fetch-field-clouds">☁️ ☁️</div>
-                        <div class="fetch-field-flowers">🌸 🌼 🌷 🌻</div>
+                    <div class="fetch-field" id="fetch-field" role="button" aria-label="Click or press Enter to throw the ball" tabindex="0">
+                        <div class="fetch-field-clouds" aria-hidden="true">☁️ ☁️</div>
+                        <div class="fetch-field-flowers" aria-hidden="true">🌸 🌼 🌷 🌻</div>
                         <div class="fetch-ball" id="fetch-ball" style="left: ${fetchState.ballX}%; top: ${fetchState.ballY}px;">🎾</div>
                         <div class="fetch-ball-shadow" id="fetch-ball-shadow" style="left: ${fetchState.ballX}%; top: 185px;"></div>
                         <div class="fetch-pet" id="fetch-pet" style="left: ${fetchState.petX}%;">
                             ${generatePetSVG(pet, mood)}
                         </div>
                     </div>
-                    <p class="fetch-instruction" id="fetch-instruction">Tap the field to throw the ball!</p>
+                    <p class="fetch-instruction" id="fetch-instruction">Click the field or press Enter to throw the ball!</p>
                     <div class="fetch-buttons">
                         <button class="fetch-throw-btn" id="fetch-throw-btn">🎾 Throw!</button>
                         <button class="fetch-done-btn" id="fetch-done-btn">Done</button>
@@ -376,7 +376,7 @@
                 pet.offsetHeight; // force reflow
                 pet.style.transition = '';
 
-                instruction.textContent = 'Throw again! Tap the field!';
+                instruction.textContent = 'Throw again! Click or press Enter!';
                 instruction.className = 'fetch-instruction highlight';
 
                 if (throwBtn) throwBtn.disabled = false;
@@ -504,7 +504,7 @@
 
             renderHideSeekGame();
             startHideSeekTimer();
-            announce(`Hide and Seek started! Find ${totalTreats} hidden treats! Tap the objects to search under them.`);
+            announce(`Hide and Seek started! Find ${totalTreats} hidden treats! Click or tap objects to search under them.`);
         }
 
         function generateHideSeekPositions(count) {
@@ -571,7 +571,7 @@
                             ${generatePetSVG(pet, mood)}
                         </div>
                     </div>
-                    <p class="hideseek-instruction" id="hideseek-instruction">Tap objects to find the hidden treats!</p>
+                    <p class="hideseek-instruction" id="hideseek-instruction">Click or tap objects to find the hidden treats!</p>
                     <div class="hideseek-buttons">
                         <button class="hideseek-done-btn" id="hideseek-done-btn">Done</button>
                     </div>
@@ -847,7 +847,7 @@
             startBubblePopTimer();
             startBubbleSpawner();
 
-            announce('Bubble Pop! Tap the bubbles to pop them! 30 seconds!');
+            announce('Bubble Pop! Click or tap the bubbles to pop them! 30 seconds!');
         }
 
         function renderBubblePopGame() {
@@ -866,11 +866,11 @@
                     <h2 class="bubblepop-game-title">🫧 Bubble Pop!</h2>
                     <p class="bubblepop-game-score" id="bubblepop-score" aria-live="polite">Bubbles popped: 0</p>
                     <p class="bubblepop-game-timer" id="bubblepop-timer">⏱️ 30s</p>
-                    <div class="bubblepop-field" id="bubblepop-field" aria-label="Bath area - tap bubbles to pop them">
+                    <div class="bubblepop-field" id="bubblepop-field" aria-label="Bath area - click or tap bubbles to pop them">
                         <div class="bubblepop-suds"></div>
                         <div class="bubblepop-pet" id="bubblepop-pet">${petSVG}</div>
                     </div>
-                    <p class="bubblepop-instruction" id="bubblepop-instruction">Tap the bubbles to pop them!</p>
+                    <p class="bubblepop-instruction" id="bubblepop-instruction">Click or tap the bubbles to pop them!</p>
                     <div class="bubblepop-buttons">
                         <button class="bubblepop-done-btn" id="bubblepop-done" aria-label="Stop playing Bubble Pop">Done</button>
                     </div>
@@ -977,7 +977,7 @@
             const bubble = document.createElement('div');
             bubble.className = 'bubblepop-bubble';
             bubble.setAttribute('role', 'button');
-            bubble.setAttribute('aria-label', `Bubble - tap to pop`);
+            bubble.setAttribute('aria-label', `Bubble - click or tap to pop`);
             bubble.setAttribute('tabindex', '0');
             bubble.dataset.bubbleId = bubbleId;
             bubble.dataset.points = sizeData.points;
@@ -1248,7 +1248,7 @@
             let cardsHTML = '';
             matchingState.cards.forEach((card, i) => {
                 cardsHTML += `
-                    <button class="matching-card" data-index="${i}" aria-label="Card ${i + 1} - tap to flip">
+                    <button class="matching-card" data-index="${i}" aria-label="Card ${i + 1} - click or press Enter to flip">
                         <div class="matching-card-inner">
                             <div class="matching-card-front">❓</div>
                             <div class="matching-card-back">${card.emoji}</div>
@@ -1853,7 +1853,7 @@
             };
 
             renderColoringGame();
-            announce('Coloring time! Pick a color and tap parts of the picture to color them!');
+            announce('Coloring time! Pick a color and click or tap parts of the picture to color them!');
         }
 
         function renderColoringGame() {
@@ -1879,7 +1879,7 @@
             overlay.innerHTML = `
                 <div class="coloring-game">
                     <h2 class="coloring-game-title">🎨 Coloring Time!</h2>
-                    <p class="coloring-game-hint" id="coloring-hint">Pick a color, then tap to paint!</p>
+                    <p class="coloring-game-hint" id="coloring-hint">Pick a color, then click or tap to paint!</p>
                     <div class="coloring-canvas-wrap">
                         ${scene}
                     </div>

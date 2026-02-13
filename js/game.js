@@ -167,6 +167,9 @@
             fill.className = `wellness-bar-fill ${getWellnessClass(pet)}`;
             val.textContent = getWellnessLabel(pet);
             val.style.color = w >= 60 ? '#66BB6A' : w >= 35 ? '#FFA726' : '#EF5350';
+            // Keep aria-valuenow in sync so screen readers report current wellness
+            const bar = fill.parentElement;
+            if (bar) bar.setAttribute('aria-valuenow', w);
         }
 
         let _announceQueue = [];
@@ -934,7 +937,7 @@
                     const height = 15 + Math.random() * 15;
                     drops += `<div class="rain-drop" style="left:${left}%;height:${height}px;animation-delay:${delay}s;animation-duration:${duration}s;"></div>`;
                 }
-                return `<div class="weather-overlay">${drops}</div>`;
+                return `<div class="weather-overlay" aria-hidden="true">${drops}</div>`;
             }
             if (weather === 'snowy') {
                 let flakes = '';
@@ -946,7 +949,7 @@
                     const char = snowChars[Math.floor(Math.random() * snowChars.length)];
                     flakes += `<div class="snowflake" style="left:${left}%;animation-delay:${delay}s;animation-duration:${duration}s;">${char}</div>`;
                 }
-                return `<div class="weather-overlay">${flakes}</div>`;
+                return `<div class="weather-overlay" aria-hidden="true">${flakes}</div>`;
             }
             return '';
         }
@@ -1373,11 +1376,11 @@
             overlay.className = 'remove-crop-overlay';
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
-            overlay.setAttribute('aria-label', `Remove ${crop.name}?`);
+            overlay.setAttribute('aria-labelledby', 'remove-crop-heading');
 
             overlay.innerHTML = `
                 <div class="remove-crop-dialog">
-                    <p class="remove-crop-message">${crop.seedEmoji} Remove this ${crop.name}?</p>
+                    <p class="remove-crop-message" id="remove-crop-heading"><span aria-hidden="true">${crop.seedEmoji}</span> Remove this ${crop.name}?</p>
                     <div class="remove-crop-buttons">
                         <button class="remove-crop-btn cancel" id="remove-crop-cancel">Keep</button>
                         <button class="remove-crop-btn confirm" id="remove-crop-confirm">Remove</button>
@@ -1493,7 +1496,7 @@
             overlay.className = 'seed-picker-overlay';
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
-            overlay.setAttribute('aria-label', 'Choose a seed to plant');
+            overlay.setAttribute('aria-labelledby', 'seed-picker-heading');
 
             let seedsHTML = '';
             for (const [id, crop] of Object.entries(GARDEN_CROPS)) {
@@ -1503,7 +1506,7 @@
                 const effectiveTime = Math.max(1, Math.round(crop.growTime / growMult));
                 seedsHTML += `
                     <button class="seed-option" data-crop="${id}" aria-label="Plant ${crop.name}${bonusLabel}">
-                        <span class="seed-option-emoji">${crop.seedEmoji}</span>
+                        <span class="seed-option-emoji" aria-hidden="true">${crop.seedEmoji}</span>
                         <span class="seed-option-name">${crop.name}${isBonus ? ' ⭐' : ''}</span>
                         <span class="seed-option-time">${effectiveTime} min</span>
                     </button>
@@ -1512,7 +1515,7 @@
 
             overlay.innerHTML = `
                 <div class="seed-picker">
-                    <h3 class="seed-picker-title">🌱 Pick a Seed to Plant!</h3>
+                    <h3 class="seed-picker-title" id="seed-picker-heading"><span aria-hidden="true">🌱</span> Pick a Seed to Plant!</h3>
                     <div class="seed-list">
                         ${seedsHTML}
                     </div>
@@ -1582,14 +1585,14 @@
                     const remaining = threshold - (garden.totalHarvests || 0);
                     plotsHTML += `
                         <div class="garden-plot locked" aria-label="Locked plot. Harvest ${remaining} more crop${remaining !== 1 ? 's' : ''} to unlock.">
-                            <span class="garden-plot-emoji">🔒</span>
+                            <span class="garden-plot-emoji" aria-hidden="true">🔒</span>
                             <span class="garden-plot-label">${remaining} harvest${remaining !== 1 ? 's' : ''} to unlock</span>
                         </div>
                     `;
                 } else if (!plot) {
                     plotsHTML += `
-                        <div class="garden-plot empty" data-plot="${i}" role="button" tabindex="0" aria-label="Empty garden plot. Click to plant a seed.">
-                            <span class="garden-plot-emoji">➕</span>
+                        <div class="garden-plot empty" data-plot="${i}" role="button" tabindex="0" aria-label="Plot ${i + 1}: Empty. Press Enter to plant.">
+                            <span class="garden-plot-emoji" aria-hidden="true">➕</span>
                             <span class="garden-plot-label">Plant</span>
                         </div>
                     `;
@@ -1611,13 +1614,16 @@
 
                     // Simplified: emoji + progress bar + one status line
                     const statusLine = isReady ? 'Harvest!' : `${progress}%${plot.watered ? ' 💧' : ''}`;
+                    const plotActionLabel = isReady ? `Harvest ${crop.name}` : (plot.watered ? `${crop.name} growing` : `Water ${crop.name}`);
                     plotsHTML += `
-                        <div class="garden-plot ${plotClass}" data-plot="${i}" role="button" tabindex="0"
-                             aria-label="${crop.name} - ${statusLabel}">
-                            <span class="garden-plot-emoji">${stageEmoji}</span>
-                            ${!isReady ? `<div class="garden-plot-progress"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
-                            <span class="garden-plot-status">${statusLine}</span>
-                            ${!isReady ? `<button class="garden-plot-remove" data-remove-plot="${i}" aria-label="Remove ${crop.name}">✕</button>` : ''}
+                        <div class="garden-plot ${plotClass}" data-plot="${i}" role="group"
+                             aria-label="Plot ${i + 1}: ${crop.name} - ${statusLabel}">
+                            <button class="garden-plot-action" data-plot-action="${i}" aria-label="${plotActionLabel}">
+                                <span class="garden-plot-emoji" aria-hidden="true">${stageEmoji}</span>
+                                ${!isReady ? `<div class="garden-plot-progress" role="progressbar" aria-label="${crop.name} growth" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
+                                <span class="garden-plot-status">${statusLine}</span>
+                            </button>
+                            ${!isReady ? `<button class="garden-plot-remove" data-remove-plot="${i}" aria-label="Remove ${crop.name}"><span aria-hidden="true">✕</span></button>` : ''}
                         </div>
                     `;
                 }
@@ -1648,28 +1654,35 @@
                 ${inventoryHTML}
             `;
 
-            // Add event listeners to plots (skip locked plots which have no data-plot)
-            gardenSection.querySelectorAll('.garden-plot').forEach(plotEl => {
-                if (plotEl.classList.contains('locked')) return;
+            // Add event listeners to empty plots (role="button" divs)
+            gardenSection.querySelectorAll('.garden-plot.empty').forEach(plotEl => {
                 const plotIdx = parseInt(plotEl.getAttribute('data-plot'));
                 if (isNaN(plotIdx)) return;
                 plotEl.addEventListener('click', () => {
+                    openSeedPicker(plotIdx);
+                });
+                plotEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        plotEl.click();
+                    }
+                });
+            });
+
+            // Add event listeners to plot action buttons (growing/ready plots)
+            gardenSection.querySelectorAll('[data-plot-action]').forEach(btn => {
+                const plotIdx = parseInt(btn.getAttribute('data-plot-action'));
+                if (isNaN(plotIdx)) return;
+                btn.addEventListener('click', () => {
                     const plot = garden.plots[plotIdx] || null;
-                    if (!plot) {
-                        openSeedPicker(plotIdx);
-                    } else if (plot.stage >= 3) {
+                    if (!plot) return;
+                    if (plot.stage >= 3) {
                         harvestPlot(plotIdx);
                     } else if (!plot.watered) {
                         waterPlot(plotIdx);
                     } else {
                         const crop = GARDEN_CROPS[plot.cropId];
                         showToast(`${crop.seedEmoji} ${crop.name} is growing... be patient!`, '#81C784');
-                    }
-                });
-                plotEl.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        plotEl.click();
                     }
                 });
             });
@@ -1760,6 +1773,12 @@
                     const room = ROOMS[gameState.currentRoom || 'bedroom'];
                     const isOutdoor = room ? room.isOutdoor : false;
 
+                    // Snapshot stats before decay to detect low-stat threshold crossing
+                    const prevHunger = pet.hunger;
+                    const prevClean = pet.cleanliness;
+                    const prevHappy = pet.happiness;
+                    const prevEnergy = pet.energy;
+
                     // Day/Night cycle energy modifiers
                     const timeOfDay = gameState.timeOfDay || 'day';
                     let energyDecayBonus = 0;
@@ -1783,6 +1802,18 @@
                         pet.happiness = clamp(pet.happiness - weatherData.happinessDecayModifier, 0, 100);
                         pet.energy = clamp(pet.energy - weatherData.energyDecayModifier, 0, 100);
                         pet.cleanliness = clamp(pet.cleanliness - weatherData.cleanlinessDecayModifier, 0, 100);
+                    }
+
+                    // Announce when any stat drops below 20% (threshold crossing)
+                    const lowThreshold = 20;
+                    const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                    const lowStats = [];
+                    if (pet.hunger < lowThreshold && prevHunger >= lowThreshold) lowStats.push('hunger');
+                    if (pet.cleanliness < lowThreshold && prevClean >= lowThreshold) lowStats.push('cleanliness');
+                    if (pet.happiness < lowThreshold && prevHappy >= lowThreshold) lowStats.push('happiness');
+                    if (pet.energy < lowThreshold && prevEnergy >= lowThreshold) lowStats.push('energy');
+                    if (lowStats.length > 0) {
+                        announce(`Warning: ${petName}'s ${lowStats.join(' and ')} ${lowStats.length === 1 ? 'is' : 'are'} critically low!`, true);
                     }
 
                     // Apply passive decay to non-active pets (gentler rate)

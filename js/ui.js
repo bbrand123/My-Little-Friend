@@ -614,7 +614,7 @@
                                 return `
                                     <div class="growth-progress-wrap" id="growth-progress-section" aria-label="Growth stage: ${stageData.label}, fully grown">
                                         <div class="growth-compact-row">
-                                            <span class="growth-compact-label${isMythical ? ' mythical' : ''}">${stageData.emoji} ${stageData.label} — Fully Grown</span>
+                                            <span class="growth-compact-label${isMythical ? ' mythical' : ''}"><span aria-hidden="true">${stageData.emoji}</span> ${stageData.label} — Fully Grown</span>
                                         </div>
                                     </div>
                                 `;
@@ -641,9 +641,9 @@
                             return `
                                 <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%">
                                     <div class="growth-compact-row">
-                                        <span class="growth-compact-label${isMythical ? ' mythical' : ''}">${stageData.emoji} ${stageData.label}</span>
-                                        <span class="growth-compact-arrow">→</span>
-                                        <span class="growth-compact-label">${GROWTH_STAGES[nextStage].emoji} ${GROWTH_STAGES[nextStage].label}</span>
+                                        <span class="growth-compact-label${isMythical ? ' mythical' : ''}"><span aria-hidden="true">${stageData.emoji}</span> ${stageData.label}</span>
+                                        <span class="growth-compact-arrow" aria-hidden="true">→</span>
+                                        <span class="growth-compact-label"><span aria-hidden="true">${GROWTH_STAGES[nextStage].emoji}</span> ${GROWTH_STAGES[nextStage].label}</span>
                                         <div class="growth-compact-bar">
                                             <div class="growth-compact-fill" style="width:${overallProgress}%;"></div>
                                         </div>
@@ -721,7 +721,7 @@
                         <div class="care-quality-wrap" aria-label="Care quality and age">
                             <div class="care-quality-row">
                                 <div class="care-quality-badge ${careQuality}" aria-label="${qualityData.label}: ${qualityData.description}. ${tipText}">
-                                    <span class="care-quality-emoji">${qualityData.emoji}</span>
+                                    <span class="care-quality-emoji" aria-hidden="true">${qualityData.emoji}</span>
                                     <div class="care-quality-text">
                                         <span class="care-quality-label">Care Quality</span>
                                         <span class="care-quality-value">${qualityData.label}</span>
@@ -729,7 +729,7 @@
                                     </div>
                                 </div>
                                 <div class="pet-age-badge" aria-label="Age: ${ageDisplay}. Time since hatching. Pets grow based on both age and care.">
-                                    <span class="pet-age-emoji">🎂</span>
+                                    <span class="pet-age-emoji" aria-hidden="true">🎂</span>
                                     <div class="pet-age-text">
                                         <span class="pet-age-label">Age</span>
                                         <span class="pet-age-value">${ageDisplay}</span>
@@ -740,12 +740,12 @@
 
                             ${pet.evolutionStage === 'evolved' ? `
                                 <div class="evolution-badge-display">
-                                    ✨ ${PET_EVOLUTIONS[pet.type]?.name || 'Evolved Form'} ✨
+                                    <span aria-hidden="true">✨</span> ${PET_EVOLUTIONS[pet.type]?.name || 'Evolved Form'} <span aria-hidden="true">✨</span>
                                 </div>
                             ` : ''}
                             ${canEvolve(pet) ? `
                                 <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet to their special form!">
-                                    ⭐ Evolve ${petDisplayName}! ⭐
+                                    <span aria-hidden="true">⭐</span> Evolve ${petDisplayName}! <span aria-hidden="true">⭐</span>
                                 </button>
                             ` : ''}
                         </div>
@@ -1118,6 +1118,7 @@
                 btn.disabled = true;
                 btn.setAttribute('aria-disabled', 'true');
             });
+            announce('Action cooling down');
 
             if (actionCooldownTimer) {
                 clearTimeout(actionCooldownTimer);
@@ -1381,6 +1382,8 @@
             petContainer.innerHTML = generatePetSVG(pet, mood);
         }
 
+        let _lastGrowthMilestone = 0;
+
         function updateGrowthDisplay() {
             const pet = gameState.pet;
             if (!pet) return;
@@ -1398,6 +1401,27 @@
             const compactPct = document.querySelector('.growth-compact-pct');
             if (compactPct) {
                 compactPct.textContent = `${Math.round(progress)}%`;
+            }
+
+            // Announce growth milestones for screen readers
+            if (nextStage) {
+                const rounded = Math.round(progress);
+                const milestones = [50, 75, 99];
+                for (const m of milestones) {
+                    if (rounded >= m && _lastGrowthMilestone < m) {
+                        _lastGrowthMilestone = m;
+                        const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                        const nextLabel = GROWTH_STAGES[nextStage].label;
+                        if (m === 99) {
+                            announce(`${petName} is about to evolve to ${nextLabel}!`, true);
+                        } else {
+                            announce(`${petName} growth progress: ${m}% toward ${nextLabel}.`);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                _lastGrowthMilestone = 100;
             }
         }
 
