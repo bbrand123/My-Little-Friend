@@ -866,7 +866,7 @@ if (typeof document !== 'undefined' && !window.__modalEscapeListenerRegistered) 
 function trapFocus(overlay) {
     overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
-            const focusable = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            const focusable = overlay.querySelectorAll('button, [href], input, select, textarea, [role="button"], [role="link"], [role="tab"], [tabindex]:not([tabindex="-1"])');
             if (focusable.length === 0) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
