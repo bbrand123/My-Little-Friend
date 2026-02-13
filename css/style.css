@@ -140,35 +140,10 @@
             box-shadow: none;
         }
 
-        /* Ground with grass texture */
-        .pet-area::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 35px;
-            background: linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
-            border-radius: 0 0 var(--radius) var(--radius);
-        }
-
+        /* Ground and flower pseudo-elements removed to reduce visual layers */
+        .pet-area::after,
         .pet-area::before {
-            content: '🌸 🌼 🌷';
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            font-size: 0.7rem;
-            letter-spacing: 16px;
-            text-align: center;
-            z-index: 1;
-            pointer-events: none;
-            opacity: 0.8;
-        }
-
-        .pet-area.nighttime::before {
-            content: '🌿 🍃 🌿';
-            opacity: 0.4;
+            display: none;
         }
 
         /* Hide default ::before decor when room system is active */
@@ -1271,46 +1246,9 @@
             background: linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
         }
 
-        /* Room pattern overlay */
+        /* Room pattern overlays removed to reduce visual weight */
         .room-pattern {
-            position: absolute;
-            inset: 0 0 35px 0;
-            pointer-events: none;
-            opacity: 0.25;
-            z-index: 0;
-        }
-
-        .room-pattern-bedroom {
-            background-image: radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 2px, transparent 2.5px);
-            background-size: 18px 18px;
-        }
-
-        .room-pattern-kitchen {
-            background-image:
-                repeating-linear-gradient(90deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 12px),
-                repeating-linear-gradient(0deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 12px);
-        }
-
-        .room-pattern-bathroom {
-            background-image:
-                linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px);
-            background-size: 24px 24px;
-        }
-
-        .room-pattern-backyard {
-            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 14px);
-        }
-
-        .room-pattern-park {
-            background-image: radial-gradient(circle at 8px 8px, rgba(255,255,255,0.25) 2px, transparent 2.5px);
-            background-size: 22px 22px;
-        }
-
-        .room-pattern-garden {
-            background-image:
-                repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 14px),
-                repeating-linear-gradient(0deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 20px);
+            display: none;
         }
 
         /* Room-specific decor */
