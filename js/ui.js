@@ -110,6 +110,13 @@
                     return;
                 }
 
+                const rewardsBtn = target.closest('#rewards-btn');
+                if (rewardsBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(rewardsBtn, typeof showRewardsHub === 'function' ? showRewardsHub : null, event);
+                    return;
+                }
+
                 const settingsBtn = target.closest('#settings-btn');
                 if (settingsBtn) {
                     if (event.type === 'touchend') event.preventDefault();
@@ -612,6 +619,10 @@
                         <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks">
                             <span class="top-action-btn-icon">📋</span>
                             ${isDailyComplete() ? '<span class="daily-complete-badge">✓</span>' : ''}
+                        </button>
+                        <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards (${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies)">
+                            <span class="top-action-btn-icon">🎁</span>
+                            ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge">!</span>' : ''}
                         </button>
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
                             <span class="top-action-btn-icon">🛋️</span>
@@ -1341,12 +1352,48 @@
                 dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
             }
 
+            // Track medicine and groom counts for trophies
+            if (action === 'medicine') {
+                if (typeof gameState.totalMedicineUses !== 'number') gameState.totalMedicineUses = 0;
+                gameState.totalMedicineUses++;
+            }
+            if (action === 'groom') {
+                if (typeof gameState.totalGroomCount !== 'number') gameState.totalGroomCount = 0;
+                gameState.totalGroomCount++;
+            }
+
             // Check achievements
             if (typeof checkAchievements === 'function') {
                 const newAch = checkAchievements();
                 newAch.forEach(ach => {
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
                     setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
+
+            // Check badges, stickers, and trophies
+            if (typeof checkBadges === 'function') {
+                const newBadges = checkBadges();
+                newBadges.forEach(badge => {
+                    setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, BADGE_TIERS[badge.tier].color), 500);
+                });
+            }
+            if (typeof checkPetActionSticker === 'function') {
+                const newStickers = checkPetActionSticker(action);
+                newStickers.forEach(sticker => {
+                    setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                });
+            }
+            if (typeof checkStickers === 'function') {
+                const newStickers = checkStickers();
+                newStickers.forEach(sticker => {
+                    setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                });
+            }
+            if (typeof checkTrophies === 'function') {
+                const newTrophies = checkTrophies();
+                newTrophies.forEach(trophy => {
+                    setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
                 });
             }
 
@@ -3274,6 +3321,405 @@
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDaily(); });
             pushModalEscape(closeDaily);
             overlay._closeOverlay = closeDaily;
+            trapFocus(overlay);
+        }
+
+        // ==================== BADGES MODAL ====================
+
+        function showBadgesModal() {
+            const existing = document.querySelector('.badges-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const unlocked = gameState.badges || {};
+            const total = Object.keys(BADGES).length;
+            const unlockedCount = getBadgeCount();
+
+            // Group by category
+            const grouped = {};
+            for (const [id, badge] of Object.entries(BADGES)) {
+                if (!grouped[badge.category]) grouped[badge.category] = [];
+                grouped[badge.category].push({ id, ...badge });
+            }
+
+            let contentHTML = '';
+            for (const [catKey, catData] of Object.entries(BADGE_CATEGORIES)) {
+                const badges = grouped[catKey] || [];
+                if (badges.length === 0) continue;
+                contentHTML += `<div class="badge-category-header">${catData.icon} ${catData.label}</div>`;
+                contentHTML += '<div class="badges-grid">';
+                badges.forEach(badge => {
+                    const isUnlocked = unlocked[badge.id] && unlocked[badge.id].unlocked;
+                    const tierData = BADGE_TIERS[badge.tier];
+                    const unlockedDate = isUnlocked ? new Date(unlocked[badge.id].unlockedAt).toLocaleDateString() : '';
+                    contentHTML += `
+                        <div class="badge-card ${isUnlocked ? 'unlocked' : 'locked'} tier-${badge.tier}" aria-label="${badge.name}: ${badge.description}${isUnlocked ? ', earned' : ', locked'}" style="${isUnlocked ? `--badge-glow: ${tierData.glow}; --badge-color: ${tierData.color}` : ''}">
+                            <div class="badge-icon">${isUnlocked ? badge.icon : '🔒'}</div>
+                            <div class="badge-info">
+                                <div class="badge-name">${isUnlocked ? badge.name : '???'}</div>
+                                <div class="badge-desc">${badge.description}</div>
+                                ${isUnlocked ? `<div class="badge-tier" style="color: ${tierData.color}">${tierData.label}</div>` : ''}
+                                ${isUnlocked ? `<div class="badge-date">${unlockedDate}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                contentHTML += '</div>';
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'badges-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Badges');
+            overlay.innerHTML = `
+                <div class="badges-modal">
+                    <h2 class="badges-title">🎖️ Badges</h2>
+                    <p class="badges-subtitle">${unlockedCount}/${total} earned</p>
+                    <div class="badges-progress-bar">
+                        <div class="badges-progress-fill" style="width: ${(unlockedCount / total) * 100}%;"></div>
+                    </div>
+                    <div class="badges-content">${contentHTML}</div>
+                    <button class="badges-close" id="badges-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeBadges() {
+                popModalEscape(closeBadges);
+                overlay.remove();
+            }
+
+            document.getElementById('badges-close').focus();
+            document.getElementById('badges-close').addEventListener('click', closeBadges);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBadges(); });
+            pushModalEscape(closeBadges);
+            overlay._closeOverlay = closeBadges;
+            trapFocus(overlay);
+        }
+
+        // ==================== STICKER BOOK MODAL ====================
+
+        function showStickerBookModal() {
+            const existing = document.querySelector('.sticker-book-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const collected = gameState.stickers || {};
+            const total = Object.keys(STICKERS).length;
+            const collectedCount = getStickerCount();
+
+            // Group by category
+            const grouped = {};
+            for (const [id, sticker] of Object.entries(STICKERS)) {
+                if (!grouped[sticker.category]) grouped[sticker.category] = [];
+                grouped[sticker.category].push({ id, ...sticker });
+            }
+
+            let pagesHTML = '';
+            for (const [catKey, catData] of Object.entries(STICKER_CATEGORIES)) {
+                const stickers = grouped[catKey] || [];
+                if (stickers.length === 0) continue;
+                pagesHTML += `<div class="sticker-page-header">${catData.icon} ${catData.label}</div>`;
+                pagesHTML += '<div class="sticker-page-grid">';
+                stickers.forEach(sticker => {
+                    const isCollected = collected[sticker.id] && collected[sticker.id].collected;
+                    const rarityData = STICKER_RARITIES[sticker.rarity];
+                    const stars = isCollected ? Array(rarityData.stars).fill('⭐').join('') : '';
+                    pagesHTML += `
+                        <div class="sticker-slot ${isCollected ? 'collected' : 'empty'} rarity-${sticker.rarity}" aria-label="${isCollected ? sticker.name : 'Empty slot'}: ${sticker.source}">
+                            <div class="sticker-emoji">${isCollected ? sticker.emoji : '?'}</div>
+                            <div class="sticker-name">${isCollected ? sticker.name : '???'}</div>
+                            ${isCollected ? `<div class="sticker-rarity" style="color: ${rarityData.color}">${stars}</div>` : ''}
+                            <div class="sticker-source">${sticker.source}</div>
+                        </div>
+                    `;
+                });
+                pagesHTML += '</div>';
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'sticker-book-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Sticker Collection Book');
+            overlay.innerHTML = `
+                <div class="sticker-book-modal">
+                    <h2 class="sticker-book-title">📓 Sticker Book</h2>
+                    <p class="sticker-book-subtitle">${collectedCount}/${total} collected</p>
+                    <div class="sticker-book-progress-bar">
+                        <div class="sticker-book-progress-fill" style="width: ${(collectedCount / total) * 100}%;"></div>
+                    </div>
+                    <div class="sticker-book-pages">${pagesHTML}</div>
+                    <button class="sticker-book-close" id="sticker-book-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeStickerBook() {
+                popModalEscape(closeStickerBook);
+                overlay.remove();
+            }
+
+            document.getElementById('sticker-book-close').focus();
+            document.getElementById('sticker-book-close').addEventListener('click', closeStickerBook);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStickerBook(); });
+            pushModalEscape(closeStickerBook);
+            overlay._closeOverlay = closeStickerBook;
+            trapFocus(overlay);
+        }
+
+        // ==================== TROPHY ROOM MODAL ====================
+
+        function showTrophyRoomModal() {
+            const existing = document.querySelector('.trophy-room-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const earned = gameState.trophies || {};
+            const total = Object.keys(TROPHIES).length;
+            const earnedCount = getTrophyCount();
+
+            // Group by shelf
+            const grouped = {};
+            for (const [id, trophy] of Object.entries(TROPHIES)) {
+                if (!grouped[trophy.shelf]) grouped[trophy.shelf] = [];
+                grouped[trophy.shelf].push({ id, ...trophy });
+            }
+
+            let shelvesHTML = '';
+            for (const [shelfKey, shelfData] of Object.entries(TROPHY_SHELVES)) {
+                const trophies = grouped[shelfKey] || [];
+                if (trophies.length === 0) continue;
+                shelvesHTML += `<div class="trophy-shelf">`;
+                shelvesHTML += `<div class="trophy-shelf-label">${shelfData.icon} ${shelfData.label}</div>`;
+                shelvesHTML += '<div class="trophy-shelf-items">';
+                trophies.forEach(trophy => {
+                    const isEarned = earned[trophy.id] && earned[trophy.id].earned;
+                    const earnedDate = isEarned ? new Date(earned[trophy.id].earnedAt).toLocaleDateString() : '';
+                    shelvesHTML += `
+                        <div class="trophy-item ${isEarned ? 'earned' : 'locked'}" aria-label="${trophy.name}: ${trophy.description}${isEarned ? ', earned' : ', locked'}">
+                            <div class="trophy-icon">${isEarned ? trophy.icon : '🔒'}</div>
+                            <div class="trophy-plaque">
+                                <div class="trophy-name">${isEarned ? trophy.name : '???'}</div>
+                                <div class="trophy-desc">${trophy.description}</div>
+                                ${isEarned ? `<div class="trophy-date">${earnedDate}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                shelvesHTML += '</div></div>';
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'trophy-room-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Trophy Room');
+            overlay.innerHTML = `
+                <div class="trophy-room-modal">
+                    <h2 class="trophy-room-title">🏆 Trophy Room</h2>
+                    <p class="trophy-room-subtitle">${earnedCount}/${total} trophies</p>
+                    <div class="trophy-room-progress-bar">
+                        <div class="trophy-room-progress-fill" style="width: ${(earnedCount / total) * 100}%;"></div>
+                    </div>
+                    <div class="trophy-shelves">${shelvesHTML}</div>
+                    <button class="trophy-room-close" id="trophy-room-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeTrophyRoom() {
+                popModalEscape(closeTrophyRoom);
+                overlay.remove();
+            }
+
+            document.getElementById('trophy-room-close').focus();
+            document.getElementById('trophy-room-close').addEventListener('click', closeTrophyRoom);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeTrophyRoom(); });
+            pushModalEscape(closeTrophyRoom);
+            overlay._closeOverlay = closeTrophyRoom;
+            trapFocus(overlay);
+        }
+
+        // ==================== DAILY STREAK MODAL ====================
+
+        function showStreakModal() {
+            const existing = document.querySelector('.streak-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const streak = gameState.streak || { current: 0, longest: 0, todayBonusClaimed: false, claimedMilestones: [] };
+            const bonus = getStreakBonus(streak.current);
+            const canClaim = !streak.todayBonusClaimed && streak.current > 0 && gameState.pet;
+
+            // Build milestone timeline
+            let milestonesHTML = '';
+            STREAK_MILESTONES.forEach(milestone => {
+                const reached = streak.current >= milestone.days;
+                const claimed = streak.claimedMilestones && streak.claimedMilestones.includes(milestone.days);
+                const rewardLabel = milestone.reward === 'sticker'
+                    ? `${STICKERS[milestone.rewardId] ? STICKERS[milestone.rewardId].emoji : '🎁'} ${STICKERS[milestone.rewardId] ? STICKERS[milestone.rewardId].name : 'Sticker'}`
+                    : `${ACCESSORIES[milestone.rewardId] ? ACCESSORIES[milestone.rewardId].emoji : '🎁'} ${ACCESSORIES[milestone.rewardId] ? ACCESSORIES[milestone.rewardId].name : 'Accessory'}`;
+
+                milestonesHTML += `
+                    <div class="streak-milestone ${reached ? 'reached' : ''} ${claimed ? 'claimed' : ''}" aria-label="${milestone.label}: ${milestone.description}${reached ? ', reached' : ''}">
+                        <div class="streak-milestone-day">${milestone.label}</div>
+                        <div class="streak-milestone-marker">${reached ? '🔥' : '⚪'}</div>
+                        <div class="streak-milestone-reward">${rewardLabel}</div>
+                        <div class="streak-milestone-desc">${milestone.description}</div>
+                    </div>
+                `;
+            });
+
+            // Build flame visualization
+            const flameSize = Math.min(streak.current, 30);
+            let flameEmojis = '';
+            if (streak.current >= 30) flameEmojis = '🔥🔥🔥🔥🔥';
+            else if (streak.current >= 14) flameEmojis = '🔥🔥🔥🔥';
+            else if (streak.current >= 7) flameEmojis = '🔥🔥🔥';
+            else if (streak.current >= 3) flameEmojis = '🔥🔥';
+            else if (streak.current >= 1) flameEmojis = '🔥';
+            else flameEmojis = '💨';
+
+            const overlay = document.createElement('div');
+            overlay.className = 'streak-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Daily Streak');
+            overlay.innerHTML = `
+                <div class="streak-modal">
+                    <h2 class="streak-title">🔥 Daily Streak</h2>
+                    <div class="streak-flame-display">${flameEmojis}</div>
+                    <div class="streak-count">${streak.current} day${streak.current !== 1 ? 's' : ''}</div>
+                    <div class="streak-longest">Longest: ${streak.longest} day${streak.longest !== 1 ? 's' : ''}</div>
+                    <div class="streak-bonus-info">
+                        <div class="streak-bonus-label">Today's Bonus</div>
+                        <div class="streak-bonus-value">${bonus.label}</div>
+                    </div>
+                    ${canClaim ? `
+                        <button class="streak-claim-btn" id="streak-claim-btn">Claim Today's Bonus!</button>
+                    ` : streak.todayBonusClaimed ? `
+                        <div class="streak-claimed-msg">Today's bonus claimed!</div>
+                    ` : ''}
+                    <div class="streak-milestones-title">Milestones</div>
+                    <div class="streak-milestones">${milestonesHTML}</div>
+                    <button class="streak-close" id="streak-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Claim bonus handler
+            const claimBtn = document.getElementById('streak-claim-btn');
+            if (claimBtn) {
+                claimBtn.addEventListener('click', () => {
+                    const result = claimStreakBonus();
+                    if (result) {
+                        showToast(`🔥 Streak bonus: ${result.bonus.label}`, '#FF6D00');
+                        result.milestones.forEach(m => {
+                            setTimeout(() => showToast(`🎁 Streak reward: ${m.label}!`, '#E040FB'), 500);
+                        });
+                        // Refresh displays
+                        if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                        if (typeof updateWellnessBar === 'function') updateWellnessBar();
+                        // Refresh the modal
+                        closeStreak();
+                        showStreakModal();
+                    }
+                });
+            }
+
+            function closeStreak() {
+                popModalEscape(closeStreak);
+                overlay.remove();
+            }
+
+            document.getElementById('streak-close').focus();
+            document.getElementById('streak-close').addEventListener('click', closeStreak);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStreak(); });
+            pushModalEscape(closeStreak);
+            overlay._closeOverlay = closeStreak;
+            trapFocus(overlay);
+        }
+
+        // ==================== REWARDS HUB MODAL ====================
+
+        function showRewardsHub() {
+            const existing = document.querySelector('.rewards-hub-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const badgeCount = getBadgeCount();
+            const badgeTotal = Object.keys(BADGES).length;
+            const stickerCount = getStickerCount();
+            const stickerTotal = Object.keys(STICKERS).length;
+            const trophyCount = getTrophyCount();
+            const trophyTotal = Object.keys(TROPHIES).length;
+            const streak = gameState.streak || { current: 0, longest: 0 };
+            const canClaimStreak = streak.current > 0 && !streak.todayBonusClaimed && gameState.pet;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'rewards-hub-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Rewards');
+            overlay.innerHTML = `
+                <div class="rewards-hub-modal">
+                    <h2 class="rewards-hub-title">🎁 Rewards</h2>
+                    <div class="rewards-hub-grid">
+                        <button class="rewards-hub-card" id="rh-badges" aria-label="Badges: ${badgeCount} of ${badgeTotal}">
+                            <div class="rewards-hub-card-icon">🎖️</div>
+                            <div class="rewards-hub-card-label">Badges</div>
+                            <div class="rewards-hub-card-count">${badgeCount}/${badgeTotal}</div>
+                        </button>
+                        <button class="rewards-hub-card" id="rh-stickers" aria-label="Sticker Book: ${stickerCount} of ${stickerTotal}">
+                            <div class="rewards-hub-card-icon">📓</div>
+                            <div class="rewards-hub-card-label">Stickers</div>
+                            <div class="rewards-hub-card-count">${stickerCount}/${stickerTotal}</div>
+                        </button>
+                        <button class="rewards-hub-card" id="rh-trophies" aria-label="Trophy Room: ${trophyCount} of ${trophyTotal}">
+                            <div class="rewards-hub-card-icon">🏆</div>
+                            <div class="rewards-hub-card-label">Trophies</div>
+                            <div class="rewards-hub-card-count">${trophyCount}/${trophyTotal}</div>
+                        </button>
+                        <button class="rewards-hub-card ${canClaimStreak ? 'has-reward' : ''}" id="rh-streak" aria-label="Daily Streak: ${streak.current} days">
+                            <div class="rewards-hub-card-icon">🔥</div>
+                            <div class="rewards-hub-card-label">Streak</div>
+                            <div class="rewards-hub-card-count">${streak.current} day${streak.current !== 1 ? 's' : ''}</div>
+                            ${canClaimStreak ? '<div class="rewards-hub-card-alert">!</div>' : ''}
+                        </button>
+                    </div>
+                    <button class="rewards-hub-close" id="rewards-hub-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Navigation to sub-modals
+            document.getElementById('rh-badges').addEventListener('click', () => { closeRewardsHub(); showBadgesModal(); });
+            document.getElementById('rh-stickers').addEventListener('click', () => { closeRewardsHub(); showStickerBookModal(); });
+            document.getElementById('rh-trophies').addEventListener('click', () => { closeRewardsHub(); showTrophyRoomModal(); });
+            document.getElementById('rh-streak').addEventListener('click', () => { closeRewardsHub(); showStreakModal(); });
+
+            function closeRewardsHub() {
+                popModalEscape(closeRewardsHub);
+                overlay.remove();
+            }
+
+            document.getElementById('rewards-hub-close').focus();
+            document.getElementById('rewards-hub-close').addEventListener('click', closeRewardsHub);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRewardsHub(); });
+            pushModalEscape(closeRewardsHub);
+            overlay._closeOverlay = closeRewardsHub;
             trapFocus(overlay);
         }
 
