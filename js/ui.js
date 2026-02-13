@@ -539,6 +539,38 @@
         let _petPhaseTimersRunning = false;
         let _petPhaseLastRoom = null;
 
+        // ==================== ROOM BONUS BADGE ====================
+        // Returns a small badge indicating room bonus for an action button
+        function getRoomBonusBadge(actionName, currentRoom) {
+            const room = ROOMS[currentRoom];
+            if (!room || !room.bonus) return '';
+            if (room.bonus.action !== actionName) return '';
+            const pct = Math.round((room.bonus.multiplier - 1) * 100);
+            return `<span class="room-bonus-badge" aria-label="${room.name} bonus: +${pct}%">+${pct}%</span>`;
+        }
+
+        // ==================== THOUGHT BUBBLE ====================
+        // Shows a small thought bubble above the pet reflecting its most urgent need
+        function generateThoughtBubble(pet) {
+            if (!pet) return '';
+            const threshold = 35; // Show thought when stat drops below this
+            const petName = escapeHTML(pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet'));
+            // Find the most critical need
+            const needs = [
+                { stat: 'hunger', value: pet.hunger, icon: '🍎', label: 'hungry' },
+                { stat: 'energy', value: pet.energy, icon: '💤', label: 'tired' },
+                { stat: 'cleanliness', value: pet.cleanliness, icon: '💧', label: 'dirty' },
+                { stat: 'happiness', value: pet.happiness, icon: '⚽', label: 'bored' }
+            ];
+            const critical = needs.filter(n => n.value < threshold).sort((a, b) => a.value - b.value);
+            if (critical.length === 0) return '';
+            const top = critical[0];
+            const urgency = top.value <= 15 ? 'critical' : 'low';
+            return `<div class="thought-bubble ${urgency}" aria-label="${petName} is ${top.label}" role="img">
+                <span class="thought-icon">${top.icon}</span>
+            </div>`;
+        }
+
         function renderPetPhase() {
             // Clear any pending deferred render to avoid redundant double re-renders
             if (pendingRenderTimer) {
@@ -639,6 +671,7 @@
                     ${weatherHTML}
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
+                        ${generateThoughtBubble(pet)}
                         ${generatePetSVG(pet, mood)}
                     </div>
                     <div class="pet-info">
@@ -680,6 +713,10 @@
 
                             const growthHint = `Actions: ${Math.round(actionProgress)}% (${pet.careActions}/${nextActionsThreshold}), Time: ${Math.round(timeProgress)}% — both must reach 100%`;
 
+                            const actionsDisplay = `${Math.min(pet.careActions, nextActionsThreshold)}/${nextActionsThreshold}`;
+                            const timeHoursElapsed = Math.min(ageInHours, nextHoursThreshold);
+                            const timeDisplay = `${Math.floor(timeHoursElapsed)}/${nextHoursThreshold}h`;
+
                             return `
                                 <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%" title="${growthHint}">
                                     <div class="growth-compact-row">
@@ -690,6 +727,10 @@
                                             <div class="growth-compact-fill" style="width:${overallProgress}%;"></div>
                                         </div>
                                         <span class="growth-compact-pct">${Math.round(overallProgress)}%</span>
+                                    </div>
+                                    <div class="growth-detail-row">
+                                        <span class="growth-detail-item ${actionProgress >= 100 ? 'done' : ''}">Care: ${actionsDisplay}</span>
+                                        <span class="growth-detail-item ${timeProgress >= 100 ? 'done' : ''}">Time: ${timeDisplay}</span>
                                     </div>
                                 </div>
                             `;
@@ -804,24 +845,27 @@
                                 const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
                                 const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
                                 const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
-                                return `<button class="action-btn feed" id="feed-btn">
+                                return `<button class="action-btn feed ${getRoomBonusBadge('feed', currentRoom) ? 'has-room-bonus' : ''}" id="feed-btn">
                                 <span class="action-btn-tooltip">+Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
                                 ${cropBadge}
+                                ${getRoomBonusBadge('feed', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>`;
                             })()}
-                            <button class="action-btn wash" id="wash-btn">
+                            <button class="action-btn wash ${getRoomBonusBadge('wash', currentRoom) ? 'has-room-bonus' : ''}" id="wash-btn">
                                 <span class="action-btn-tooltip">+Clean</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
+                                ${getRoomBonusBadge('wash', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn sleep" id="sleep-btn">
+                            <button class="action-btn sleep ${getRoomBonusBadge('sleep', currentRoom) ? 'has-room-bonus' : ''}" id="sleep-btn">
                                 <span class="action-btn-tooltip">+Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
+                                ${getRoomBonusBadge('sleep', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn">
@@ -830,10 +874,11 @@
                                 <span>Pet</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
-                            <button class="action-btn play" id="play-btn">
+                            <button class="action-btn play ${getRoomBonusBadge('play', currentRoom) ? 'has-room-bonus' : ''}" id="play-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
+                                ${getRoomBonusBadge('play', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
                             <button class="action-btn treat" id="treat-btn">
@@ -856,10 +901,11 @@
                     <div class="more-actions-panel" id="more-actions-panel" hidden>
                         <div class="action-group">
                             <div class="action-group-buttons" role="group" aria-label="Additional actions">
-                                <button class="action-btn exercise" id="exercise-btn">
+                                <button class="action-btn exercise ${getRoomBonusBadge('exercise', currentRoom) ? 'has-room-bonus' : ''}" id="exercise-btn">
                                     <span class="action-btn-tooltip">+Happy, −Energy</span>
                                     <span class="btn-icon" aria-hidden="true">🏃</span>
                                     <span>Exercise</span>
+                                    ${getRoomBonusBadge('exercise', currentRoom)}
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
                                 <button class="action-btn medicine" id="medicine-btn">
@@ -868,10 +914,11 @@
                                     <span>Medicine</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
-                                <button class="action-btn groom" id="groom-btn">
+                                <button class="action-btn groom ${getRoomBonusBadge('groom', currentRoom) ? 'has-room-bonus' : ''}" id="groom-btn">
                                     <span class="action-btn-tooltip">+Clean, +Happy</span>
                                     <span class="btn-icon" aria-hidden="true">✂️</span>
                                     <span>Groom</span>
+                                    ${getRoomBonusBadge('groom', currentRoom)}
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
                                 <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" title="${Object.entries(seasonData.activityEffects || {}).map(([k, v]) => (v >= 0 ? '+' : '') + v + ' ' + k).join(', ')}">
@@ -1041,6 +1088,78 @@
                 gameContent.setAttribute('tabindex', '-1');
                 gameContent.focus({ preventScroll: true });
             }
+
+            // Show first-time onboarding hints
+            showOnboardingHints(currentRoom);
+        }
+
+        // ==================== ONBOARDING HINTS ====================
+        // Lightweight first-time tooltip system stored in localStorage
+        const ONBOARDING_HINTS = [
+            { id: 'room_bonus', trigger: 'first_render', message: 'Tip: Each room gives a bonus to certain actions! Look for the +30% badges on buttons.' },
+            { id: 'garden_intro', trigger: 'garden', message: 'Tip: Plant seeds and water them to grow food for your pet!' },
+            { id: 'minigames_intro', trigger: 'first_render', message: 'Tip: Play mini-games to earn happiness and unlock achievements!' },
+            { id: 'multi_pet', trigger: 'multi_pet', message: 'Tip: With multiple pets, they can interact and build relationships!' },
+            { id: 'growth_system', trigger: 'first_render', message: 'Tip: Your pet grows based on both care actions and time. Keep taking good care!' }
+        ];
+
+        let _onboardingShownThisSession = {};
+
+        function getShownHints() {
+            try {
+                const raw = localStorage.getItem('petCareBuddy_onboardingShown');
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) { return {}; }
+        }
+
+        function markHintShown(hintId) {
+            try {
+                const shown = getShownHints();
+                shown[hintId] = true;
+                localStorage.setItem('petCareBuddy_onboardingShown', JSON.stringify(shown));
+            } catch (e) {}
+        }
+
+        function showOnboardingHints(currentRoom) {
+            const shown = getShownHints();
+
+            for (const hint of ONBOARDING_HINTS) {
+                if (shown[hint.id] || _onboardingShownThisSession[hint.id]) continue;
+
+                let shouldShow = false;
+                if (hint.trigger === 'first_render') shouldShow = true;
+                if (hint.trigger === 'garden' && currentRoom === 'garden') shouldShow = true;
+                if (hint.trigger === 'multi_pet' && gameState.pets && gameState.pets.length >= 2) shouldShow = true;
+
+                if (shouldShow) {
+                    _onboardingShownThisSession[hint.id] = true;
+                    markHintShown(hint.id);
+                    // Stagger hints so they don't all show at once
+                    const delay = Object.keys(_onboardingShownThisSession).length * 4000;
+                    setTimeout(() => {
+                        showOnboardingTooltip(hint.message);
+                    }, 1500 + delay);
+                    // Only show one hint per render to avoid overwhelming
+                    return;
+                }
+            }
+        }
+
+        function showOnboardingTooltip(message) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'onboarding-tooltip';
+            tooltip.setAttribute('role', 'status');
+            tooltip.innerHTML = `
+                <span class="onboarding-icon" aria-hidden="true">💡</span>
+                <span class="onboarding-text">${message}</span>
+                <button class="onboarding-dismiss" aria-label="Dismiss tip">✕</button>
+            `;
+            document.body.appendChild(tooltip);
+
+            const dismiss = tooltip.querySelector('.onboarding-dismiss');
+            dismiss.addEventListener('click', () => tooltip.remove());
+            // Auto-dismiss after 8 seconds
+            setTimeout(() => { if (tooltip.parentNode) tooltip.remove(); }, 8000);
         }
 
         // ==================== TOAST NOTIFICATIONS ====================
@@ -1800,7 +1919,7 @@
             idleAnimTimers.forEach(id => clearTimeout(id));
             idleAnimTimers = [];
             // Remove any existing idle animation elements
-            document.querySelectorAll('.idle-blink-overlay, .idle-twitch-overlay, .idle-zzz-float, .sleep-nudge-icon').forEach(el => el.remove());
+            document.querySelectorAll('.idle-blink-overlay, .idle-twitch-overlay, .idle-zzz-float, .sleep-nudge-icon, .idle-need-hint').forEach(el => el.remove());
         }
 
         function startIdleAnimations() {
@@ -1811,6 +1930,7 @@
             scheduleTwitch();
             checkLowEnergyAnim();
             checkNightSleepNudge();
+            scheduleNeedBasedAnim();
         }
 
         // Blink: random interval between 8-15 seconds (slowed to reduce visual noise)
@@ -1902,6 +2022,56 @@
                 removeIdleTimer(timerId);
                 checkNightSleepNudge();
             }, 120000);
+            idleAnimTimers.push(timerId);
+        }
+
+        // ==================== NEED-BASED IDLE ANIMATIONS ====================
+        // Pet shows visual cues reflecting its most urgent need
+        function scheduleNeedBasedAnim() {
+            const delay = 15000 + Math.random() * 10000; // Every 15-25 seconds
+            const timerId = setTimeout(() => {
+                removeIdleTimer(timerId);
+                if (gameState.phase !== 'pet' || !gameState.pet) return;
+                if (actionAnimating) { scheduleNeedBasedAnim(); return; }
+
+                const pet = gameState.pet;
+                const petContainer = document.getElementById('pet-container');
+                if (!petContainer) { scheduleNeedBasedAnim(); return; }
+
+                // Determine dominant need
+                const threshold = 40;
+                let animClass = '';
+                let animEmoji = '';
+                if (pet.hunger < threshold && pet.hunger <= pet.energy && pet.hunger <= pet.cleanliness && pet.hunger <= pet.happiness) {
+                    animClass = 'idle-need-hungry';
+                    animEmoji = '🍎';
+                } else if (pet.energy < threshold && pet.energy <= pet.hunger && pet.energy <= pet.cleanliness && pet.energy <= pet.happiness) {
+                    animClass = 'idle-need-tired';
+                    animEmoji = '💤';
+                } else if (pet.cleanliness < threshold && pet.cleanliness <= pet.hunger && pet.cleanliness <= pet.energy && pet.cleanliness <= pet.happiness) {
+                    animClass = 'idle-need-dirty';
+                    animEmoji = '💧';
+                } else if (pet.happiness < threshold && pet.happiness <= pet.hunger && pet.happiness <= pet.energy && pet.happiness <= pet.cleanliness) {
+                    animClass = 'idle-need-bored';
+                    animEmoji = '⚽';
+                }
+
+                if (animClass) {
+                    petContainer.classList.add(animClass);
+                    // Show a small floating need icon
+                    const needHint = document.createElement('div');
+                    needHint.className = 'idle-need-hint';
+                    needHint.setAttribute('aria-hidden', 'true');
+                    needHint.textContent = animEmoji;
+                    petContainer.appendChild(needHint);
+                    setTimeout(() => {
+                        petContainer.classList.remove(animClass);
+                        needHint.remove();
+                    }, 2000);
+                }
+
+                scheduleNeedBasedAnim();
+            }, delay);
             idleAnimTimers.push(timerId);
         }
 
@@ -2090,9 +2260,18 @@
             const rewardData = BIRTHDAY_REWARDS[growthStage];
             if (!rewardData) return;
 
-            // Single celebration effect: confetti only (no flash or pulse to avoid stacking)
+            // Enhanced celebration: flash + confetti + size-up animation
+            createCelebrationFlash();
             createConfetti();
+            createConfetti(); // Double confetti for extra impact
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
+
+            // Trigger pet size-up animation
+            const petContainer = document.getElementById('pet-container');
+            if (petContainer) {
+                petContainer.classList.add('growth-size-up');
+                setTimeout(() => petContainer.classList.remove('growth-size-up'), 1500);
+            }
 
             // Unlock accessories as rewards
             if (rewardData.accessories && pet) {
@@ -2106,7 +2285,7 @@
 
             // Create celebration modal
             const modal = document.createElement('div');
-            modal.className = 'modal-overlay celebration-modal';
+            modal.className = 'modal-overlay celebration-modal growth-celebration';
             modal.setAttribute('role', 'dialog');
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'celebration-title');
@@ -2116,10 +2295,16 @@
             const stageLabel = GROWTH_STAGES[growthStage]?.label || growthStage;
             const stageEmoji = GROWTH_STAGES[growthStage]?.emoji || '🎉';
 
+            // Generate pet SVG for the celebration display
+            const petSVGHTML = pet ? generatePetSVG(pet, 'happy') : '';
+
             modal.innerHTML = `
                 <div class="modal-content celebration-content">
                     <div class="celebration-header">
                         <div class="celebration-icon">${rewardData.title}</div>
+                    </div>
+                    <div class="celebration-pet-display" aria-hidden="true">
+                        ${petSVGHTML}
                     </div>
                     <h2 class="modal-title" id="celebration-title"><span aria-hidden="true">${stageEmoji}</span> ${safePetName} is now a ${stageLabel}! <span aria-hidden="true">${stageEmoji}</span></h2>
                     <p class="modal-message celebration-message">${rewardData.message}</p>
@@ -2168,9 +2353,18 @@
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
-            // Single celebration effect: confetti only (no flash or pulse to avoid stacking)
+            // Enhanced celebration: flash + double confetti
+            createCelebrationFlash();
+            createConfetti();
             createConfetti();
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
+
+            // Trigger pet size-up animation
+            const petContainer = document.getElementById('pet-container');
+            if (petContainer) {
+                petContainer.classList.add('growth-size-up');
+                setTimeout(() => petContainer.classList.remove('growth-size-up'), 1500);
+            }
 
             // Create evolution modal
             const modal = document.createElement('div');
@@ -2247,6 +2441,14 @@
             });
             // Fallback removal
             setTimeout(() => petContainer.classList.remove('celebration-pulse'), 1500);
+        }
+
+        function createCelebrationFlash() {
+            const flash = document.createElement('div');
+            flash.className = 'celebration-flash';
+            flash.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(flash);
+            setTimeout(() => flash.remove(), 800);
         }
 
         function createConfetti() {
@@ -2987,6 +3189,15 @@
 
         // ==================== PET SWITCHER ====================
 
+        function getPetAlertStatus(pet) {
+            if (!pet) return null;
+            const avg = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
+            const anyCritical = pet.hunger < 20 || pet.cleanliness < 20 || pet.happiness < 20 || pet.energy < 20;
+            if (anyCritical) return 'critical';
+            if (avg < 35) return 'warning';
+            return null;
+        }
+
         function generatePetSwitcherHTML() {
             if (!gameState.pets || gameState.pets.length <= 1) return '';
 
@@ -2997,14 +3208,21 @@
                 if (!petData) return;
                 const isActive = idx === gameState.activePetIndex;
                 const name = escapeHTML(p.name || petData.name);
+                const alertStatus = !isActive ? getPetAlertStatus(p) : null;
+                const alertBadge = alertStatus === 'critical'
+                    ? '<span class="pet-alert-badge critical" aria-label="Needs urgent attention!" title="Needs urgent attention!">!</span>'
+                    : alertStatus === 'warning'
+                    ? '<span class="pet-alert-badge warning" aria-label="Needs attention" title="Needs attention"></span>'
+                    : '';
                 tabs += `
-                    <button class="pet-tab ${isActive ? 'active' : ''}" data-pet-index="${idx}"
+                    <button class="pet-tab ${isActive ? 'active' : ''} ${alertStatus ? 'pet-tab-' + alertStatus : ''}" data-pet-index="${idx}"
                             role="tab"
-                            aria-label="${name}${isActive ? ' (active)' : ''}"
+                            aria-label="${name}${isActive ? ' (active)' : ''}${alertStatus ? ' (needs attention)' : ''}"
                             aria-selected="${isActive}"
                             tabindex="${isActive ? '0' : '-1'}">
                         <span class="pet-tab-emoji">${petData.emoji}</span>
                         <span class="pet-tab-name">${name}</span>
+                        ${alertBadge}
                     </button>
                 `;
             });
@@ -3132,6 +3350,12 @@
 
                 // Show result
                 const interaction = result.interaction;
+
+                // Show side-by-side pet interaction animation
+                const pet1 = gameState.pets[gameState.activePetIndex];
+                const pet2 = gameState.pets[selectedPartnerIdx];
+                showPetInteractionAnimation(pet1, pet2, interaction);
+
                 showToast(`${interaction.emoji} ${escapeHTML(result.message)}`, '#4ECDC4');
 
                 // Show relationship level up
@@ -3171,6 +3395,44 @@
             // Focus first partner
             const firstPartner = overlay.querySelector('.interaction-partner');
             if (firstPartner) firstPartner.focus();
+        }
+
+        // ==================== PET INTERACTION ANIMATION ====================
+        // Shows a brief side-by-side SVG display of both pets during interaction
+        function showPetInteractionAnimation(pet1, pet2, interaction) {
+            if (!pet1 || !pet2) return;
+
+            // Remove any existing animation overlay
+            const existing = document.querySelector('.pet-interaction-anim');
+            if (existing) existing.remove();
+
+            const pet1SVG = generatePetSVG(pet1, 'happy');
+            const pet2SVG = generatePetSVG(pet2, 'happy');
+            const pet1Name = escapeHTML(pet1.name || (PET_TYPES[pet1.type] ? PET_TYPES[pet1.type].name : 'Pet'));
+            const pet2Name = escapeHTML(pet2.name || (PET_TYPES[pet2.type] ? PET_TYPES[pet2.type].name : 'Pet'));
+
+            const animEl = document.createElement('div');
+            animEl.className = 'pet-interaction-anim';
+            animEl.setAttribute('role', 'img');
+            animEl.setAttribute('aria-label', `${pet1Name} and ${pet2Name} ${interaction.name}`);
+            animEl.innerHTML = `
+                <div class="interaction-anim-content">
+                    <div class="interaction-anim-pet pet-left">${pet1SVG}</div>
+                    <div class="interaction-anim-emoji">${interaction.emoji}</div>
+                    <div class="interaction-anim-pet pet-right">${pet2SVG}</div>
+                </div>
+                <div class="interaction-anim-label">${pet1Name} & ${pet2Name}</div>
+            `;
+
+            document.body.appendChild(animEl);
+            // Trigger entrance animation
+            requestAnimationFrame(() => animEl.classList.add('visible'));
+            // Auto-dismiss after 2.5 seconds
+            setTimeout(() => {
+                animEl.classList.remove('visible');
+                animEl.classList.add('fading');
+                setTimeout(() => animEl.remove(), 500);
+            }, 2500);
         }
 
         // ==================== SOCIAL HUB ====================
@@ -3825,6 +4087,12 @@
                             </button>
                         </div>
                         <div class="settings-row">
+                            <span class="settings-row-label">🎵 Music</span>
+                            <button class="settings-toggle ${typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled() ? 'on' : ''}" id="setting-music" role="switch" aria-checked="${typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled()}" aria-label="Background Music">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
+                        <div class="settings-row">
                             <span class="settings-row-label">${isDark ? '🌙' : '☀️'} Dark Mode</span>
                             <button class="settings-toggle ${isDark ? 'on' : ''}" id="setting-darkmode" role="switch" aria-checked="${isDark}" aria-label="Dark Mode">
                                 <span class="settings-toggle-knob"></span>
@@ -3855,6 +4123,15 @@
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
                     if (enabled && gameState.currentRoom) SoundManager.enterRoom(gameState.currentRoom);
+                }
+            });
+
+            // Music toggle
+            document.getElementById('setting-music').addEventListener('click', function() {
+                if (typeof SoundManager !== 'undefined') {
+                    const enabled = SoundManager.toggleMusic();
+                    this.classList.toggle('on', enabled);
+                    this.setAttribute('aria-checked', String(enabled));
                 }
             });
 
