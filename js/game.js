@@ -2164,7 +2164,10 @@
 
             const saved = loadGame();
             if (saved) {
-                gameState = saved;
+                // Mutate in-place so closures that captured the gameState
+                // reference (e.g. timer callbacks) keep working.
+                Object.keys(gameState).forEach(k => delete gameState[k]);
+                Object.assign(gameState, saved);
             }
 
             // Ensure weather state exists
