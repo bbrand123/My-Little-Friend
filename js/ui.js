@@ -96,6 +96,28 @@
                     return;
                 }
 
+                const achievementsBtn = target.closest('#achievements-btn');
+                if (achievementsBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(achievementsBtn, typeof showAchievementsModal === 'function' ? showAchievementsModal : null, event);
+                    return;
+                }
+
+                const dailyBtn = target.closest('#daily-btn');
+                if (dailyBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(dailyBtn, typeof showDailyChecklistModal === 'function' ? showDailyChecklistModal : null, event);
+                    return;
+                }
+
+                const settingsBtn = target.closest('#settings-btn');
+                if (settingsBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(settingsBtn, typeof showSettingsModal === 'function' ? showSettingsModal : null, event);
+                    return;
+                }
+
+                // Legacy sound/dark mode buttons (kept for backward compat if rendered)
                 const darkModeBtn = target.closest('#dark-mode-btn');
                 if (darkModeBtn) {
                     if (event.type === 'touchend') event.preventDefault();
@@ -583,14 +605,19 @@
                         <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" title="Stats" aria-label="Stats">
                             <span class="top-action-btn-icon">📊</span>
                         </button>
+                        <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements (${getAchievementCount()}/${Object.keys(ACHIEVEMENTS).length})">
+                            <span class="top-action-btn-icon">🏆</span>
+                            ${getAchievementCount() > 0 ? `<span class="achievement-count-badge">${getAchievementCount()}</span>` : ''}
+                        </button>
+                        <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks">
+                            <span class="top-action-btn-icon">📋</span>
+                            ${isDailyComplete() ? '<span class="daily-complete-badge">✓</span>' : ''}
+                        </button>
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
                             <span class="top-action-btn-icon">🛋️</span>
                         </button>
-                        <button class="top-action-btn" id="sound-toggle-btn" type="button" aria-pressed="${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? 'true' : 'false'}" title="Sound" aria-label="Sound">
-                            <span class="top-action-btn-icon">${typeof SoundManager !== 'undefined' && SoundManager.getEnabled() ? '🔊' : '🔇'}</span>
-                        </button>
-                        <button class="top-action-btn" id="dark-mode-btn" type="button" aria-pressed="${document.documentElement.getAttribute('data-theme') === 'dark' ? 'true' : 'false'}" title="Theme" aria-label="Theme">
-                            <span class="top-action-btn-icon">${document.documentElement.getAttribute('data-theme') === 'dark' || (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches) ? '🌙' : '☀️'}</span>
+                        <button class="top-action-btn" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">
+                            <span class="top-action-btn-icon">⚙️</span>
                         </button>
                     </div>
                 </div>
@@ -1291,6 +1318,35 @@
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
 
+            // Play pet voice sound on interactions
+            if (typeof SoundManager !== 'undefined') {
+                const petType = pet.type;
+                if (action === 'feed' || action === 'treat' || action === 'cuddle') {
+                    SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, petType));
+                } else if (action === 'play' || action === 'exercise') {
+                    SoundManager.playSFX((ctx) => SoundManager.sfx.petExcited(ctx, petType));
+                }
+            }
+
+            // Track daily checklist progress
+            if (typeof incrementDailyProgress === 'function') {
+                const dailyCompleted = [];
+                if (action === 'feed') {
+                    dailyCompleted.push(...incrementDailyProgress('feedCount'));
+                }
+                dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+            }
+
+            // Check achievements
+            if (typeof checkAchievements === 'function') {
+                const newAch = checkAchievements();
+                newAch.forEach(ach => {
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
+                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
+
             // Check for growth stage transition (uses checkGrowthMilestone which
             // handles lastGrowthStage tracking, birthday celebrations, and adultsRaised)
             if (checkGrowthMilestone(pet)) {
@@ -1328,6 +1384,9 @@
             saveGame();
         }
 
+        // Track previous stat values for glow animation detection
+        let _prevStats = { hunger: -1, cleanliness: -1, happiness: -1, energy: -1 };
+
         function updateNeedDisplays(silent) {
             const pet = gameState.pet;
             if (!pet) return;
@@ -1335,7 +1394,7 @@
             // Helper to update a bubble indicator with enhanced warning classes
             // When silent=true (passive decay), skip aria-valuenow updates to avoid
             // screen readers announcing all 4 stat changes every 30s.
-            function updateBubble(id, value) {
+            function updateBubble(id, value, statKey) {
                 const bubble = document.getElementById(id);
                 if (!bubble) return;
                 bubble.style.setProperty('--progress', value);
@@ -1351,13 +1410,21 @@
                 if (!silent) {
                     bubble.setAttribute('aria-valuenow', value);
                 }
+                // Animate glow when stat increased (care action, not passive decay)
+                if (!silent && statKey && _prevStats[statKey] >= 0 && value > _prevStats[statKey]) {
+                    bubble.classList.remove('stat-increased');
+                    void bubble.offsetWidth; // Force reflow for re-triggering
+                    bubble.classList.add('stat-increased');
+                    setTimeout(() => bubble.classList.remove('stat-increased'), 700);
+                }
+                if (statKey) _prevStats[statKey] = value;
             }
 
             // Update circular indicators
-            updateBubble('hunger-bubble', pet.hunger);
-            updateBubble('clean-bubble', pet.cleanliness);
-            updateBubble('happy-bubble', pet.happiness);
-            updateBubble('energy-bubble', pet.energy);
+            updateBubble('hunger-bubble', pet.hunger, 'hunger');
+            updateBubble('clean-bubble', pet.cleanliness, 'cleanliness');
+            updateBubble('happy-bubble', pet.happiness, 'happiness');
+            updateBubble('energy-bubble', pet.energy, 'energy');
 
             // Update values (with null checks for when called during mini-games)
             const hungerVal = document.getElementById('hunger-value');
@@ -1368,6 +1435,9 @@
             if (cleanVal) cleanVal.textContent = `${pet.cleanliness}%`;
             if (happyVal) happyVal.textContent = `${pet.happiness}%`;
             if (energyVal) energyVal.textContent = `${pet.energy}%`;
+
+            // Update low stat warnings on room nav
+            if (typeof updateLowStatWarnings === 'function') updateLowStatWarnings();
 
             // Update mini needs (quick status)
             function updateMini(id, value, label) {
@@ -2761,6 +2831,9 @@
                 const preservedMinigameScoreHistory = gameState.minigameScoreHistory || {};
                 const preservedMinigameHighScores = gameState.minigameHighScores || {};
                 const preservedMinigamePlayCounts = gameState.minigamePlayCounts || {};
+                const preservedAchievements = gameState.achievements || {};
+                const preservedRoomsVisited = gameState.roomsVisited || {};
+                const preservedWeatherSeen = gameState.weatherSeen || {};
                 const newTypes = getUnlockedPetTypes();
                 const newPetType = randomFromArray(newTypes);
                 const newEggType = getEggTypeForPet(newPetType);
@@ -2794,7 +2867,11 @@
                     pets: [],
                     activePetIndex: 0,
                     relationships: {},
-                    nextPetId: 1
+                    nextPetId: 1,
+                    achievements: preservedAchievements,
+                    roomsVisited: preservedRoomsVisited,
+                    weatherSeen: preservedWeatherSeen,
+                    dailyChecklist: null
                 });
                 saveGame();
                 announce('Starting fresh with a new egg!', true);
@@ -3125,6 +3202,260 @@
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSocial(); });
             pushModalEscape(closeSocial);
             trapFocus(overlay);
+        }
+
+        // ==================== ACHIEVEMENTS MODAL ====================
+
+        function showAchievementsModal() {
+            const existing = document.querySelector('.achievements-overlay');
+            if (existing) existing.remove();
+
+            const unlocked = gameState.achievements || {};
+            const total = Object.keys(ACHIEVEMENTS).length;
+            const unlockedCount = Object.values(unlocked).filter(a => a.unlocked).length;
+
+            let cardsHTML = '';
+            for (const [id, ach] of Object.entries(ACHIEVEMENTS)) {
+                const isUnlocked = unlocked[id] && unlocked[id].unlocked;
+                const unlockedDate = isUnlocked ? new Date(unlocked[id].unlockedAt).toLocaleDateString() : '';
+                cardsHTML += `
+                    <div class="achievement-card ${isUnlocked ? 'unlocked' : 'locked'}" aria-label="${ach.name}: ${ach.description}${isUnlocked ? ', unlocked' : ', locked'}">
+                        <div class="achievement-icon">${isUnlocked ? ach.icon : '🔒'}</div>
+                        <div class="achievement-info">
+                            <div class="achievement-name">${isUnlocked ? ach.name : '???'}</div>
+                            <div class="achievement-desc">${ach.description}</div>
+                            ${isUnlocked ? `<div class="achievement-date">${unlockedDate}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'achievements-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Achievements');
+            overlay.innerHTML = `
+                <div class="achievements-modal">
+                    <h2 class="achievements-title">🏆 Achievements</h2>
+                    <p class="achievements-subtitle">${unlockedCount}/${total} unlocked</p>
+                    <div class="achievements-progress-bar">
+                        <div class="achievements-progress-fill" style="width: ${(unlockedCount / total) * 100}%;"></div>
+                    </div>
+                    <div class="achievements-grid">${cardsHTML}</div>
+                    <button class="achievements-close" id="achievements-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeAch() {
+                popModalEscape(closeAch);
+                overlay.remove();
+            }
+
+            document.getElementById('achievements-close').focus();
+            document.getElementById('achievements-close').addEventListener('click', closeAch);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeAch(); });
+            pushModalEscape(closeAch);
+            trapFocus(overlay);
+        }
+
+        // ==================== DAILY CHECKLIST MODAL ====================
+
+        function showDailyChecklistModal() {
+            const existing = document.querySelector('.daily-overlay');
+            if (existing) existing.remove();
+
+            const cl = initDailyChecklist();
+            const completedCount = cl.tasks.filter(t => t.done).length;
+            const totalTasks = cl.tasks.length;
+
+            let tasksHTML = '';
+            DAILY_TASKS.forEach((task, idx) => {
+                const isDone = cl.tasks[idx] && cl.tasks[idx].done;
+                const current = cl.progress[task.trackKey] || 0;
+                const progress = Math.min(current, task.target);
+                tasksHTML += `
+                    <div class="daily-task ${isDone ? 'done' : ''}" aria-label="${task.name}: ${isDone ? 'completed' : `${progress}/${task.target}`}">
+                        <span class="daily-task-check">${isDone ? '✅' : '⬜'}</span>
+                        <span class="daily-task-icon">${task.icon}</span>
+                        <span class="daily-task-name">${task.name}</span>
+                        <span class="daily-task-progress">${progress}/${task.target}</span>
+                    </div>
+                `;
+            });
+
+            const overlay = document.createElement('div');
+            overlay.className = 'daily-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Daily Tasks');
+            overlay.innerHTML = `
+                <div class="daily-modal">
+                    <h2 class="daily-title">📋 Daily Tasks</h2>
+                    <p class="daily-subtitle">${completedCount}/${totalTasks} complete today</p>
+                    <div class="daily-progress-bar">
+                        <div class="daily-progress-fill" style="width: ${(completedCount / totalTasks) * 100}%;"></div>
+                    </div>
+                    <div class="daily-tasks-list">${tasksHTML}</div>
+                    ${completedCount === totalTasks ? '<div class="daily-all-done">All tasks complete! Great job today!</div>' : ''}
+                    <button class="daily-close" id="daily-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeDaily() {
+                popModalEscape(closeDaily);
+                overlay.remove();
+            }
+
+            document.getElementById('daily-close').focus();
+            document.getElementById('daily-close').addEventListener('click', closeDaily);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDaily(); });
+            pushModalEscape(closeDaily);
+            trapFocus(overlay);
+        }
+
+        // ==================== SETTINGS MODAL ====================
+
+        function showSettingsModal() {
+            const existing = document.querySelector('.settings-overlay');
+            if (existing) existing.remove();
+
+            const soundEnabled = typeof SoundManager !== 'undefined' && SoundManager.getEnabled();
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+                (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            const hapticEnabled = !(localStorage.getItem('petCareBuddy_hapticOff') === 'true');
+            const ttsEnabled = !(localStorage.getItem('petCareBuddy_ttsOff') === 'true');
+
+            const overlay = document.createElement('div');
+            overlay.className = 'settings-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Settings');
+            overlay.innerHTML = `
+                <div class="settings-modal">
+                    <h2 class="settings-title">⚙️ Settings</h2>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <span class="settings-row-label">🔊 Sound</span>
+                            <button class="settings-toggle ${soundEnabled ? 'on' : ''}" id="setting-sound" role="switch" aria-checked="${soundEnabled}" aria-label="Sound">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">${isDark ? '🌙' : '☀️'} Dark Mode</span>
+                            <button class="settings-toggle ${isDark ? 'on' : ''}" id="setting-darkmode" role="switch" aria-checked="${isDark}" aria-label="Dark Mode">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">📳 Haptic Feedback</span>
+                            <button class="settings-toggle ${hapticEnabled ? 'on' : ''}" id="setting-haptic" role="switch" aria-checked="${hapticEnabled}" aria-label="Haptic Feedback">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🗣️ Text-to-Speech</span>
+                            <button class="settings-toggle ${ttsEnabled ? 'on' : ''}" id="setting-tts" role="switch" aria-checked="${ttsEnabled}" aria-label="Text-to-Speech">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="settings-close" id="settings-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Sound toggle
+            document.getElementById('setting-sound').addEventListener('click', function() {
+                if (typeof SoundManager !== 'undefined') {
+                    const enabled = SoundManager.toggle();
+                    this.classList.toggle('on', enabled);
+                    this.setAttribute('aria-checked', String(enabled));
+                    if (enabled && gameState.currentRoom) SoundManager.enterRoom(gameState.currentRoom);
+                }
+            });
+
+            // Dark mode toggle
+            document.getElementById('setting-darkmode').addEventListener('click', function() {
+                const html = document.documentElement;
+                const current = html.getAttribute('data-theme');
+                const wasDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                const newTheme = wasDark ? 'light' : 'dark';
+                html.setAttribute('data-theme', newTheme);
+                try { localStorage.setItem('petCareBuddy_theme', newTheme); } catch (e) {}
+                this.classList.toggle('on', newTheme === 'dark');
+                this.setAttribute('aria-checked', String(newTheme === 'dark'));
+                const label = this.parentElement.querySelector('.settings-row-label');
+                if (label) label.textContent = (newTheme === 'dark' ? '🌙' : '☀️') + ' Dark Mode';
+                const meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = newTheme === 'dark' ? '#1a1a2e' : '#A8D8EA';
+            });
+
+            // Haptic toggle
+            document.getElementById('setting-haptic').addEventListener('click', function() {
+                const isOn = this.classList.toggle('on');
+                this.setAttribute('aria-checked', String(isOn));
+                try { localStorage.setItem('petCareBuddy_hapticOff', isOn ? 'false' : 'true'); } catch (e) {}
+            });
+
+            // TTS toggle
+            document.getElementById('setting-tts').addEventListener('click', function() {
+                const isOn = this.classList.toggle('on');
+                this.setAttribute('aria-checked', String(isOn));
+                try { localStorage.setItem('petCareBuddy_ttsOff', isOn ? 'false' : 'true'); } catch (e) {}
+            });
+
+            function closeSettings() {
+                popModalEscape(closeSettings);
+                overlay.remove();
+            }
+
+            document.getElementById('settings-close').focus();
+            document.getElementById('settings-close').addEventListener('click', closeSettings);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSettings(); });
+            pushModalEscape(closeSettings);
+            trapFocus(overlay);
+        }
+
+        // ==================== LOW STAT WARNINGS ON ROOM NAV ====================
+
+        function updateLowStatWarnings() {
+            const pet = gameState.pet;
+            if (!pet) return;
+            const lowThreshold = 20;
+            const hasLowStat = pet.hunger < lowThreshold || pet.cleanliness < lowThreshold ||
+                               pet.happiness < lowThreshold || pet.energy < lowThreshold;
+
+            // Add/remove warning indicator on room nav
+            const roomNav = document.querySelector('.room-nav');
+            if (!roomNav) return;
+
+            let indicator = roomNav.querySelector('.low-stat-indicator');
+            if (hasLowStat && !indicator) {
+                indicator = document.createElement('div');
+                indicator.className = 'low-stat-indicator';
+                indicator.setAttribute('aria-label', 'Your pet needs attention!');
+                indicator.setAttribute('role', 'status');
+
+                const lowStats = [];
+                if (pet.hunger < lowThreshold) lowStats.push('🍎');
+                if (pet.cleanliness < lowThreshold) lowStats.push('🛁');
+                if (pet.happiness < lowThreshold) lowStats.push('💖');
+                if (pet.energy < lowThreshold) lowStats.push('😴');
+                indicator.innerHTML = `<span class="low-stat-pulse">${lowStats.join('')} Needs care!</span>`;
+                roomNav.appendChild(indicator);
+            } else if (!hasLowStat && indicator) {
+                indicator.remove();
+            } else if (hasLowStat && indicator) {
+                const lowStats = [];
+                if (pet.hunger < lowThreshold) lowStats.push('🍎');
+                if (pet.cleanliness < lowThreshold) lowStats.push('🛁');
+                if (pet.happiness < lowThreshold) lowStats.push('💖');
+                if (pet.energy < lowThreshold) lowStats.push('😴');
+                indicator.innerHTML = `<span class="low-stat-pulse">${lowStats.join('')} Needs care!</span>`;
+            }
         }
 
         // Ensure activation delegates are active even if render binding fails
