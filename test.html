@@ -12,7 +12,8 @@
     <!-- Minimal DOM structure required by game/UI scripts -->
     <div id="game-content" style="display:none"></div>
     <div id="toast-container" style="display:none"></div>
-    <div id="aria-live-region" aria-live="polite" style="display:none"></div>
+    <div id="live-announcer" aria-live="polite" style="display:none"></div>
+    <div id="live-announcer-assertive" aria-live="assertive" aria-atomic="true" style="display:none"></div>
 
     <script src="js/constants.js"></script>
     <script src="js/svg.js"></script>
@@ -76,9 +77,9 @@
                 const stage2 = getGrowthStage(20, 3);
                 const stage3 = getGrowthStage(50, 10);
 
-                log(`getGrowthStage(0, 0) = ${stage1} (expected: baby)`);
-                log(`getGrowthStage(20, 3) = ${stage2} (expected: child)`);
-                log(`getGrowthStage(50, 10) = ${stage3} (expected: adult)`);
+                log(`getGrowthStage(0, 0) = ${stage1} (expected: baby)`, stage1 === 'baby');
+                log(`getGrowthStage(20, 3) = ${stage2} (expected: child)`, stage2 === 'child');
+                log(`getGrowthStage(50, 10) = ${stage3} (expected: adult)`, stage3 === 'adult');
             } else {
                 log('getGrowthStage() not found', false);
             }
@@ -91,9 +92,9 @@
                 const quality2 = getCareQuality(65, 3);
                 const quality3 = getCareQuality(85, 1);
 
-                log(`getCareQuality(30, 0) = ${quality1} (expected: poor/average)`);
-                log(`getCareQuality(65, 3) = ${quality2} (expected: good)`);
-                log(`getCareQuality(85, 1) = ${quality3} (expected: excellent)`);
+                log(`getCareQuality(30, 0) = ${quality1} (expected: poor)`, quality1 === 'poor');
+                log(`getCareQuality(65, 3) = ${quality2} (expected: good)`, quality2 === 'good');
+                log(`getCareQuality(85, 1) = ${quality3} (expected: excellent)`, quality3 === 'excellent');
             } else {
                 log('getCareQuality() not found', false);
             }
@@ -147,9 +148,9 @@
                 const rel0 = getRelationshipLevel(0);
                 const rel50 = getRelationshipLevel(50);
                 const rel250 = getRelationshipLevel(250);
-                log(`getRelationshipLevel(0) = ${rel0} (expected: stranger)`);
-                log(`getRelationshipLevel(50) = ${rel50} (expected: friend)`);
-                log(`getRelationshipLevel(250) = ${rel250} (expected: family)`);
+                log(`getRelationshipLevel(0) = ${rel0} (expected: stranger)`, rel0 === 'stranger');
+                log(`getRelationshipLevel(50) = ${rel50} (expected: friend)`, rel50 === 'friend');
+                log(`getRelationshipLevel(250) = ${rel250} (expected: family)`, rel250 === 'family');
             } else {
                 log('getRelationshipLevel() not found', false);
             }
@@ -194,6 +195,78 @@
                 log(`CARE_QUALITY_ORDER is best-to-worst: ${matches}`, matches);
             } else {
                 log('CARE_QUALITY_ORDER not found', false);
+            }
+
+            // Test 15: getGrowthProgress function
+            if (typeof getGrowthProgress === 'function') {
+                log('getGrowthProgress() function available');
+                const progress1 = getGrowthProgress(0, 0, 'baby');
+                const progress2 = getGrowthProgress(50, 10, 'adult');
+                log(`getGrowthProgress(0, 0, 'baby') = ${progress1} (should be 0)`, progress1 === 0);
+                log(`getGrowthProgress(50, 10, 'adult') = ${progress2} (should be 100)`, progress2 === 100);
+            } else {
+                log('getGrowthProgress() not found', false);
+            }
+
+            // Test 16: getNextGrowthStage function
+            if (typeof getNextGrowthStage === 'function') {
+                log('getNextGrowthStage() function available');
+                const next1 = getNextGrowthStage('baby');
+                const next2 = getNextGrowthStage('adult');
+                const next3 = getNextGrowthStage('invalid');
+                log(`getNextGrowthStage('baby') = ${next1} (expected: child)`, next1 === 'child');
+                log(`getNextGrowthStage('adult') = ${next2} (expected: null)`, next2 === null);
+                log(`getNextGrowthStage('invalid') = ${next3} (expected: null)`, next3 === null);
+            } else {
+                log('getNextGrowthStage() not found', false);
+            }
+
+            // Test 17: getRelationshipProgress function
+            if (typeof getRelationshipProgress === 'function') {
+                log('getRelationshipProgress() function available');
+                const rp = getRelationshipProgress(0);
+                log(`getRelationshipProgress(0) is a number`, typeof rp === 'number');
+            } else {
+                log('getRelationshipProgress() not found', false);
+            }
+
+            // Test 18: getStreakBonus function
+            if (typeof getStreakBonus === 'function') {
+                log('getStreakBonus() function available');
+                const sb = getStreakBonus(0);
+                log(`getStreakBonus(0) returns object`, sb !== null && typeof sb === 'object');
+            } else {
+                log('getStreakBonus() not found', false);
+            }
+
+            // Test 19: getUnlockedPlotCount function
+            if (typeof getUnlockedPlotCount === 'function') {
+                log('getUnlockedPlotCount() function available');
+                const plots = getUnlockedPlotCount(0);
+                log(`getUnlockedPlotCount(0) is a number`, typeof plots === 'number');
+            } else {
+                log('getUnlockedPlotCount() not found', false);
+            }
+
+            // Test 20: getCurrentSeason function
+            if (typeof getCurrentSeason === 'function') {
+                log('getCurrentSeason() function available');
+                const season = getCurrentSeason();
+                const validSeasons = ['spring', 'summer', 'autumn', 'winter'];
+                log(`getCurrentSeason() = ${season} (valid season)`, validSeasons.includes(season));
+            } else {
+                log('getCurrentSeason() not found', false);
+            }
+
+            // Test 21: shuffleArray function
+            if (typeof shuffleArray === 'function') {
+                log('shuffleArray() function available');
+                const arr = [1, 2, 3, 4, 5];
+                const shuffled = shuffleArray([...arr]);
+                log(`shuffleArray returns same length`, shuffled.length === arr.length);
+                log(`shuffleArray preserves elements`, arr.every(v => shuffled.includes(v)));
+            } else {
+                log('shuffleArray() not found', false);
             }
 
             if (!_testsFailed) {

@@ -14,10 +14,11 @@
             const g = parseInt(hex.substring(2, 4), 16);
             const b = parseInt(hex.substring(4, 6), 16);
 
-            // Adjust brightness
-            const newR = Math.max(0, Math.min(255, r + (r * percent / 100)));
-            const newG = Math.max(0, Math.min(255, g + (g * percent / 100)));
-            const newB = Math.max(0, Math.min(255, b + (b * percent / 100)));
+            // Adjust brightness using additive approach so zero channels can be brightened
+            const amt = Math.round(255 * percent / 100);
+            const newR = Math.max(0, Math.min(255, r + amt));
+            const newG = Math.max(0, Math.min(255, g + amt));
+            const newB = Math.max(0, Math.min(255, b + amt));
 
             // Convert back to hex
             const toHex = (n) => {
@@ -94,7 +95,7 @@
         function sanitizeColor(color) {
             if (!color || typeof color !== 'string') return '#888888';
             // Allow only valid hex colors, named CSS colors (letters only), and rgb/hsl functions with safe chars
-            if (/^#[0-9a-fA-F]{3,8}$/.test(color)) return color;
+            if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color)) return color;
             if (/^[a-zA-Z]{1,30}$/.test(color)) return color;
             if (/^(rgb|hsl)a?\(\s*[\d.,\s%]+\)$/.test(color)) return color;
             return '#888888';
@@ -217,8 +218,8 @@
                             <stop offset="100%" style="stop-color:${colors.shine}"/>
                         </linearGradient>
                         <linearGradient id="${eggShineId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:rgba(255,255,255,0.6)"/>
-                            <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+                            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.6"/>
+                            <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
                         </linearGradient>
                     </defs>
                     <!-- Egg body -->
@@ -443,7 +444,7 @@
             };
 
             const generator = petGenerators[type] || generateDogSVG;
-            const usesMouthPath = type === 'dog' || type === 'cat' || type === 'hamster';
+            const usesMouthPath = type === 'dog' || type === 'cat';
             let svg = usesMouthPath ? generator(color, eyeStyle, mouthPath, mood) : generator(color, eyeStyle, mood);
 
             // Apply growth stage class for size
@@ -737,7 +738,7 @@
             `;
         }
 
-        function generateHamsterSVG(color, eyeStyle, mouthPath, mood) {
+        function generateHamsterSVG(color, eyeStyle, mood) {
             const ariaLabel = mood === 'happy' ? 'A happy hamster running on its wheel' : mood === 'sad' ? 'A sad hamster who needs love' : mood === 'sleepy' ? 'A sleepy hamster curling up in its bedding' : mood === 'energetic' ? 'An energetic hamster zooming around' : 'A calm hamster';
             return `
                 <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
@@ -751,6 +752,8 @@
                     <!-- Inner ears -->
                     <circle cx="25" cy="22" r="5" fill="#FFB6C1"/>
                     <circle cx="75" cy="22" r="5" fill="#FFB6C1"/>
+                    <!-- Belly (drawn before face so it doesn't obscure mouth) -->
+                    <ellipse cx="50" cy="72" rx="18" ry="15" fill="#F5F5DC"/>
                     <!-- Cheeks (puffy) -->
                     <circle cx="28" cy="48" r="12" fill="#FFE4C4"/>
                     <circle cx="72" cy="48" r="12" fill="#FFE4C4"/>
@@ -758,8 +761,8 @@
                     ${generateEyes(eyeStyle, 40, 60, 38)}
                     <!-- Nose -->
                     <circle cx="50" cy="50" r="4" fill="#333"/>
-                    <!-- Mouth -->
-                    <path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <!-- Mouth (coordinates fitted to hamster head geometry) -->
+                    <path d="${mood === 'happy' ? 'M42 56 Q50 64 58 56' : mood === 'sad' ? 'M42 60 Q50 54 58 60' : mood === 'energetic' ? 'M42 56 Q50 66 58 56' : mood === 'sleepy' ? 'M45 58 Q50 62 55 58' : 'M44 58 L56 58'}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
                     <!-- Whiskers -->
                     <line x1="15" y1="48" x2="28" y2="50" stroke="#333" stroke-width="1"/>
                     <line x1="15" y1="52" x2="28" y2="52" stroke="#333" stroke-width="1"/>
@@ -768,8 +771,6 @@
                     <!-- Paws -->
                     <ellipse cx="30" cy="88" rx="8" ry="5" fill="${color}"/>
                     <ellipse cx="70" cy="88" rx="8" ry="5" fill="${color}"/>
-                    <!-- Belly -->
-                    <ellipse cx="50" cy="72" rx="18" ry="15" fill="#F5F5DC"/>
                     <!-- Sleepy Zzz -->
                     ${mood === 'sleepy' ? '<text x="78" y="25" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="85" y="18" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="90" y="12" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
@@ -865,6 +866,20 @@
                         <circle cx="66" cy="24" r="9" fill="white"/>
                         <path d="M29 24 Q34 18 39 24" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
                         <path d="M61 24 Q66 18 71 24" stroke="#333" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    ` : eyeStyle === 'energetic' ? `
+                        <circle cx="34" cy="24" r="9" fill="white"/>
+                        <circle cx="66" cy="24" r="9" fill="white"/>
+                        <circle cx="34" cy="23" r="6" fill="#333"/>
+                        <circle cx="66" cy="23" r="6" fill="#333"/>
+                        <circle cx="36" cy="21" r="2.5" fill="white"/>
+                        <circle cx="68" cy="21" r="2.5" fill="white"/>
+                    ` : eyeStyle === 'sad' ? `
+                        <circle cx="34" cy="24" r="9" fill="white"/>
+                        <circle cx="66" cy="24" r="9" fill="white"/>
+                        <circle cx="34" cy="25" r="4" fill="#333"/>
+                        <circle cx="66" cy="25" r="4" fill="#333"/>
+                        <path d="M28 20 Q34 23 40 20" stroke="#333" stroke-width="2" fill="none"/>
+                        <path d="M60 20 Q66 23 72 20" stroke="#333" stroke-width="2" fill="none"/>
                     ` : eyeStyle === 'sleepy' ? `
                         <circle cx="34" cy="24" r="9" fill="white"/>
                         <circle cx="66" cy="24" r="9" fill="white"/>
@@ -994,6 +1009,20 @@
                     ${eyeStyle === 'arc' ? `
                         <path d="M32 37 Q37 31 42 37" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
                         <path d="M58 37 Q63 31 68 37" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    ` : eyeStyle === 'energetic' ? `
+                        <circle cx="37" cy="37" r="6" fill="white"/>
+                        <circle cx="63" cy="37" r="6" fill="white"/>
+                        <circle cx="37" cy="36" r="4" fill="#333"/>
+                        <circle cx="63" cy="36" r="4" fill="#333"/>
+                        <circle cx="38" cy="35" r="2" fill="white"/>
+                        <circle cx="64" cy="35" r="2" fill="white"/>
+                    ` : eyeStyle === 'sad' ? `
+                        <circle cx="37" cy="38" r="4" fill="white"/>
+                        <circle cx="63" cy="38" r="4" fill="white"/>
+                        <circle cx="37" cy="38" r="2.5" fill="#333"/>
+                        <circle cx="63" cy="38" r="2.5" fill="#333"/>
+                        <path d="M32 34 Q37 37 42 34" stroke="white" stroke-width="2" fill="none"/>
+                        <path d="M58 34 Q63 37 68 34" stroke="white" stroke-width="2" fill="none"/>
                     ` : eyeStyle === 'sleepy' ? `
                         <ellipse cx="37" cy="37" rx="4" ry="2" fill="white"/>
                         <ellipse cx="63" cy="37" rx="4" ry="2" fill="white"/>
@@ -1162,6 +1191,20 @@
                     ${eyeStyle === 'arc' ? `
                         <path d="M35 35 Q40 29 45 35" stroke="#FFD700" stroke-width="3" fill="none" stroke-linecap="round"/>
                         <path d="M55 35 Q60 29 65 35" stroke="#FFD700" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    ` : eyeStyle === 'energetic' ? `
+                        <ellipse cx="40" cy="35" rx="7" ry="8" fill="#FFD700"/>
+                        <ellipse cx="60" cy="35" rx="7" ry="8" fill="#FFD700"/>
+                        <ellipse cx="40" cy="34" rx="2.5" ry="6" fill="#333"/>
+                        <ellipse cx="60" cy="34" rx="2.5" ry="6" fill="#333"/>
+                        <circle cx="41" cy="32" r="2" fill="white" opacity="0.8"/>
+                        <circle cx="61" cy="32" r="2" fill="white" opacity="0.8"/>
+                    ` : eyeStyle === 'sad' ? `
+                        <ellipse cx="40" cy="36" rx="5" ry="6" fill="#FFD700"/>
+                        <ellipse cx="60" cy="36" rx="5" ry="6" fill="#FFD700"/>
+                        <ellipse cx="40" cy="36" rx="2" ry="4" fill="#333"/>
+                        <ellipse cx="60" cy="36" rx="2" ry="4" fill="#333"/>
+                        <path d="M34 31 Q40 34 46 31" stroke="#333" stroke-width="2" fill="none"/>
+                        <path d="M54 31 Q60 34 66 31" stroke="#333" stroke-width="2" fill="none"/>
                     ` : eyeStyle === 'sleepy' ? `
                         <ellipse cx="40" cy="35" rx="6" ry="4" fill="#FFD700"/>
                         <ellipse cx="60" cy="35" rx="6" ry="4" fill="#FFD700"/>
