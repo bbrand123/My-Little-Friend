@@ -13,8 +13,10 @@
     <script src="js/svg.js"></script>
     <script>
         const results = document.getElementById('test-results');
+        let _testsFailed = false;
 
         function log(message, success = true) {
+            if (!success) _testsFailed = true;
             const p = document.createElement('p');
             p.textContent = (success ? '✅ ' : '❌ ') + message;
             p.style.color = success ? 'green' : 'red';
@@ -100,7 +102,11 @@
                 log('applyCareVariant() not found', false);
             }
 
-            log('\n🎉 All basic tests passed!', true);
+            if (!_testsFailed) {
+                log('\n🎉 All basic tests passed!', true);
+            } else {
+                log('\n⚠️ Some tests failed. See above for details.', false);
+            }
 
         } catch (error) {
             log(`Error during testing: ${error.message}`, false);

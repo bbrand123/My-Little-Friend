@@ -1,8 +1,7 @@
         // ==================== SVG GENERATION ====================
 
-        // Counter for unique SVG gradient IDs to avoid collisions when multiple SVGs coexist
-        let _svgIdCounter = 0;
-        function _svgUid() { return '_' + (++_svgIdCounter); }
+        // Unique SVG gradient IDs to avoid collisions when multiple SVGs coexist
+        function _svgUid() { return '_' + Math.random().toString(36).slice(2, 11); }
 
         // Helper function to adjust color brightness
         function adjustColorBrightness(hexColor, percent) {
@@ -389,8 +388,6 @@
             const type = pet.type;
             let baseColor = sanitizeColor(pet.color);
             const growthStage = pet.growthStage || 'baby';
-            const stageData = GROWTH_STAGES[growthStage];
-            const scale = stageData ? stageData.scale : 1.0;
 
             // Apply care variant to color
             const careVariant = pet.careVariant || 'normal';
@@ -423,6 +420,10 @@
                     eyeStyle = 'energetic'; // Wide bright eyes
                     mouthPath = 'M35 75 Q50 92 65 75'; // Big excited smile
                     break;
+                default:
+                    eyeStyle = 'normal';
+                    mouthPath = 'M40 78 L60 78'; // Straight line (same as neutral)
+                    break;
             }
 
             const petGenerators = {
@@ -442,7 +443,8 @@
             };
 
             const generator = petGenerators[type] || generateDogSVG;
-            let svg = generator(color, eyeStyle, mouthPath, mood);
+            const usesMouthPath = type === 'dog' || type === 'cat' || type === 'hamster';
+            let svg = usesMouthPath ? generator(color, eyeStyle, mouthPath, mood) : generator(color, eyeStyle, mood);
 
             // Apply growth stage class for size
             let classes = `pet-svg growth-${growthStage}`;
@@ -654,7 +656,7 @@
             `;
         }
 
-        function generateBunnySVG(color, eyeStyle, mouthPath, mood) {
+        function generateBunnySVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             // Bunny-specific mouth paths (adjusted for bunny face position)
             let bunnyMouth = '';
@@ -701,7 +703,7 @@
             `;
         }
 
-        function generateBirdSVG(color, eyeStyle, mouthPath, mood) {
+        function generateBirdSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy bird singing' : mood === 'sad' ? 'A sad bird who needs love' : mood === 'sleepy' ? 'A sleepy bird tucking its head' : mood === 'energetic' ? 'An energetic bird chirping loudly' : 'A calm bird';
             return `
@@ -774,7 +776,7 @@
             `;
         }
 
-        function generateTurtleSVG(color, eyeStyle, mouthPath, mood) {
+        function generateTurtleSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy turtle basking in the sun' : mood === 'sad' ? 'A sad turtle hiding in its shell' : mood === 'sleepy' ? 'A sleepy turtle retreating into its shell' : mood === 'energetic' ? 'An energetic turtle stretching out' : 'A calm turtle';
             return `
@@ -812,7 +814,7 @@
 
         // ==================== NEW SPECIES SVG GENERATORS ====================
 
-        function generateFishSVG(color, eyeStyle, mouthPath, mood) {
+        function generateFishSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy fish blowing bubbles' : mood === 'sad' ? 'A sad fish who needs love' : mood === 'sleepy' ? 'A sleepy fish floating gently' : mood === 'energetic' ? 'An energetic fish splashing around' : 'A calm fish';
             return `
@@ -843,7 +845,7 @@
             `;
         }
 
-        function generateFrogSVG(color, eyeStyle, mouthPath, mood) {
+        function generateFrogSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy frog hopping with joy' : mood === 'sad' ? 'A sad frog who needs love' : mood === 'sleepy' ? 'A sleepy frog resting on a lily pad' : mood === 'energetic' ? 'An energetic frog leaping around' : 'A calm frog';
             return `
@@ -894,7 +896,7 @@
             `;
         }
 
-        function generateHedgehogSVG(color, eyeStyle, mouthPath, mood) {
+        function generateHedgehogSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const isCurled = mood === 'sad';
             const ariaLabel = mood === 'happy' ? 'A happy hedgehog with perky spines' : mood === 'sad' ? 'A sad hedgehog curling into a ball' : mood === 'sleepy' ? 'A sleepy hedgehog napping' : mood === 'energetic' ? 'An energetic hedgehog snuffling around' : 'A calm hedgehog';
@@ -960,12 +962,12 @@
                     <!-- Cheeks -->
                     ${isUp ? '<circle cx="20" cy="60" r="4" fill="#FFB6C1" opacity="0.5"/>' : ''}
                     <!-- Sleepy Zzz -->
-                    ${mood === 'sleepy' ? '<text x="5" y="38" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="0" y="30" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="-3" y="24" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
+                    ${mood === 'sleepy' ? '<text x="8" y="38" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="4" y="30" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="2" y="24" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
-        function generatePandaSVG(color, eyeStyle, mouthPath, mood) {
+        function generatePandaSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy panda munching bamboo' : mood === 'sad' ? 'A sad panda who needs love' : mood === 'sleepy' ? 'A sleepy panda taking a nap' : mood === 'energetic' ? 'An energetic panda rolling around' : 'A calm panda';
             return `
@@ -1015,7 +1017,7 @@
             `;
         }
 
-        function generatePenguinSVG(color, eyeStyle, mouthPath, mood) {
+        function generatePenguinSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy penguin waddling with joy' : mood === 'sad' ? 'A sad penguin who needs love' : mood === 'sleepy' ? 'A sleepy penguin huddling down' : mood === 'energetic' ? 'An energetic penguin sliding on its belly' : 'A calm penguin';
             return `
@@ -1046,7 +1048,7 @@
             `;
         }
 
-        function generateUnicornSVG(color, eyeStyle, mouthPath, mood) {
+        function generateUnicornSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A magical happy unicorn with sparkling horn' : mood === 'sad' ? 'A sad unicorn whose horn is dim' : mood === 'sleepy' ? 'A sleepy unicorn resting peacefully' : mood === 'energetic' ? 'An energetic unicorn galloping with rainbow trail' : 'A serene unicorn';
             const uid = _svgUid();
@@ -1112,12 +1114,12 @@
                     <!-- Magical sparkles -->
                     ${isUp ? '<circle cx="15" cy="20" r="2" fill="#FFD700" opacity="0.8"><animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite"/></circle><circle cx="85" cy="15" r="1.5" fill="#FF69B4" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"/></circle><circle cx="75" cy="30" r="1.5" fill="#87CEEB" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.8s" repeatCount="indefinite"/></circle>' : ''}
                     <!-- Sleepy Zzz -->
-                    ${mood === 'sleepy' ? '<text x="70" y="10" font-size="12" fill="#9966cc" opacity="0.8">z</text><text x="77" y="4" font-size="9" fill="#9966cc" opacity="0.6">z</text><text x="82" y="-1" font-size="7" fill="#9966cc" opacity="0.4">z</text>' : ''}
+                    ${mood === 'sleepy' ? '<text x="70" y="12" font-size="12" fill="#9966cc" opacity="0.8">z</text><text x="77" y="7" font-size="9" fill="#9966cc" opacity="0.6">z</text><text x="82" y="3" font-size="7" fill="#9966cc" opacity="0.4">z</text>' : ''}
                 </svg>
             `;
         }
 
-        function generateDragonSVG(color, eyeStyle, mouthPath, mood) {
+        function generateDragonSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
             const ariaLabel = mood === 'happy' ? 'A happy baby dragon puffing little flames' : mood === 'sad' ? 'A sad dragon with drooping wings' : mood === 'sleepy' ? 'A sleepy dragon curled up with its tail' : mood === 'energetic' ? 'An energetic dragon flapping its wings' : 'A calm dragon';
             const uid = _svgUid();

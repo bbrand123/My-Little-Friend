@@ -35,7 +35,6 @@ const CARE_QUALITY = {
         label: 'Poor',
         emoji: '😢',
         minAverage: 0,
-        maxAverage: 35,
         maxNeglect: 999, // No limit on neglect
         variant: 'dull',
         description: 'Needs more attention'
@@ -44,7 +43,6 @@ const CARE_QUALITY = {
         label: 'Average',
         emoji: '😊',
         minAverage: 35,
-        maxAverage: 60,
         maxNeglect: 10,
         variant: 'normal',
         description: 'Doing okay'
@@ -53,7 +51,6 @@ const CARE_QUALITY = {
         label: 'Good',
         emoji: '😄',
         minAverage: 60,
-        maxAverage: 80,
         maxNeglect: 5,
         variant: 'normal',
         description: 'Well cared for'
@@ -62,7 +59,6 @@ const CARE_QUALITY = {
         label: 'Excellent',
         emoji: '🌟',
         minAverage: 80,
-        maxAverage: 100,
         maxNeglect: 2,
         variant: 'shiny',
         description: 'Exceptionally loved',
@@ -855,13 +851,16 @@ function popModalEscape(closeFn) {
     if (idx !== -1) _modalEscapeStack.splice(idx, 1);
 }
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && _modalEscapeStack.length > 0) {
-        e.stopImmediatePropagation();
-        const topHandler = _modalEscapeStack[_modalEscapeStack.length - 1];
-        topHandler();
-    }
-});
+if (typeof document !== 'undefined' && !window.__modalEscapeListenerRegistered) {
+    window.__modalEscapeListenerRegistered = true;
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && _modalEscapeStack.length > 0) {
+            e.stopImmediatePropagation();
+            const topHandler = _modalEscapeStack[_modalEscapeStack.length - 1];
+            topHandler();
+        }
+    });
+}
 
 // Trap Tab focus within a modal overlay element
 function trapFocus(overlay) {
