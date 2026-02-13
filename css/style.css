@@ -5050,12 +5050,19 @@
 
         /* Consolidated reduced-motion preferences */
         @media (prefers-reduced-motion: reduce) {
+            /* Kill decorative/looping animations globally */
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
             }
 
+            /* Preserve short interactive transitions (buttons, tabs, hovers)
+               by capping at 0.2s instead of eliminating entirely */
+            *, *::before, *::after {
+                transition-duration: 0.2s !important;
+            }
+
+            /* Explicitly disable decorative animations */
             .pet-container,
             .pet-container.idle-blink .pet-svg,
             .pet-container.idle-twitch .pet-svg,
@@ -5068,8 +5075,24 @@
             .cloud,
             .star,
             .rain-drop,
-            .snowflake {
+            .snowflake,
+            .winter-flake,
+            .autumn-leaf,
+            .summer-ray,
+            .spring-petal,
+            .seasonal-particle,
+            .adopt-banner {
                 animation: none !important;
+            }
+
+            /* Disable pettable hover animation */
+            .pet-container.pettable {
+                transition: none !important;
+            }
+
+            .pet-container.pettable:hover {
+                filter: none;
+                transform: none;
             }
 
             .pet-area {
@@ -5108,7 +5131,7 @@
         [data-theme="dark"] .top-action-btn {
             background: #2e2e4a;
             border-color: #444;
-            color: #bbb;
+            color: #ddd;
         }
 
         [data-theme="dark"] .top-action-btn:hover,
@@ -5119,7 +5142,7 @@
 
         [data-theme="dark"] .status-pill {
             background: rgba(255, 255, 255, 0.08);
-            color: #ccc;
+            color: #ddd;
         }
 
         /* Dark mode surfaces — override hardcoded white backgrounds */
@@ -5133,7 +5156,7 @@
         }
 
         [data-theme="dark"] .need-bubble-label {
-            color: #bbb;
+            color: #ddd;
         }
 
         [data-theme="dark"] .need-ring-bg {
@@ -5147,7 +5170,7 @@
         [data-theme="dark"] .new-pet-btn {
             background: #2e2e4a;
             border-color: #555;
-            color: #ccc;
+            color: #ddd;
         }
 
         [data-theme="dark"] .new-pet-btn:hover {
@@ -5161,7 +5184,7 @@
 
         [data-theme="dark"] .more-actions-toggle {
             border-color: #444;
-            color: #bbb;
+            color: #ddd;
         }
 
         [data-theme="dark"] .more-actions-toggle:hover,
@@ -5175,7 +5198,7 @@
         }
 
         [data-theme="dark"] .stats-tab {
-            color: #bbb;
+            color: #ddd;
         }
 
         [data-theme="dark"] .stats-tab.active {
@@ -5225,7 +5248,7 @@
 
         [data-theme="dark"] .modal-btn.cancel {
             background: #3a3a5a;
-            color: #ccc;
+            color: #ddd;
         }
 
         /* Dark mode toast */
@@ -5257,7 +5280,7 @@
         [data-theme="dark"] .room-btn {
             background: #2e2e4a;
             border-color: #444;
-            color: #bbb;
+            color: #ddd;
         }
 
         [data-theme="dark"] .room-btn.active {
@@ -5296,6 +5319,58 @@
             background: var(--color-primary);
         }
 
+        /* Dark mode: room decor, bubbles, weather particles, seasonal elements */
+        [data-theme="dark"] .room-decor {
+            opacity: 0.5;
+            text-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme="dark"] .room-label {
+            background: rgba(30, 30, 58, 0.75);
+            color: #ddd;
+        }
+
+        [data-theme="dark"] .bubblepop-bubble {
+            background: radial-gradient(circle at 35% 30%, rgba(180, 180, 255, 0.35) 0%, rgba(140, 140, 220, 0.2) 30%, rgba(100, 120, 180, 0.15) 60%, rgba(80, 100, 160, 0.05) 100%);
+            border-color: rgba(160, 160, 220, 0.35);
+        }
+
+        [data-theme="dark"] .bubblepop-bubble::after {
+            background: rgba(180, 180, 255, 0.3);
+        }
+
+        [data-theme="dark"] .rain-drop {
+            background: linear-gradient(transparent, rgba(100, 140, 200, 0.5));
+        }
+
+        [data-theme="dark"] .summer-ray {
+            background: linear-gradient(to bottom, rgba(255, 200, 80, 0.2), transparent);
+        }
+
+        [data-theme="dark"] .seasonal-decor {
+            opacity: 0.4;
+        }
+
+        [data-theme="dark"] .season-badge.spring {
+            background: linear-gradient(135deg, #2a3a2a, #1a3a2a);
+            color: #a5d6a7;
+        }
+
+        [data-theme="dark"] .season-badge.summer {
+            background: linear-gradient(135deg, #3a3a1a, #3a2a1a);
+            color: #ffe082;
+        }
+
+        [data-theme="dark"] .season-badge.autumn {
+            background: linear-gradient(135deg, #3a2a1a, #3a2a2a);
+            color: #ffcc80;
+        }
+
+        [data-theme="dark"] .season-badge.winter {
+            background: linear-gradient(135deg, #1a2a3a, #1a1a3a);
+            color: #90caf9;
+        }
+
         /* Auto dark mode for users who haven't set a preference */
         @media (prefers-color-scheme: dark) {
             :root:not([data-theme="light"]):not([data-theme="dark"]) {
@@ -5323,7 +5398,7 @@
             :root:not([data-theme="light"]):not([data-theme="dark"]) .top-action-btn {
                 background: #2e2e4a;
                 border-color: #444;
-                color: #bbb;
+                color: #ddd;
             }
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .need-bubble {
@@ -5340,13 +5415,13 @@
             :root:not([data-theme="light"]):not([data-theme="dark"]) .new-pet-btn {
                 background: #2e2e4a;
                 border-color: #555;
-                color: #ccc;
+                color: #ddd;
             }
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .room-btn {
                 background: #2e2e4a;
                 border-color: #444;
-                color: #bbb;
+                color: #ddd;
             }
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .room-btn.active {
@@ -5367,7 +5442,7 @@
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .modal-btn.cancel {
                 background: #3a3a5a;
-                color: #ccc;
+                color: #ddd;
             }
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .wellness-bar {
@@ -5376,7 +5451,7 @@
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .status-pill {
                 background: rgba(255, 255, 255, 0.08);
-                color: #ccc;
+                color: #ddd;
             }
         }
 
@@ -5695,7 +5770,7 @@
 [data-theme="dark"] .pet-tab {
     background: #2a2a4a;
     border-color: #3a3a5a;
-    color: #ccc;
+    color: #ddd;
 }
 [data-theme="dark"] .pet-tab:hover { border-color: #4ECDC4; background: #2a3a4a; }
 [data-theme="dark"] .pet-tab.active {
@@ -5730,7 +5805,7 @@
 [data-theme="dark"] .interaction-close,
 [data-theme="dark"] .social-close {
     background: #2a2a4a;
-    color: #ccc;
+    color: #ddd;
 }
 [data-theme="dark"] .interaction-close:hover,
 [data-theme="dark"] .social-close:hover { background: #3a3a5a; }
