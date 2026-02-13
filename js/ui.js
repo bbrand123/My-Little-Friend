@@ -232,7 +232,7 @@
             setTimeout(() => eggButton.classList.remove('egg-shake'), 300);
 
             // Add sparkles
-            if (sparkles) createSparkles(sparkles, 5);
+            if (sparkles) createSparkles(sparkles, 2);
 
             // Announce progress — only on first tap and penultimate tap to avoid rapid-fire announcements
             const remaining = 5 - gameState.eggTaps;
@@ -542,17 +542,7 @@
             const roomBg = getRoomBackground(currentRoom, timeOfDay);
             const roomDecor = getRoomDecor(currentRoom, timeOfDay);
 
-            // Generate celestial elements (only for outdoor rooms)
-            let celestialHTML = '';
-            if (isOutdoor) {
-                if (timeOfDay === 'night') {
-                    celestialHTML = `<div class="stars-overlay">${generateStarsHTML()}</div><div class="moon"></div>`;
-                } else if (timeOfDay === 'day') {
-                    celestialHTML = `<div class="sun"></div><div class="cloud" style="top:12px;left:-30px;">☁️</div><div class="cloud" style="top:35px;left:20%;">☁️</div>`;
-                } else if (timeOfDay === 'sunrise' || timeOfDay === 'sunset') {
-                    celestialHTML = `<div class="cloud" style="top:18px;left:10%;">☁️</div>`;
-                }
-            }
+            // Celestial elements (stars, moon, sun, clouds) removed to reduce visual layers
 
             // Generate weather effects
             const weather = WEATHER_TYPES[gameState.weather] ? gameState.weather : 'sunny';
@@ -570,14 +560,12 @@
             const season = SEASONS[gameState.season] ? gameState.season : getCurrentSeason();
             gameState.season = season;
             const seasonData = SEASONS[season];
-            const seasonalDecorHTML = isOutdoor && seasonData ? `<div class="seasonal-decor" aria-hidden="true">${getSeasonalDecor(season, timeOfDay)}</div>` : '';
-            const seasonalAmbientHTML = typeof generateSeasonalAmbientHTML === 'function' ? generateSeasonalAmbientHTML(season) : '';
+            // Seasonal decor and ambient particles removed to reduce visual layers
 
             const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
             // Collapsed context indicator: weather + time + season in one pill
             const contextLabel = `${weatherData.name}, ${timeLabel}, ${seasonData.name}`;
             const contextIndicatorHTML = `<span class="status-pill context-indicator" id="context-indicator" aria-label="${contextLabel}"><span aria-hidden="true">${weatherData.icon}</span><span aria-hidden="true">${timeIcon}</span><span aria-hidden="true">${seasonData.icon}</span><span class="status-text" aria-hidden="true">${contextLabel}</span></span>`;
-            const roomPatternHTML = `<div class="room-pattern room-pattern-${currentRoom}" aria-hidden="true"></div>`;
 
             // Helper: need bubble class based on level
             function needClass(val) {
@@ -616,11 +604,7 @@
                 ${generatePetSwitcherHTML()}
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
-                    ${roomPatternHTML}
-                    ${celestialHTML}
                     ${weatherHTML}
-                    ${seasonalDecorHTML}
-                    ${seasonalAmbientHTML}
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
                         ${generatePetSVG(pet, mood)}
@@ -1414,7 +1398,7 @@
         }
 
         function createSparkles(container, count) {
-            const n = Math.min(count, MAX_PARTICLES);
+            const n = Math.min(count, 2);
             for (let i = 0; i < n; i++) {
                 const sparkle = document.createElement('div');
                 sparkle.className = 'sparkle-particle';
@@ -1427,7 +1411,7 @@
 
         function createFoodParticles(container) {
             const foods = ['🍎', '🥕', '🍪', '🥬', '🌾'];
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 2; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'sparkle-particle';
                 particle.textContent = foods[Math.floor(Math.random() * foods.length)];
@@ -1440,7 +1424,7 @@
         }
 
         function createBubbles(container) {
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 2; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble-particle';
                 bubble.style.left = `${20 + Math.random() * 60}%`;
@@ -1451,7 +1435,7 @@
         }
 
         function createHearts(container) {
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 2; i++) {
                 const heart = document.createElement('div');
                 heart.className = 'heart-particle';
                 heart.textContent = '❤️';
@@ -1463,18 +1447,14 @@
         }
 
         function createZzz(container) {
-            // Create Zzz particles (2 letters + 1 star = 3 total)
-            const zzzTexts = ['Z', 'z'];
-            for (let i = 0; i < 2; i++) {
-                const zzz = document.createElement('div');
-                zzz.className = 'zzz-particle';
-                zzz.textContent = zzzTexts[i];
-                zzz.style.left = `${45 + i * 10}%`;
-                zzz.style.top = `${30 + i * 5}%`;
-                zzz.style.animationDelay = `${i * 0.3}s`;
-                zzz.style.fontSize = `${1.5 - i * 0.2}rem`;
-                addParticle(container, zzz, 1800);
-            }
+            // Single Z particle
+            const zzz = document.createElement('div');
+            zzz.className = 'zzz-particle';
+            zzz.textContent = 'Z';
+            zzz.style.left = '45%';
+            zzz.style.top = '30%';
+            zzz.style.fontSize = '1.5rem';
+            addParticle(container, zzz, 1800);
             // Single star particle
             const stars = ['⭐', '✨', '🌟'];
             const star = document.createElement('div');
@@ -1487,11 +1467,11 @@
         }
 
         function createMedicineParticles(container) {
-            const healingSymbols = ['🩹', '💕', '✨', '🌈'];
-            for (let i = 0; i < 3; i++) {
+            const healingSymbols = ['🩹', '💕'];
+            for (let i = 0; i < 2; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'medicine-particle';
-                particle.textContent = healingSymbols[i % healingSymbols.length];
+                particle.textContent = healingSymbols[i];
                 particle.style.left = `${20 + Math.random() * 60}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.15}s`;
@@ -1500,11 +1480,11 @@
         }
 
         function createGroomParticles(container) {
-            const groomSymbols = ['✂️', '✨', '💫'];
-            for (let i = 0; i < 3; i++) {
+            const groomSymbols = ['✂️', '✨'];
+            for (let i = 0; i < 2; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'groom-particle';
-                particle.textContent = groomSymbols[i % groomSymbols.length];
+                particle.textContent = groomSymbols[i];
                 particle.style.left = `${20 + Math.random() * 60}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.15}s`;
@@ -1513,11 +1493,11 @@
         }
 
         function createExerciseParticles(container) {
-            const exerciseSymbols = ['🎾', '🦴', '🐾'];
-            for (let i = 0; i < 3; i++) {
+            const exerciseSymbols = ['🎾', '🦴'];
+            for (let i = 0; i < 2; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'exercise-particle';
-                particle.textContent = exerciseSymbols[i % exerciseSymbols.length];
+                particle.textContent = exerciseSymbols[i];
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${25 + Math.random() * 40}%`;
                 particle.style.animationDelay = `${i * 0.12}s`;
@@ -1526,11 +1506,11 @@
         }
 
         function createTreatParticles(container, treatEmoji) {
-            const symbols = [treatEmoji, '✨', '⭐'];
-            for (let i = 0; i < 3; i++) {
+            const symbols = [treatEmoji, '✨'];
+            for (let i = 0; i < 2; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'treat-particle';
-                particle.textContent = symbols[i % symbols.length];
+                particle.textContent = symbols[i];
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${20 + Math.random() * 45}%`;
                 particle.style.animationDelay = `${i * 0.12}s`;
@@ -1539,11 +1519,11 @@
         }
 
         function createCuddleParticles(container) {
-            const cuddleSymbols = ['💕', '💗', '✨'];
-            for (let i = 0; i < 3; i++) {
+            const cuddleSymbols = ['💕', '💗'];
+            for (let i = 0; i < 2; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'cuddle-particle';
-                particle.textContent = cuddleSymbols[i % cuddleSymbols.length];
+                particle.textContent = cuddleSymbols[i];
                 particle.style.left = `${15 + Math.random() * 70}%`;
                 particle.style.top = `${20 + Math.random() * 45}%`;
                 particle.style.animationDelay = `${i * 0.1}s`;
@@ -1578,9 +1558,9 @@
             checkNightSleepNudge();
         }
 
-        // Blink: random interval between 2-8 seconds
+        // Blink: random interval between 8-15 seconds (slowed to reduce visual noise)
         function scheduleBlink() {
-            const delay = 2000 + Math.random() * 6000;
+            const delay = 8000 + Math.random() * 7000;
             const timerId = setTimeout(() => {
                 removeIdleTimer(timerId);
                 if (gameState.phase !== 'pet') return;
@@ -1599,9 +1579,9 @@
             idleAnimTimers.push(timerId);
         }
 
-        // Twitch (nose movement): every ~5 seconds
+        // Twitch (nose movement): every 12-20 seconds (slowed to reduce visual noise)
         function scheduleTwitch() {
-            const delay = 4000 + Math.random() * 2000;
+            const delay = 12000 + Math.random() * 8000;
             const timerId = setTimeout(() => {
                 removeIdleTimer(timerId);
                 if (gameState.phase !== 'pet') return;
@@ -1640,34 +1620,33 @@
             idleAnimTimers.push(timerId);
         }
 
-        // Night mode sleep nudge: show Zzz icon only when energy is low at night
+        // Night mode sleep nudge: show Zzz icon briefly once when energy is low at night
         function checkNightSleepNudge() {
             if (gameState.phase !== 'pet' || !gameState.pet) return;
             const petContainer = document.getElementById('pet-container');
             if (!petContainer) return;
 
             const timeOfDay = gameState.timeOfDay || getTimeOfDay();
-            const existingNudge = document.querySelector('.sleep-nudge-icon');
             const energy = gameState.pet.energy;
             const shouldShow = timeOfDay === 'night' && energy <= 50;
+            const existingNudge = document.querySelector('.sleep-nudge-icon');
 
-            if (shouldShow) {
-                if (!existingNudge) {
-                    const nudge = document.createElement('div');
-                    nudge.className = 'sleep-nudge-icon';
-                    nudge.setAttribute('aria-label', 'Your pet is tired. Consider putting them to sleep.');
-                    nudge.setAttribute('role', 'img');
-                    nudge.innerHTML = '<span class="sleep-nudge-z z1">Z</span><span class="sleep-nudge-z z2">z</span><span class="sleep-nudge-z z3">z</span>';
-                    petContainer.appendChild(nudge);
-                }
-            } else {
-                if (existingNudge) existingNudge.remove();
+            if (shouldShow && !existingNudge) {
+                const nudge = document.createElement('div');
+                nudge.className = 'sleep-nudge-icon';
+                nudge.setAttribute('aria-label', 'Your pet is tired. Consider putting them to sleep.');
+                nudge.setAttribute('role', 'img');
+                nudge.innerHTML = '<span class="sleep-nudge-z z1">Z</span><span class="sleep-nudge-z z2">z</span><span class="sleep-nudge-z z3">z</span>';
+                petContainer.appendChild(nudge);
+                // Show briefly then remove — don't loop continuously
+                setTimeout(() => nudge.remove(), 4000);
             }
 
+            // Re-check after 2 minutes instead of 30s to avoid frequent nudges
             const timerId = setTimeout(() => {
                 removeIdleTimer(timerId);
                 checkNightSleepNudge();
-            }, 30000);
+            }, 120000);
             idleAnimTimers.push(timerId);
         }
 
@@ -1922,10 +1901,8 @@
             const rewardData = BIRTHDAY_REWARDS[growthStage];
             if (!rewardData) return;
 
-            // Add confetti animation + screen flash + pet scale-up
+            // Single celebration effect: confetti only (no flash or pulse to avoid stacking)
             createConfetti();
-            createCelebrationFlash();
-            triggerPetCelebrationPulse();
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Unlock accessories as rewards
@@ -2002,10 +1979,8 @@
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
-            // Add confetti animation + screen flash + pet scale-up
+            // Single celebration effect: confetti only (no flash or pulse to avoid stacking)
             createConfetti();
-            createCelebrationFlash();
-            triggerPetCelebrationPulse();
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Create evolution modal
@@ -2106,8 +2081,8 @@
             const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
             const shapes = ['🎉', '🎊', '⭐', '✨', '🌟', '💫'];
 
-            // Create 20 confetti pieces with individual random rotations
-            for (let i = 0; i < 20; i++) {
+            // Create 10 confetti pieces with individual random rotations
+            for (let i = 0; i < 10; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti-piece';
 
