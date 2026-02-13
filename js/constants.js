@@ -135,10 +135,14 @@ function getGrowthProgress(careActions, ageInHours, currentStage) {
     return Math.min(100, Math.max(0, Math.min(actionProgress, timeProgress)));
 }
 
+// Explicit best-to-worst ordering for getCareQuality iteration
+const CARE_QUALITY_ORDER = ['excellent', 'good', 'average', 'poor'];
+
 function getCareQuality(averageStats, neglectCount) {
     // Check from best to worst - only check minAverage (no maxAverage ceiling)
     // so that high-stat pets with too much neglect fall to the next tier gracefully
-    for (const [level, data] of Object.entries(CARE_QUALITY).reverse()) {
+    for (const level of CARE_QUALITY_ORDER) {
+        const data = CARE_QUALITY[level];
         if (averageStats >= data.minAverage &&
             neglectCount <= data.maxNeglect) {
             return level;
@@ -818,13 +822,14 @@ const RELATIONSHIP_LEVELS = {
 const RELATIONSHIP_ORDER = ['stranger', 'acquaintance', 'friend', 'closeFriend', 'bestFriend', 'family'];
 
 function getRelationshipLevel(points) {
-    let level = 'stranger';
-    for (const [key, data] of Object.entries(RELATIONSHIP_LEVELS)) {
-        if (points >= data.minPoints) {
-            level = key;
+    // Iterate from highest level to lowest; return first match
+    for (let i = RELATIONSHIP_ORDER.length - 1; i >= 0; i--) {
+        const key = RELATIONSHIP_ORDER[i];
+        if (points >= RELATIONSHIP_LEVELS[key].minPoints) {
+            return key;
         }
     }
-    return level;
+    return 'stranger';
 }
 
 function getRelationshipProgress(points) {

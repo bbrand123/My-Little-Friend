@@ -53,7 +53,11 @@ self.addEventListener('fetch', (event) => {
                 if (event.request.mode === 'navigate') {
                     return caches.match('./index.html');
                 }
-                return new Response('', { status: 503, statusText: 'Service Unavailable' });
+                return new Response('Service Unavailable', {
+                    status: 503,
+                    statusText: 'Service Unavailable',
+                    headers: { 'Content-Type': 'text/plain' }
+                });
             });
         })
     );

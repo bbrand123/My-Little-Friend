@@ -9,8 +9,17 @@
     <h1>Testing Game Load</h1>
     <div id="test-results"></div>
 
+    <!-- Minimal DOM structure required by game/UI scripts -->
+    <div id="game-content" style="display:none"></div>
+    <div id="toast-container" style="display:none"></div>
+    <div id="aria-live-region" aria-live="polite" style="display:none"></div>
+
     <script src="js/constants.js"></script>
     <script src="js/svg.js"></script>
+    <script src="js/sound.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/minigames.js"></script>
     <script>
         const results = document.getElementById('test-results');
         let _testsFailed = false;
@@ -100,6 +109,91 @@
                 log(`Color transformation works: dull=${dull}, shiny=${shiny}`);
             } else {
                 log('applyCareVariant() not found', false);
+            }
+
+            // Test 9: Sound manager loaded
+            if (typeof SoundManager !== 'undefined') {
+                log('SoundManager loaded');
+                log(`SoundManager has playSFX: ${typeof SoundManager.playSFX === 'function'}`);
+            } else {
+                log('SoundManager not found', false);
+            }
+
+            // Test 10: Game logic functions (game.js)
+            if (typeof escapeHTML === 'function') {
+                log('escapeHTML() function available');
+                const escaped = escapeHTML('<b>test & "quote"</b>');
+                const correct = escaped.includes('&lt;') && escaped.includes('&amp;');
+                log(`escapeHTML escapes correctly: ${correct}`, correct);
+            } else {
+                log('escapeHTML() not found', false);
+            }
+
+            if (typeof saveGame === 'function') {
+                log('saveGame() function available');
+            } else {
+                log('saveGame() not found', false);
+            }
+
+            if (typeof loadGame === 'function') {
+                log('loadGame() function available');
+            } else {
+                log('loadGame() not found', false);
+            }
+
+            // Test 11: Relationship level functions (constants.js)
+            if (typeof getRelationshipLevel === 'function') {
+                log('getRelationshipLevel() function available');
+                const rel0 = getRelationshipLevel(0);
+                const rel50 = getRelationshipLevel(50);
+                const rel250 = getRelationshipLevel(250);
+                log(`getRelationshipLevel(0) = ${rel0} (expected: stranger)`);
+                log(`getRelationshipLevel(50) = ${rel50} (expected: friend)`);
+                log(`getRelationshipLevel(250) = ${rel250} (expected: family)`);
+            } else {
+                log('getRelationshipLevel() not found', false);
+            }
+
+            // Test 12: UI functions (ui.js)
+            if (typeof showToast === 'function') {
+                log('showToast() function available');
+            } else {
+                log('showToast() not found', false);
+            }
+
+            if (typeof renderPetPhase === 'function') {
+                log('renderPetPhase() function available');
+            } else {
+                log('renderPetPhase() not found', false);
+            }
+
+            // Test 13: Minigame functions (minigames.js)
+            if (typeof generateHideSeekPositions === 'function') {
+                log('generateHideSeekPositions() function available');
+                const positions = generateHideSeekPositions(6);
+                log(`Generated ${positions.length} hide-seek positions (expected: 6)`, positions.length === 6);
+                // Verify no positions are nearly identical (overlap check)
+                let hasOverlap = false;
+                for (let i = 0; i < positions.length; i++) {
+                    for (let j = i + 1; j < positions.length; j++) {
+                        const dist = Math.hypot(positions[i].x - positions[j].x, positions[i].y - positions[j].y);
+                        if (dist < 1) { hasOverlap = true; break; }
+                    }
+                    if (hasOverlap) break;
+                }
+                log(`No overlapping positions: ${!hasOverlap}`, !hasOverlap);
+            } else {
+                log('generateHideSeekPositions() not found', false);
+            }
+
+            // Test 14: CARE_QUALITY_ORDER constant
+            if (typeof CARE_QUALITY_ORDER !== 'undefined') {
+                log('CARE_QUALITY_ORDER loaded');
+                const expected = ['excellent', 'good', 'average', 'poor'];
+                const matches = JSON.stringify(CARE_QUALITY_ORDER) === JSON.stringify(expected);
+                log(`CARE_QUALITY_ORDER is best-to-worst: ${matches}`, matches);
+            } else {
+                log('CARE_QUALITY_ORDER not found', false);
             }
 
             if (!_testsFailed) {
