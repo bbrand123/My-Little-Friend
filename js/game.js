@@ -37,7 +37,15 @@
             achievements: {}, // { achievementId: { unlocked: true, unlockedAt: timestamp } }
             roomsVisited: {}, // { roomId: true } — tracks which rooms have been visited
             weatherSeen: {}, // { sunny: true, rainy: true, snowy: true }
-            dailyChecklist: null // { date: 'YYYY-MM-DD', tasks: [...], progress: {...} }
+            dailyChecklist: null, // { date: 'YYYY-MM-DD', tasks: [...], progress: {...} }
+            // Rewards systems
+            badges: {}, // { badgeId: { unlocked: true, unlockedAt: timestamp } }
+            stickers: {}, // { stickerId: { collected: true, collectedAt: timestamp } }
+            trophies: {}, // { trophyId: { earned: true, earnedAt: timestamp } }
+            streak: { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] },
+            totalMedicineUses: 0,
+            totalGroomCount: 0,
+            totalDailyCompletions: 0
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -83,6 +91,25 @@
                 const newAch = checkAchievements();
                 newAch.forEach(ach => {
                     setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
+            // Check badges, stickers, trophies after minigame play
+            if (typeof checkBadges === 'function') {
+                const newBadges = checkBadges();
+                newBadges.forEach(badge => {
+                    setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, BADGE_TIERS[badge.tier].color), 500);
+                });
+            }
+            if (typeof checkStickers === 'function') {
+                const newStickers = checkStickers();
+                newStickers.forEach(sticker => {
+                    setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                });
+            }
+            if (typeof checkTrophies === 'function') {
+                const newTrophies = checkTrophies();
+                newTrophies.forEach(trophy => {
+                    setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
                 });
             }
         }
@@ -283,12 +310,27 @@
                     newlyCompleted.push(task);
                 }
             });
+            // Track daily completion count for trophies
+            if (typeof trackDailyCompletion === 'function') trackDailyCompletion();
             return newlyCompleted;
         }
 
         function isDailyComplete() {
             const cl = initDailyChecklist();
             return cl.tasks.every(t => t.done);
+        }
+
+        // Track daily completions count (for trophies)
+        function trackDailyCompletion() {
+            if (isDailyComplete()) {
+                // Only count once per day
+                const cl = gameState.dailyChecklist;
+                if (cl && !cl._completionCounted) {
+                    cl._completionCounted = true;
+                    if (typeof gameState.totalDailyCompletions !== 'number') gameState.totalDailyCompletions = 0;
+                    gameState.totalDailyCompletions++;
+                }
+            }
         }
 
         // Track room visits for achievements
@@ -301,6 +343,244 @@
         function trackWeather() {
             if (!gameState.weatherSeen) gameState.weatherSeen = {};
             gameState.weatherSeen[gameState.weather] = true;
+        }
+
+        // ==================== BADGES ====================
+
+        function checkBadges() {
+            if (!gameState.badges) gameState.badges = {};
+            const newUnlocks = [];
+            for (const [id, badge] of Object.entries(BADGES)) {
+                if (gameState.badges[id]) continue;
+                try {
+                    if (badge.check(gameState)) {
+                        gameState.badges[id] = { unlocked: true, unlockedAt: Date.now() };
+                        newUnlocks.push(badge);
+                    }
+                } catch (e) { /* safe guard */ }
+            }
+            return newUnlocks;
+        }
+
+        function getBadgeCount() {
+            if (!gameState.badges) return 0;
+            return Object.values(gameState.badges).filter(b => b.unlocked).length;
+        }
+
+        // ==================== STICKER COLLECTION ====================
+
+        function grantSticker(stickerId) {
+            if (!gameState.stickers) gameState.stickers = {};
+            if (gameState.stickers[stickerId]) return false; // Already collected
+            if (!STICKERS[stickerId]) return false; // Invalid sticker
+            gameState.stickers[stickerId] = { collected: true, collectedAt: Date.now() };
+            return true;
+        }
+
+        function getStickerCount() {
+            if (!gameState.stickers) return 0;
+            return Object.values(gameState.stickers).filter(s => s.collected).length;
+        }
+
+        function checkStickers() {
+            if (!gameState.stickers) gameState.stickers = {};
+            const newStickers = [];
+
+            // Check condition-based stickers
+            const gs = gameState;
+            const pet = gs.pet;
+
+            // Weather stickers
+            const ws = gs.weatherSeen || {};
+            if (ws.sunny && ws.rainy && ws.snowy && grantSticker('rainbowSticker')) {
+                newStickers.push(STICKERS.rainbowSticker);
+            }
+            if (gs.weather === 'snowy' && grantSticker('snowflakeSticker')) {
+                newStickers.push(STICKERS.snowflakeSticker);
+            }
+
+            // Season stickers
+            if (gs.season === 'spring' && grantSticker('cherryBlossom')) {
+                newStickers.push(STICKERS.cherryBlossom);
+            }
+
+            // Garden stickers
+            if (gs.garden && gs.garden.totalHarvests >= 1 && grantSticker('sproutSticker')) {
+                newStickers.push(STICKERS.sproutSticker);
+            }
+            if (gs.garden && gs.garden.inventory && gs.garden.inventory.sunflower > 0 && grantSticker('sunflowerSticker')) {
+                newStickers.push(STICKERS.sunflowerSticker);
+            }
+
+            // Mini-game stickers
+            const scores = gs.minigameHighScores || {};
+            if (Object.values(scores).some(s => s >= 25) && grantSticker('starSticker')) {
+                newStickers.push(STICKERS.starSticker);
+            }
+            if (Object.values(scores).some(s => s >= 50) && grantSticker('trophySticker')) {
+                newStickers.push(STICKERS.trophySticker);
+            }
+            const counts = gs.minigamePlayCounts || {};
+            if (counts.simonSays > 0 && grantSticker('musicSticker')) {
+                newStickers.push(STICKERS.musicSticker);
+            }
+            if (counts.coloring > 0 && grantSticker('artSticker')) {
+                newStickers.push(STICKERS.artSticker);
+            }
+
+            // Daily completion sticker
+            if (gs.dailyChecklist && gs.dailyChecklist.tasks && gs.dailyChecklist.tasks.every(t => t.done) && grantSticker('partySticker')) {
+                newStickers.push(STICKERS.partySticker);
+            }
+
+            // Special milestone stickers
+            if (pet && pet.evolutionStage === 'evolved' && grantSticker('crownSticker')) {
+                newStickers.push(STICKERS.crownSticker);
+            }
+            if (pet && pet.careQuality === 'excellent' && grantSticker('sparkleSticker')) {
+                newStickers.push(STICKERS.sparkleSticker);
+            }
+            if ((gs.adultsRaised || 0) >= 2 && grantSticker('unicornSticker')) {
+                newStickers.push(STICKERS.unicornSticker);
+            }
+            if ((gs.adultsRaised || 0) >= 3 && grantSticker('dragonSticker')) {
+                newStickers.push(STICKERS.dragonSticker);
+            }
+            const rels = gs.relationships || {};
+            if (Object.values(rels).some(r => r.points >= 180) && grantSticker('heartSticker')) {
+                newStickers.push(STICKERS.heartSticker);
+            }
+
+            // Streak stickers
+            if (gs.streak && gs.streak.current >= 7 && grantSticker('streakFlame')) {
+                newStickers.push(STICKERS.streakFlame);
+            }
+
+            return newStickers;
+        }
+
+        // Grant pet-type-specific stickers based on care actions
+        function checkPetActionSticker(action) {
+            const pet = gameState.pet;
+            if (!pet) return [];
+            const newStickers = [];
+            const type = pet.type;
+
+            const stickerMap = {
+                dog: { action: 'feed', stickerId: 'happyPup' },
+                cat: { action: 'cuddle', stickerId: 'sleepyKitty' },
+                bunny: { action: 'play', stickerId: 'bouncyBunny' },
+                turtle: { action: 'wash', stickerId: 'tinyTurtle' },
+                fish: { action: 'feed', stickerId: 'goldenFish' },
+                bird: { action: 'play', stickerId: 'sweetBird' },
+                panda: { action: 'cuddle', stickerId: 'cuddlyPanda' },
+                penguin: { action: 'exercise', stickerId: 'royalPenguin' }
+            };
+
+            const mapping = stickerMap[type];
+            if (mapping && mapping.action === action) {
+                if (grantSticker(mapping.stickerId)) {
+                    newStickers.push(STICKERS[mapping.stickerId]);
+                }
+            }
+            return newStickers;
+        }
+
+        // ==================== TROPHIES ====================
+
+        function checkTrophies() {
+            if (!gameState.trophies) gameState.trophies = {};
+            const newTrophies = [];
+            for (const [id, trophy] of Object.entries(TROPHIES)) {
+                if (gameState.trophies[id]) continue;
+                try {
+                    if (trophy.check(gameState)) {
+                        gameState.trophies[id] = { earned: true, earnedAt: Date.now() };
+                        newTrophies.push(trophy);
+                    }
+                } catch (e) { /* safe guard */ }
+            }
+            return newTrophies;
+        }
+
+        function getTrophyCount() {
+            if (!gameState.trophies) return 0;
+            return Object.values(gameState.trophies).filter(t => t.earned).length;
+        }
+
+        // ==================== DAILY STREAKS ====================
+
+        function updateStreak() {
+            if (!gameState.streak) {
+                gameState.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
+            }
+            const streak = gameState.streak;
+            const today = getTodayString();
+
+            if (streak.lastPlayDate === today) {
+                // Already updated today
+                return;
+            }
+
+            // Check if last play was yesterday
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+            if (streak.lastPlayDate === yesterdayStr) {
+                // Streak continues
+                streak.current++;
+            } else if (streak.lastPlayDate === null) {
+                // First time playing
+                streak.current = 1;
+            } else {
+                // Streak broken
+                streak.current = 1;
+            }
+
+            streak.lastPlayDate = today;
+            streak.todayBonusClaimed = false;
+            if (streak.current > streak.longest) {
+                streak.longest = streak.current;
+            }
+        }
+
+        function claimStreakBonus() {
+            const streak = gameState.streak;
+            if (!streak || streak.todayBonusClaimed) return null;
+
+            const bonus = getStreakBonus(streak.current);
+            if (bonus.happiness === 0 && bonus.energy === 0) return null;
+
+            const pet = gameState.pet;
+            if (pet) {
+                pet.happiness = clamp(pet.happiness + bonus.happiness, 0, 100);
+                pet.energy = clamp(pet.energy + bonus.energy, 0, 100);
+            }
+
+            streak.todayBonusClaimed = true;
+
+            // Check for unclaimed milestone rewards
+            const unclaimedMilestones = [];
+            if (!Array.isArray(streak.claimedMilestones)) streak.claimedMilestones = [];
+            for (const milestone of STREAK_MILESTONES) {
+                if (streak.current >= milestone.days && !streak.claimedMilestones.includes(milestone.days)) {
+                    streak.claimedMilestones.push(milestone.days);
+                    unclaimedMilestones.push(milestone);
+                    // Grant milestone reward
+                    if (milestone.reward === 'sticker') {
+                        grantSticker(milestone.rewardId);
+                    } else if (milestone.reward === 'accessory' && pet) {
+                        if (!pet.unlockedAccessories) pet.unlockedAccessories = [];
+                        if (!pet.unlockedAccessories.includes(milestone.rewardId)) {
+                            pet.unlockedAccessories.push(milestone.rewardId);
+                        }
+                    }
+                }
+            }
+
+            saveGame();
+            return { bonus, milestones: unclaimedMilestones };
         }
 
         // ==================== SAVE/LOAD ====================
@@ -476,6 +756,18 @@
                     if (!parsed.achievements || typeof parsed.achievements !== 'object') parsed.achievements = {};
                     if (!parsed.roomsVisited || typeof parsed.roomsVisited !== 'object') parsed.roomsVisited = {};
                     if (!parsed.weatherSeen || typeof parsed.weatherSeen !== 'object') parsed.weatherSeen = {};
+
+                    // Add rewards system fields if missing (for existing saves)
+                    if (!parsed.badges || typeof parsed.badges !== 'object') parsed.badges = {};
+                    if (!parsed.stickers || typeof parsed.stickers !== 'object') parsed.stickers = {};
+                    if (!parsed.trophies || typeof parsed.trophies !== 'object') parsed.trophies = {};
+                    if (!parsed.streak || typeof parsed.streak !== 'object') {
+                        parsed.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
+                    }
+                    if (!Array.isArray(parsed.streak.claimedMilestones)) parsed.streak.claimedMilestones = [];
+                    if (typeof parsed.totalMedicineUses !== 'number') parsed.totalMedicineUses = 0;
+                    if (typeof parsed.totalGroomCount !== 'number') parsed.totalGroomCount = 0;
+                    if (typeof parsed.totalDailyCompletions !== 'number') parsed.totalDailyCompletions = 0;
 
                     // Strip transient _neglectTickCounter from pet objects (old saves)
                     parsed.pets.forEach(p => {
@@ -1480,6 +1772,26 @@
                 });
             }
 
+            // Check badges, stickers, trophies after harvest
+            if (typeof checkBadges === 'function') {
+                const newBadges = checkBadges();
+                newBadges.forEach(badge => {
+                    setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, BADGE_TIERS[badge.tier].color), 500);
+                });
+            }
+            if (typeof checkStickers === 'function') {
+                const newStickers = checkStickers();
+                newStickers.forEach(sticker => {
+                    setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                });
+            }
+            if (typeof checkTrophies === 'function') {
+                const newTrophies = checkTrophies();
+                newTrophies.forEach(trophy => {
+                    setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
+                });
+            }
+
             // Check if a new plot was unlocked
             const prevUnlocked = getUnlockedPlotCount(garden.totalHarvests - 1);
             const newUnlocked = getUnlockedPlotCount(garden.totalHarvests);
@@ -2395,6 +2707,25 @@
             trackRoomVisit(gameState.currentRoom || 'bedroom');
             initDailyChecklist();
 
+            // Initialize rewards systems
+            if (!gameState.badges) gameState.badges = {};
+            if (!gameState.stickers) gameState.stickers = {};
+            if (!gameState.trophies) gameState.trophies = {};
+            if (!gameState.streak || typeof gameState.streak !== 'object') {
+                gameState.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
+            }
+            if (!Array.isArray(gameState.streak.claimedMilestones)) gameState.streak.claimedMilestones = [];
+            if (typeof gameState.totalMedicineUses !== 'number') gameState.totalMedicineUses = 0;
+            if (typeof gameState.totalGroomCount !== 'number') gameState.totalGroomCount = 0;
+            if (typeof gameState.totalDailyCompletions !== 'number') gameState.totalDailyCompletions = 0;
+
+            // Update daily streak
+            updateStreak();
+            // Run initial badge/trophy/sticker checks
+            checkBadges();
+            checkTrophies();
+            checkStickers();
+
             // Run initial achievement check (in case returning player qualifies)
             checkAchievements();
 
@@ -2457,6 +2788,12 @@
                     }
                     delete gameState._offlineChanges;
                     saveGame();
+                }
+                // Show streak notification if bonus available
+                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) {
+                    setTimeout(() => {
+                        showToast(`🔥 ${gameState.streak.current}-day streak! Tap Rewards to claim bonus!`, '#FF6D00');
+                    }, 1500);
                 }
             } else {
                 // Reset to egg phase if not in pet phase

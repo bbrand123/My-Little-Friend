@@ -1,5 +1,5 @@
 // Update CACHE_VERSION on each deploy to bust stale caches
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 const CACHE_NAME = `pet-care-buddy-v${CACHE_VERSION}`;
 const ASSETS = [
     './',
