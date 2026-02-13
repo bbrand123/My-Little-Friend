@@ -8,7 +8,6 @@
             let currentEarcon = null;
             let currentRoom = null;
             let isEnabled = true;
-            let fadeTimeout = null;
 
             const EARCON_VOLUME = 0.3; // 30% volume to not interfere with screen readers
             const FADE_DURATION = 0.8; // seconds for fade in/out
@@ -203,6 +202,8 @@
                 gainNode.gain.value = 0;
                 gainNode.connect(masterGain);
 
+                let stopped = false;
+
                 const osc1 = ctx.createOscillator();
                 const osc2 = ctx.createOscillator();
                 const filter = ctx.createBiquadFilter();
@@ -229,6 +230,8 @@
                 return {
                     gainNode,
                     stop() {
+                        if (stopped) return;
+                        stopped = true;
                         try { osc1.stop(); osc2.stop(); } catch (e) { /* already stopped */ }
                         osc1.disconnect(); osc2.disconnect(); filter.disconnect(); oscGain.disconnect();
                     }
