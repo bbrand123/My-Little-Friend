@@ -1080,6 +1080,167 @@ function getStreakBonus(streakDays) {
     return { happiness: 0, energy: 0, label: 'No bonus' };
 }
 
+// ==================== PET COMPETITION SYSTEM ====================
+
+// Battle moves available to all pets - damage scales with pet stats
+const BATTLE_MOVES = {
+    tackle: { name: 'Tackle', emoji: '💥', stat: 'energy', basePower: 12, description: 'A physical charge!' },
+    charm: { name: 'Charm', emoji: '💖', stat: 'happiness', basePower: 10, description: 'Win them over with cuteness!' },
+    splash: { name: 'Splash', emoji: '💦', stat: 'cleanliness', basePower: 8, description: 'A sparkling splash attack!' },
+    snack: { name: 'Snack Attack', emoji: '🍪', stat: 'hunger', basePower: 14, description: 'Throw a tasty distraction!' },
+    rest: { name: 'Rest', emoji: '💤', stat: 'energy', basePower: 0, heal: 15, description: 'Recover some HP!' }
+};
+
+// Pet type advantages for battles (rock-paper-scissors style bonuses)
+const PET_TYPE_ADVANTAGES = {
+    dog: ['cat', 'hamster'], cat: ['bird', 'fish'], bunny: ['frog', 'hedgehog'],
+    bird: ['frog', 'bunny'], hamster: ['bunny', 'turtle'], turtle: ['hedgehog', 'hamster'],
+    fish: ['turtle', 'frog'], frog: ['hamster', 'hedgehog'], hedgehog: ['cat', 'bird'],
+    panda: ['dog', 'turtle'], penguin: ['fish', 'bird'],
+    unicorn: ['dragon', 'panda'], dragon: ['unicorn', 'penguin']
+};
+
+// Boss encounters - seasonal and special event bosses
+const BOSS_ENCOUNTERS = {
+    springBlossom: {
+        name: 'Blossom Beast', emoji: '🌸👹', season: 'spring',
+        maxHP: 100, attack: 8, defense: 4,
+        moves: [
+            { name: 'Petal Storm', emoji: '🌸', power: 12, description: 'A flurry of petals!' },
+            { name: 'Vine Whip', emoji: '🌿', power: 15, description: 'Tangling vines strike!' },
+            { name: 'Pollen Cloud', emoji: '☁️', power: 8, healSelf: 10, description: 'Heals with pollen!' }
+        ],
+        rewards: { happiness: 20, sticker: 'cherryBlossom' },
+        victoryMessage: 'The Blossom Beast scatters into flower petals!'
+    },
+    summerInferno: {
+        name: 'Sun Scorcher', emoji: '☀️🔥', season: 'summer',
+        maxHP: 120, attack: 10, defense: 3,
+        moves: [
+            { name: 'Heat Wave', emoji: '🔥', power: 14, description: 'Scorching heat!' },
+            { name: 'Solar Beam', emoji: '☀️', power: 18, description: 'A concentrated beam of light!' },
+            { name: 'Mirage', emoji: '🌊', power: 6, healSelf: 12, description: 'Confuses with illusions!' }
+        ],
+        rewards: { happiness: 25, energy: 15 },
+        victoryMessage: 'The Sun Scorcher fizzles out like a sunset!'
+    },
+    autumnPhantom: {
+        name: 'Harvest Phantom', emoji: '🎃👻', season: 'autumn',
+        maxHP: 110, attack: 9, defense: 5,
+        moves: [
+            { name: 'Spooky Howl', emoji: '👻', power: 13, description: 'A chilling howl!' },
+            { name: 'Pumpkin Bomb', emoji: '🎃', power: 16, description: 'Exploding pumpkins!' },
+            { name: 'Shadow Mend', emoji: '🌑', power: 5, healSelf: 14, description: 'Heals in darkness!' }
+        ],
+        rewards: { happiness: 22, hunger: 20 },
+        victoryMessage: 'The Harvest Phantom dissolves into autumn leaves!'
+    },
+    winterFrost: {
+        name: 'Frost Giant', emoji: '❄️🧊', season: 'winter',
+        maxHP: 130, attack: 7, defense: 7,
+        moves: [
+            { name: 'Blizzard', emoji: '🌨️', power: 12, description: 'A freezing storm!' },
+            { name: 'Ice Crush', emoji: '🧊', power: 17, description: 'Massive ice blocks!' },
+            { name: 'Snowfort', emoji: '⛄', power: 4, healSelf: 16, description: 'Builds icy defenses!' }
+        ],
+        rewards: { happiness: 22, energy: 20 },
+        victoryMessage: 'The Frost Giant melts away into snowflakes!'
+    },
+    cosmicBeast: {
+        name: 'Cosmic Beast', emoji: '🌟👾', season: null, // Special event boss (any season)
+        maxHP: 150, attack: 11, defense: 6,
+        moves: [
+            { name: 'Star Shower', emoji: '⭐', power: 15, description: 'Stars rain down!' },
+            { name: 'Nebula Blast', emoji: '🌌', power: 20, description: 'A cosmic explosion!' },
+            { name: 'Warp Heal', emoji: '🌀', power: 3, healSelf: 18, description: 'Warps space to heal!' }
+        ],
+        rewards: { happiness: 30, energy: 20, hunger: 15 },
+        victoryMessage: 'The Cosmic Beast returns to the stars!'
+    }
+};
+
+// Pet show categories for judging
+const PET_SHOW_CATEGORIES = {
+    care: { name: 'Care Quality', emoji: '💝', weight: 30, description: 'How well-cared-for is your pet?' },
+    appearance: { name: 'Appearance', emoji: '✨', weight: 25, description: 'Style, pattern, and accessories!' },
+    happiness: { name: 'Happiness', emoji: '😊', weight: 20, description: 'Is your pet happy and healthy?' },
+    tricks: { name: 'Tricks', emoji: '🎪', weight: 15, description: 'Show off your pet\'s skills!' },
+    bond: { name: 'Bond', emoji: '💖', weight: 10, description: 'The bond between you and your pet!' }
+};
+
+const PET_SHOW_RANKS = [
+    { name: 'Participant', emoji: '🎗️', minScore: 0 },
+    { name: 'Bronze', emoji: '🥉', minScore: 30 },
+    { name: 'Silver', emoji: '🥈', minScore: 55 },
+    { name: 'Gold', emoji: '🥇', minScore: 75 },
+    { name: 'Champion', emoji: '🏆', minScore: 90 }
+];
+
+// Obstacle course stage definitions
+const OBSTACLE_COURSE_STAGES = [
+    { name: 'Hurdle Jump', emoji: '🏃', stat: 'energy', threshold: 40, points: 15, description: 'Jump over the hurdles!' },
+    { name: 'Mud Pit', emoji: '🟫', stat: 'cleanliness', threshold: 35, points: 10, description: 'Splash through the mud!' },
+    { name: 'Treat Trail', emoji: '🍖', stat: 'hunger', threshold: 30, points: 12, description: 'Follow the treat trail!' },
+    { name: 'Tunnel Crawl', emoji: '🕳️', stat: 'energy', threshold: 50, points: 18, description: 'Crawl through the tunnel!' },
+    { name: 'Balance Beam', emoji: '🤸', stat: 'happiness', threshold: 45, points: 20, description: 'Walk the balance beam!' },
+    { name: 'Water Splash', emoji: '💦', stat: 'cleanliness', threshold: 40, points: 15, description: 'Swim through the water!' },
+    { name: 'Cheer Crowd', emoji: '👏', stat: 'happiness', threshold: 55, points: 22, description: 'Win the crowd\'s cheers!' },
+    { name: 'Sprint Finish', emoji: '🏁', stat: 'energy', threshold: 60, points: 25, description: 'Race to the finish!' }
+];
+
+// Rival pet trainers with escalating difficulty
+const RIVAL_TRAINERS = [
+    {
+        name: 'Timmy', emoji: '👦', title: 'Beginner Trainer',
+        petType: 'hamster', petName: 'Nibbles',
+        stats: { hunger: 50, cleanliness: 45, happiness: 55, energy: 50 },
+        difficulty: 1, battleHP: 40,
+        winMessage: 'Wow, you\'re really good!', loseMessage: 'Nibbles is the best!'
+    },
+    {
+        name: 'Lily', emoji: '👧', title: 'Junior Trainer',
+        petType: 'bunny', petName: 'Cotton',
+        stats: { hunger: 55, cleanliness: 55, happiness: 60, energy: 55 },
+        difficulty: 2, battleHP: 50,
+        winMessage: 'Cotton did great, but you were better!', loseMessage: 'Cotton hops to victory!'
+    },
+    {
+        name: 'Max', emoji: '🧑', title: 'Skilled Trainer',
+        petType: 'dog', petName: 'Rex',
+        stats: { hunger: 65, cleanliness: 60, happiness: 65, energy: 70 },
+        difficulty: 3, battleHP: 60,
+        winMessage: 'Impressive skills! Rex respects you.', loseMessage: 'Rex is unstoppable!'
+    },
+    {
+        name: 'Sara', emoji: '👩', title: 'Expert Trainer',
+        petType: 'cat', petName: 'Shadow',
+        stats: { hunger: 70, cleanliness: 70, happiness: 75, energy: 65 },
+        difficulty: 4, battleHP: 70,
+        winMessage: 'Shadow acknowledges your skill!', loseMessage: 'Shadow was too sly!'
+    },
+    {
+        name: 'Prof. Oak', emoji: '🧓', title: 'Veteran Trainer',
+        petType: 'turtle', petName: 'Ancient',
+        stats: { hunger: 75, cleanliness: 75, happiness: 70, energy: 75 },
+        difficulty: 5, battleHP: 80,
+        winMessage: 'Magnificent! Ancient bows to you.', loseMessage: 'Ancient is unshakable!'
+    },
+    {
+        name: 'Luna', emoji: '🧙‍♀️', title: 'Mystic Trainer',
+        petType: 'unicorn', petName: 'Starlight',
+        stats: { hunger: 80, cleanliness: 85, happiness: 85, energy: 80 },
+        difficulty: 6, battleHP: 90,
+        winMessage: 'The stars align for you!', loseMessage: 'Starlight shines too bright!'
+    },
+    {
+        name: 'Drake', emoji: '🐲', title: 'Champion Trainer',
+        petType: 'dragon', petName: 'Inferno',
+        stats: { hunger: 90, cleanliness: 80, happiness: 90, energy: 90 },
+        difficulty: 7, battleHP: 100,
+        winMessage: 'You are the true champion!', loseMessage: 'Inferno reigns supreme!'
+    }
+];
+
 function getUnlockedPlotCount(totalHarvests) {
     const harvests = typeof totalHarvests === 'number' ? totalHarvests : 0;
     let unlocked = 0;

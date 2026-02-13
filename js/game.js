@@ -45,7 +45,14 @@
             streak: { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] },
             totalMedicineUses: 0,
             totalGroomCount: 0,
-            totalDailyCompletions: 0
+            totalDailyCompletions: 0,
+            // Competition system
+            competition: {
+                battlesWon: 0, battlesLost: 0, bossesDefeated: {},
+                showsEntered: 0, bestShowRank: '', bestShowScore: 0,
+                obstacleBestScore: 0, obstacleCompletions: 0,
+                rivalsDefeated: [], currentRivalIndex: 0
+            }
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -787,6 +794,17 @@
                     if (typeof parsed.totalMedicineUses !== 'number') parsed.totalMedicineUses = 0;
                     if (typeof parsed.totalGroomCount !== 'number') parsed.totalGroomCount = 0;
                     if (typeof parsed.totalDailyCompletions !== 'number') parsed.totalDailyCompletions = 0;
+
+                    // Add competition state if missing (for existing saves)
+                    if (!parsed.competition || typeof parsed.competition !== 'object') {
+                        parsed.competition = {
+                            battlesWon: 0, battlesLost: 0, bossesDefeated: {},
+                            showsEntered: 0, bestShowRank: '', bestShowScore: 0,
+                            obstacleBestScore: 0, obstacleCompletions: 0,
+                            rivalsDefeated: [], currentRivalIndex: 0
+                        };
+                    }
+                    if (!Array.isArray(parsed.competition.rivalsDefeated)) parsed.competition.rivalsDefeated = [];
 
                     // Strip transient _neglectTickCounter from pet objects (old saves)
                     parsed.pets.forEach(p => {

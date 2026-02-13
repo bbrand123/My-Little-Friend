@@ -899,6 +899,11 @@
                                 <span>Games</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                             </button>
+                            <button class="action-btn competition" id="competition-btn" aria-haspopup="dialog">
+                                <span class="action-btn-tooltip">Battles & Shows</span>
+                                <span class="btn-icon" aria-hidden="true">🏟️</span>
+                                <span>Arena</span>
+                            </button>
                         </div>
                     </div>
                     <button class="more-actions-toggle" id="more-actions-toggle" type="button" aria-expanded="false" aria-controls="more-actions-panel">
@@ -971,6 +976,13 @@
                     openMiniGamesMenu();
                 } else {
                     showToast('Mini-games are still loading. Try again in a moment.', '#FFA726');
+                }
+            });
+            document.getElementById('competition-btn').addEventListener('click', () => {
+                if (typeof openCompetitionHub === 'function') {
+                    openCompetitionHub();
+                } else {
+                    showToast('Competition features are still loading. Try again in a moment.', '#FFA726');
                 }
             });
             document.getElementById('seasonal-btn').addEventListener('click', () => {
