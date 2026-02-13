@@ -506,8 +506,8 @@
 
         // Exposed on window so game.js can read/write these flags reliably
         // even if files are loaded as modules in the future.
-        var _petPhaseTimersRunning = false;
-        var _petPhaseLastRoom = null;
+        let _petPhaseTimersRunning = false;
+        let _petPhaseLastRoom = null;
 
         function renderPetPhase() {
             // Clear any pending deferred render to avoid redundant double re-renders
@@ -1038,9 +1038,10 @@
         // Wrap emoji characters in aria-hidden spans so screen readers skip them
         function wrapEmojiForAria(text) {
             // Match common emoji: emoticons, symbols, pictographs, transport, misc, flags, modifiers
+            // Note: callers are responsible for HTML-escaping user input via escapeHTML()
+            // before passing to showToast/wrapEmojiForAria to avoid double-escaping.
             const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
-            const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return escaped.replace(emojiRegex, '<span aria-hidden="true">$1</span>');
+            return text.replace(emojiRegex, '<span aria-hidden="true">$1</span>');
         }
 
         function showToast(message, color = '#66BB6A') {
@@ -2990,13 +2991,15 @@
 
                 // Show result
                 const interaction = result.interaction;
-                showToast(`${interaction.emoji} ${result.message}`, '#4ECDC4');
+                showToast(`${interaction.emoji} ${escapeHTML(result.message)}`, '#4ECDC4');
 
                 // Show relationship level up
                 if (result.relationshipChange && result.relationshipChange.changed && result.relationshipChange.improved) {
                     const newLevelData = RELATIONSHIP_LEVELS[result.relationshipChange.to];
+                    const label = newLevelData.label;
+                    const pluralLabel = label === 'Family' ? 'Family' : label + 's';
                     setTimeout(() => {
-                        showToast(`${newLevelData.emoji} ${result.pet1Name} & ${result.pet2Name} are now ${newLevelData.label}s!`, '#FFD700');
+                        showToast(`${newLevelData.emoji} ${escapeHTML(result.pet1Name)} & ${escapeHTML(result.pet2Name)} are now ${pluralLabel}!`, '#FFD700');
                     }, 1500);
                 }
 

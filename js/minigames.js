@@ -524,8 +524,9 @@
                     // Progressively relax distance to avoid giving up with overlap
                     if (attempts === 50) currentMinDist = minDist * 0.6;
                     if (attempts === 80) currentMinDist = minDist * 0.3;
+                    if (attempts === 120) currentMinDist = minDist * 0.1;
                 } while (
-                    attempts < 100 &&
+                    attempts < 150 &&
                     positions.some(p => Math.hypot(p.x - pos.x, p.y - pos.y) < currentMinDist)
                 );
                 positions.push(pos);
