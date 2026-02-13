@@ -87,6 +87,7 @@
         }
 
         function randomFromArray(arr) {
+            if (!arr || arr.length === 0) return undefined;
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
@@ -110,7 +111,11 @@
 
         // Wellness bar helpers
         function getWellnessPercent(pet) {
-            return Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4);
+            const h = Number(pet.hunger) || 0;
+            const c = Number(pet.cleanliness) || 0;
+            const hp = Number(pet.happiness) || 0;
+            const e = Number(pet.energy) || 0;
+            return Math.round((h + c + hp + e) / 4);
         }
 
         function getWellnessClass(pet) {
@@ -144,7 +149,7 @@
             el.innerHTML = changes.map(c => {
                 const sign = c.amount >= 0 ? '+' : '';
                 const cls = c.amount >= 0 ? 'positive' : 'negative';
-                return `<span class="${cls}">${c.label} ${sign}${c.amount}</span>`;
+                return `<span class="${cls}">${escapeHTML(c.label)} ${sign}${c.amount}</span>`;
             }).join('');
             anchor.appendChild(el);
             setTimeout(() => el.remove(), 2000);
@@ -1122,43 +1127,43 @@
                 SoundManager.enterRoom(roomId);
             }
 
+            const room = ROOMS[roomId];
+
             // Re-render when switching to/from garden (garden section needs DOM update)
             if (roomId === 'garden' || previousRoom === 'garden') {
                 renderPetPhase();
-                return;
-            }
+            } else {
+                const petArea = document.querySelector('.pet-area');
 
-            const room = ROOMS[roomId];
-            const petArea = document.querySelector('.pet-area');
+                if (petArea) {
+                    // Update room class
+                    ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
+                    petArea.classList.add('room-' + roomId);
 
-            if (petArea) {
-                // Update room class
-                ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
-                petArea.classList.add('room-' + roomId);
+                    // Update background
+                    petArea.style.background = getRoomBackground(roomId, gameState.timeOfDay);
 
-                // Update background
-                petArea.style.background = getRoomBackground(roomId, gameState.timeOfDay);
+                    // Update room decor
+                    const decor = petArea.querySelector('.room-decor');
+                    if (decor) {
+                        decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
+                    }
 
-                // Update room decor
-                const decor = petArea.querySelector('.room-decor');
-                if (decor) {
-                    decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
+                    // Room label removed from status bar (room nav already highlights active room)
+
+                    // Show/hide outdoor elements based on room type
+                    const isOutdoor = room.isOutdoor;
+                    petArea.querySelectorAll('.cloud').forEach(c => c.style.display = isOutdoor ? '' : 'none');
+                    const sun = petArea.querySelector('.sun');
+                    if (sun) sun.style.display = isOutdoor ? '' : 'none';
+                    const starsOverlay = petArea.querySelector('.stars-overlay');
+                    if (starsOverlay) starsOverlay.style.display = isOutdoor ? '' : 'none';
+                    const moon = petArea.querySelector('.moon');
+                    if (moon) moon.style.display = isOutdoor ? '' : 'none';
+
+                    // Update weather display for the new room
+                    updateWeatherDisplay();
                 }
-
-                // Room label removed from status bar (room nav already highlights active room)
-
-                // Show/hide outdoor elements based on room type
-                const isOutdoor = room.isOutdoor;
-                petArea.querySelectorAll('.cloud').forEach(c => c.style.display = isOutdoor ? '' : 'none');
-                const sun = petArea.querySelector('.sun');
-                if (sun) sun.style.display = isOutdoor ? '' : 'none';
-                const starsOverlay = petArea.querySelector('.stars-overlay');
-                if (starsOverlay) starsOverlay.style.display = isOutdoor ? '' : 'none';
-                const moon = petArea.querySelector('.moon');
-                if (moon) moon.style.display = isOutdoor ? '' : 'none';
-
-                // Update weather display for the new room
-                updateWeatherDisplay();
             }
 
             // Update mood display since weather affects mood differently indoors/outdoors
@@ -1784,12 +1789,12 @@
                     if (gameState.pets && gameState.pets.length > 1) {
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = clamp(p.hunger - 1, 0, 100);
-                            p.cleanliness = clamp(p.cleanliness - 0.5, 0, 100);
-                            p.happiness = clamp(p.happiness - 0.5, 0, 100);
-                            p.energy = clamp(p.energy - 0.5, 0, 100);
+                            p.hunger = Math.round(clamp(p.hunger - 1, 0, 100) * 10) / 10;
+                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100) * 10) / 10;
+                            p.happiness = Math.round(clamp(p.happiness - 0.5, 0, 100) * 10) / 10;
+                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100) * 10) / 10;
                             // Pets with companions are slightly happier
-                            p.happiness = clamp(p.happiness + 0.3, 0, 100);
+                            p.happiness = Math.round(clamp(p.happiness + 0.3, 0, 100) * 10) / 10;
                         });
                         syncActivePetToArray();
                     }
@@ -2068,6 +2073,13 @@
                             gameState.garden = saved.garden;
                         }
 
+                        // Restore fields that may have changed in another tab
+                        if (saved.minigamePlayCounts) gameState.minigamePlayCounts = saved.minigamePlayCounts;
+                        if (saved.minigameHighScores) gameState.minigameHighScores = saved.minigameHighScores;
+                        if (saved.minigameScoreHistory) gameState.minigameScoreHistory = saved.minigameScoreHistory;
+                        if (saved.relationships) gameState.relationships = saved.relationships;
+                        if (saved.furniture) gameState.furniture = saved.furniture;
+
                         // Update time of day (may have changed while tab was hidden)
                         const newTimeOfDay = getTimeOfDay();
                         if (gameState.timeOfDay !== newTimeOfDay) {
@@ -2234,4 +2246,8 @@
         // Also handle page hide for mobile browsers
         window.addEventListener('pagehide', () => {
             saveGame();
+            stopDecayTimer();
+            stopGardenGrowTimer();
+            if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
+            if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         });

@@ -187,7 +187,6 @@
             if (existing) existing.remove();
 
             const pet = gameState.pet;
-            const petData = PET_TYPES[pet.type];
             const mood = getMood(pet);
 
             const overlay = document.createElement('div');
@@ -359,6 +358,7 @@
                 if (scoreEl) scoreEl.textContent = `Fetched: ${fetchState.score}`;
 
                 // Reset ball position
+                ball.classList.remove('arc');
                 ball.style.transition = 'none';
                 ball.style.left = '50%';
                 ball.style.top = '160px';
@@ -486,7 +486,6 @@
             const treatEmoji = HIDESEEK_TREATS[Math.floor(Math.random() * HIDESEEK_TREATS.length)];
 
             hideSeekState = {
-                score: 0,
                 totalTreats: totalTreats,
                 treatsFound: 0,
                 spots: spots.map((obj, i) => ({
@@ -539,7 +538,6 @@
             if (existing) existing.remove();
 
             const pet = gameState.pet;
-            const petData = PET_TYPES[pet.type];
             const mood = getMood(pet);
 
             const overlay = document.createElement('div');
@@ -662,7 +660,6 @@
             if (spot.hasTreat) {
                 // Found a treat!
                 hideSeekState.treatsFound++;
-                hideSeekState.score++;
 
                 spotEl.classList.add('found');
 
@@ -906,9 +903,11 @@
 
             // Spawn initial batch of bubbles after the overlay has been laid out
             // to avoid zero-dimension reads from offsetWidth/offsetHeight.
+            if (!bubblePopState._initialSpawnTimers) bubblePopState._initialSpawnTimers = [];
             requestAnimationFrame(() => {
                 for (let i = 0; i < 5; i++) {
-                    setTimeout(() => spawnBubble(), i * 200);
+                    const id = setTimeout(() => spawnBubble(), i * 200);
+                    if (bubblePopState) bubblePopState._initialSpawnTimers.push(id);
                 }
             });
         }
@@ -1020,7 +1019,8 @@
 
             // Auto-remove bubble after a while if not popped — shorter at higher difficulty
             const bubbleLifetime = Math.max(2000, Math.round((4000 + Math.random() * 3000) / (bubblePopState.difficulty || 1)));
-            setTimeout(() => {
+            if (!bubblePopState._bubbleRemovalTimers) bubblePopState._bubbleRemovalTimers = [];
+            const removalId = setTimeout(() => {
                 if (bubble.parentNode && !bubble.classList.contains('popping')) {
                     bubble.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
                     bubble.style.opacity = '0';
@@ -1030,6 +1030,7 @@
                     }, 500);
                 }
             }, bubbleLifetime);
+            bubblePopState._bubbleRemovalTimers.push(removalId);
         }
 
         function popBubble(bubble) {
@@ -1136,6 +1137,12 @@
             if (bubblePopState && bubblePopState.timerInterval) clearInterval(bubblePopState.timerInterval);
             if (bubblePopState && bubblePopState.spawnInterval) clearInterval(bubblePopState.spawnInterval);
             if (bubblePopState && bubblePopState._autoEndTimeout) clearTimeout(bubblePopState._autoEndTimeout);
+            if (bubblePopState && bubblePopState._initialSpawnTimers) {
+                bubblePopState._initialSpawnTimers.forEach(id => clearTimeout(id));
+            }
+            if (bubblePopState && bubblePopState._bubbleRemovalTimers) {
+                bubblePopState._bubbleRemovalTimers.forEach(id => clearTimeout(id));
+            }
 
             if (bubblePopState && bubblePopState._escapeHandler) {
                 popModalEscape(bubblePopState._escapeHandler);
@@ -1532,7 +1539,7 @@
             };
 
             renderSimonSaysGame();
-            setTimeout(() => simonNextRound(), 800);
+            simonState._roundTransitionTimer = setTimeout(() => simonNextRound(), 800);
 
             announce('Simon Says! Watch the pattern, then repeat it!');
         }
@@ -1733,7 +1740,7 @@
                     announce(`Round ${simonState.round} complete!`);
 
                     // Next round after a brief pause
-                    setTimeout(() => simonNextRound(), 1000);
+                    simonState._roundTransitionTimer = setTimeout(() => simonNextRound(), 1000);
                 }
             } else {
                 // Wrong!
@@ -1749,17 +1756,20 @@
 
                 const instruction = document.getElementById('simon-instruction');
                 if (instruction) {
-                    const round = simonState.highestRound || (simonState.round - 1);
-                    let message = `Oops! You reached round ${simonState.round}! `;
-                    if (round >= 8) message += 'Incredible memory!';
-                    else if (round >= 5) message += 'Great job!';
-                    else if (round >= 3) message += 'Nice try!';
+                    const completedRound = simonState.highestRound || (simonState.round - 1);
+                    let message = completedRound > 0
+                        ? `Oops! You completed ${completedRound} round${completedRound !== 1 ? 's' : ''}! `
+                        : 'Oops! ';
+                    if (completedRound >= 8) message += 'Incredible memory!';
+                    else if (completedRound >= 5) message += 'Great job!';
+                    else if (completedRound >= 3) message += 'Nice try!';
                     else message += 'Keep practicing!';
                     instruction.textContent = message;
                     instruction.className = 'simonsays-instruction wrong';
                 }
 
-                announce(`Game over! You reached round ${simonState.round}.`);
+                const completedRound = simonState.highestRound || (simonState.round - 1);
+                announce(`Game over! You completed ${completedRound} round${completedRound !== 1 ? 's' : ''}.`);
 
                 // Auto-end after showing result
                 simonState._autoEndTimeout = setTimeout(() => endSimonSaysGame(), 2500);
@@ -1769,6 +1779,7 @@
         function endSimonSaysGame() {
             if (simonState && simonState.playbackTimer) clearTimeout(simonState.playbackTimer);
             if (simonState && simonState._autoEndTimeout) clearTimeout(simonState._autoEndTimeout);
+            if (simonState && simonState._roundTransitionTimer) clearTimeout(simonState._roundTransitionTimer);
 
             if (simonState && simonState._escapeHandler) {
                 popModalEscape(simonState._escapeHandler);
