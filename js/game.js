@@ -495,6 +495,12 @@
             gameState.eggType = eggType;
             gameState.pendingPetType = petType;
             gameState.pet = null;
+            // Clear stale pets on full reset (not when adopting additional)
+            if (!gameState.adoptingAdditional) {
+                gameState.pets = [];
+                gameState.activePetIndex = 0;
+                gameState.relationships = {};
+            }
             saveGame();
         }
 
@@ -629,14 +635,18 @@
             const interaction = PET_INTERACTIONS[interactionId];
             if (!interaction) return null;
 
+            if (pet1Index === pet2Index) return null; // Prevent self-interaction
+
             const pet1 = gameState.pets[pet1Index];
             const pet2 = gameState.pets[pet2Index];
             if (!pet1 || !pet2) return null;
 
-            // Check cooldown
+            // Check per-interaction-type cooldown
             const rel = getRelationship(pet1.id, pet2.id);
             const now = Date.now();
-            if (now - rel.lastInteraction < interaction.cooldown) {
+            if (!rel.lastInteractionByType) rel.lastInteractionByType = {};
+            const lastTime = rel.lastInteractionByType[interactionId] || 0;
+            if (now - lastTime < interaction.cooldown) {
                 return { success: false, reason: 'cooldown' };
             }
 
@@ -654,6 +664,9 @@
             // Increment care actions for both
             pet1.careActions = (pet1.careActions || 0) + 1;
             pet2.careActions = (pet2.careActions || 0) + 1;
+
+            // Record per-type cooldown timestamp
+            rel.lastInteractionByType[interactionId] = now;
 
             // Add relationship points
             const relChange = addRelationshipPoints(pet1.id, pet2.id, interaction.relationshipGain);
@@ -751,9 +764,19 @@
             }
 
             // Check for neglect (any stat below 20)
+            // Only update neglectCount every 5 minutes (10 ticks at 30s) to prevent
+            // rapid inflation from the 30-second update cycle
+            if (!pet._neglectTickCounter) pet._neglectTickCounter = 0;
+            pet._neglectTickCounter++;
             const isNeglected = pet.hunger < 20 || pet.cleanliness < 20 || pet.happiness < 20 || pet.energy < 20;
-            if (isNeglected) {
-                pet.neglectCount = (pet.neglectCount || 0) + 1;
+            if (pet._neglectTickCounter >= 10) {
+                pet._neglectTickCounter = 0;
+                if (isNeglected) {
+                    pet.neglectCount = (pet.neglectCount || 0) + 1;
+                } else if ((pet.neglectCount || 0) > 0) {
+                    // Gradually recover from neglect when all stats are healthy
+                    pet.neglectCount = pet.neglectCount - 1;
+                }
             }
 
             // Calculate overall care quality
@@ -1273,6 +1296,7 @@
 
             plot.watered = true;
             const crop = GARDEN_CROPS[plot.cropId];
+            if (!crop) return; // Guard against corrupted save data
             showToast(`💧 Watered the ${crop.name}!`, '#64B5F6');
 
             saveGame();
@@ -1289,6 +1313,7 @@
             if (plot.stage < 3) return; // Not ready
 
             const crop = GARDEN_CROPS[plot.cropId];
+            if (!crop) return; // Guard against corrupted save data
             if (!garden.inventory[plot.cropId]) {
                 garden.inventory[plot.cropId] = 0;
             }
@@ -1333,7 +1358,11 @@
             const crop = GARDEN_CROPS[plot.cropId];
 
             const existing = document.querySelector('.remove-crop-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                // Pop stale escape handler before removing the old overlay
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const overlay = document.createElement('div');
             overlay.className = 'remove-crop-overlay';
@@ -1361,6 +1390,7 @@
                 popModalEscape(closeOverlay);
                 overlay.remove();
             }
+            overlay._closeOverlay = closeOverlay;
 
             pushModalEscape(closeOverlay);
 
@@ -1447,7 +1477,11 @@
 
         function openSeedPicker(plotIndex) {
             const existing = document.querySelector('.seed-picker-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                // Pop stale escape handler before removing the old overlay
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const season = gameState.season || getCurrentSeason();
             const overlay = document.createElement('div');
@@ -1487,6 +1521,7 @@
                 popModalEscape(closeOverlay);
                 if (overlay && overlay.parentNode) overlay.remove();
             }
+            overlay._closeOverlay = closeOverlay;
 
             overlay.querySelectorAll('.seed-option').forEach(btn => {
                 btn.addEventListener('click', () => {
