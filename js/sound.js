@@ -479,6 +479,11 @@
                 if (!isEnabled) return;
                 const ctx = getContext();
                 if (!ctx) return;
+                // Retry resume if context is still suspended (e.g. browser blocked auto-play)
+                if (ctx.state === 'suspended') {
+                    ctx.resume().catch(() => {});
+                    return; // Skip this SFX — context will be ready for the next call
+                }
                 try {
                     generator(ctx);
                 } catch (e) {

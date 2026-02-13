@@ -33,7 +33,7 @@
                 if (element.disabled || element.getAttribute('aria-disabled') === 'true') return;
                 const now = Date.now();
                 const last = Number(element.dataset.lastActivate || 0);
-                if (now - last < 350) return;
+                if (now - last < 200) return;
                 element.dataset.lastActivate = String(now);
                 handler(event);
             };
@@ -251,6 +251,7 @@
             const eggButton = document.getElementById('egg-button');
             const sparkles = document.getElementById('sparkles');
             if (!eggButton) return;
+            if (gameState.eggTaps >= 5) return; // Already at max
             gameState.eggTaps++;
 
             // Haptic feedback on egg tap
@@ -497,8 +498,8 @@
 
             function finishNaming(customName, useDefaults = false) {
                 const raw = customName ? customName.trim() : '';
-                const name = raw.length > 0 ? sanitizePetName(raw) : '';
-                if (name.length > 0) {
+                const name = raw.length > 0 ? sanitizePetName(raw) : null;
+                if (name) {
                     gameState.pet.name = name;
                     // Text-to-speech on submit — cancel any ongoing speech first
                     if ('speechSynthesis' in window && !useDefaults) {
@@ -952,7 +953,6 @@
                     if (idx === gameState.activePetIndex) return;
                     syncActivePetToArray();
                     if (switchActivePet(idx)) {
-                        _lastGrowthMilestone = 0;
                         _prevStats = { hunger: -1, cleanliness: -1, happiness: -1, energy: -1 };
                         renderPetPhase();
                         const petData = PET_TYPES[gameState.pet.type];
@@ -1077,9 +1077,10 @@
         // Wrap emoji characters in aria-hidden spans so screen readers skip them
         function wrapEmojiForAria(text) {
             // Match common emoji: emoticons, symbols, pictographs, transport, misc, flags, modifiers
+            // Exclude ASCII digits/symbols (#, *, 0-9) that \p{Emoji} can match
             // Note: callers are responsible for HTML-escaping user input via escapeHTML()
             // before passing to showToast/wrapEmojiForAria to avoid double-escaping.
-            const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+            const emojiRegex = /(\p{Emoji_Presentation}|(?![0-9#*])\p{Emoji}\uFE0F)/gu;
             return text.replace(emojiRegex, '<span aria-hidden="true">$1</span>');
         }
 
@@ -1521,7 +1522,20 @@
             petContainer.innerHTML = generatePetSVG(pet, mood);
         }
 
-        let _lastGrowthMilestone = 0;
+        // Per-pet growth milestone tracker keyed by pet id
+        const _growthMilestones = {};
+
+        function _getGrowthMilestone(pet) {
+            const id = pet && pet.id;
+            if (id == null) return 0;
+            return _growthMilestones[id] || 0;
+        }
+
+        function _setGrowthMilestone(pet, value) {
+            const id = pet && pet.id;
+            if (id == null) return;
+            _growthMilestones[id] = value;
+        }
 
         function updateGrowthDisplay() {
             const pet = gameState.pet;
@@ -1546,9 +1560,10 @@
             if (nextStage) {
                 const rounded = Math.round(progress);
                 const milestones = [50, 75, 99];
+                const lastMilestone = _getGrowthMilestone(pet);
                 for (const m of milestones) {
-                    if (rounded >= m && _lastGrowthMilestone < m) {
-                        _lastGrowthMilestone = m;
+                    if (rounded >= m && lastMilestone < m) {
+                        _setGrowthMilestone(pet, m);
                         const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
                         const nextLabel = GROWTH_STAGES[nextStage].label;
                         if (m === 99) {
@@ -1560,7 +1575,7 @@
                     }
                 }
             } else {
-                _lastGrowthMilestone = 100;
+                _setGrowthMilestone(pet, 100);
             }
         }
 
@@ -1571,7 +1586,8 @@
 
         function enforceParticleLimit(container) {
             const particles = container.children;
-            while (particles.length > MAX_PARTICLES) {
+            let safetyLimit = particles.length;
+            while (particles.length > MAX_PARTICLES && safetyLimit-- > 0) {
                 particles[0].remove();
             }
         }

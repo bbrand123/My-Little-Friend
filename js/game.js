@@ -156,7 +156,9 @@
             let name = raw.replace(/<[^>]*>/g, '');
             // Remove control characters (keep printable + common unicode)
             name = name.replace(/[\x00-\x1F\x7F]/g, '');
-            return name.trim().slice(0, 14);
+            name = name.trim().slice(0, 14);
+            // Return null if the sanitized name is empty so callers can fall back
+            return name.length > 0 ? name : null;
         }
 
         // Dynamic color for need rings: green when high, yellow, orange, red when low
@@ -421,7 +423,7 @@
                 newStickers.push(STICKERS.trophySticker);
             }
             const counts = gs.minigamePlayCounts || {};
-            if (counts.simonSays > 0 && grantSticker('musicSticker')) {
+            if (counts.simonsays > 0 && grantSticker('musicSticker')) {
                 newStickers.push(STICKERS.musicSticker);
             }
             if (counts.coloring > 0 && grantSticker('artSticker')) {
@@ -637,9 +639,13 @@
                         }
                         // Add birthdate if missing (estimate based on care actions)
                         if (!parsed.pet.birthdate) {
-                            // Estimate: 1 hour per care action for existing pets
-                            const estimatedAge = parsed.pet.careActions * 60 * 60 * 1000;
-                            parsed.pet.birthdate = Date.now() - estimatedAge;
+                            // Estimate age from care actions with a minimum floor of 2 hours
+                            // so legacy pets aren't incorrectly set to extremely young ages
+                            const estimatedAgeMs = Math.max(
+                                parsed.pet.careActions * 60 * 60 * 1000,
+                                2 * 60 * 60 * 1000 // minimum 2 hours old
+                            );
+                            parsed.pet.birthdate = Date.now() - estimatedAgeMs;
                         }
                         // Calculate age for growth stage
                         const ageInHours = (Date.now() - parsed.pet.birthdate) / (1000 * 60 * 60);
@@ -688,7 +694,9 @@
                     }
 
                     // Add season if missing (for existing saves)
-                    parsed.season = getCurrentSeason();
+                    if (!parsed.season) {
+                        parsed.season = getCurrentSeason();
+                    }
 
                     // Add minigame tracking if missing (for existing saves)
                     if (!parsed.minigamePlayCounts || typeof parsed.minigamePlayCounts !== 'object') {
@@ -815,7 +823,7 @@
                     // Apply to ALL pets, not just the active one
                     if (parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
-                        const minutesPassed = timePassed / 60000;
+                        const minutesPassed = Math.max(0, timePassed / 60000);
                         const decay = Math.floor(minutesPassed / 2);
                         if (decay > 0) {
                             const petsToDecay = parsed.pets && parsed.pets.length > 0 ? parsed.pets : (parsed.pet ? [parsed.pet] : []);
@@ -936,7 +944,10 @@
             const color = randomFromArray(petData.colors);
 
             // Assign a unique ID to each pet
-            const petId = gameState.nextPetId || (gameState.pets ? gameState.pets.length + 1 : 1);
+            if (typeof gameState.nextPetId !== 'number' || isNaN(gameState.nextPetId)) {
+                gameState.nextPetId = (gameState.pets ? gameState.pets.length : 0) + 1;
+            }
+            const petId = gameState.nextPetId;
             gameState.nextPetId = petId + 1;
 
             return {
@@ -1323,6 +1334,10 @@
 
         function checkWeatherChange() {
             const now = Date.now();
+            // Guard against future timestamps (e.g. system clock was wrong when saved)
+            if (gameState.lastWeatherChange > now) {
+                gameState.lastWeatherChange = now;
+            }
             if (now - gameState.lastWeatherChange >= WEATHER_CHANGE_INTERVAL) {
                 const newWeather = getRandomWeather();
                 if (newWeather !== gameState.weather) {
@@ -2289,9 +2304,9 @@
                     let energyDecayBonus = 0;
                     let energyRegenBonus = 0;
                     if (timeOfDay === 'night') {
-                        energyDecayBonus = 2; // Energy drains faster at night (pet gets sleepy)
+                        energyRegenBonus = 2; // Pet rests at night — energy recovers
                     } else if (timeOfDay === 'sunset') {
-                        energyDecayBonus = 1; // Energy starts draining more at sunset
+                        energyRegenBonus = 1; // Pet starts winding down, slight recovery
                     } else if (timeOfDay === 'sunrise') {
                         energyRegenBonus = 1; // Energy recovers slightly in the morning
                     }
@@ -2327,15 +2342,16 @@
 
                     // Apply passive decay to non-active pets (gentler rate)
                     if (gameState.pets && gameState.pets.length > 1) {
+                        // Sync active pet to array first so its decayed stats are preserved
+                        syncActivePetToArray();
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.round(clamp(p.hunger - 1, 0, 100));
-                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100));
+                            p.hunger = Math.floor(clamp(p.hunger - 1, 0, 100));
+                            p.cleanliness = Math.floor(clamp(p.cleanliness - 0.5, 0, 100));
                             // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
-                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100));
-                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100));
+                            p.happiness = Math.floor(clamp(p.happiness - 0.2, 0, 100));
+                            p.energy = Math.floor(clamp(p.energy - 0.5, 0, 100));
                         });
-                        syncActivePetToArray();
                     }
 
                     // Check for weather changes
