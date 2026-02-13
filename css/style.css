@@ -1637,7 +1637,41 @@
                 gap: 12px;
                 -webkit-overflow-scrolling: touch;
                 scrollbar-width: thin;
-                scrollbar-color: rgba(0,0,0,0.15) transparent;
+                scrollbar-color: rgba(0,0,0,0.2) transparent;
+                padding-bottom: 6px;
+            }
+
+            /* Visible scrollbar for webkit browsers */
+            .action-group-buttons::-webkit-scrollbar {
+                height: 4px;
+            }
+
+            .action-group-buttons::-webkit-scrollbar-track {
+                background: rgba(0,0,0,0.05);
+                border-radius: 4px;
+            }
+
+            .action-group-buttons::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.2);
+                border-radius: 4px;
+            }
+
+            /* Fade hint on the trailing edge to signal more content */
+            .action-group {
+                position: relative;
+            }
+
+            .action-group::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 6px;
+                width: 24px;
+                background: linear-gradient(to right, transparent, rgba(255,255,255,0.85));
+                pointer-events: none;
+                border-radius: 0 8px 8px 0;
+                z-index: 1;
             }
 
             .needs-row {
@@ -1676,6 +1710,178 @@
         }
 
         /* Reduced motion support — see consolidated block at end of file */
+
+        /* ==================== MOBILE LANDSCAPE LAYOUT ==================== */
+        /* On phones in landscape, use horizontal space instead of stacking vertically */
+        @media (orientation: landscape) and (max-height: 500px) {
+            body {
+                padding: 8px;
+            }
+
+            .game-container {
+                max-width: 100%;
+                padding: 10px 16px;
+            }
+
+            .game-header {
+                margin-bottom: 4px;
+            }
+
+            .game-title {
+                font-size: 1.2rem;
+                margin-bottom: 2px;
+            }
+
+            .game-title::after {
+                margin: 3px auto 0;
+                height: 2px;
+                width: 40px;
+            }
+
+            .pet-area {
+                min-height: 160px;
+                padding: 10px 15px;
+                margin: 4px 0;
+            }
+
+            .pet-svg {
+                width: 90px;
+                height: 90px;
+            }
+
+            .pet-svg.growth-baby {
+                width: 54px;
+                height: 54px;
+            }
+
+            .pet-svg.growth-child {
+                width: 72px;
+                height: 72px;
+            }
+
+            .pet-svg.growth-adult {
+                width: 90px;
+                height: 90px;
+            }
+
+            .needs-section {
+                margin: 4px 0;
+                padding-bottom: 8px;
+            }
+
+            .need-bubble {
+                width: 42px;
+                height: 42px;
+            }
+
+            .need-bubble-icon {
+                font-size: 1.1rem;
+            }
+
+            .need-bubble-value {
+                font-size: 0.6rem;
+                bottom: -12px;
+            }
+
+            .need-bubble-label {
+                display: none;
+            }
+
+            .needs-row {
+                gap: 8px;
+            }
+
+            .actions-section {
+                margin-top: 4px;
+            }
+
+            .action-btn {
+                min-width: 52px;
+                min-height: 52px;
+                width: 52px;
+                height: 52px;
+                border-radius: 12px;
+                font-size: 0.6rem;
+            }
+
+            .btn-icon {
+                font-size: 1.2rem;
+            }
+
+            .action-group {
+                margin-bottom: 4px;
+            }
+
+            .action-group-buttons {
+                gap: 6px;
+            }
+
+            .room-nav {
+                padding: 4px 2px;
+                margin: 2px 0;
+                gap: 4px;
+            }
+
+            .room-btn {
+                min-width: 40px;
+                min-height: 38px;
+                padding: 4px 6px;
+            }
+
+            .room-btn-icon {
+                font-size: 1rem;
+            }
+
+            .room-btn-label {
+                font-size: 0.6rem;
+            }
+
+            .section-divider {
+                margin: 4px 0;
+            }
+
+            .top-action-buttons {
+                gap: 4px;
+            }
+
+            .top-action-btn {
+                min-height: 36px;
+                min-width: 36px;
+                padding: 6px;
+            }
+
+            .status-pill {
+                padding: 2px 6px;
+                font-size: 0.6rem;
+            }
+
+            .more-actions-toggle {
+                margin: 2px auto 4px;
+                padding: 4px 12px;
+            }
+
+            /* Modals: use more of the landscape viewport */
+            .codex-modal, .stats-modal {
+                max-width: 90vw;
+                max-height: 90vh;
+            }
+
+            .modal-overlay,
+            .naming-overlay,
+            .codex-overlay,
+            .stats-overlay {
+                padding: 8px;
+            }
+
+            .growth-compact-row {
+                font-size: 0.7rem;
+            }
+
+            .new-pet-btn {
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+        }
 
         /* ==================== PET CODEX & STATS SCREENS ==================== */
 
@@ -5182,6 +5388,21 @@
             color: #aaa;
         }
 
+        /* Dark mode: adjust scroll fade hint and scrollbar for action buttons */
+        @media (max-width: 480px) {
+            [data-theme="dark"] .action-group::after {
+                background: linear-gradient(to right, transparent, rgba(36,36,62,0.85));
+            }
+
+            [data-theme="dark"] .action-group-buttons::-webkit-scrollbar-track {
+                background: rgba(255,255,255,0.05);
+            }
+
+            [data-theme="dark"] .action-group-buttons::-webkit-scrollbar-thumb {
+                background: rgba(255,255,255,0.2);
+            }
+        }
+
         [data-theme="dark"] .more-actions-toggle {
             border-color: #444;
             color: #ddd;
@@ -5452,6 +5673,13 @@
             :root:not([data-theme="light"]):not([data-theme="dark"]) .status-pill {
                 background: rgba(255, 255, 255, 0.08);
                 color: #ddd;
+            }
+
+            /* Auto dark: scroll fade hint for action buttons */
+            @media (max-width: 480px) {
+                :root:not([data-theme="light"]):not([data-theme="dark"]) .action-group::after {
+                    background: linear-gradient(to right, transparent, rgba(36,36,62,0.85));
+                }
             }
         }
 
