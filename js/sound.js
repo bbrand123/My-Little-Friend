@@ -7,7 +7,7 @@
             let masterGain = null;
             let currentEarcon = null;
             let currentRoom = null;
-            let isEnabled = true;
+            let isEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_soundEnabled'); return v !== 'false'; } catch (e) { return true; } })();
 
             const EARCON_VOLUME = 0.3; // 30% volume to not interfere with screen readers
             const FADE_DURATION = 0.8; // seconds for fade in/out
@@ -449,6 +449,7 @@
                 if (!isEnabled) {
                     stopAll();
                 }
+                try { localStorage.setItem('petCareBuddy_soundEnabled', isEnabled ? 'true' : 'false'); } catch (e) {}
                 return isEnabled;
             }
 
