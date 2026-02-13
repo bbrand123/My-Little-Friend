@@ -36,9 +36,41 @@
             }
         }
 
-        // Exit immediately — the exit button is already an intentional action
+        // Confirm exit when the player has made progress to prevent accidental loss
         function requestMiniGameExit(score, onConfirm) {
-            onConfirm();
+            if (score <= 0) {
+                onConfirm();
+                return;
+            }
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.style.zIndex = 'var(--z-overlay-alert)';
+            overlay.setAttribute('role', 'alertdialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Quit game?');
+            overlay.innerHTML = `
+                <div class="modal-content" style="max-width:280px;text-align:center;">
+                    <p style="margin-bottom:16px;font-weight:600;">Quit this game?</p>
+                    <p style="margin-bottom:16px;font-size:0.9rem;color:var(--color-text-secondary);">Your current score of ${score} will be kept.</p>
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button id="exit-cancel" style="padding:var(--btn-pad-md);border:1px solid #ccc;border-radius:var(--radius-sm);background:white;cursor:pointer;font-weight:600;">Keep Playing</button>
+                        <button id="exit-confirm" style="padding:var(--btn-pad-md);border:none;border-radius:var(--radius-sm);background:var(--color-primary);color:white;cursor:pointer;font-weight:600;">Quit</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function close() {
+                popModalEscape(close);
+                if (overlay.parentNode) overlay.remove();
+            }
+            overlay.querySelector('#exit-cancel').addEventListener('click', () => close());
+            overlay.querySelector('#exit-confirm').addEventListener('click', () => { close(); onConfirm(); });
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+            pushModalEscape(close);
+            trapFocus(overlay);
+            overlay.querySelector('#exit-cancel').focus();
+            announce('Quit game? Your current score will be kept.');
         }
 
         function openMiniGamesMenu() {
@@ -66,6 +98,8 @@
                 coloring: 'points'
             };
 
+            const playCounts = gameState.minigamePlayCounts || {};
+
             let cardsHTML = '';
             MINI_GAMES.forEach(game => {
                 const best = highScores[game.id];
@@ -77,11 +111,15 @@
                     const historyItems = history.map(s => `${s}`).join(', ');
                     historyHTML = `<span class="minigame-card-history">Recent: ${historyItems}</span>`;
                 }
+                const plays = playCounts[game.id] || 0;
+                const difficultyHTML = plays > 0 ? `<span class="minigame-card-difficulty" title="Difficulty increases with each play">Difficulty: ${Math.min(plays, 10)}/10</span>` : '';
                 cardsHTML += `
-                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name} - ${game.description}${best ? '. Best: ' + best + ' ' + label : ''}${history && history.length ? '. Recent scores: ' + history.join(', ') : ''}">
+                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name}${best ? ', best: ' + best : ''}${plays > 0 ? ', difficulty ' + Math.min(plays, 10) + ' of 10' : ''}">
                         <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
                         <span class="minigame-card-name">${game.name}</span>
+                        <span class="minigame-card-desc">${game.description}</span>
                         ${bestHTML}
+                        ${difficultyHTML}
                         ${historyHTML}
                     </button>
                 `;
@@ -126,6 +164,7 @@
 
             pushModalEscape(closeMenu);
             overlay._closeOverlay = closeMenu;
+            trapFocus(overlay);
 
             // Focus first game card
             const firstCard = overlay.querySelector('.minigame-card');
@@ -254,6 +293,7 @@
             }
             pushModalEscape(fetchEscapeHandler);
             fetchState._escapeHandler = fetchEscapeHandler;
+            trapFocus(overlay);
 
             throwBtn.focus();
         }
@@ -614,6 +654,7 @@
             }
             pushModalEscape(hideSeekEscapeHandler);
             hideSeekState._escapeHandler = hideSeekEscapeHandler;
+            trapFocus(overlay);
 
             // Focus the first hiding spot
             const firstSpot = overlay.querySelector('.hideseek-hiding-spot');
@@ -927,6 +968,7 @@
             }
             pushModalEscape(bubblePopEscapeHandler);
             bubblePopState._escapeHandler = bubblePopEscapeHandler;
+            trapFocus(overlay);
 
             // Focus done button
             overlay.querySelector('#bubblepop-done').focus();
@@ -1328,6 +1370,7 @@
             }
             pushModalEscape(matchingEscapeHandler);
             matchingState._escapeHandler = matchingEscapeHandler;
+            trapFocus(overlay);
 
             // Focus first card
             const firstCard = overlay.querySelector('.matching-card');
@@ -1638,6 +1681,7 @@
             }
             pushModalEscape(simonEscapeHandler);
             simonState._escapeHandler = simonEscapeHandler;
+            trapFocus(overlay);
 
             // Focus done button
             overlay.querySelector('#simon-done').focus();
@@ -2016,6 +2060,7 @@
             }
             pushModalEscape(coloringEscapeHandler);
             coloringState._escapeHandler = coloringEscapeHandler;
+            trapFocus(overlay);
 
             // Focus done button
             overlay.querySelector('#coloring-done').focus();

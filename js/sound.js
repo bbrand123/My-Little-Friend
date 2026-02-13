@@ -473,7 +473,7 @@
             // ==================== ACTION SOUND EFFECTS ====================
             // Short procedural tones for gameplay interactions
 
-            const SFX_VOLUME = 0.35;
+            const SFX_VOLUME = 0.3; // Match earcon volume (0.3) to avoid jarring volume jump
 
             function playSFX(generator) {
                 if (!isEnabled) return;

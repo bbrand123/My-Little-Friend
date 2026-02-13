@@ -678,13 +678,15 @@
 
                             const overallProgress = Math.min(actionProgress, timeProgress);
 
+                            const growthHint = `Actions: ${Math.round(actionProgress)}% (${pet.careActions}/${nextActionsThreshold}), Time: ${Math.round(timeProgress)}% — both must reach 100%`;
+
                             return `
-                                <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%">
+                                <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%" title="${growthHint}">
                                     <div class="growth-compact-row">
                                         <span class="growth-compact-label${isMythical ? ' mythical' : ''}"><span aria-hidden="true">${stageData.emoji}</span> ${stageData.label}</span>
                                         <span class="growth-compact-arrow" aria-hidden="true">→</span>
                                         <span class="growth-compact-label"><span aria-hidden="true">${GROWTH_STAGES[nextStage].emoji}</span> ${GROWTH_STAGES[nextStage].label}</span>
-                                        <div class="growth-compact-bar">
+                                        <div class="growth-compact-bar" title="${growthHint}">
                                             <div class="growth-compact-fill" style="width:${overallProgress}%;"></div>
                                         </div>
                                         <span class="growth-compact-pct">${Math.round(overallProgress)}%</span>
@@ -760,7 +762,7 @@
                     return `
                         <div class="care-quality-wrap" aria-label="Care quality and age">
                             <div class="care-quality-row">
-                                <div class="care-quality-badge ${careQuality}" aria-label="${qualityData.label}: ${qualityData.description}. ${tipText}">
+                                <div class="care-quality-badge ${careQuality}" aria-label="${qualityData.label}: ${qualityData.description}. ${tipText}" title="${tipText}">
                                     <span class="care-quality-emoji" aria-hidden="true">${qualityData.emoji}</span>
                                     <div class="care-quality-text">
                                         <span class="care-quality-label">Care Quality</span>
@@ -872,7 +874,8 @@
                                     <span>Groom</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
-                                <button class="action-btn seasonal ${season}-activity" id="seasonal-btn">
+                                <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" title="${Object.entries(seasonData.activityEffects || {}).map(([k, v]) => (v >= 0 ? '+' : '') + v + ' ' + k).join(', ')}">
+                                    <span class="action-btn-tooltip">${Object.entries(seasonData.activityEffects || {}).map(([k, v]) => (v >= 0 ? '+' : '') + v + ' ' + k.charAt(0).toUpperCase() + k.slice(1)).join(', ')}</span>
                                     <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
                                     <span>${seasonData.activityName}</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
@@ -895,8 +898,8 @@
 
                 ${currentRoom === 'garden' ? '<section class="garden-section" id="garden-section" aria-label="Garden"></section>' : ''}
 
-                <button class="new-pet-btn" id="new-pet-btn" type="button" aria-label="${canAdoptMore() ? 'Adopt new egg or start over' : 'Start over with a new egg'}">
-                    🥚 ${canAdoptMore() ? 'Adopt / New Pet' : 'New Pet'}
+                <button class="new-pet-btn" id="new-pet-btn" type="button" aria-label="${canAdoptMore() ? 'Adopt an additional pet egg (keeps current pets)' : 'Start over with a new egg (replaces current pet)'}">
+                    🥚 ${canAdoptMore() ? 'Adopt New Pet' : 'Start Over'}
                 </button>
             `;
 
@@ -969,11 +972,19 @@
             const evolveBtn = document.getElementById('evolve-btn');
             if (evolveBtn) {
                 evolveBtn.addEventListener('click', () => {
+                    // Show processing state while evolution renders
+                    evolveBtn.disabled = true;
+                    evolveBtn.textContent = 'Evolving...';
+                    evolveBtn.style.opacity = '0.7';
                     const pet = gameState.pet;
-                    if (evolvePet(pet)) {
-                        // Re-render to show evolved pet
-                        renderPetPhase();
-                    }
+                    setTimeout(() => {
+                        if (evolvePet(pet)) {
+                            renderPetPhase();
+                        } else {
+                            evolveBtn.disabled = false;
+                            evolveBtn.style.opacity = '';
+                        }
+                    }, 300);
                 });
             }
 
@@ -1074,6 +1085,16 @@
             }
         }
 
+        // Show a brief visual reaction bubble above the pet (visual SFX equivalent)
+        function showPetReaction(container, emoji) {
+            const bubble = document.createElement('div');
+            bubble.className = 'pet-reaction-bubble';
+            bubble.setAttribute('aria-hidden', 'true');
+            bubble.textContent = emoji;
+            container.appendChild(bubble);
+            setTimeout(() => bubble.remove(), 1200);
+        }
+
         // Wrap emoji characters in aria-hidden spans so screen readers skip them
         function wrapEmojiForAria(text) {
             // Match common emoji: emoticons, symbols, pictographs, transport, misc, flags, modifiers
@@ -1111,6 +1132,12 @@
             toast.style.setProperty('--toast-color', color);
             toast.innerHTML = wrapEmojiForAria(message);
             container.appendChild(toast);
+
+            // Announce to screen readers — strip HTML tags for plain text
+            const plainText = message.replace(/<[^>]*>/g, '').trim();
+            if (plainText && typeof announce === 'function') {
+                announce(plainText);
+            }
 
             // Remove after animation completes
             setTimeout(() => toast.remove(), 3500);
@@ -1163,6 +1190,7 @@
                 btn.classList.add('cooldown');
                 btn.disabled = true;
                 btn.setAttribute('aria-disabled', 'true');
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || btn.textContent.trim()) + ' (cooling down)');
             });
 
             if (actionCooldownTimer) {
@@ -1179,6 +1207,7 @@
                     btn.classList.remove('cooldown');
                     btn.disabled = false;
                     btn.removeAttribute('aria-disabled');
+                    btn.removeAttribute('aria-label');
                 });
             }, ACTION_COOLDOWN_MS);
 
@@ -1333,13 +1362,27 @@
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
 
-            // Play pet voice sound on interactions
-            if (typeof SoundManager !== 'undefined') {
+            // Play pet voice sound on interactions + show visual reaction bubble
+            {
                 const petType = pet.type;
+                let reactionEmoji = '';
                 if (action === 'feed' || action === 'treat' || action === 'cuddle') {
-                    SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, petType));
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, petType));
+                    reactionEmoji = action === 'feed' ? '😋' : action === 'treat' ? '🤤' : '🥰';
                 } else if (action === 'play' || action === 'exercise') {
-                    SoundManager.playSFX((ctx) => SoundManager.sfx.petExcited(ctx, petType));
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX((ctx) => SoundManager.sfx.petExcited(ctx, petType));
+                    reactionEmoji = action === 'play' ? '😄' : '💪';
+                } else if (action === 'wash') {
+                    reactionEmoji = '✨';
+                } else if (action === 'sleep') {
+                    reactionEmoji = '😴';
+                } else if (action === 'medicine') {
+                    reactionEmoji = '💊';
+                } else if (action === 'groom') {
+                    reactionEmoji = '💇';
+                }
+                if (reactionEmoji && petContainer) {
+                    showPetReaction(petContainer, reactionEmoji);
                 }
             }
 
@@ -1509,12 +1552,22 @@
             updateMini('mini-energy', pet.energy, 'Energy');
         }
 
+        let _previousMood = null;
+
         function updatePetMood() {
             const pet = gameState.pet;
             if (!pet) return;
             const petData = PET_TYPES[pet.type];
             if (!petData) return;
             const mood = getMood(pet);
+
+            // Announce mood transitions to screen readers
+            if (_previousMood && _previousMood !== mood) {
+                const moodLabels = { happy: 'happy', neutral: 'okay', sad: 'sad', sleepy: 'sleepy', energetic: 'energetic' };
+                const label = moodLabels[mood] || mood;
+                announce(`Your pet is now feeling ${label}.`);
+            }
+            _previousMood = mood;
 
             // Update pet SVG expression
             const petContainer = document.getElementById('pet-container');
@@ -3376,7 +3429,7 @@
                             <div class="badge-info">
                                 <div class="badge-name">${isUnlocked ? badge.name : '???'}</div>
                                 <div class="badge-desc">${badge.description}</div>
-                                ${isUnlocked ? `<div class="badge-tier" style="color: ${tierData.color}">${tierData.label}</div>` : ''}
+                                ${isUnlocked ? `<div class="badge-tier" data-tier="${badge.tier}" style="color: ${tierData.color}">${tierData.label}</div>` : ''}
                                 ${isUnlocked ? `<div class="badge-date">${unlockedDate}</div>` : ''}
                             </div>
                         </div>
@@ -3586,12 +3639,14 @@
                     ? `${STICKERS[milestone.rewardId] ? STICKERS[milestone.rewardId].emoji : '🎁'} ${STICKERS[milestone.rewardId] ? STICKERS[milestone.rewardId].name : 'Sticker'}`
                     : `${ACCESSORIES[milestone.rewardId] ? ACCESSORIES[milestone.rewardId].emoji : '🎁'} ${ACCESSORIES[milestone.rewardId] ? ACCESSORIES[milestone.rewardId].name : 'Accessory'}`;
 
+                const milestoneBonus = getStreakBonus(milestone.days);
                 milestonesHTML += `
-                    <div class="streak-milestone ${reached ? 'reached' : ''} ${claimed ? 'claimed' : ''}" aria-label="${milestone.label}: ${milestone.description}${reached ? ', reached' : ''}">
+                    <div class="streak-milestone ${reached ? 'reached' : ''} ${claimed ? 'claimed' : ''}" aria-label="${milestone.label}: ${milestone.description}. Reward: ${rewardLabel}. Daily bonus: ${milestoneBonus.label}${reached ? '. Reached' : ''}">
                         <div class="streak-milestone-day">${milestone.label}</div>
                         <div class="streak-milestone-marker">${reached ? '🔥' : '⚪'}</div>
                         <div class="streak-milestone-reward">${rewardLabel}</div>
                         <div class="streak-milestone-desc">${milestone.description}</div>
+                        <div class="streak-milestone-bonus">${milestoneBonus.label}</div>
                     </div>
                 `;
             });

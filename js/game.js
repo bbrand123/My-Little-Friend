@@ -163,10 +163,10 @@
 
         // Dynamic color for need rings: green when high, yellow, orange, red when low
         function getNeedColor(value) {
-            if (value > 65) return '#66BB6A';
-            if (value > 45) return '#FDD835';
-            if (value > 25) return '#FFA726';
-            return '#EF5350';
+            if (value > 65) return '#66BB6A'; // Green — matches --color-happy-bar
+            if (value > 45) return '#FFD54F'; // Yellow — matches --color-energy
+            if (value > 25) return '#FF8A5C'; // Orange — matches --color-hunger
+            return '#EF5350';                 // Red
         }
 
         // Wellness bar helpers
@@ -213,6 +213,13 @@
             }).join('');
             anchor.appendChild(el);
             setTimeout(() => el.remove(), 2000);
+
+            // Announce stat changes for screen readers
+            const summary = changes.map(c => {
+                const sign = c.amount >= 0 ? '+' : '';
+                return `${c.label} ${sign}${c.amount}`;
+            }).join(', ');
+            announce(summary);
         }
 
         // Update wellness bar display
@@ -1268,6 +1275,13 @@
                 if (currentStage === 'adult') {
                     gameState.adultsRaised = (gameState.adultsRaised || 0) + 1;
 
+                    // Notify if pet can now evolve (adult + excellent care)
+                    if (canEvolve(pet)) {
+                        setTimeout(() => {
+                            showToast('⭐ Your pet can now evolve! Look for the Evolve button.', '#FFD700');
+                        }, 2000);
+                    }
+
                     // Check if any mythical pets just got unlocked
                     Object.keys(PET_TYPES).forEach(typeKey => {
                         const typeData = PET_TYPES[typeKey];
@@ -1633,7 +1647,7 @@
                 if (roomBonusToastCount[roomId] <= MAX_ROOM_BONUS_TOASTS) {
                     showToast(`${room.icon} ${room.name}: ${room.bonus.label}!`, '#4ECDC4');
                 } else {
-                    announce(`Moved to ${room.name}`);
+                    announce(`Moved to ${room.name}. Room bonus still active: ${room.bonus.label}.`);
                 }
             } else {
                 showToast(`${room.icon} Moved to ${room.name}`, '#4ECDC4');
