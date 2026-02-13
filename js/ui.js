@@ -993,7 +993,45 @@
 
         // ==================== TOAST NOTIFICATIONS ====================
 
-        const MAX_VISIBLE_TOASTS = 3;
+        const MAX_VISIBLE_TOASTS = 1;
+
+        // Batch rapid care-action toasts into a single notification
+        const CARE_TOAST_BATCH_MS = 800;
+        let _careToastTimer = null;
+        let _careToastQueue = []; // [{action, emoji}]
+
+        const CARE_ACTION_VERBS = {
+            feed: 'fed', wash: 'washed', play: 'played with',
+            sleep: 'put to sleep', medicine: 'gave medicine to',
+            groom: 'groomed', exercise: 'exercised', treat: 'treated', cuddle: 'cuddled'
+        };
+
+        function queueCareToast(action, emoji) {
+            _careToastQueue.push({ action, emoji });
+            if (_careToastTimer) clearTimeout(_careToastTimer);
+            _careToastTimer = setTimeout(flushCareToasts, CARE_TOAST_BATCH_MS);
+        }
+
+        function flushCareToasts() {
+            _careToastTimer = null;
+            if (_careToastQueue.length === 0) return;
+            const items = _careToastQueue.splice(0);
+            const petName = (gameState.pet && gameState.pet.name) || 'your pet';
+            if (items.length === 1) {
+                const { action, emoji } = items[0];
+                const verb = CARE_ACTION_VERBS[action] || action;
+                const cap = verb.charAt(0).toUpperCase() + verb.slice(1);
+                showToast(`${emoji} ${cap} ${petName}!`, TOAST_COLORS[action] || '#66BB6A');
+            } else {
+                const verbs = items.map(i => CARE_ACTION_VERBS[i.action] || i.action);
+                const emojis = items.map(i => i.emoji).join(' ');
+                const joined = verbs.length > 2
+                    ? verbs.slice(0, -1).join(', ') + ', and ' + verbs[verbs.length - 1]
+                    : verbs.join(' and ');
+                const cap = joined.charAt(0).toUpperCase() + joined.slice(1);
+                showToast(`${emojis} ${cap} ${petName}!`, TOAST_COLORS[items[items.length - 1].action] || '#66BB6A');
+            }
+        }
 
         // Wrap emoji characters in aria-hidden spans so screen readers skip them
         function wrapEmojiForAria(text) {
@@ -1246,8 +1284,8 @@
                 return;
             }
 
-            // Show toast notification
-            showToast(`${petData.emoji} ${message}`, TOAST_COLORS[action] || '#66BB6A');
+            // Batch rapid care toasts into a single notification
+            queueCareToast(action, petData.emoji);
 
             // Update displays
             updateNeedDisplays();
