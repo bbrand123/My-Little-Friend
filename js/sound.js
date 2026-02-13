@@ -931,8 +931,186 @@
                 src.start(t);
             }
 
+            // ==================== BACKGROUND MUSIC ====================
+            // Procedural pentatonic melody via Web Audio API
+            // Adapts to room and time of day for ambient atmosphere
+
+            const MUSIC_VOLUME = 0.08; // Very quiet background
+            let musicEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_musicEnabled'); return v !== 'false'; } catch (e) { return true; } })();
+            let currentMusicLoop = null;
+
+            // Pentatonic scales (mood-matched)
+            const MUSIC_SCALES = {
+                calm:      [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3], // C major pentatonic + octave
+                cozy:      [220.0, 246.9, 293.7, 329.6, 392.0, 440.0, 493.9], // A minor pentatonic
+                bright:    [329.6, 370.0, 440.0, 493.9, 587.3, 659.3],         // E major pentatonic
+                dreamy:    [196.0, 220.0, 261.6, 293.7, 329.6, 392.0]          // G major pentatonic lower
+            };
+
+            const ROOM_MUSIC_MOOD = {
+                bedroom: 'cozy', kitchen: 'bright', bathroom: 'calm',
+                backyard: 'bright', park: 'bright', garden: 'calm'
+            };
+
+            const TIME_MUSIC_MOOD = {
+                day: null, night: 'dreamy', sunset: 'cozy', sunrise: 'calm'
+            };
+
+            function getMusicScale(roomId, timeOfDay) {
+                const timeMood = TIME_MUSIC_MOOD[timeOfDay];
+                if (timeMood) return MUSIC_SCALES[timeMood];
+                const roomMood = ROOM_MUSIC_MOOD[roomId] || 'calm';
+                return MUSIC_SCALES[roomMood];
+            }
+
+            function getMusicTempo(timeOfDay) {
+                if (timeOfDay === 'night' || timeOfDay === 'sunset') return 2200; // ms between notes (slower)
+                if (timeOfDay === 'sunrise') return 1800;
+                return 1600; // day
+            }
+
+            function startMusic(roomId, timeOfDay) {
+                if (!musicEnabled || !isEnabled) return;
+                stopMusic();
+
+                const ctx = getContext();
+                if (!ctx) return;
+
+                const scale = getMusicScale(roomId, timeOfDay);
+                const tempo = getMusicTempo(timeOfDay);
+                const musicGain = ctx.createGain();
+                musicGain.gain.value = 0;
+                musicGain.connect(masterGain);
+
+                // Fade in
+                musicGain.gain.setValueAtTime(0, ctx.currentTime);
+                musicGain.gain.linearRampToValueAtTime(MUSIC_VOLUME, ctx.currentTime + 2);
+
+                let stopped = false;
+                let timerId = null;
+                let prevNote = -1;
+
+                function playNote() {
+                    if (stopped) return;
+                    // Pick a note that's different from the previous and favors stepwise motion
+                    let noteIdx;
+                    if (prevNote < 0) {
+                        noteIdx = Math.floor(Math.random() * scale.length);
+                    } else {
+                        // 70% chance of step, 30% chance of leap
+                        const step = Math.random() < 0.7;
+                        if (step) {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            noteIdx = Math.max(0, Math.min(scale.length - 1, prevNote + dir));
+                        } else {
+                            noteIdx = Math.floor(Math.random() * scale.length);
+                        }
+                    }
+                    prevNote = noteIdx;
+                    const freq = scale[noteIdx];
+
+                    // Sometimes rest (20% chance) for breathing room
+                    if (Math.random() < 0.2) {
+                        timerId = setTimeout(playNote, tempo * 0.5);
+                        return;
+                    }
+
+                    const osc = ctx.createOscillator();
+                    const noteGain = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 600;
+
+                    const noteDuration = tempo / 1000 * 0.8;
+                    const t = ctx.currentTime;
+                    noteGain.gain.setValueAtTime(0.15, t);
+                    noteGain.gain.setValueAtTime(0.12, t + noteDuration * 0.3);
+                    noteGain.gain.exponentialRampToValueAtTime(0.01, t + noteDuration);
+
+                    osc.connect(filter);
+                    filter.connect(noteGain);
+                    noteGain.connect(musicGain);
+
+                    osc.start(t);
+                    osc.stop(t + noteDuration + 0.05);
+                    osc.onended = () => { osc.disconnect(); filter.disconnect(); noteGain.disconnect(); };
+
+                    // Occasional harmony (15% chance)
+                    if (Math.random() < 0.15 && noteIdx + 2 < scale.length) {
+                        const harmOsc = ctx.createOscillator();
+                        const harmGain = ctx.createGain();
+                        harmOsc.type = 'sine';
+                        harmOsc.frequency.value = scale[noteIdx + 2];
+                        harmGain.gain.setValueAtTime(0.06, t);
+                        harmGain.gain.exponentialRampToValueAtTime(0.01, t + noteDuration * 0.7);
+                        harmOsc.connect(harmGain);
+                        harmGain.connect(musicGain);
+                        harmOsc.start(t);
+                        harmOsc.stop(t + noteDuration * 0.7 + 0.05);
+                        harmOsc.onended = () => { harmOsc.disconnect(); harmGain.disconnect(); };
+                    }
+
+                    timerId = setTimeout(playNote, tempo + (Math.random() - 0.5) * tempo * 0.3);
+                }
+
+                timerId = setTimeout(playNote, 1000);
+
+                currentMusicLoop = {
+                    gainNode: musicGain,
+                    stop() {
+                        stopped = true;
+                        if (timerId) { clearTimeout(timerId); timerId = null; }
+                    }
+                };
+            }
+
+            function stopMusic() {
+                if (!currentMusicLoop) return;
+                const ctx = getContext();
+                if (ctx && currentMusicLoop.gainNode) {
+                    currentMusicLoop.gainNode.gain.cancelScheduledValues(ctx.currentTime);
+                    currentMusicLoop.gainNode.gain.setValueAtTime(currentMusicLoop.gainNode.gain.value, ctx.currentTime);
+                    currentMusicLoop.gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+                }
+                const loop = currentMusicLoop;
+                currentMusicLoop = null;
+                setTimeout(() => {
+                    loop.stop();
+                    try { loop.gainNode.disconnect(); } catch (e) {}
+                }, 1100);
+            }
+
+            function toggleMusic() {
+                musicEnabled = !musicEnabled;
+                if (!musicEnabled) {
+                    stopMusic();
+                } else if (currentRoom) {
+                    const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
+                    startMusic(currentRoom, timeOfDay);
+                }
+                try { localStorage.setItem('petCareBuddy_musicEnabled', musicEnabled ? 'true' : 'false'); } catch (e) {}
+                return musicEnabled;
+            }
+
+            function getMusicEnabled() { return musicEnabled; }
+
+            // Extend enterRoom to also restart music
+            const _origEnterRoom = enterRoom;
+            async function enterRoomWithMusic(roomId) {
+                await _origEnterRoom(roomId);
+                if (musicEnabled && isEnabled && roomId) {
+                    const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
+                    startMusic(roomId, timeOfDay);
+                }
+            }
+
             function destroy() {
                 stopAll();
+                stopMusic();
                 if (audioCtx) {
                     audioCtx.close().catch(() => {});
                     audioCtx = null;
@@ -941,7 +1119,7 @@
             }
 
             return {
-                enterRoom,
+                enterRoom: enterRoomWithMusic,
                 stopAll,
                 toggle,
                 getEnabled,
@@ -949,6 +1127,10 @@
                 initOnInteraction,
                 playSFX,
                 destroy,
+                startMusic,
+                stopMusic,
+                toggleMusic,
+                getMusicEnabled,
                 sfx: {
                     feed: sfxFeed,
                     wash: sfxWash,
