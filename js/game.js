@@ -43,6 +43,10 @@
         const roomBonusToastCount = {};
         const MAX_ROOM_BONUS_TOASTS = 3;
 
+        // Track neglect tick counters per pet (keyed by pet id) — kept out of
+        // the pet object so they don't get serialized into the save file.
+        const _neglectTickCounters = {};
+
         // ==================== HAPTIC FEEDBACK ====================
         // Short vibration on supported mobile devices for tactile satisfaction
         function hapticBuzz(ms) {
@@ -368,6 +372,11 @@
                         });
                         parsed.nextPetId = maxId + 1;
                     }
+                    // Strip transient _neglectTickCounter from pet objects (old saves)
+                    parsed.pets.forEach(p => {
+                        if (p) delete p._neglectTickCounter;
+                    });
+
                     // Ensure active pet is in sync with pets array
                     if (parsed.pets.length > 0) {
                         if (parsed.activePetIndex >= parsed.pets.length) {
@@ -388,7 +397,11 @@
                                     const crop = GARDEN_CROPS[plot.cropId];
                                     if (crop) {
                                         const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growthMult));
-                                        plot.growTicks += gardenTicksPassed;
+                                        // Watered plots get +2 on first tick (then water dries),
+                                        // remaining ticks get +1, matching live tick behavior
+                                        const waterBonus = plot.watered ? 1 : 0; // extra +1 for first tick
+                                        plot.growTicks += gardenTicksPassed + waterBonus;
+                                        plot.watered = false;
                                         const newStage = Math.min(3, Math.floor(plot.growTicks / effectiveGrowTime));
                                         plot.stage = Math.max(plot.stage, newStage);
                                     }
@@ -420,14 +433,18 @@
                                 };
                                 if (idx === parsed.activePetIndex) activeOldStats = oldStats;
 
+                                const isActive = idx === parsed.activePetIndex;
+                                // Non-active pets get gentler decay (0.5x rate) matching live gameplay
+                                const rateMult = isActive ? 1 : 0.5;
+
                                 // Hunger decays faster while away (pet gets hungry)
-                                p.hunger = clamp(p.hunger - Math.floor(decay * 1.5), 0, 100);
+                                p.hunger = clamp(p.hunger - Math.floor(decay * 1.5 * rateMult), 0, 100);
                                 // Cleanliness decays slower (pet isn't doing much)
-                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5), 0, 100);
+                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5 * rateMult), 0, 100);
                                 // Happiness decays at normal rate
-                                p.happiness = clamp(p.happiness - decay, 0, 100);
+                                p.happiness = clamp(p.happiness - Math.floor(decay * rateMult), 0, 100);
                                 // Energy RECOVERS while away (pet is resting)
-                                p.energy = clamp(p.energy + Math.floor(decay * 0.75), 0, 100);
+                                p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult), 0, 100);
 
                                 // Pets with friends get a small happiness bonus while away
                                 if (parsed.pets.length > 1 && parsed.relationships) {
@@ -679,12 +696,8 @@
             // Add relationship points
             const relChange = addRelationshipPoints(pet1.id, pet2.id, interaction.relationshipGain);
 
-            // Sync active pet
-            if (gameState.activePetIndex === pet1Index) {
-                gameState.pet = pet1;
-            } else if (gameState.activePetIndex === pet2Index) {
-                gameState.pet = pet2;
-            }
+            // Sync active pet — the active pet could be either participant
+            gameState.pet = gameState.pets[gameState.activePetIndex];
 
             // Pick a random message
             const message = randomFromArray(interaction.messages);
@@ -774,11 +787,12 @@
             // Check for neglect (any stat below 20)
             // Only update neglectCount every 5 minutes (10 ticks at 30s) to prevent
             // rapid inflation from the 30-second update cycle
-            if (!pet._neglectTickCounter) pet._neglectTickCounter = 0;
-            pet._neglectTickCounter++;
+            const petId = pet.id;
+            if (!_neglectTickCounters[petId]) _neglectTickCounters[petId] = 0;
+            _neglectTickCounters[petId]++;
             const isNeglected = pet.hunger < 20 || pet.cleanliness < 20 || pet.happiness < 20 || pet.energy < 20;
-            if (pet._neglectTickCounter >= 10) {
-                pet._neglectTickCounter = 0;
+            if (_neglectTickCounters[petId] >= 10) {
+                _neglectTickCounters[petId] = 0;
                 if (isNeglected) {
                     pet.neglectCount = (pet.neglectCount || 0) + 1;
                 } else if ((pet.neglectCount || 0) > 0) {
@@ -1609,7 +1623,8 @@
                     // Calculate remaining time for countdown
                     const totalTicksNeeded = effectiveGrowTime * 3;
                     const ticksRemaining = Math.max(0, totalTicksNeeded - plot.growTicks);
-                    const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining * (plot.watered ? 0.5 : 1));
+                    const ticksPerMinute = plot.watered ? 2 : 1;
+                    const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining / ticksPerMinute);
                     const timerText = isReady ? '' : (minsRemaining > 0 ? `~${minsRemaining}m left` : 'Almost...');
 
                     // Simplified: emoji + progress bar + one status line
@@ -1822,10 +1837,9 @@
                             if (!p || idx === gameState.activePetIndex) return;
                             p.hunger = Math.round(clamp(p.hunger - 1, 0, 100) * 10) / 10;
                             p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100) * 10) / 10;
-                            p.happiness = Math.round(clamp(p.happiness - 0.5, 0, 100) * 10) / 10;
+                            // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
+                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100) * 10) / 10;
                             p.energy = Math.round(clamp(p.energy - 0.5, 0, 100) * 10) / 10;
-                            // Pets with companions are slightly happier
-                            p.happiness = Math.round(clamp(p.happiness + 0.3, 0, 100) * 10) / 10;
                         });
                         syncActivePetToArray();
                     }
