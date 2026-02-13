@@ -850,13 +850,12 @@
         }
 
         // Get time of day based on real time
-        // Day: 6:00 AM - 6:00 PM | Golden Hour/Sunset: 6:00 PM - 8:00 PM | Night: 8:00 PM - 5:59 AM
+        // Sunrise: 5:00 AM - 5:59 AM | Day: 6:00 AM - 6:00 PM | Sunset: 6:00 PM - 8:00 PM | Night: 8:00 PM - 4:59 AM
         function getTimeOfDay() {
             const now = new Date();
             const hour = now.getHours();
-            const minute = now.getMinutes();
-            // Sunrise brief window at dawn
-            if (hour === 5 && minute >= 30) return 'sunrise';
+            // Sunrise window at dawn (full hour so players can experience it)
+            if (hour === 5) return 'sunrise';
             if (hour >= 6 && hour < 18) return 'day';
             if (hour >= 18 && hour < 20) return 'sunset';
             return 'night';
@@ -1592,6 +1591,28 @@
 
             const petData = PET_TYPES[gameState.pet.type];
 
+            // Play pet voice sound
+            if (typeof SoundManager !== 'undefined') {
+                SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, gameState.pet.type));
+            }
+
+            // Track daily checklist progress
+            if (typeof incrementDailyProgress === 'function') {
+                const dailyCompleted = [];
+                dailyCompleted.push(...incrementDailyProgress('feedCount'));
+                dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+            }
+
+            // Check achievements
+            if (typeof checkAchievements === 'function') {
+                const newAch = checkAchievements();
+                newAch.forEach(ach => {
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
+                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
+
             // Check for growth stage transition
             if (checkGrowthMilestone(gameState.pet)) {
                 showToast(`${crop.seedEmoji} Fed ${escapeHTML(gameState.pet.name || petData.name)} a garden-fresh ${crop.name}!`, '#FF8C42');
@@ -1881,6 +1902,27 @@
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
 
+            // Play pet voice sound
+            if (typeof SoundManager !== 'undefined') {
+                SoundManager.playSFX((ctx) => SoundManager.sfx.petExcited(ctx, pet.type));
+            }
+
+            // Track daily checklist progress
+            if (typeof incrementDailyProgress === 'function') {
+                const dailyCompleted = [];
+                dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+            }
+
+            // Check achievements
+            if (typeof checkAchievements === 'function') {
+                const newAch = checkAchievements();
+                newAch.forEach(ach => {
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
+                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                });
+            }
+
             const message = `${petData.emoji} ${escapeHTML(pet.name || petData.name)} ${randomFromArray(seasonData.activityMessages)}`;
             showToast(message, '#FFB74D');
 
@@ -1975,11 +2017,11 @@
                     if (gameState.pets && gameState.pets.length > 1) {
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.round(clamp(p.hunger - 1, 0, 100) * 10) / 10;
-                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100) * 10) / 10;
+                            p.hunger = Math.round(clamp(p.hunger - 1, 0, 100));
+                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100));
                             // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
-                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100) * 10) / 10;
-                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100) * 10) / 10;
+                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100));
+                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100));
                         });
                         syncActivePetToArray();
                     }

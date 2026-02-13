@@ -44,7 +44,10 @@
         function openMiniGamesMenu() {
             // Remove any existing menu
             const existing = document.querySelector('.minigame-menu-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const overlay = document.createElement('div');
             overlay.className = 'minigame-menu-overlay';
@@ -122,6 +125,7 @@
             });
 
             pushModalEscape(closeMenu);
+            overlay._closeOverlay = closeMenu;
 
             // Focus first game card
             const firstCard = overlay.querySelector('.minigame-card');

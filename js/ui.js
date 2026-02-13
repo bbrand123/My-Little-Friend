@@ -942,6 +942,7 @@
                     syncActivePetToArray();
                     if (switchActivePet(idx)) {
                         _lastGrowthMilestone = 0;
+                        _prevStats = { hunger: -1, cleanliness: -1, happiness: -1, energy: -1 };
                         renderPetPhase();
                         const petData = PET_TYPES[gameState.pet.type];
                         if (petData) {
@@ -1139,7 +1140,10 @@
 
         function careAction(action) {
             // Prevent rapid clicking
-            if (actionCooldown) return;
+            if (actionCooldown) {
+                announce('Action cooling down');
+                return;
+            }
 
             actionCooldown = true;
             const buttons = document.querySelectorAll('.action-btn');
@@ -1148,7 +1152,6 @@
                 btn.disabled = true;
                 btn.setAttribute('aria-disabled', 'true');
             });
-            announce('Action cooling down');
 
             if (actionCooldownTimer) {
                 clearTimeout(actionCooldownTimer);
@@ -1368,18 +1371,22 @@
             // Remove animation class on animationend (avoids flash from idle anim overlap)
             const actionAnimClasses = ['bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim'];
             actionAnimating = true;
-            const onAnimEnd = () => {
-                petContainer.removeEventListener('animationend', onAnimEnd);
-                actionAnimClasses.forEach(c => petContainer.classList.remove(c));
+            if (petContainer) {
+                const onAnimEnd = () => {
+                    petContainer.removeEventListener('animationend', onAnimEnd);
+                    actionAnimClasses.forEach(c => petContainer.classList.remove(c));
+                    actionAnimating = false;
+                };
+                petContainer.addEventListener('animationend', onAnimEnd);
+                // Fallback timeout in case animationend doesn't fire (e.g., display:none)
+                setTimeout(() => {
+                    petContainer.removeEventListener('animationend', onAnimEnd);
+                    actionAnimClasses.forEach(c => petContainer.classList.remove(c));
+                    actionAnimating = false;
+                }, 1200);
+            } else {
                 actionAnimating = false;
-            };
-            petContainer.addEventListener('animationend', onAnimEnd);
-            // Fallback timeout in case animationend doesn't fire (e.g., display:none)
-            setTimeout(() => {
-                petContainer.removeEventListener('animationend', onAnimEnd);
-                actionAnimClasses.forEach(c => petContainer.classList.remove(c));
-                actionAnimating = false;
-            }, 1200);
+            }
 
             saveGame();
         }
@@ -1786,7 +1793,10 @@
 
         function openFeedMenu() {
             const existing = document.querySelector('.feed-menu-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
             const pet = gameState.pet;
@@ -1854,6 +1864,7 @@
             }
 
             pushModalEscape(closeMenu);
+            overlay._closeOverlay = closeMenu;
 
             // Focus trap for Tab key
             overlay.addEventListener('keydown', (e) => {
@@ -1900,6 +1911,28 @@
                     if (typeof currentPet.careActions !== 'number') currentPet.careActions = 0;
                     currentPet.careActions++;
 
+                    // Play pet voice sound
+                    if (typeof SoundManager !== 'undefined') {
+                        SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, currentPet.type));
+                    }
+
+                    // Track daily checklist progress
+                    if (typeof incrementDailyProgress === 'function') {
+                        const dailyCompleted = [];
+                        dailyCompleted.push(...incrementDailyProgress('feedCount'));
+                        dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                        dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
+                    }
+
+                    // Check achievements
+                    if (typeof checkAchievements === 'function') {
+                        const newAch = checkAchievements();
+                        newAch.forEach(ach => {
+                            if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
+                            setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                        });
+                    }
+
                     // Check for growth stage transition
                     if (checkGrowthMilestone(currentPet)) {
                         saveGame();
@@ -1933,98 +1966,6 @@
             // Focus first item
             const firstItem = overlay.querySelector('.feed-menu-item');
             if (firstItem) firstItem.focus();
-        }
-
-        // ==================== MODAL ====================
-
-        function showModal(title, message, icon, onConfirm, onCancel, { cancelLabel = 'Cancel', confirmLabel = 'Confirm' } = {}) {
-            // Capture the element that triggered the modal for focus restoration
-            const triggerEl = document.activeElement;
-
-            // Remove any existing modal
-            const existingModal = document.querySelector('.modal-overlay');
-            if (existingModal) existingModal.remove();
-
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-modal', 'true');
-            modal.setAttribute('aria-labelledby', 'modal-title');
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-icon" aria-hidden="true">${icon}</div>
-                    <h2 class="modal-title" id="modal-title">${title}</h2>
-                    <p class="modal-message">${message}</p>
-                    <div class="modal-buttons">
-                        <button class="modal-btn cancel" id="modal-cancel">
-                            ${escapeHTML(cancelLabel)}
-                        </button>
-                        <button class="modal-btn confirm" id="modal-confirm">
-                            ${escapeHTML(confirmLabel)}
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-
-            const confirmBtn = document.getElementById('modal-confirm');
-            const cancelBtn = document.getElementById('modal-cancel');
-
-            // Focus the cancel button (safer option for children)
-            cancelBtn.focus();
-
-            function escapeClose() {
-                closeModal();
-                if (onCancel) onCancel();
-            }
-
-            pushModalEscape(escapeClose);
-
-            function closeModal() {
-                popModalEscape(escapeClose);
-                modal.remove();
-                // Return focus to the element that opened the modal
-                if (triggerEl && typeof triggerEl.focus === 'function' && document.contains(triggerEl)) {
-                    triggerEl.focus();
-                }
-            }
-
-            confirmBtn.addEventListener('click', () => {
-                closeModal();
-                if (onConfirm) onConfirm();
-            });
-
-            cancelBtn.addEventListener('click', () => {
-                closeModal();
-                if (onCancel) onCancel();
-            });
-
-            // Close on overlay click
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal();
-                    if (onCancel) onCancel();
-                }
-            });
-
-            // Trap focus within modal
-            modal.addEventListener('keydown', (e) => {
-                if (e.key === 'Tab') {
-                    const focusable = modal.querySelectorAll('button');
-                    const first = focusable[0];
-                    const last = focusable[focusable.length - 1];
-
-                    if (e.shiftKey && document.activeElement === first) {
-                        e.preventDefault();
-                        last.focus();
-                    } else if (!e.shiftKey && document.activeElement === last) {
-                        e.preventDefault();
-                        first.focus();
-                    }
-                }
-            });
         }
 
         // ==================== CELEBRATION MODALS ====================
@@ -2757,7 +2698,10 @@
             // Remove existing new-pet modal only — avoid removing unrelated overlays
             // like the birthday celebration (.celebration-modal).
             const existingModal = document.querySelector('.modal-overlay.new-pet-modal');
-            if (existingModal) existingModal.remove();
+            if (existingModal) {
+                if (existingModal._closeOverlay) popModalEscape(existingModal._closeOverlay);
+                existingModal.remove();
+            }
 
             const modal = document.createElement('div');
             modal.className = 'modal-overlay new-pet-modal';
@@ -2802,6 +2746,7 @@
             }
 
             pushModalEscape(closeAndCancel);
+            modal._closeOverlay = closeAndCancel;
 
             // Adopt additional egg - keeps all existing pets
             if (adoptBtn) {
@@ -2964,7 +2909,10 @@
             }
 
             const existing = document.querySelector('.interaction-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const activePet = gameState.pet;
             const activePetData = PET_TYPES[activePet.type];
@@ -3101,6 +3049,7 @@
             document.getElementById('interaction-close').addEventListener('click', closeInteraction);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeInteraction(); });
             pushModalEscape(closeInteraction);
+            overlay._closeOverlay = closeInteraction;
             trapFocus(overlay);
 
             // Focus first partner
@@ -3117,7 +3066,10 @@
             }
 
             const existing = document.querySelector('.social-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const overlay = document.createElement('div');
             overlay.className = 'social-overlay';
@@ -3201,6 +3153,7 @@
             document.getElementById('social-close').addEventListener('click', closeSocial);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSocial(); });
             pushModalEscape(closeSocial);
+            overlay._closeOverlay = closeSocial;
             trapFocus(overlay);
         }
 
@@ -3208,7 +3161,10 @@
 
         function showAchievementsModal() {
             const existing = document.querySelector('.achievements-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const unlocked = gameState.achievements || {};
             const total = Object.keys(ACHIEVEMENTS).length;
@@ -3257,6 +3213,7 @@
             document.getElementById('achievements-close').addEventListener('click', closeAch);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeAch(); });
             pushModalEscape(closeAch);
+            overlay._closeOverlay = closeAch;
             trapFocus(overlay);
         }
 
@@ -3264,7 +3221,10 @@
 
         function showDailyChecklistModal() {
             const existing = document.querySelector('.daily-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const cl = initDailyChecklist();
             const completedCount = cl.tasks.filter(t => t.done).length;
@@ -3313,6 +3273,7 @@
             document.getElementById('daily-close').addEventListener('click', closeDaily);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDaily(); });
             pushModalEscape(closeDaily);
+            overlay._closeOverlay = closeDaily;
             trapFocus(overlay);
         }
 
@@ -3320,7 +3281,10 @@
 
         function showSettingsModal() {
             const existing = document.querySelector('.settings-overlay');
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
 
             const soundEnabled = typeof SoundManager !== 'undefined' && SoundManager.getEnabled();
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
@@ -3416,6 +3380,7 @@
             document.getElementById('settings-close').addEventListener('click', closeSettings);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSettings(); });
             pushModalEscape(closeSettings);
+            overlay._closeOverlay = closeSettings;
             trapFocus(overlay);
         }
 
