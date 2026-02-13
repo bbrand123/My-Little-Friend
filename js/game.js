@@ -203,6 +203,10 @@
             const anchor = document.getElementById('pet-container');
             if (!anchor) return;
 
+            // Limit simultaneous floating indicators to prevent DOM bloat
+            const existing = anchor.querySelectorAll('.stat-change-summary');
+            if (existing.length >= 3) existing[0].remove();
+
             const el = document.createElement('div');
             el.className = 'stat-change-summary';
             el.setAttribute('aria-hidden', 'true');
@@ -310,7 +314,7 @@
         function incrementDailyProgress(key, amount) {
             const cl = initDailyChecklist();
             if (!cl.progress[key]) cl.progress[key] = 0;
-            cl.progress[key] += (amount || 1);
+            cl.progress[key] += (amount ?? 1);
             // Check completions
             let newlyCompleted = [];
             DAILY_TASKS.forEach((task, idx) => {
@@ -858,10 +862,32 @@
                                 // Energy RECOVERS while away (pet is resting)
                                 p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult), 0, 100);
 
-                                // Pets with friends get a small happiness bonus while away
+                                // Pets with friends get a happiness bonus while away (scaled by relationship quality)
                                 if (parsed.pets.length > 1 && parsed.relationships) {
-                                    const friendBonus = Math.min(5, Math.floor(decay * 0.2));
-                                    p.happiness = clamp(p.happiness + friendBonus, 0, 100);
+                                    let bestRelPoints = 0;
+                                    Object.values(parsed.relationships).forEach(rel => {
+                                        if (rel && typeof rel.points === 'number' && rel.points > bestRelPoints) {
+                                            bestRelPoints = rel.points;
+                                        }
+                                    });
+                                    if (bestRelPoints > 0) {
+                                        const relScale = Math.min(1, bestRelPoints / 180);
+                                        const friendBonus = Math.min(5, Math.floor(decay * 0.2 * relScale));
+                                        p.happiness = clamp(p.happiness + friendBonus, 0, 100);
+                                    }
+                                }
+                            });
+
+                            // Track neglect for offline decay — if stats dropped below 20, increment neglectCount
+                            petsToDecay.forEach(p => {
+                                if (!p) return;
+                                const isNeglected = p.hunger < 20 || p.cleanliness < 20 || p.happiness < 20 || p.energy < 20;
+                                if (isNeglected) {
+                                    // Scale neglect count by offline time (1 per ~10 minutes of neglect)
+                                    const neglectIncrements = Math.floor(minutesPassed / 10);
+                                    if (neglectIncrements > 0) {
+                                        p.neglectCount = (p.neglectCount || 0) + neglectIncrements;
+                                    }
                                 }
                             });
 
@@ -1249,7 +1275,7 @@
             return levels[quality] || 0;
         }
 
-        let _lastMilestoneCheck = 0;
+        let _milestoneCheckInProgress = false;
         function checkGrowthMilestone(pet) {
             if (!pet) return false;
 
@@ -1258,10 +1284,10 @@
             const lastStage = pet.lastGrowthStage || 'baby';
 
             if (currentStage !== lastStage) {
-                // Guard against duplicate celebration if called twice in the same tick
-                const now = Date.now();
-                if (now - _lastMilestoneCheck < 50) return false;
-                _lastMilestoneCheck = now;
+                // Guard against duplicate celebration if called multiple times
+                if (_milestoneCheckInProgress) return false;
+                _milestoneCheckInProgress = true;
+                setTimeout(() => { _milestoneCheckInProgress = false; }, 100);
                 pet.growthStage = currentStage;
                 pet.lastGrowthStage = currentStage;
 
@@ -1725,6 +1751,9 @@
 
             if (garden.plots[plotIndex] !== null) return; // Plot occupied
 
+            const crop = GARDEN_CROPS[cropId];
+            if (!crop) return;
+
             garden.plots[plotIndex] = {
                 cropId: cropId,
                 stage: 0,
@@ -1732,7 +1761,6 @@
                 watered: false
             };
 
-            const crop = GARDEN_CROPS[cropId];
             showToast(`🌱 Planted ${crop.name}!`, '#66BB6A');
 
             if (gameState.pet) {
@@ -1854,6 +1882,13 @@
             if (plot.stage >= 3) return; // Ready crops should be harvested, not removed
 
             const crop = GARDEN_CROPS[plot.cropId];
+            if (!crop) {
+                // Invalid crop data — just clear the plot silently
+                garden.plots[plotIndex] = null;
+                saveGame();
+                if (gameState.currentRoom === 'garden') renderGardenUI();
+                return;
+            }
 
             const existing = document.querySelector('.remove-crop-overlay');
             if (existing) {
@@ -1929,6 +1964,10 @@
             // Track care actions for growth
             if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
             gameState.pet.careActions++;
+
+            // Track lifetime feed count for feed-specific badges/achievements
+            if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
+            gameState.totalFeedCount++;
 
             const petData = PET_TYPES[gameState.pet.type];
 
@@ -2317,7 +2356,9 @@
                     const timeOfDay = gameState.timeOfDay || 'day';
                     let energyDecayBonus = 0;
                     let energyRegenBonus = 0;
-                    if (timeOfDay === 'night') {
+                    if (timeOfDay === 'day') {
+                        energyDecayBonus = 1; // Pet is active during the day — energy decays faster
+                    } else if (timeOfDay === 'night') {
                         energyRegenBonus = 2; // Pet rests at night — energy recovers
                     } else if (timeOfDay === 'sunset') {
                         energyRegenBonus = 1; // Pet starts winding down, slight recovery
@@ -2360,11 +2401,27 @@
                         syncActivePetToArray();
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.floor(clamp(p.hunger - 1, 0, 100));
+                            p.hunger = Math.floor(clamp(p.hunger - 0.5, 0, 100));
                             p.cleanliness = Math.floor(clamp(p.cleanliness - 0.5, 0, 100));
                             // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
                             p.happiness = Math.floor(clamp(p.happiness - 0.2, 0, 100));
                             p.energy = Math.floor(clamp(p.energy - 0.5, 0, 100));
+
+                            // Track neglect for non-active pets (reuse per-pet tick counter)
+                            const pid = p.id;
+                            if (pid != null) {
+                                if (!_neglectTickCounters[pid]) _neglectTickCounters[pid] = 0;
+                                _neglectTickCounters[pid]++;
+                                if (_neglectTickCounters[pid] >= 10) {
+                                    _neglectTickCounters[pid] = 0;
+                                    const neglected = p.hunger < 20 || p.cleanliness < 20 || p.happiness < 20 || p.energy < 20;
+                                    if (neglected) {
+                                        p.neglectCount = (p.neglectCount || 0) + 1;
+                                    } else if ((p.neglectCount || 0) > 0) {
+                                        p.neglectCount = p.neglectCount - 1;
+                                    }
+                                }
+                            }
                         });
                     }
 
@@ -2381,8 +2438,8 @@
                         // Morning energy boost when transitioning to sunrise
                         if (newTimeOfDay === 'sunrise' && previousTime === 'night') {
                             pet.energy = clamp(pet.energy + 15, 0, 100);
-                            const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
-                            announce(`Good morning! ${petName} wakes up feeling refreshed!`);
+                            const morningPetName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                            announce(`Good morning! ${morningPetName} wakes up feeling refreshed!`);
                         }
                         // Nighttime sleepiness notification
                         if (newTimeOfDay === 'night') {

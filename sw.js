@@ -30,9 +30,8 @@ self.addEventListener('activate', (event) => {
             Promise.all(
                 keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
             )
-        )
+        ).then(() => self.clients.claim())
     );
-    self.clients.claim();
 });
 
 // Fetch — stale-while-revalidate: serve cached immediately, update in background
@@ -43,7 +42,7 @@ self.addEventListener('fetch', (event) => {
             const fetchPromise = fetch(event.request).then((response) => {
                 if (response.ok && event.request.url.startsWith(self.location.origin)) {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
                 }
                 return response;
             }).catch(() => null);
@@ -54,6 +53,14 @@ self.addEventListener('fetch', (event) => {
                 // Offline fallback
                 if (event.request.mode === 'navigate') {
                     return caches.match('./index.html');
+                }
+                // Return empty responses with correct content types for JS/CSS to avoid parse errors
+                const url = event.request.url;
+                if (url.endsWith('.js')) {
+                    return new Response('/* offline */', { status: 503, headers: { 'Content-Type': 'application/javascript' } });
+                }
+                if (url.endsWith('.css')) {
+                    return new Response('/* offline */', { status: 503, headers: { 'Content-Type': 'text/css' } });
                 }
                 return new Response('Service Unavailable', {
                     status: 503,

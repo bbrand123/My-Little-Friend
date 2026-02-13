@@ -381,7 +381,7 @@
             function fadeIn(gainNode, ctx) {
                 gainNode.gain.cancelScheduledValues(ctx.currentTime);
                 gainNode.gain.setValueAtTime(0, ctx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(1, ctx.currentTime + FADE_DURATION);
+                gainNode.gain.linearRampToValueAtTime(SFX_VOLUME, ctx.currentTime + FADE_DURATION);
             }
 
             function fadeOut(gainNode, ctx) {
@@ -416,9 +416,12 @@
                 // If another enterRoom call arrived while we were fading out, bail
                 if (seq !== _enterRoomSeq) return;
 
-                currentRoom = roomId;
                 const factory = earconFactories[roomId];
-                if (!factory) return;
+                if (!factory) {
+                    currentRoom = roomId;
+                    return;
+                }
+                currentRoom = roomId;
 
                 try {
                     currentEarcon = factory(ctx);
@@ -433,7 +436,7 @@
 
             function stopAll() {
                 if (currentEarcon) {
-                    const ctx = getContext();
+                    const ctx = audioCtx;
                     if (ctx) {
                         currentEarcon.gainNode.gain.cancelScheduledValues(ctx.currentTime);
                         currentEarcon.gainNode.gain.setValueAtTime(0, ctx.currentTime);
@@ -448,6 +451,11 @@
                 isEnabled = !isEnabled;
                 if (!isEnabled) {
                     stopAll();
+                } else if (currentRoom) {
+                    // Re-enter the current room to restore earcons after re-enabling
+                    const roomToRestore = currentRoom;
+                    currentRoom = null;
+                    enterRoom(roomToRestore);
                 }
                 try { localStorage.setItem('petCareBuddy_soundEnabled', isEnabled ? 'true' : 'false'); } catch (e) {}
                 return isEnabled;
@@ -477,6 +485,7 @@
 
             function playSFX(generator) {
                 if (!isEnabled) return;
+                if (!masterGain) return;
                 const ctx = getContext();
                 if (!ctx) return;
                 // Retry resume if context is still suspended (e.g. browser blocked auto-play)
@@ -1028,7 +1037,7 @@
                     const noteDuration = tempo / 1000 * 0.8;
                     const t = ctx.currentTime;
                     noteGain.gain.setValueAtTime(0.15, t);
-                    noteGain.gain.setValueAtTime(0.12, t + noteDuration * 0.3);
+                    noteGain.gain.linearRampToValueAtTime(0.12, t + noteDuration * 0.3);
                     noteGain.gain.exponentialRampToValueAtTime(0.01, t + noteDuration);
 
                     osc.connect(filter);
@@ -1101,7 +1110,10 @@
             // Extend enterRoom to also restart music
             const _origEnterRoom = enterRoom;
             async function enterRoomWithMusic(roomId) {
+                const seqBefore = _enterRoomSeq;
                 await _origEnterRoom(roomId);
+                // If another enterRoom call occurred while awaiting, don't start music with stale roomId
+                if (seqBefore !== _enterRoomSeq && currentRoom !== roomId) return;
                 if (musicEnabled && isEnabled && roomId) {
                     const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
                     startMusic(roomId, timeOfDay);

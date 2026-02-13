@@ -785,6 +785,7 @@
         }
 
         function finishHideSeekRound() {
+            if (!hideSeekState) return;
             const instruction = document.getElementById('hideseek-instruction');
             const allFound = hideSeekState.treatsFound >= hideSeekState.totalTreats;
 
@@ -824,6 +825,13 @@
             document.querySelectorAll('.hideseek-hiding-spot').forEach(el => {
                 el.style.pointerEvents = 'none';
             });
+
+            // Auto-end the game after a brief pause (consistent with other mini-games)
+            if (hideSeekState) {
+                hideSeekState._autoEndTimeout = setTimeout(() => {
+                    endHideSeekGame();
+                }, 2500);
+            }
         }
 
         function endHideSeekGame() {
@@ -833,6 +841,9 @@
 
             if (hideSeekState && hideSeekState.timerId) {
                 clearInterval(hideSeekState.timerId);
+            }
+            if (hideSeekState && hideSeekState._autoEndTimeout) {
+                clearTimeout(hideSeekState._autoEndTimeout);
             }
 
             const overlay = document.querySelector('.hideseek-game-overlay');
@@ -1092,6 +1103,11 @@
                     setTimeout(() => {
                         if (bubble.parentNode) bubble.remove();
                     }, 500);
+                }
+                // Remove fired timer from array to prevent unbounded growth
+                if (bubblePopState && bubblePopState._bubbleRemovalTimers) {
+                    const idx = bubblePopState._bubbleRemovalTimers.indexOf(removalId);
+                    if (idx !== -1) bubblePopState._bubbleRemovalTimers.splice(idx, 1);
                 }
             }, bubbleLifetime);
             bubblePopState._bubbleRemovalTimers.push(removalId);
@@ -1553,7 +1569,7 @@
                 const gain = ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.value = SIMON_FREQUENCIES[color];
-                gain.gain.value = 0.3;
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
@@ -1572,7 +1588,7 @@
                 const gain = ctx.createGain();
                 osc.type = 'sawtooth';
                 osc.frequency.value = 150;
-                gain.gain.value = 0.25;
+                gain.gain.setValueAtTime(0.25, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
@@ -1718,7 +1734,7 @@
             const baseSpeed = Math.max(350, 600 - simonState.round * 25);
             const speed = Math.max(200, Math.round(baseSpeed / (simonState.difficulty || 1)));
 
-            setTimeout(() => simonPlayPattern(speed), 400);
+            simonState._roundTransitionTimer = setTimeout(() => simonPlayPattern(speed), 400);
         }
 
         function simonPlayPattern(speed) {
@@ -1862,7 +1878,7 @@
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
-                const roundsCompleted = Math.max(simonState.highestRound, simonState.score > 0 ? 1 : 0);
+                const roundsCompleted = simonState.highestRound;
                 const happinessBonus = Math.min(roundsCompleted * 4, 30);
                 const energyCost = Math.min(roundsCompleted * 2, 10);
 
@@ -2288,12 +2304,15 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
 
+                const isNewBest = updateMinigameHighScore('coloring', colored);
+                const bestMsg = isNewBest ? ' New best!' : '';
+
                 updateNeedDisplays();
                 updatePetMood();
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}!`);
+                announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}!${bestMsg}`);
             }
 
             restorePostMiniGameState();

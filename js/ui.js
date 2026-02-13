@@ -526,18 +526,24 @@
                 showToast(`Welcome home, ${escapeHTML(gameState.pet.name)}!`, '#4ECDC4');
             }
 
-            submitBtn.addEventListener('click', () => finishNaming(input.value, false));
-            skipBtn.addEventListener('click', () => finishNaming('', true));
+            function closeNaming() {
+                popModalEscape(closeNaming);
+                finishNaming('', true);
+            }
+
+            submitBtn.addEventListener('click', () => { popModalEscape(closeNaming); finishNaming(input.value, false); });
+            skipBtn.addEventListener('click', () => closeNaming());
             input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') finishNaming(input.value, false);
+                if (e.key === 'Enter') { popModalEscape(closeNaming); finishNaming(input.value, false); }
             });
+            pushModalEscape(closeNaming);
             trapFocus(overlay);
         }
 
         // Exposed on window so game.js can read/write these flags reliably
         // even if files are loaded as modules in the future.
-        let _petPhaseTimersRunning = false;
-        let _petPhaseLastRoom = null;
+        var _petPhaseTimersRunning = false;
+        var _petPhaseLastRoom = null;
 
         // ==================== ROOM BONUS BADGE ====================
         // Returns a small badge indicating room bonus for an action button
@@ -1134,8 +1140,8 @@
                 if (shouldShow) {
                     _onboardingShownThisSession[hint.id] = true;
                     markHintShown(hint.id);
-                    // Stagger hints so they don't all show at once
-                    const delay = Object.keys(_onboardingShownThisSession).length * 4000;
+                    // Stagger hints so they don't all show at once (subtract 1 because current hint was already added)
+                    const delay = (Object.keys(_onboardingShownThisSession).length - 1) * 4000;
                     setTimeout(() => {
                         showOnboardingTooltip(hint.message);
                     }, 1500 + delay);
@@ -1151,7 +1157,7 @@
             tooltip.setAttribute('role', 'status');
             tooltip.innerHTML = `
                 <span class="onboarding-icon" aria-hidden="true">💡</span>
-                <span class="onboarding-text">${message}</span>
+                <span class="onboarding-text">${escapeHTML(message)}</span>
                 <button class="onboarding-dismiss" aria-label="Dismiss tip">✕</button>
             `;
             document.body.appendChild(tooltip);
@@ -2333,8 +2339,9 @@
             function closeModal() {
                 popModalEscape(closeModal);
                 modal.remove();
-                const confettiContainer = document.querySelector('.confetti-container');
-                if (confettiContainer) confettiContainer.remove();
+                document.querySelectorAll('.confetti-container').forEach(c => c.remove());
+                const confettiStyleEl = document.getElementById('confetti-style');
+                if (confettiStyleEl) confettiStyleEl.remove();
                 // Return focus to the game content area
                 const gameContent = document.getElementById('game-content');
                 if (gameContent) {
@@ -2353,6 +2360,7 @@
         }
 
         function showEvolutionCelebration(pet, evolutionData) {
+            if (!pet) return;
             // Enhanced celebration: flash + double confetti
             createCelebrationFlash();
             createConfetti();
@@ -2406,12 +2414,14 @@
             function closeModal() {
                 popModalEscape(closeModal);
                 modal.remove();
+                // Remove confetti before re-rendering
+                document.querySelectorAll('.confetti-container').forEach(c => c.remove());
+                const confettiStyleEl = document.getElementById('confetti-style');
+                if (confettiStyleEl) confettiStyleEl.remove();
                 // Re-render to show evolved appearance
                 if (typeof renderPetPhase === 'function') {
                     renderPetPhase();
                 }
-                const confettiContainer = document.querySelector('.confetti-container');
-                if (confettiContainer) confettiContainer.remove();
             }
 
             okBtn.addEventListener('click', closeModal);
@@ -2443,19 +2453,7 @@
             setTimeout(() => petContainer.classList.remove('celebration-pulse'), 1500);
         }
 
-        function createCelebrationFlash() {
-            const flash = document.createElement('div');
-            flash.className = 'celebration-flash';
-            flash.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(flash);
-            setTimeout(() => flash.remove(), 800);
-        }
-
         function createConfetti() {
-            // Remove existing confetti
-            const existing = document.querySelector('.confetti-container');
-            if (existing) existing.remove();
-
             const container = document.createElement('div');
             container.className = 'confetti-container';
             container.style.cssText = `
@@ -2674,21 +2672,7 @@
             const doneBtn = document.getElementById('furniture-done');
             if (doneBtn) doneBtn.focus();
 
-            // Trap focus within modal
-            overlay.addEventListener('keydown', (e) => {
-                if (e.key === 'Tab') {
-                    const focusable = overlay.querySelectorAll('button');
-                    const first = focusable[0];
-                    const last = focusable[focusable.length - 1];
-                    if (e.shiftKey && document.activeElement === first) {
-                        e.preventDefault();
-                        last.focus();
-                    } else if (!e.shiftKey && document.activeElement === last) {
-                        e.preventDefault();
-                        first.focus();
-                    }
-                }
-            });
+            trapFocus(overlay);
 
             // Handle furniture selection (scoped to overlay to avoid cross-modal interference)
             overlay.querySelectorAll('.furniture-option').forEach(btn => {
@@ -3574,7 +3558,7 @@
                     <h2 class="achievements-title">🏆 Achievements</h2>
                     <p class="achievements-subtitle">${unlockedCount}/${total} unlocked</p>
                     <div class="achievements-progress-bar">
-                        <div class="achievements-progress-fill" style="width: ${(unlockedCount / total) * 100}%;"></div>
+                        <div class="achievements-progress-fill" style="width: ${total > 0 ? (unlockedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="achievements-grid">${cardsHTML}</div>
                     <button class="achievements-close" id="achievements-close">Close</button>
@@ -3633,7 +3617,7 @@
                     <h2 class="daily-title">📋 Daily Tasks</h2>
                     <p class="daily-subtitle">${completedCount}/${totalTasks} complete today</p>
                     <div class="daily-progress-bar">
-                        <div class="daily-progress-fill" style="width: ${(completedCount / totalTasks) * 100}%;"></div>
+                        <div class="daily-progress-fill" style="width: ${totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0}%;"></div>
                     </div>
                     <div class="daily-tasks-list">${tasksHTML}</div>
                     ${completedCount === totalTasks ? '<div class="daily-all-done">All tasks complete! Great job today!</div>' : ''}
@@ -3710,7 +3694,7 @@
                     <h2 class="badges-title">🎖️ Badges</h2>
                     <p class="badges-subtitle">${unlockedCount}/${total} earned</p>
                     <div class="badges-progress-bar">
-                        <div class="badges-progress-fill" style="width: ${(unlockedCount / total) * 100}%;"></div>
+                        <div class="badges-progress-fill" style="width: ${total > 0 ? (unlockedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="badges-content">${contentHTML}</div>
                     <button class="badges-close" id="badges-close">Close</button>
@@ -3783,7 +3767,7 @@
                     <h2 class="sticker-book-title">📓 Sticker Book</h2>
                     <p class="sticker-book-subtitle">${collectedCount}/${total} collected</p>
                     <div class="sticker-book-progress-bar">
-                        <div class="sticker-book-progress-fill" style="width: ${(collectedCount / total) * 100}%;"></div>
+                        <div class="sticker-book-progress-fill" style="width: ${total > 0 ? (collectedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="sticker-book-pages">${pagesHTML}</div>
                     <button class="sticker-book-close" id="sticker-book-close">Close</button>
@@ -3858,7 +3842,7 @@
                     <h2 class="trophy-room-title">🏆 Trophy Room</h2>
                     <p class="trophy-room-subtitle">${earnedCount}/${total} trophies</p>
                     <div class="trophy-room-progress-bar">
-                        <div class="trophy-room-progress-fill" style="width: ${(earnedCount / total) * 100}%;"></div>
+                        <div class="trophy-room-progress-fill" style="width: ${total > 0 ? (earnedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="trophy-shelves">${shelvesHTML}</div>
                     <button class="trophy-room-close" id="trophy-room-close">Close</button>
@@ -3914,7 +3898,6 @@
             });
 
             // Build flame visualization
-            const flameSize = Math.min(streak.current, 30);
             let flameEmojis = '';
             if (streak.current >= 30) flameEmojis = '🔥🔥🔥🔥🔥';
             else if (streak.current >= 14) flameEmojis = '🔥🔥🔥🔥';
@@ -4038,10 +4021,10 @@
             document.body.appendChild(overlay);
 
             // Navigation to sub-modals
-            document.getElementById('rh-badges').addEventListener('click', () => { closeRewardsHub(); showBadgesModal(); });
-            document.getElementById('rh-stickers').addEventListener('click', () => { closeRewardsHub(); showStickerBookModal(); });
-            document.getElementById('rh-trophies').addEventListener('click', () => { closeRewardsHub(); showTrophyRoomModal(); });
-            document.getElementById('rh-streak').addEventListener('click', () => { closeRewardsHub(); showStreakModal(); });
+            document.getElementById('rh-badges').addEventListener('click', () => { closeRewardsHub(); setTimeout(() => showBadgesModal(), 0); });
+            document.getElementById('rh-stickers').addEventListener('click', () => { closeRewardsHub(); setTimeout(() => showStickerBookModal(), 0); });
+            document.getElementById('rh-trophies').addEventListener('click', () => { closeRewardsHub(); setTimeout(() => showTrophyRoomModal(), 0); });
+            document.getElementById('rh-streak').addEventListener('click', () => { closeRewardsHub(); setTimeout(() => showStreakModal(), 0); });
 
             function closeRewardsHub() {
                 popModalEscape(closeRewardsHub);
