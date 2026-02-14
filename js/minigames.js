@@ -11,8 +11,8 @@
 
         const MINI_GAMES = [
             { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet! Click or press Enter to throw.' },
-            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats around the screen! Requires pointer (mouse or touch).' },
-            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time! Requires pointer (mouse or touch).' },
+            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats! Use keyboard (Tab + Enter) or pointer.' },
+            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time! Best with pointer; keyboard possible.' },
             { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs! Use keyboard or click.' },
             { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds! Use keyboard or click.' },
             { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Requires pointer (mouse or touch).' }
@@ -593,10 +593,13 @@
 
             let spotsHTML = '';
             hideSeekState.spots.forEach((spot, i) => {
+                // Provide spatial position hints for keyboard/screen reader users
+                const colLabel = spot.x < 33 ? 'left' : spot.x < 66 ? 'center' : 'right';
+                const rowLabel = spot.y < 33 ? 'top' : spot.y < 66 ? 'middle' : 'bottom';
                 spotsHTML += `<div class="hideseek-hiding-spot" data-index="${i}"
                     style="left: ${spot.x}%; top: ${spot.y}%;"
                     role="button" tabindex="0"
-                    aria-label="Search under the ${spot.name}">${spot.emoji}</div>`;
+                    aria-label="Search under ${spot.name}, ${rowLabel}-${colLabel}, ${i + 1} of ${hideSeekState.spots.length}">${spot.emoji}</div>`;
             });
 
             let progressDots = '';
@@ -674,6 +677,9 @@
                 if (hideSeekState.timeLeft <= 5 && timerEl) {
                     timerEl.style.color = '#F44336';
                     timerEl.style.fontWeight = 'bold';
+                    if (hideSeekState.timeLeft === 5) {
+                        announce('5 seconds left!');
+                    }
                 }
 
                 if (hideSeekState.timeLeft <= 0) {
@@ -1009,6 +1015,9 @@
                     if (bubblePopState.timeLeft <= 5) {
                         timerEl.style.color = '#EF5350';
                         timerEl.style.fontWeight = 'bold';
+                        if (bubblePopState.timeLeft === 5) {
+                            announce('5 seconds left!');
+                        }
                     }
                 }
 
@@ -1653,10 +1662,10 @@
                     <p class="simonsays-game-round" id="simon-round">Round: 1</p>
                     <div class="simonsays-board">
                         <div class="simonsays-pad-container">
-                            <button class="simonsays-pad disabled" data-color="green" aria-label="Green pad"></button>
-                            <button class="simonsays-pad disabled" data-color="red" aria-label="Red pad"></button>
-                            <button class="simonsays-pad disabled" data-color="yellow" aria-label="Yellow pad"></button>
-                            <button class="simonsays-pad disabled" data-color="blue" aria-label="Blue pad"></button>
+                            <button class="simonsays-pad disabled" data-color="green" aria-label="Green pad (triangle, top-left)"></button>
+                            <button class="simonsays-pad disabled" data-color="red" aria-label="Red pad (circle, top-right)"></button>
+                            <button class="simonsays-pad disabled" data-color="yellow" aria-label="Yellow pad (square, bottom-left)"></button>
+                            <button class="simonsays-pad disabled" data-color="blue" aria-label="Blue pad (star, bottom-right)"></button>
                         </div>
                         <div class="simonsays-center">
                             <div class="simonsays-center-pet" id="simon-pet">${petSVG}</div>

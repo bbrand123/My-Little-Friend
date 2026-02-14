@@ -137,7 +137,7 @@
                             <div class="battle-pet player-pet">
                                 <span class="battle-pet-name">${petName}</span>
                                 <span class="battle-pet-emoji">${PET_TYPES[pet.type].emoji}</span>
-                                <div class="battle-hp-bar" role="progressbar" aria-valuenow="${playerPct}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="battle-hp-bar" role="progressbar" aria-valuenow="${playerPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${petName} HP: ${playerHP} of ${playerMaxHP}">
                                     <div class="battle-hp-fill player-hp" style="width:${playerPct}%"></div>
                                 </div>
                                 <span class="battle-hp-text">${playerHP}/${playerMaxHP} HP</span>
@@ -146,7 +146,7 @@
                             <div class="battle-pet opponent-pet">
                                 <span class="battle-pet-name">${oppName}</span>
                                 <span class="battle-pet-emoji">${oppData.emoji}</span>
-                                <div class="battle-hp-bar" role="progressbar" aria-valuenow="${oppPct}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="battle-hp-bar" role="progressbar" aria-valuenow="${oppPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${oppName} HP: ${oppHP} of ${oppMaxHP}">
                                     <div class="battle-hp-fill opponent-hp" style="width:${oppPct}%"></div>
                                 </div>
                                 <span class="battle-hp-text">${oppHP}/${oppMaxHP} HP</span>
@@ -180,6 +180,9 @@
 
             let battleLogHistory = [];
 
+            let _battleLogAnnounceTimer = null;
+            let _battleLogAnnounceQueue = [];
+
             function logMessage(msg) {
                 battleLogHistory.push(msg);
                 const log = overlay.querySelector('#battle-log');
@@ -190,6 +193,16 @@
                     log.appendChild(entry);
                     log.scrollTop = log.scrollHeight;
                 }
+                // Batch rapid log messages for screen readers
+                _battleLogAnnounceQueue.push(msg);
+                if (_battleLogAnnounceTimer) clearTimeout(_battleLogAnnounceTimer);
+                _battleLogAnnounceTimer = setTimeout(() => {
+                    if (_battleLogAnnounceQueue.length > 0) {
+                        announce(_battleLogAnnounceQueue.join('. '));
+                        _battleLogAnnounceQueue = [];
+                    }
+                    _battleLogAnnounceTimer = null;
+                }, 300);
             }
 
             function restoreBattleLog() {
@@ -266,12 +279,14 @@
                     pet.careActions = (pet.careActions || 0) + 1;
                     setTimeout(() => {
                         showToast('⚔️ Battle Won! +15 Happiness!', '#FFD700');
+                        announce('Victory! You won the battle! Plus 15 happiness!', true);
                     }, 500);
                 } else {
                     comp.battlesLost++;
                     pet.happiness = clamp(pet.happiness + 5, 0, 100);
                     setTimeout(() => {
                         showToast('⚔️ Good fight! +5 Happiness for trying!', '#64B5F6');
+                        announce('Defeat. Good fight though! Plus 5 happiness for trying.', true);
                     }, 500);
                 }
                 saveGame();
@@ -285,13 +300,18 @@
                             <h3>${won ? '🎉 Victory!' : '😢 Defeat'}</h3>
                             <p>${won ? 'Your pet showed great strength!' : 'Better luck next time!'}</p>
                             <p class="battle-stats-summary">Record: ${comp.battlesWon}W / ${comp.battlesLost}L</p>
-                            <button class="competition-btn primary" id="battle-done">Done</button>
+                            <div class="battle-result-actions">
+                                <button class="competition-btn primary" id="battle-done">Done</button>
+                                <button class="competition-btn secondary" id="battle-back-hub">Back to Hub</button>
+                            </div>
                         </div>
                     `;
                     const modal = overlay.querySelector('.battle-modal');
                     if (modal) modal.appendChild(resultDiv);
                     const doneBtn = overlay.querySelector('#battle-done');
                     if (doneBtn) doneBtn.addEventListener('click', closeBattle);
+                    const hubBtn = overlay.querySelector('#battle-back-hub');
+                    if (hubBtn) hubBtn.addEventListener('click', () => { closeBattle(); setTimeout(openCompetitionHub, 100); });
                 }, 800);
             }
 
@@ -406,14 +426,14 @@
                                 <div class="battle-pet player-pet">
                                     <span class="battle-pet-name">${currentPetName}</span>
                                     <span class="battle-pet-emoji">${PET_TYPES[currentPet.type].emoji}</span>
-                                    <div class="battle-hp-bar"><div class="battle-hp-fill player-hp" style="width:${petPct}%"></div></div>
+                                    <div class="battle-hp-bar" role="progressbar" aria-valuenow="${petPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${currentPetName} HP: ${petHPs[currentPetIdx]} of ${petMaxHPs[currentPetIdx]}"><div class="battle-hp-fill player-hp" style="width:${petPct}%"></div></div>
                                     <span class="battle-hp-text">${petHPs[currentPetIdx]}/${petMaxHPs[currentPetIdx]} HP</span>
                                 </div>
                                 <span class="battle-vs">VS</span>
                                 <div class="battle-pet boss-pet">
                                     <span class="battle-pet-name">${boss.name}</span>
                                     <span class="battle-pet-emoji boss-emoji-large">${boss.emoji}</span>
-                                    <div class="battle-hp-bar"><div class="battle-hp-fill boss-hp" style="width:${bossPct}%"></div></div>
+                                    <div class="battle-hp-bar" role="progressbar" aria-valuenow="${bossPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${boss.name} HP: ${bossHP} of ${bossMaxHP}"><div class="battle-hp-fill boss-hp" style="width:${bossPct}%"></div></div>
                                     <span class="battle-hp-text">${bossHP}/${bossMaxHP} HP</span>
                                 </div>
                             </div>
@@ -557,14 +577,20 @@
                             grantSticker(rewards.sticker);
                         }
                         gameState.pet = gameState.pets[gameState.activePetIndex];
-                        setTimeout(() => showToast(`👹 Boss Defeated: ${boss.name}!`, '#FFD700'), 500);
+                        setTimeout(() => {
+                            showToast(`👹 Boss Defeated: ${boss.name}!`, '#FFD700');
+                            announce(`Victory! Boss ${boss.name} defeated!`, true);
+                        }, 500);
                     } else {
                         // Consolation rewards
                         allPets.forEach(p => {
                             p.happiness = clamp(p.happiness + 5, 0, 100);
                         });
                         gameState.pet = gameState.pets[gameState.activePetIndex];
-                        setTimeout(() => showToast('👹 The boss was too strong! Try again when your pets are stronger!', '#64B5F6'), 500);
+                        setTimeout(() => {
+                            showToast('👹 The boss was too strong! Try again when your pets are stronger!', '#64B5F6');
+                            announce('Defeat. The boss was too strong. Try again when your pets are stronger.', true);
+                        }, 500);
                     }
                     saveGame();
 
@@ -575,13 +601,18 @@
                             <div class="battle-result-content">
                                 <h3>${won ? '🏆 Boss Defeated!' : '😢 Defeat'}</h3>
                                 <p>${won ? boss.victoryMessage : 'Train harder and come back!'}</p>
-                                <button class="competition-btn primary" id="boss-done">Done</button>
+                                <div class="battle-result-actions">
+                                    <button class="competition-btn primary" id="boss-done">Done</button>
+                                    <button class="competition-btn secondary" id="boss-back-hub">Back to Hub</button>
+                                </div>
                             </div>
                         `;
                         const modal = overlay.querySelector('.boss-fight-modal, .boss-select-modal');
                         if (modal) modal.appendChild(resultDiv);
                         const doneBtn = overlay.querySelector('#boss-done');
                         if (doneBtn) doneBtn.addEventListener('click', closeBossUI);
+                        const hubBtn2 = overlay.querySelector('#boss-back-hub');
+                        if (hubBtn2) hubBtn2.addEventListener('click', () => { closeBossUI(); setTimeout(openCompetitionHub, 100); });
                     }, 800);
                 }
 
@@ -720,8 +751,8 @@
                             const score = result.scores[catId] || 0;
                             return `
                                 <div class="show-category">
-                                    <span class="show-cat-label">${cat.emoji} ${cat.name}</span>
-                                    <div class="show-cat-bar">
+                                    <span class="show-cat-label" id="show-cat-${catId}">${cat.emoji} ${cat.name}</span>
+                                    <div class="show-cat-bar" role="progressbar" aria-valuenow="${score}" aria-valuemin="0" aria-valuemax="100" aria-labelledby="show-cat-${catId}" aria-label="${cat.name}: ${score} out of 100">
                                         <div class="show-cat-fill" style="width:${score}%"></div>
                                     </div>
                                     <span class="show-cat-score">${score}</span>
@@ -731,7 +762,10 @@
                     </div>
                     <p class="show-tip">${getShowTip(result.scores)}</p>
                     <div class="show-stats-summary">Shows entered: ${comp.showsEntered} | Best: ${comp.bestShowRank} (${comp.bestShowScore})</div>
-                    <button class="competition-btn primary" id="show-done">Done</button>
+                    <div class="battle-result-actions">
+                        <button class="competition-btn primary" id="show-done">Done</button>
+                        <button class="competition-btn secondary" id="show-back-hub">Back to Hub</button>
+                    </div>
                 </div>
             `;
 
@@ -747,6 +781,7 @@
 
             overlay.querySelector('#show-close').addEventListener('click', closeShow);
             overlay.querySelector('#show-done').addEventListener('click', closeShow);
+            overlay.querySelector('#show-back-hub').addEventListener('click', () => { closeShow(); setTimeout(openCompetitionHub, 100); });
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeShow(); });
 
             document.body.appendChild(overlay);
@@ -897,14 +932,19 @@
                             `).join('')}
                         </div>
                         <div class="show-stats-summary">Completions: ${comp.obstacleCompletions} | Best: ${comp.obstacleBestScore}</div>
-                        <button class="competition-btn primary" id="obstacle-done">Done</button>
+                        <div class="battle-result-actions">
+                            <button class="competition-btn primary" id="obstacle-done">Done</button>
+                            <button class="competition-btn secondary" id="obstacle-back-hub">Back to Hub</button>
+                        </div>
                     </div>
                 `;
 
                 overlay.querySelector('#obstacle-close').addEventListener('click', closeObstacle);
                 overlay.querySelector('#obstacle-done').addEventListener('click', closeObstacle);
+                overlay.querySelector('#obstacle-back-hub').addEventListener('click', () => { closeObstacle(); setTimeout(openCompetitionHub, 100); });
 
                 showToast(`🏁 Obstacle Course: Grade ${grade}! ${totalScore} points!`, '#FFD700');
+                announce(`Obstacle course complete! Grade ${grade}. ${totalScore} out of ${maxPossible} points.`, true);
             }
 
             function closeObstacle() {
@@ -953,7 +993,8 @@
                                 const isLocked = idx > comp.currentRivalIndex && !isDefeated;
                                 return `
                                     <button class="rival-card ${isDefeated ? 'defeated' : ''} ${isNext ? 'next' : ''} ${isLocked ? 'locked' : ''}"
-                                            data-rival="${idx}" ${isLocked ? 'disabled' : ''}>
+                                            data-rival="${idx}" ${isLocked ? 'disabled' : ''}
+                                            aria-label="${trainer.name}, ${trainer.title}. ${isDefeated ? 'Defeated' : isNext ? 'Available to challenge' : 'Locked'}. Pet: ${trainer.petName}">
                                         <span class="rival-emoji">${trainer.emoji}</span>
                                         <div class="rival-info">
                                             <span class="rival-name">${trainer.name}</span>
@@ -1018,14 +1059,14 @@
                                 <div class="battle-pet player-pet">
                                     <span class="battle-pet-name">${petName}</span>
                                     <span class="battle-pet-emoji">${PET_TYPES[pet.type].emoji}</span>
-                                    <div class="battle-hp-bar"><div class="battle-hp-fill player-hp" style="width:${playerPct}%"></div></div>
+                                    <div class="battle-hp-bar" role="progressbar" aria-valuenow="${playerPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${petName} HP: ${playerHP} of ${playerMaxHP}"><div class="battle-hp-fill player-hp" style="width:${playerPct}%"></div></div>
                                     <span class="battle-hp-text">${playerHP}/${playerMaxHP} HP</span>
                                 </div>
                                 <span class="battle-vs">VS</span>
                                 <div class="battle-pet opponent-pet">
                                     <span class="battle-pet-name">${trainer.petName}</span>
                                     <span class="battle-pet-emoji">${PET_TYPES[trainer.petType] ? PET_TYPES[trainer.petType].emoji : '?'}</span>
-                                    <div class="battle-hp-bar"><div class="battle-hp-fill opponent-hp" style="width:${rivalPct}%"></div></div>
+                                    <div class="battle-hp-bar" role="progressbar" aria-valuenow="${rivalPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${trainer.petName} HP: ${rivalHP} of ${rivalMaxHP}"><div class="battle-hp-fill opponent-hp" style="width:${rivalPct}%"></div></div>
                                     <span class="battle-hp-text">${rivalHP}/${rivalMaxHP} HP</span>
                                 </div>
                             </div>
@@ -1119,11 +1160,17 @@
                         comp.battlesWon++;
                         pet.happiness = clamp(pet.happiness + 15 + trainer.difficulty * 2, 0, 100);
                         pet.careActions = (pet.careActions || 0) + 1;
-                        setTimeout(() => showToast(`🏅 Defeated ${trainer.name}! +${15 + trainer.difficulty * 2} Happiness!`, '#FFD700'), 500);
+                        setTimeout(() => {
+                            showToast(`🏅 Defeated ${trainer.name}! +${15 + trainer.difficulty * 2} Happiness!`, '#FFD700');
+                            announce(`Victory! Rival ${trainer.name} defeated! Plus ${15 + trainer.difficulty * 2} happiness!`, true);
+                        }, 500);
                     } else {
                         comp.battlesLost++;
                         pet.happiness = clamp(pet.happiness + 5, 0, 100);
-                        setTimeout(() => showToast(`Keep training! ${trainer.name} is tough!`, '#64B5F6'), 500);
+                        setTimeout(() => {
+                            showToast(`Keep training! ${trainer.name} is tough!`, '#64B5F6');
+                            announce(`Defeat. Keep training! ${trainer.name} is tough.`, true);
+                        }, 500);
                     }
                     saveGame();
 
@@ -1135,7 +1182,10 @@
                                 <h3>${won ? '🏅 Rival Defeated!' : '😢 Defeat'}</h3>
                                 <p>${won ? trainer.winMessage : trainer.loseMessage}</p>
                                 <p class="battle-stats-summary">Rivals defeated: ${comp.rivalsDefeated.length}/${RIVAL_TRAINERS.length}</p>
-                                <button class="competition-btn primary" id="rival-done">Done</button>
+                                <div class="battle-result-actions">
+                                    <button class="competition-btn primary" id="rival-done">Done</button>
+                                    <button class="competition-btn secondary" id="rival-back-hub">Back to Hub</button>
+                                </div>
                             </div>
                         `;
                         const modal = overlay.querySelector('.rival-fight-modal');
@@ -1144,6 +1194,8 @@
                         if (doneBtn) doneBtn.addEventListener('click', () => {
                             renderTrainerSelect();
                         });
+                        const hubBtn3 = overlay.querySelector('#rival-back-hub');
+                        if (hubBtn3) hubBtn3.addEventListener('click', () => { closeRivalUI(); setTimeout(openCompetitionHub, 100); });
                     }, 800);
                 }
 

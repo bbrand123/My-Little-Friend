@@ -176,6 +176,15 @@
             return '#EF5350';                 // Red
         }
 
+        // Returns a secondary icon indicator for colorblind accessibility
+        // Used alongside getNeedColor to provide non-color status cues
+        function getNeedStatusIcon(value) {
+            if (value > 65) return '';         // Good — no indicator needed
+            if (value > 45) return '';         // Fine — no indicator
+            if (value > 25) return '!';        // Warning — single exclamation
+            return '!!';                       // Critical — double exclamation
+        }
+
         // Wellness bar helpers
         function getWellnessPercent(pet) {
             const h = Number(pet.hunger) || 0;
@@ -1577,9 +1586,11 @@
                 const room = ROOMS[id];
                 const isActive = id === currentRoom;
                 const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
+                const bonusHint = room.bonus ? ` (Bonus: ${room.bonus.label})` : '';
                 html += `<button class="room-btn${isActive ? ' active' : ''}" type="button" data-room="${id}"
-                    aria-label="Go to ${room.name}${id === 'garden' && readyCrops > 0 ? ` (${readyCrops} crops ready!)` : ''}" aria-pressed="${isActive}"
-                    ${isActive ? 'aria-current="true"' : ''} tabindex="0" style="position:relative;">
+                    aria-label="Go to ${room.name}${bonusHint}${id === 'garden' && readyCrops > 0 ? ` (${readyCrops} crops ready!)` : ''}" aria-pressed="${isActive}"
+                    ${isActive ? 'aria-current="true"' : ''} tabindex="0" style="position:relative;"
+                    title="${room.name}${bonusHint}">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
                     <span class="room-btn-label">${room.name}</span>
                     ${badge}
