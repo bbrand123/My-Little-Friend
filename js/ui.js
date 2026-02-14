@@ -117,6 +117,13 @@
                     return;
                 }
 
+                const notifHistBtn = target.closest('#notif-history-btn');
+                if (notifHistBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(notifHistBtn, typeof showNotificationHistory === 'function' ? showNotificationHistory : null, event);
+                    return;
+                }
+
                 const settingsBtn = target.closest('#settings-btn');
                 if (settingsBtn) {
                     if (event.type === 'touchend') event.preventDefault();
@@ -358,7 +365,9 @@
                         <h3 class="customization-title">Name</h3>
                         <input type="text" class="naming-input" id="pet-name-input"
                                placeholder="${petData.name}" maxlength="14" autocomplete="off"
-                               aria-label="Enter a name for your pet">
+                               aria-label="Enter a name for your pet, maximum 14 characters"
+                               aria-describedby="name-char-count">
+                        <span class="name-char-count" id="name-char-count" aria-live="polite">0/14 characters</span>
                         <button class="tts-button" id="tts-button" aria-label="Hear name spoken">🔊 Hear Name</button>
                     </div>
 
@@ -492,6 +501,13 @@
                 } else {
                     showToast('Text-to-speech not supported', '#FFA726');
                 }
+            });
+
+            // Live character counter for naming input
+            const charCount = document.getElementById('name-char-count');
+            input.addEventListener('input', () => {
+                const len = input.value.length;
+                if (charCount) charCount.textContent = `${len}/14 characters`;
             });
 
             setTimeout(() => input.focus(), 100);
@@ -666,6 +682,9 @@
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
                             <span class="top-action-btn-icon">🛋️</span>
                         </button>
+                        <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
+                            <span class="top-action-btn-icon">🔔</span>
+                        </button>
                         <button class="top-action-btn" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">
                             <span class="top-action-btn-icon">⚙️</span>
                         </button>
@@ -736,6 +755,7 @@
                                     </div>
                                     <div class="growth-detail-row">
                                         <span class="growth-detail-item ${actionProgress >= 100 ? 'done' : ''}">Care: ${actionsDisplay}</span>
+                                        <span class="growth-detail-sep" aria-hidden="true">&amp;</span>
                                         <span class="growth-detail-item ${timeProgress >= 100 ? 'done' : ''}">Time: ${timeDisplay}</span>
                                     </div>
                                 </div>
@@ -753,6 +773,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🍎</span>
                             <span class="need-bubble-value" id="hunger-value">${pet.hunger}%</span>
+                            ${getNeedStatusIcon(pet.hunger) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.hunger)}</span>` : ''}
                         </div>
                         <div class="need-bubble ${needClass(pet.cleanliness)}" id="clean-bubble"
                              role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100"
@@ -760,6 +781,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🛁</span>
                             <span class="need-bubble-value" id="clean-value">${pet.cleanliness}%</span>
+                            ${getNeedStatusIcon(pet.cleanliness) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.cleanliness)}</span>` : ''}
                         </div>
                         <div class="need-bubble ${needClass(pet.happiness)}" id="happy-bubble"
                              role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100"
@@ -767,6 +789,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">💖</span>
                             <span class="need-bubble-value" id="happy-value">${pet.happiness}%</span>
+                            ${getNeedStatusIcon(pet.happiness) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.happiness)}</span>` : ''}
                         </div>
                         <div class="need-bubble ${needClass(pet.energy)}" id="energy-bubble"
                              role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100"
@@ -774,6 +797,7 @@
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">😴</span>
                             <span class="need-bubble-value" id="energy-value">${pet.energy}%</span>
+                            ${getNeedStatusIcon(pet.energy) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.energy)}</span>` : ''}
                         </div>
                     </div>
                 </section>
@@ -1184,6 +1208,59 @@
 
         const MAX_VISIBLE_TOASTS = 1;
 
+        // Notification history (keeps last 20 for review)
+        const MAX_NOTIFICATION_HISTORY = 20;
+        let _notificationHistory = [];
+
+        function addToNotificationHistory(message) {
+            const plainText = message.replace(/<[^>]*>/g, '').trim();
+            if (!plainText) return;
+            _notificationHistory.push({
+                text: plainText,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            if (_notificationHistory.length > MAX_NOTIFICATION_HISTORY) {
+                _notificationHistory.shift();
+            }
+        }
+
+        function showNotificationHistory() {
+            const existing = document.querySelector('.notif-history-overlay');
+            if (existing) { existing.remove(); return; }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'notif-history-overlay modal-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Notification History');
+
+            const items = _notificationHistory.length > 0
+                ? _notificationHistory.slice().reverse().map(n =>
+                    `<div class="notif-history-item"><span class="notif-history-time">${escapeHTML(n.time)}</span> ${escapeHTML(n.text)}</div>`
+                ).join('')
+                : '<p class="notif-history-empty">No recent notifications</p>';
+
+            overlay.innerHTML = `
+                <div class="modal-content notif-history-modal">
+                    <h2 class="notif-history-title">Recent Notifications</h2>
+                    <div class="notif-history-list">${items}</div>
+                    <button class="notif-history-close" id="notif-history-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeHistory() {
+                popModalEscape(closeHistory);
+                overlay.remove();
+            }
+            overlay.querySelector('#notif-history-close').addEventListener('click', closeHistory);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHistory(); });
+            pushModalEscape(closeHistory);
+            trapFocus(overlay);
+            overlay.querySelector('#notif-history-close').focus();
+        }
+
         // Batch rapid care-action toasts into a single notification
         const CARE_TOAST_BATCH_MS = 800;
         let _careToastTimer = null;
@@ -1243,6 +1320,7 @@
         }
 
         function showToast(message, color = '#66BB6A') {
+            addToNotificationHistory(message);
             let container = document.getElementById('toast-container');
 
             // Create container if it doesn't exist
@@ -1346,6 +1424,7 @@
                     btn.removeAttribute('aria-disabled');
                     btn.removeAttribute('aria-label');
                 });
+                announce('Actions ready');
             }, ACTION_COOLDOWN_MS);
 
             const pet = gameState.pet;
@@ -1644,6 +1723,20 @@
                 }
                 if (!silent) {
                     bubble.setAttribute('aria-valuenow', value);
+                }
+                // Update status icon for colorblind accessibility
+                const statusIcon = getNeedStatusIcon(value);
+                let iconEl = bubble.querySelector('.need-status-icon');
+                if (statusIcon) {
+                    if (!iconEl) {
+                        iconEl = document.createElement('span');
+                        iconEl.className = 'need-status-icon';
+                        iconEl.setAttribute('aria-hidden', 'true');
+                        bubble.appendChild(iconEl);
+                    }
+                    iconEl.textContent = statusIcon;
+                } else if (iconEl) {
+                    iconEl.remove();
                 }
                 // Animate glow when stat increased (care action, not passive decay)
                 if (!silent && statKey && _prevStats[statKey] >= 0 && value > _prevStats[statKey]) {
@@ -4105,6 +4198,12 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                         </div>
+                    </div>
+                    <div class="settings-keyboard-hints">
+                        <h3 class="settings-hints-title">Keyboard Shortcuts</h3>
+                        <div class="settings-hint-row"><kbd>Tab</kbd> Navigate between buttons</div>
+                        <div class="settings-hint-row"><kbd>Enter</kbd> / <kbd>Space</kbd> Activate button</div>
+                        <div class="settings-hint-row"><kbd>Escape</kbd> Close current dialog</div>
                     </div>
                     <button class="settings-close" id="settings-close">Close</button>
                 </div>
