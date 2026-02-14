@@ -34,6 +34,9 @@
             results.appendChild(p);
         }
 
+        // Save existing game data before tests and restore after
+        const _savedGameData = localStorage.getItem('petCareBuddy');
+
         try {
             // Test 1: Constants loaded
             if (typeof GROWTH_STAGES !== 'undefined') {
@@ -279,6 +282,13 @@
         } catch (error) {
             log(`Error during testing: ${error.message}`, false);
             console.error(error);
+        } finally {
+            // Restore game data to avoid test pollution
+            if (_savedGameData !== null) {
+                localStorage.setItem('petCareBuddy', _savedGameData);
+            } else {
+                localStorage.removeItem('petCareBuddy');
+            }
         }
     </script>
 </body>

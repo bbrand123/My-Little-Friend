@@ -19,6 +19,7 @@
                 '#F0E68C': 'Khaki', '#B0E0E6': 'Powder Blue', '#DC143C': 'Crimson',
                 '#8B0000': 'Dark Red', '#FF4500': 'Orange Red', '#B22222': 'Firebrick Red'
             };
+            if (!hex) return 'Unknown';
             return colorNames[hex.toUpperCase()] || colorNames[hex] || hex;
         }
 
@@ -1032,6 +1033,7 @@
             if (moreToggle) {
                 moreToggle.addEventListener('click', () => {
                     const panel = document.getElementById('more-actions-panel');
+                    if (!panel) return;
                     const expanded = moreToggle.getAttribute('aria-expanded') === 'true';
                     moreToggle.setAttribute('aria-expanded', String(!expanded));
                     panel.hidden = expanded;
@@ -1046,7 +1048,8 @@
                     if (idx === gameState.activePetIndex) return;
                     syncActivePetToArray();
                     if (switchActivePet(idx)) {
-                        _prevStats = { hunger: -1, cleanliness: -1, happiness: -1, energy: -1 };
+                        const np = gameState.pet;
+                        _prevStats = np ? { hunger: np.hunger, cleanliness: np.cleanliness, happiness: np.happiness, energy: np.energy } : { hunger: -1, cleanliness: -1, happiness: -1, energy: -1 };
                         renderPetPhase();
                         const petData = PET_TYPES[gameState.pet.type];
                         if (petData) {
@@ -1064,6 +1067,7 @@
                 evolveBtn.addEventListener('click', () => {
                     // Show processing state while evolution renders
                     evolveBtn.disabled = true;
+                    const originalText = evolveBtn.textContent;
                     evolveBtn.textContent = 'Evolving...';
                     evolveBtn.style.opacity = '0.7';
                     const pet = gameState.pet;
@@ -1072,6 +1076,7 @@
                             renderPetPhase();
                         } else {
                             evolveBtn.disabled = false;
+                            evolveBtn.textContent = originalText;
                             evolveBtn.style.opacity = '';
                         }
                     }, 300);
@@ -1088,17 +1093,19 @@
 
             // Make pet directly pettable by clicking/touching the pet SVG
             const petContainer = document.getElementById('pet-container');
-            petContainer.classList.add('pettable');
-            petContainer.setAttribute('role', 'button');
-            petContainer.setAttribute('tabindex', '0');
-            petContainer.setAttribute('aria-label', 'Click or tap your pet to give it cuddles!');
-            petContainer.addEventListener('click', () => careAction('cuddle'));
-            petContainer.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    careAction('cuddle');
-                }
-            });
+            if (petContainer) {
+                petContainer.classList.add('pettable');
+                petContainer.setAttribute('role', 'button');
+                petContainer.setAttribute('tabindex', '0');
+                petContainer.setAttribute('aria-label', 'Click or tap your pet to give it cuddles!');
+                petContainer.addEventListener('click', () => careAction('cuddle'));
+                petContainer.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        careAction('cuddle');
+                    }
+                });
+            }
 
             // Only restart timers, earcons, and idle animations when they aren't
             // already running, or when the room has changed.  renderPetPhase() is
@@ -1177,8 +1184,8 @@
                 if (shouldShow) {
                     _onboardingShownThisSession[hint.id] = true;
                     markHintShown(hint.id);
-                    // Stagger hints so they don't all show at once (subtract 1 because current hint was already added)
-                    const delay = (Object.keys(_onboardingShownThisSession).length - 1) * 4000;
+                    // Small fixed delay for hint display (avoids ever-growing stagger accumulation)
+                    const delay = 0;
                     setTimeout(() => {
                         showOnboardingTooltip(hint.message);
                     }, 1500 + delay);
@@ -1346,7 +1353,7 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
-            toast.innerHTML = wrapEmojiForAria(message);
+            toast.innerHTML = wrapEmojiForAria(escapeHTML(message));
             container.appendChild(toast);
 
             // Announce to screen readers — strip HTML tags for plain text
@@ -1428,6 +1435,9 @@
         function performStandardFeed(pet) {
             const feedBonus = Math.round(20 * getRoomBonus('feed'));
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
+            // Track lifetime feed count for feed-specific badges/achievements
+            if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
+            gameState.totalFeedCount++;
             const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
             const petContainer = document.getElementById('pet-container');
             const sparkles = document.getElementById('sparkles');
@@ -1716,6 +1726,7 @@
             if (checkGrowthMilestone(pet)) {
                 // Growth happened — checkGrowthMilestone already saves internally.
                 // Defer re-render so celebration modal is not disrupted.
+                saveGame();
                 setTimeout(() => renderPetPhase(), 100);
                 return;
             }
@@ -1853,10 +1864,23 @@
             }
             _previousMood = mood;
 
-            // Update pet SVG expression
+            // Update pet SVG expression without destroying dynamically-appended children
             const petContainer = document.getElementById('pet-container');
             if (!petContainer) return;
-            petContainer.innerHTML = generatePetSVG(pet, mood);
+            const existingSvg = petContainer.querySelector('svg.pet-svg');
+            const newSvgHTML = generatePetSVG(pet, mood);
+            if (existingSvg) {
+                const temp = document.createElement('div');
+                temp.innerHTML = newSvgHTML;
+                const newSvg = temp.querySelector('svg');
+                if (newSvg) {
+                    petContainer.replaceChild(newSvg, existingSvg);
+                } else {
+                    petContainer.innerHTML = newSvgHTML;
+                }
+            } else {
+                petContainer.innerHTML = newSvgHTML;
+            }
         }
 
         // Per-pet growth milestone tracker keyed by pet id
@@ -2381,6 +2405,31 @@
                         newAch.forEach(ach => {
                             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
                             setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                        });
+                    }
+                    // Check badges, stickers, trophies
+                    if (typeof checkBadges === 'function') {
+                        const newBadges = checkBadges();
+                        newBadges.forEach(badge => {
+                            setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, '#FFD700'), 600);
+                        });
+                    }
+                    if (typeof checkStickers === 'function') {
+                        const newStickers = checkStickers();
+                        newStickers.forEach(sticker => {
+                            setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                        });
+                    }
+                    if (typeof checkPetActionSticker === 'function') {
+                        const actionStickers = checkPetActionSticker('feed');
+                        actionStickers.forEach(sticker => {
+                            setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 800);
+                        });
+                    }
+                    if (typeof checkTrophies === 'function') {
+                        const newTrophies = checkTrophies();
+                        newTrophies.forEach(trophy => {
+                            setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
                         });
                     }
 
@@ -3392,7 +3441,12 @@
             }
 
             const activePet = gameState.pet;
+            if (!activePet) {
+                showToast('You need a pet for interactions!', '#FFA726');
+                return;
+            }
             const activePetData = PET_TYPES[activePet.type];
+            if (!activePetData) return;
             const activeName = escapeHTML(activePet.name || activePetData.name);
 
             // Build partner selection

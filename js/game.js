@@ -1,5 +1,9 @@
         // ==================== GAME STATE ====================
 
+        // Cross-file flags (also declared in ui.js) — redeclare here for load-order safety
+        if (typeof _petPhaseTimersRunning === 'undefined') var _petPhaseTimersRunning = false;
+        if (typeof _petPhaseLastRoom === 'undefined') var _petPhaseLastRoom = null;
+
         let gameState = {
             phase: 'egg', // 'egg', 'hatching', 'pet'
             pet: null,
@@ -11,7 +15,7 @@
             currentRoom: 'bedroom', // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park', 'garden'
             weather: 'sunny', // 'sunny', 'rainy', 'snowy'
             lastWeatherChange: Date.now(),
-            season: getCurrentSeason(),
+            season: (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring',
             adultsRaised: 0, // Track how many pets reached adult stage (for mythical unlocks)
             furniture: {
                 bedroom: { bed: 'basic', decoration: 'none' },
@@ -174,10 +178,10 @@
             return Math.max(min, Math.min(max, value));
         }
 
+        const _escapeDiv = document.createElement('div');
         function escapeHTML(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
+            _escapeDiv.textContent = str;
+            return _escapeDiv.innerHTML;
         }
 
         // Strip HTML tags and control characters from pet names so they are
@@ -536,7 +540,7 @@
             };
 
             const mapping = stickerMap[type];
-            if (mapping && mapping.action === action) {
+            if (mapping && mapping.action === action && STICKERS[mapping.stickerId]) {
                 if (grantSticker(mapping.stickerId)) {
                     newStickers.push(STICKERS[mapping.stickerId]);
                 }
@@ -648,7 +652,11 @@
                 // Sync active pet to pets array before saving
                 syncActivePetToArray();
                 gameState.lastUpdate = Date.now();
+                // Strip transient data that shouldn't persist
+                const offlineChanges = gameState._offlineChanges;
+                delete gameState._offlineChanges;
                 localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
+                if (offlineChanges) gameState._offlineChanges = offlineChanges;
             } catch (e) {
                 console.log('Could not save game:', e);
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
@@ -943,8 +951,8 @@
                                 if (!p) return;
                                 const isNeglected = p.hunger < 20 || p.cleanliness < 20 || p.happiness < 20 || p.energy < 20;
                                 if (isNeglected) {
-                                    // Scale neglect count by offline time (1 per ~10 minutes of neglect)
-                                    const neglectIncrements = Math.floor(minutesPassed / 10);
+                                    // Scale neglect count by offline time (1 per ~10 minutes of neglect), capped at 3
+                                    const neglectIncrements = Math.min(3, Math.floor(minutesPassed / 10));
                                     if (neglectIncrements > 0) {
                                         p.neglectCount = (p.neglectCount || 0) + neglectIncrements;
                                     }
@@ -1094,7 +1102,7 @@
         }
 
         function syncActivePetToArray() {
-            if (gameState.pet && gameState.pets && gameState.activePetIndex < gameState.pets.length) {
+            if (gameState.pet && gameState.pets && gameState.activePetIndex >= 0 && gameState.activePetIndex < gameState.pets.length) {
                 gameState.pets[gameState.activePetIndex] = gameState.pet;
             }
         }
@@ -2527,11 +2535,11 @@
                         syncActivePetToArray();
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = clamp(p.hunger - 0.5, 0, 100);
-                            p.cleanliness = clamp(p.cleanliness - 0.5, 0, 100);
+                            p.hunger = Math.round(clamp(p.hunger - 0.5, 0, 100) * 10) / 10;
+                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100) * 10) / 10;
                             // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
-                            p.happiness = clamp(p.happiness - 0.2, 0, 100);
-                            p.energy = clamp(p.energy - 0.5, 0, 100);
+                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100) * 10) / 10;
+                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100) * 10) / 10;
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -2831,6 +2839,14 @@
                         if (saved.minigameScoreHistory) gameState.minigameScoreHistory = saved.minigameScoreHistory;
                         if (saved.relationships) gameState.relationships = saved.relationships;
                         if (saved.furniture) gameState.furniture = saved.furniture;
+                        if (saved.badges) gameState.badges = saved.badges;
+                        if (saved.stickers) gameState.stickers = saved.stickers;
+                        if (saved.trophies) gameState.trophies = saved.trophies;
+                        if (saved.streak) gameState.streak = saved.streak;
+                        if (saved.dailyChecklist) gameState.dailyChecklist = saved.dailyChecklist;
+                        if (saved.competition) gameState.competition = saved.competition;
+                        if (typeof saved.totalFeedCount === 'number') gameState.totalFeedCount = saved.totalFeedCount;
+                        if (typeof saved.adultsRaised === 'number') gameState.adultsRaised = saved.adultsRaised;
 
                         // Update time of day (may have changed while tab was hidden)
                         const newTimeOfDay = getTimeOfDay();
@@ -2938,6 +2954,8 @@
             checkBadges();
             checkTrophies();
             checkStickers();
+            // Save after streak/badge/trophy/sticker initialization
+            saveGame();
 
             // Run initial achievement check (in case returning player qualifies)
             checkAchievements();

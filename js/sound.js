@@ -18,7 +18,7 @@
                     try {
                         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                         masterGain = audioCtx.createGain();
-                        masterGain.gain.value = EARCON_VOLUME;
+                        masterGain.gain.value = 1.0;
                         masterGain.connect(audioCtx.destination);
                     } catch (e) {
                         console.log('Web Audio API not supported');
@@ -1094,7 +1094,7 @@
 
             function stopMusic() {
                 if (!currentMusicLoop) return;
-                const ctx = getContext();
+                const ctx = audioCtx;
                 if (ctx && currentMusicLoop.gainNode) {
                     currentMusicLoop.gainNode.gain.cancelScheduledValues(ctx.currentTime);
                     currentMusicLoop.gainNode.gain.setValueAtTime(currentMusicLoop.gainNode.gain.value, ctx.currentTime);
@@ -1112,9 +1112,13 @@
                 musicEnabled = !musicEnabled;
                 if (!musicEnabled) {
                     stopMusic();
-                } else if (currentRoom) {
-                    const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
-                    startMusic(currentRoom, timeOfDay);
+                } else {
+                    // Use gameState.currentRoom as fallback since currentRoom may be null if sound is off
+                    const room = currentRoom || (typeof gameState !== 'undefined' && gameState.currentRoom) || null;
+                    if (room) {
+                        const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
+                        startMusic(room, timeOfDay);
+                    }
                 }
                 try { localStorage.setItem('petCareBuddy_musicEnabled', musicEnabled ? 'true' : 'false'); } catch (e) {}
                 return musicEnabled;
@@ -1128,7 +1132,7 @@
                 const seqBefore = _enterRoomSeq;
                 await _origEnterRoom(roomId);
                 // If another enterRoom call occurred while awaiting, don't start music with stale roomId
-                if (seqBefore !== _enterRoomSeq && currentRoom !== roomId) return;
+                if (seqBefore !== _enterRoomSeq || currentRoom !== roomId) return;
                 if (musicEnabled && isEnabled && roomId) {
                     const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
                     startMusic(roomId, timeOfDay);

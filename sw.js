@@ -42,6 +42,8 @@ self.addEventListener('activate', (event) => {
 
 // Fetch — stale-while-revalidate: serve cached immediately, update in background
 self.addEventListener('fetch', (event) => {
+    // Only handle GET requests (skip POST, etc.)
+    if (event.request.method !== 'GET') return;
     event.respondWith(
         caches.match(event.request).then((cached) => {
             // Always fetch from network to update cache for next load
@@ -49,16 +51,13 @@ self.addEventListener('fetch', (event) => {
                 if (response.ok && event.request.url.startsWith(self.location.origin)) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        // Check if the cached version differs from the new one
-                        cache.match(event.request).then((existing) => {
-                            cache.put(event.request, clone);
-                            if (existing && cached) {
-                                // A newer version was fetched — notify clients
-                                self.clients.matchAll({ type: 'window' }).then((clients) => {
-                                    clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
-                                });
-                            }
-                        }).catch(() => cache.put(event.request, clone));
+                        cache.put(event.request, clone);
+                        // Notify clients that a fresh version was fetched (they had a stale cache)
+                        if (cached) {
+                            self.clients.matchAll({ type: 'window' }).then((clients) => {
+                                clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
+                            });
+                        }
                     }).catch(() => {});
                 }
                 return response;
