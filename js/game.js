@@ -494,7 +494,12 @@
                 fish: { action: 'feed', stickerId: 'goldenFish' },
                 bird: { action: 'play', stickerId: 'sweetBird' },
                 panda: { action: 'cuddle', stickerId: 'cuddlyPanda' },
-                penguin: { action: 'exercise', stickerId: 'royalPenguin' }
+                penguin: { action: 'exercise', stickerId: 'royalPenguin' },
+                hamster: { action: 'feed', stickerId: 'fuzzyHamster' },
+                frog: { action: 'play', stickerId: 'happyFrog' },
+                hedgehog: { action: 'cuddle', stickerId: 'spinyHedgehog' },
+                unicorn: { action: 'play', stickerId: 'magicUnicorn' },
+                dragon: { action: 'feed', stickerId: 'fierceDragon' }
             };
 
             const mapping = stickerMap[type];
@@ -883,8 +888,12 @@
                                 // Pets with friends get a happiness bonus while away (scaled by relationship quality)
                                 if (parsed.pets.length > 1 && parsed.relationships) {
                                     let bestRelPoints = 0;
-                                    Object.values(parsed.relationships).forEach(rel => {
-                                        if (rel && typeof rel.points === 'number' && rel.points > bestRelPoints) {
+                                    const pid = p.id;
+                                    Object.entries(parsed.relationships).forEach(([key, rel]) => {
+                                        if (!rel || typeof rel.points !== 'number') return;
+                                        // Only consider relationships involving this pet
+                                        if (pid != null && key.split('-').indexOf(String(pid)) === -1) return;
+                                        if (rel.points > bestRelPoints) {
                                             bestRelPoints = rel.points;
                                         }
                                     });
@@ -2419,11 +2428,11 @@
                         syncActivePetToArray();
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.floor(clamp(p.hunger - 0.5, 0, 100));
-                            p.cleanliness = Math.floor(clamp(p.cleanliness - 0.5, 0, 100));
+                            p.hunger = clamp(p.hunger - 0.5, 0, 100);
+                            p.cleanliness = clamp(p.cleanliness - 0.5, 0, 100);
                             // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
-                            p.happiness = Math.floor(clamp(p.happiness - 0.2, 0, 100));
-                            p.energy = Math.floor(clamp(p.energy - 0.5, 0, 100));
+                            p.happiness = clamp(p.happiness - 0.2, 0, 100);
+                            p.energy = clamp(p.energy - 0.5, 0, 100);
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;

@@ -178,13 +178,29 @@
                 }
             }
 
+            let battleLogHistory = [];
+
             function logMessage(msg) {
+                battleLogHistory.push(msg);
                 const log = overlay.querySelector('#battle-log');
                 if (log) {
                     const entry = document.createElement('div');
                     entry.className = 'battle-log-entry';
                     entry.textContent = msg;
                     log.appendChild(entry);
+                    log.scrollTop = log.scrollHeight;
+                }
+            }
+
+            function restoreBattleLog() {
+                const log = overlay.querySelector('#battle-log');
+                if (log) {
+                    battleLogHistory.forEach(msg => {
+                        const entry = document.createElement('div');
+                        entry.className = 'battle-log-entry';
+                        entry.textContent = msg;
+                        log.appendChild(entry);
+                    });
                     log.scrollTop = log.scrollHeight;
                 }
             }
@@ -211,6 +227,7 @@
                 if (oppHP <= 0) {
                     battleOver = true;
                     renderBattle();
+                    restoreBattleLog();
                     logMessage(`${oppName} is defeated! You win!`);
                     endBattle(true);
                     return;
@@ -231,15 +248,14 @@
                 if (playerHP <= 0) {
                     battleOver = true;
                     renderBattle();
+                    restoreBattleLog();
                     logMessage(`${petName} is defeated! You lose...`);
                     endBattle(false);
                     return;
                 }
 
                 renderBattle();
-                // Re-attach log entries
-                const log = overlay.querySelector('#battle-log');
-                if (log) log.scrollTop = log.scrollHeight;
+                restoreBattleLog();
             }
 
             function endBattle(won) {
@@ -431,13 +447,29 @@
                     }
                 }
 
+                let bossLogHistory = [];
+
                 function bossLog(msg) {
+                    bossLogHistory.push(msg);
                     const log = overlay.querySelector('#boss-log');
                     if (log) {
                         const entry = document.createElement('div');
                         entry.className = 'battle-log-entry';
                         entry.textContent = msg;
                         log.appendChild(entry);
+                        log.scrollTop = log.scrollHeight;
+                    }
+                }
+
+                function restoreBossLog() {
+                    const log = overlay.querySelector('#boss-log');
+                    if (log) {
+                        bossLogHistory.forEach(msg => {
+                            const entry = document.createElement('div');
+                            entry.className = 'battle-log-entry';
+                            entry.textContent = msg;
+                            log.appendChild(entry);
+                        });
                         log.scrollTop = log.scrollHeight;
                     }
                 }
@@ -464,6 +496,7 @@
                     if (bossHP <= 0) {
                         fightOver = true;
                         renderBossFight();
+                        restoreBossLog();
                         bossLog(boss.victoryMessage);
                         endBossFight(bossId, true);
                         return;
@@ -496,6 +529,7 @@
                         } else {
                             fightOver = true;
                             renderBossFight();
+                            restoreBossLog();
                             bossLog('All pets have fainted! The boss wins...');
                             endBossFight(bossId, false);
                             return;
@@ -503,6 +537,7 @@
                     }
 
                     renderBossFight();
+                    restoreBossLog();
                 }
 
                 function endBossFight(bossId, won) {
@@ -517,6 +552,10 @@
                             if (rewards.hunger) p.hunger = clamp(p.hunger + rewards.hunger, 0, 100);
                             p.careActions = (p.careActions || 0) + 1;
                         });
+                        // Grant sticker reward if defined
+                        if (rewards.sticker && typeof grantSticker === 'function') {
+                            grantSticker(rewards.sticker);
+                        }
                         gameState.pet = gameState.pets[gameState.activePetIndex];
                         setTimeout(() => showToast(`👹 Boss Defeated: ${boss.name}!`, '#FFD700'), 500);
                     } else {
@@ -659,7 +698,8 @@
             ].sort((a, b) => b - a);
 
             const allScores = [...npcScores, result.totalScore].sort((a, b) => b - a);
-            const placement = allScores.indexOf(result.totalScore) + 1;
+            // Use lastIndexOf to break ties in player's favor (player listed after NPCs with same score)
+            const placement = allScores.lastIndexOf(result.totalScore) + 1;
 
             overlay.innerHTML = `
                 <div class="modal-content competition-modal show-modal">
