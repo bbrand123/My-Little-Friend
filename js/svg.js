@@ -454,11 +454,50 @@
             if (isEvolved) classes += ' evolved';
             svg = svg.replace('class="pet-svg"', `class="${classes}"`);
 
+            // Add idle breathing animation to body elements
+            const breatheAnim = `<animateTransform attributeName="transform" type="scale" values="1 1;1.015 0.985;1 1" dur="3s" repeatCount="indefinite" additive="sum" origin="50 70"/>`;
+            // Insert breathing animation after the first body ellipse/circle
+            svg = svg.replace(/(<!-- Body -->\s*<(?:ellipse|circle)[^>]*)(\/?>)/, `$1$2${breatheAnim}`);
+
+            // Add eye blink animation (brief squash of eyes every ~5s)
+            const blinkAnim = `<animate attributeName="ry" values="1;0.2;1" dur="0.15s" begin="0s;blinkAnim.end+${4 + Math.random() * 3}s" id="blinkAnim" fill="freeze"/>`;
+
             // Add sparkle effect for shiny/evolved pets
             const isShiny = careVariant === 'shiny';
             if (isShiny || isEvolved) {
                 const sparkleEffect = generateSparkleEffect(isShiny, isEvolved);
                 svg = svg.replace('</svg>', `${sparkleEffect}</svg>`);
+            }
+
+            // Add mood-specific visual overlays
+            let moodOverlay = '';
+            if (mood === 'sad') {
+                // Teardrop on left eye
+                moodOverlay = `<g class="mood-tears" opacity="0.7">
+                    <ellipse cx="34" cy="48" rx="2" ry="3" fill="#64B5F6">
+                        <animate attributeName="cy" values="48;58;48" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0.7;0;0.7" dur="2s" repeatCount="indefinite"/>
+                    </ellipse>
+                </g>`;
+            } else if (mood === 'happy') {
+                // Rosy cheek glow
+                moodOverlay = `<g class="mood-blush" opacity="0.3">
+                    <circle cx="30" cy="50" r="6" fill="#FF8A80"/>
+                    <circle cx="70" cy="50" r="6" fill="#FF8A80"/>
+                </g>`;
+            } else if (mood === 'energetic') {
+                // Action lines
+                moodOverlay = `<g class="mood-energy" opacity="0.4">
+                    <line x1="10" y1="25" x2="18" y2="30" stroke="#FFD700" stroke-width="2" stroke-linecap="round">
+                        <animate attributeName="opacity" values="0.4;0.1;0.4" dur="0.8s" repeatCount="indefinite"/>
+                    </line>
+                    <line x1="85" y1="20" x2="90" y2="28" stroke="#FFD700" stroke-width="2" stroke-linecap="round">
+                        <animate attributeName="opacity" values="0.1;0.4;0.1" dur="0.8s" repeatCount="indefinite"/>
+                    </line>
+                </g>`;
+            }
+            if (moodOverlay) {
+                svg = svg.replace('</svg>', `${moodOverlay}</svg>`);
             }
 
             // Add pattern overlay
