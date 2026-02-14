@@ -381,7 +381,7 @@
             function fadeIn(gainNode, ctx) {
                 gainNode.gain.cancelScheduledValues(ctx.currentTime);
                 gainNode.gain.setValueAtTime(0, ctx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(SFX_VOLUME, ctx.currentTime + FADE_DURATION);
+                gainNode.gain.linearRampToValueAtTime(EARCON_VOLUME, ctx.currentTime + FADE_DURATION);
             }
 
             function fadeOut(gainNode, ctx) {
@@ -1130,12 +1130,17 @@
                 }
             }
 
+            function getMasterGain() {
+                return masterGain;
+            }
+
             return {
                 enterRoom: enterRoomWithMusic,
                 stopAll,
                 toggle,
                 getEnabled,
                 getContext,
+                getMasterGain,
                 initOnInteraction,
                 playSFX,
                 destroy,

@@ -1,5 +1,5 @@
 // Update CACHE_VERSION on each deploy to bust stale caches
-const CACHE_VERSION = 5;
+const CACHE_VERSION = 6;
 const CACHE_NAME = `pet-care-buddy-v${CACHE_VERSION}`;
 const ASSETS = [
     './',
@@ -12,7 +12,12 @@ const ASSETS = [
     './js/ui.js',
     './js/minigames.js',
     './js/competition.js',
-    './manifest.json'
+    './manifest.json',
+    './icon-512.svg',
+    './icon-512-maskable.svg',
+    './icon-192.svg',
+    './icon-192-maskable.svg',
+    './apple-touch-icon.svg'
 ];
 
 // Install — cache all core assets
@@ -43,7 +48,18 @@ self.addEventListener('fetch', (event) => {
             const fetchPromise = fetch(event.request).then((response) => {
                 if (response.ok && event.request.url.startsWith(self.location.origin)) {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
+                    caches.open(CACHE_NAME).then((cache) => {
+                        // Check if the cached version differs from the new one
+                        cache.match(event.request).then((existing) => {
+                            cache.put(event.request, clone);
+                            if (existing && cached) {
+                                // A newer version was fetched — notify clients
+                                self.clients.matchAll({ type: 'window' }).then((clients) => {
+                                    clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
+                                });
+                            }
+                        }).catch(() => cache.put(event.request, clone));
+                    }).catch(() => {});
                 }
                 return response;
             }).catch(() => null);

@@ -1562,6 +1562,7 @@
         }
 
         function simonPlayTone(color, duration) {
+            if (typeof SoundManager !== 'undefined' && !SoundManager.getEnabled()) return;
             try {
                 const ctx = simonGetAudioCtx();
                 if (!ctx) return;
@@ -1572,7 +1573,8 @@
                 gain.gain.setValueAtTime(0.3, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
                 osc.connect(gain);
-                gain.connect(ctx.destination);
+                const dest = (typeof SoundManager !== 'undefined' && SoundManager.getMasterGain && SoundManager.getMasterGain()) || ctx.destination;
+                gain.connect(dest);
                 osc.start();
                 osc.stop(ctx.currentTime + duration / 1000);
             } catch (e) {
@@ -1581,6 +1583,7 @@
         }
 
         function simonPlayErrorTone() {
+            if (typeof SoundManager !== 'undefined' && !SoundManager.getEnabled()) return;
             try {
                 const ctx = simonGetAudioCtx();
                 if (!ctx) return;
@@ -1591,7 +1594,8 @@
                 gain.gain.setValueAtTime(0.25, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
                 osc.connect(gain);
-                gain.connect(ctx.destination);
+                const dest = (typeof SoundManager !== 'undefined' && SoundManager.getMasterGain && SoundManager.getMasterGain()) || ctx.destination;
+                gain.connect(dest);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.6);
             } catch (e) {
