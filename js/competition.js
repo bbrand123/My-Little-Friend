@@ -100,7 +100,10 @@
             overlay.setAttribute('aria-label', 'Pet Battle Arena');
 
             // Generate a random opponent
-            const opponentTypes = Object.keys(PET_TYPES).filter(t => !PET_TYPES[t].mythical && t !== pet.type);
+            let opponentTypes = Object.keys(PET_TYPES).filter(t => !PET_TYPES[t].mythical && t !== pet.type);
+            if (opponentTypes.length === 0) {
+                opponentTypes = Object.keys(PET_TYPES).filter(t => !PET_TYPES[t].mythical);
+            }
             const oppType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
             const oppData = PET_TYPES[oppType];
             const opponent = {
@@ -166,7 +169,10 @@
                 `;
 
                 overlay.querySelector('#battle-close').addEventListener('click', closeBattle);
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBattle(); });
+                if (!overlay._overlayClickBound) {
+                    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBattle(); });
+                    overlay._overlayClickBound = true;
+                }
 
                 if (!battleOver) {
                     overlay.querySelectorAll('.battle-move-btn').forEach(btn => {
@@ -317,6 +323,11 @@
 
             function closeBattle() {
                 popModalEscape(closeBattle);
+                if (_battleLogAnnounceTimer) {
+                    clearTimeout(_battleLogAnnounceTimer);
+                    _battleLogAnnounceTimer = null;
+                }
+                _battleLogAnnounceQueue = [];
                 if (overlay.parentNode) overlay.remove();
                 if (gameState.phase === 'pet') {
                     updateNeedDisplays();
@@ -389,7 +400,10 @@
                 `;
 
                 overlay.querySelector('#boss-close').addEventListener('click', closeBossUI);
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBossUI(); });
+                if (!overlay._overlayClickBound) {
+                    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBossUI(); });
+                    overlay._overlayClickBound = true;
+                }
 
                 overlay.querySelectorAll('.boss-card').forEach(card => {
                     card.addEventListener('click', () => {
@@ -527,8 +541,7 @@
                     if (bossMove.healSelf) {
                         bossHP = Math.min(bossMaxHP, bossHP + bossMove.healSelf);
                         bossLog(`${boss.name} uses ${bossMove.name}! Heals ${bossMove.healSelf} HP!`);
-                    }
-                    if (bossMove.power) {
+                    } else if (bossMove.power) {
                         const bossDmg = Math.max(1, Math.round(bossMove.power * (0.85 + Math.random() * 0.3)));
                         petHPs[currentPetIdx] = Math.max(0, petHPs[currentPetIdx] - bossDmg);
                         bossLog(`${boss.name} uses ${bossMove.name}! Deals ${bossDmg} damage!`);
@@ -564,9 +577,10 @@
                     const comp = initCompetitionState();
                     if (won) {
                         comp.bossesDefeated[bossId] = { defeated: true, defeatedAt: Date.now() };
-                        // Apply rewards to all alive pets
+                        // Apply rewards only to alive pets (skip fainted ones)
                         const rewards = boss.rewards;
-                        allPets.forEach(p => {
+                        allPets.forEach((p, idx) => {
+                            if (!p || petHPs[idx] <= 0) return;
                             if (rewards.happiness) p.happiness = clamp(p.happiness + rewards.happiness, 0, 100);
                             if (rewards.energy) p.energy = clamp(p.energy + rewards.energy, 0, 100);
                             if (rewards.hunger) p.hunger = clamp(p.hunger + rewards.hunger, 0, 100);
@@ -576,7 +590,9 @@
                         if (rewards.sticker && typeof grantSticker === 'function') {
                             grantSticker(rewards.sticker);
                         }
-                        gameState.pet = gameState.pets[gameState.activePetIndex];
+                        if (gameState.pets && gameState.pets[gameState.activePetIndex]) {
+                            gameState.pet = gameState.pets[gameState.activePetIndex];
+                        }
                         setTimeout(() => {
                             showToast(`👹 Boss Defeated: ${boss.name}!`, '#FFD700');
                             announce(`Victory! Boss ${boss.name} defeated!`, true);
@@ -586,7 +602,9 @@
                         allPets.forEach(p => {
                             p.happiness = clamp(p.happiness + 5, 0, 100);
                         });
-                        gameState.pet = gameState.pets[gameState.activePetIndex];
+                        if (gameState.pets && gameState.pets[gameState.activePetIndex]) {
+                            gameState.pet = gameState.pets[gameState.activePetIndex];
+                        }
                         setTimeout(() => {
                             showToast('👹 The boss was too strong! Try again when your pets are stronger!', '#64B5F6');
                             announce('Defeat. The boss was too strong. Try again when your pets are stronger.', true);
@@ -710,15 +728,20 @@
             const result = calculateShowScore(pet);
             const petName = escapeHTML(pet.name || PET_TYPES[pet.type].name);
 
-            comp.showsEntered++;
-            if (result.totalScore > comp.bestShowScore) {
-                comp.bestShowScore = result.totalScore;
-                comp.bestShowRank = result.rank.name;
+            // Prevent stat farming by enforcing a cooldown between shows
+            const now = Date.now();
+            const SHOW_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+            if (!comp.lastShowTime || (now - comp.lastShowTime) >= SHOW_COOLDOWN_MS) {
+                comp.showsEntered++;
+                if (result.totalScore > comp.bestShowScore) {
+                    comp.bestShowScore = result.totalScore;
+                    comp.bestShowRank = result.rank.name;
+                }
+                // Reward pet for participating
+                pet.happiness = clamp(pet.happiness + 10, 0, 100);
+                pet.careActions = (pet.careActions || 0) + 1;
+                comp.lastShowTime = now;
             }
-
-            // Reward pet for participating
-            pet.happiness = clamp(pet.happiness + 10, 0, 100);
-            pet.careActions = (pet.careActions || 0) + 1;
             saveGame();
 
             // Generate NPC competitors for flavor
@@ -729,8 +752,8 @@
             ].sort((a, b) => b - a);
 
             const allScores = [...npcScores, result.totalScore].sort((a, b) => b - a);
-            // Use lastIndexOf to break ties in player's favor (player listed after NPCs with same score)
-            const placement = allScores.lastIndexOf(result.totalScore) + 1;
+            // Use indexOf to break ties in player's favor (player listed before NPCs with same score)
+            const placement = allScores.indexOf(result.totalScore) + 1;
 
             overlay.innerHTML = `
                 <div class="modal-content competition-modal show-modal">
@@ -864,7 +887,10 @@
                 `;
 
                 overlay.querySelector('#obstacle-close').addEventListener('click', closeObstacle);
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) closeObstacle(); });
+                if (!overlay._overlayClickBound) {
+                    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeObstacle(); });
+                    overlay._overlayClickBound = true;
+                }
 
                 const goBtn = overlay.querySelector('#obstacle-go');
                 if (goBtn) {
@@ -874,6 +900,7 @@
 
             function attemptStage() {
                 if (courseOver) return;
+                if (currentStage < 0 || currentStage >= OBSTACLE_COURSE_STAGES.length) return;
                 const stage = OBSTACLE_COURSE_STAGES[currentStage];
                 const petStat = pet[stage.stat] || 0;
 
@@ -1014,7 +1041,10 @@
                 `;
 
                 overlay.querySelector('#rival-close').addEventListener('click', closeRivalUI);
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRivalUI(); });
+                if (!overlay._overlayClickBound) {
+                    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRivalUI(); });
+                    overlay._overlayClickBound = true;
+                }
 
                 overlay.querySelectorAll('.rival-card:not([disabled])').forEach(card => {
                     card.addEventListener('click', () => {
@@ -1090,7 +1120,9 @@
                     }
                 }
 
+                const _rivalLogHistory = [];
                 function rivalLog(msg) {
+                    _rivalLogHistory.push(msg);
                     const log = overlay.querySelector('#rival-log');
                     if (log) {
                         const entry = document.createElement('div');
@@ -1099,6 +1131,18 @@
                         log.appendChild(entry);
                         log.scrollTop = log.scrollHeight;
                     }
+                }
+                function restoreRivalLog() {
+                    const log = overlay.querySelector('#rival-log');
+                    if (!log) return;
+                    log.innerHTML = '';
+                    _rivalLogHistory.forEach(msg => {
+                        const entry = document.createElement('div');
+                        entry.className = 'battle-log-entry';
+                        entry.textContent = msg;
+                        log.appendChild(entry);
+                    });
+                    log.scrollTop = log.scrollHeight;
                 }
 
                 function executeRivalTurn(moveId) {
@@ -1119,6 +1163,7 @@
                     if (rivalHP <= 0) {
                         fightOver = true;
                         renderRivalFight();
+                        restoreRivalLog();
                         rivalLog(`${trainer.petName} is defeated! ${trainer.winMessage}`);
                         endRivalFight(rivalIdx, true);
                         return;
@@ -1140,12 +1185,14 @@
                     if (playerHP <= 0) {
                         fightOver = true;
                         renderRivalFight();
+                        restoreRivalLog();
                         rivalLog(`${petName} is defeated! ${trainer.loseMessage}`);
                         endRivalFight(rivalIdx, false);
                         return;
                     }
 
                     renderRivalFight();
+                    restoreRivalLog();
                 }
 
                 function endRivalFight(rivalIdx, won) {
@@ -1200,6 +1247,7 @@
                 }
 
                 renderRivalFight();
+                restoreRivalLog();
             }
 
             function closeRivalUI() {

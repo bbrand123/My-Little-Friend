@@ -1647,6 +1647,7 @@
                 gain.connect(dest);
                 osc.start();
                 osc.stop(ctx.currentTime + duration / 1000);
+                osc.onended = () => { osc.disconnect(); gain.disconnect(); };
             } catch (e) {
                 // Audio not supported — game works visually without it
             }
@@ -1668,6 +1669,7 @@
                 gain.connect(dest);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.6);
+                osc.onended = () => { osc.disconnect(); gain.disconnect(); };
             } catch (e) {
                 // Audio not supported
             }

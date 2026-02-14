@@ -104,6 +104,8 @@
         // Apply care variant effects to color
         function applyCareVariant(color, variant, isEvolved) {
             if (!color) return color;
+            // Only transform hex colors; return non-hex values (rgb, hsl, named) unchanged
+            if (typeof color !== 'string' || !color.startsWith('#')) return color;
 
             switch (variant) {
                 case 'dull':
@@ -457,10 +459,20 @@
             // Add idle breathing animation to body elements
             const breatheAnim = `<animateTransform attributeName="transform" type="scale" values="1 1;1.015 0.985;1 1" dur="3s" repeatCount="indefinite" additive="sum" origin="50 70"/>`;
             // Insert breathing animation after the first body ellipse/circle
-            svg = svg.replace(/(<!-- Body -->\s*<(?:ellipse|circle)[^>]*)(\/?>)/, `$1$2${breatheAnim}`);
+            // Fallback: also try matching without the comment marker
+            const breatheRegex = /(<!-- Body -->\s*<(?:ellipse|circle)[^>]*)(\/?>)/;
+            const breatheFallback = /(<(?:ellipse|circle)[^>]*class="[^"]*body[^"]*"[^>]*)(\/?>)/i;
+            if (breatheRegex.test(svg)) {
+                svg = svg.replace(breatheRegex, `$1$2${breatheAnim}`);
+            } else if (breatheFallback.test(svg)) {
+                svg = svg.replace(breatheFallback, `$1$2${breatheAnim}`);
+            }
 
             // Add eye blink animation (brief squash of eyes every ~5s)
-            const blinkAnim = `<animate attributeName="ry" values="1;0.2;1" dur="0.15s" begin="0s;blinkAnim.end+${4 + Math.random() * 3}s" id="blinkAnim" fill="freeze"/>`;
+            const blinkId = 'blinkAnim_' + Math.random().toString(36).slice(2, 8);
+            const blinkAnim = `<animate attributeName="ry" values="1;0.2;1" dur="0.15s" begin="0s;${blinkId}.end+${4 + Math.random() * 3}s" id="${blinkId}" fill="freeze"/>`;
+            // Inject blink animation into the first eye ellipse
+            svg = svg.replace(/(<!-- Eyes -->\s*<ellipse[^>]*)(\/?>)/, `$1$2${blinkAnim}`);
 
             // Add sparkle effect for shiny/evolved pets
             const isShiny = careVariant === 'shiny';
