@@ -18,6 +18,43 @@
             { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Requires pointer (mouse or touch).' }
         ];
 
+        // ==================== CELEBRATION EFFECTS ====================
+
+        // Spawn confetti particles for minigame wins
+        function showMinigameConfetti() {
+            const container = document.createElement('div');
+            container.className = 'minigame-celebration';
+            container.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(container);
+
+            const colors = ['#FF4444', '#FFD700', '#4CAF50', '#2196F3', '#FF69B4', '#FF9800', '#9C27B0'];
+            for (let i = 0; i < 30; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.left = (Math.random() * 100) + '%';
+                piece.style.top = '-10px';
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.animationDelay = (Math.random() * 0.8) + 's';
+                piece.style.animationDuration = (1.5 + Math.random() * 1) + 's';
+                piece.style.width = (6 + Math.random() * 6) + 'px';
+                piece.style.height = (6 + Math.random() * 6) + 'px';
+                piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                container.appendChild(piece);
+            }
+            setTimeout(() => container.remove(), 3000);
+        }
+
+        // Show "New High Score!" banner
+        function showHighScoreBanner(gameName, score) {
+            const banner = document.createElement('div');
+            banner.className = 'new-highscore-banner';
+            banner.setAttribute('aria-hidden', 'true');
+            banner.textContent = `New High Score! ${gameName}: ${score}`;
+            document.body.appendChild(banner);
+            if (typeof hapticPattern === 'function') hapticPattern('highscore');
+            setTimeout(() => banner.remove(), 2500);
+        }
+
         // Restore idle animations and room earcons after a mini-game ends
         function restorePostMiniGameState() {
             if (gameState.phase === 'pet') {
@@ -470,7 +507,13 @@
                 saveGame();
 
                 announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}!${bestMsg}`);
-                if (isNewBest) showToast(`New high score in Fetch: ${fetchState.score}!`, '#FFD700');
+                if (isNewBest) {
+                    showToast(`New high score in Fetch: ${fetchState.score}!`, '#FFD700');
+                    showMinigameConfetti();
+                    showHighScoreBanner('Fetch', fetchState.score);
+                } else if (fetchState.score > 0) {
+                    showMinigameConfetti();
+                }
             }
 
             restorePostMiniGameState();
@@ -871,7 +914,13 @@
                 saveGame();
 
                 announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}!${bestMsg}`);
-                if (isNewBest) showToast(`New high score in Hide & Seek: ${hideSeekState.treatsFound}!`, '#FFD700');
+                if (isNewBest) {
+                    showToast(`New high score in Hide & Seek: ${hideSeekState.treatsFound}!`, '#FFD700');
+                    showMinigameConfetti();
+                    showHighScoreBanner('Hide & Seek', hideSeekState.treatsFound);
+                } else if (hideSeekState.treatsFound > 0) {
+                    showMinigameConfetti();
+                }
             }
 
             restorePostMiniGameState();
@@ -1258,7 +1307,13 @@
                 saveGame();
 
                 announce(`Bubble Pop over! ${bubblePopState.score} bubbles popped! Happiness +${happinessBonus}! Cleanliness +${cleanlinessBonus}!${bestMsg}`);
-                if (isNewBest) showToast(`New high score in Bubble Pop: ${bubblePopState.score}!`, '#FFD700');
+                if (isNewBest) {
+                    showToast(`New high score in Bubble Pop: ${bubblePopState.score}!`, '#FFD700');
+                    showMinigameConfetti();
+                    showHighScoreBanner('Bubble Pop', bubblePopState.score);
+                } else if (bubblePopState.score > 0) {
+                    showMinigameConfetti();
+                }
             }
 
             restorePostMiniGameState();
@@ -1548,7 +1603,13 @@
                 saveGame();
 
                 announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}!${bestMsg}`);
-                if (isNewBest) showToast(`New high score in Matching: ${matchScore}!`, '#FFD700');
+                if (isNewBest) {
+                    showToast(`New high score in Matching: ${matchScore}!`, '#FFD700');
+                    showMinigameConfetti();
+                    showHighScoreBanner('Matching', matchScore);
+                } else if (matchingState.matchesFound > 0) {
+                    showMinigameConfetti();
+                }
             }
 
             restorePostMiniGameState();
@@ -1907,7 +1968,13 @@
                 saveGame();
 
                 announce(`Simon Says over! Reached round ${simonState.highestRound}! Happiness +${happinessBonus}!${bestMsg}`);
-                if (isNewBest) showToast(`New high score in Simon Says: Round ${roundsCompleted}!`, '#FFD700');
+                if (isNewBest) {
+                    showToast(`New high score in Simon Says: Round ${roundsCompleted}!`, '#FFD700');
+                    showMinigameConfetti();
+                    showHighScoreBanner('Simon Says', 'Round ' + roundsCompleted);
+                } else if (simonState.score > 0) {
+                    showMinigameConfetti();
+                }
             }
 
             // Audio context is shared via SoundManager — no cleanup needed here
@@ -2326,6 +2393,12 @@
                 saveGame();
 
                 announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}!${bestMsg}`);
+                if (isNewBest) {
+                    showMinigameConfetti();
+                    showHighScoreBanner('Coloring', colored);
+                } else if (colored > 0) {
+                    showMinigameConfetti();
+                }
             }
 
             restorePostMiniGameState();

@@ -500,6 +500,16 @@
                 }
             }
 
+            // Pitch variation helper: randomize frequency by +/- 5%
+            function varyPitch(freq) {
+                return freq * (1 + (Math.random() - 0.5) * 0.1);
+            }
+
+            // Timing variation helper: randomize timing by +/- 10%
+            function varyTiming(t) {
+                return t * (1 + (Math.random() - 0.5) * 0.2);
+            }
+
             // Feed: warm ascending "nom nom" two-note
             function sfxFeed(ctx) {
                 const t = ctx.currentTime;
@@ -507,13 +517,14 @@
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME, t + i * 0.12);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.1);
+                    osc.frequency.value = varyPitch(freq);
+                    const offset = varyTiming(0.12);
+                    g.gain.setValueAtTime(SFX_VOLUME, t + i * offset);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.1);
                     osc.connect(g);
                     g.connect(masterGain);
-                    osc.start(t + i * 0.12);
-                    osc.stop(t + i * 0.12 + 0.12);
+                    osc.start(t + i * offset);
+                    osc.stop(t + i * offset + 0.12);
                 });
             }
 
@@ -524,11 +535,11 @@
                 const g = ctx.createGain();
                 const filter = ctx.createBiquadFilter();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(300, t);
-                osc.frequency.exponentialRampToValueAtTime(800, t + 0.15);
-                osc.frequency.exponentialRampToValueAtTime(400, t + 0.3);
+                osc.frequency.setValueAtTime(varyPitch(300), t);
+                osc.frequency.exponentialRampToValueAtTime(varyPitch(800), t + 0.15);
+                osc.frequency.exponentialRampToValueAtTime(varyPitch(400), t + 0.3);
                 filter.type = 'bandpass';
-                filter.frequency.value = 600;
+                filter.frequency.value = varyPitch(600);
                 filter.Q.value = 2;
                 g.gain.setValueAtTime(SFX_VOLUME, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
@@ -546,13 +557,14 @@
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'triangle';
-                    osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.8, t + i * 0.08);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.08 + 0.12);
+                    osc.frequency.value = varyPitch(freq);
+                    const offset = varyTiming(0.08);
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.8, t + i * offset);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.12);
                     osc.connect(g);
                     g.connect(masterGain);
-                    osc.start(t + i * 0.08);
-                    osc.stop(t + i * 0.08 + 0.15);
+                    osc.start(t + i * offset);
+                    osc.stop(t + i * offset + 0.15);
                 });
             }
 
@@ -562,8 +574,8 @@
                 const osc = ctx.createOscillator();
                 const g = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(440, t);
-                osc.frequency.exponentialRampToValueAtTime(220, t + 0.5);
+                osc.frequency.setValueAtTime(varyPitch(440), t);
+                osc.frequency.exponentialRampToValueAtTime(varyPitch(220), t + 0.5);
                 g.gain.setValueAtTime(SFX_VOLUME * 0.6, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
                 osc.connect(g);
@@ -580,9 +592,9 @@
                 const lfo = ctx.createOscillator();
                 const lfoGain = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.value = 260;
+                osc.frequency.value = varyPitch(260);
                 lfo.type = 'sine';
-                lfo.frequency.value = 20;
+                lfo.frequency.value = varyPitch(20);
                 lfoGain.gain.value = 15;
                 lfo.connect(lfoGain);
                 lfoGain.connect(osc.frequency);
@@ -603,7 +615,7 @@
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.value = freq;
+                    osc.frequency.value = varyPitch(freq);
                     g.gain.setValueAtTime(SFX_VOLUME * 0.6, t + i * 0.1);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.25);
                     osc.connect(g);
@@ -625,15 +637,16 @@
                     src.buffer = buffer;
                     const filter = ctx.createBiquadFilter();
                     filter.type = 'bandpass';
-                    filter.frequency.value = 2000 + i * 500;
+                    filter.frequency.value = varyPitch(2000 + i * 500);
                     filter.Q.value = 1;
                     const g = ctx.createGain();
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + i * 0.1);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.08);
+                    const offset = varyTiming(0.1);
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + i * offset);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.08);
                     src.connect(filter);
                     filter.connect(g);
                     g.connect(masterGain);
-                    src.start(t + i * 0.1);
+                    src.start(t + i * offset);
                 }
             }
 
@@ -644,13 +657,14 @@
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'square';
-                    osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.3, t + i * 0.06);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.06 + 0.08);
+                    osc.frequency.value = varyPitch(freq);
+                    const offset = varyTiming(0.06);
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.3, t + i * offset);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.08);
                     osc.connect(g);
                     g.connect(masterGain);
-                    osc.start(t + i * 0.06);
-                    osc.stop(t + i * 0.06 + 0.1);
+                    osc.start(t + i * offset);
+                    osc.stop(t + i * offset + 0.1);
                 });
             }
 
@@ -661,13 +675,14 @@
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.5, t + i * 0.06);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.06 + 0.15);
+                    osc.frequency.value = varyPitch(freq);
+                    const offset = varyTiming(0.06);
+                    g.gain.setValueAtTime(SFX_VOLUME * 0.5, t + i * offset);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.15);
                     osc.connect(g);
                     g.connect(masterGain);
-                    osc.start(t + i * 0.06);
-                    osc.stop(t + i * 0.06 + 0.2);
+                    osc.start(t + i * offset);
+                    osc.stop(t + i * offset + 0.2);
                 });
             }
 

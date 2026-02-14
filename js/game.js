@@ -75,6 +75,30 @@
             } catch (e) { /* unsupported — silently ignore */ }
         }
 
+        // Distinct haptic patterns for different actions
+        const HAPTIC_PATTERNS = {
+            feed: [30, 20, 30],           // double-tap feel
+            wash: [40, 30, 40, 30, 40],   // scrubbing rhythm
+            play: [20, 10, 20, 10, 50],   // bouncy
+            sleep: [80],                    // single long press
+            medicine: [20, 40, 20],         // gentle
+            groom: [15, 15, 15, 15, 15],   // brushing strokes
+            exercise: [30, 10, 30, 10, 30, 10, 30], // rapid bursts
+            treat: [40, 20, 60],           // reward feel
+            cuddle: [50, 30, 80],          // warm embrace
+            achievement: [30, 20, 30, 20, 80], // celebration
+            critical: [100, 50, 100],       // urgent warning
+            highscore: [40, 20, 40, 20, 40, 20, 100] // big celebration
+        };
+
+        function hapticPattern(action) {
+            try {
+                if (navigator.vibrate && HAPTIC_PATTERNS[action]) {
+                    navigator.vibrate(HAPTIC_PATTERNS[action]);
+                }
+            } catch (e) { /* unsupported — silently ignore */ }
+        }
+
         // ==================== UTILITY FUNCTIONS ====================
 
         // Get difficulty multiplier for a minigame based on how many times it's been played
@@ -1658,7 +1682,12 @@
                 if (petArea) {
                     // Add room transition animation
                     petArea.classList.add('room-transitioning');
-                    setTimeout(() => petArea.classList.remove('room-transitioning'), 300);
+                    setTimeout(() => petArea.classList.remove('room-transitioning'), 450);
+
+                    // Update season class
+                    const season = gameState.season || getCurrentSeason();
+                    ['spring', 'summer', 'autumn', 'winter'].forEach(s => petArea.classList.remove('season-' + s));
+                    petArea.classList.add('season-' + season);
 
                     // Update room class
                     ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
@@ -2155,6 +2184,62 @@
             if (firstSeed) firstSeed.focus();
         }
 
+        // Generate SVG illustrations for garden crop stages
+        function generateCropSVG(cropId, stage) {
+            const colors = {
+                carrot:     { stem: '#4CAF50', fruit: '#FF6D00', ground: '#8D6E63' },
+                tomato:     { stem: '#388E3C', fruit: '#F44336', ground: '#8D6E63' },
+                strawberry: { stem: '#388E3C', fruit: '#E91E63', ground: '#8D6E63' },
+                pumpkin:    { stem: '#388E3C', fruit: '#FF9800', ground: '#8D6E63' },
+                sunflower:  { stem: '#388E3C', fruit: '#FFD600', ground: '#8D6E63' },
+                apple:      { stem: '#5D4037', fruit: '#F44336', ground: '#8D6E63' }
+            };
+            const c = colors[cropId] || colors.carrot;
+
+            if (stage === 0) {
+                // Seed/soil
+                return `<svg viewBox="0 0 40 40" class="garden-plot-svg" aria-hidden="true">
+                    <rect x="2" y="28" width="36" height="10" rx="3" fill="${c.ground}"/>
+                    <ellipse cx="20" cy="28" rx="4" ry="2" fill="#5D4037"/>
+                    <ellipse cx="20" cy="28" rx="2" ry="1" fill="#795548"/>
+                </svg>`;
+            } else if (stage === 1) {
+                // Sprout
+                return `<svg viewBox="0 0 40 40" class="garden-plot-svg" aria-hidden="true">
+                    <rect x="2" y="28" width="36" height="10" rx="3" fill="${c.ground}"/>
+                    <line x1="20" y1="28" x2="20" y2="18" stroke="${c.stem}" stroke-width="2.5" stroke-linecap="round"/>
+                    <ellipse cx="16" cy="18" rx="5" ry="3" fill="${c.stem}" transform="rotate(-20 16 18)"/>
+                    <ellipse cx="24" cy="18" rx="5" ry="3" fill="${c.stem}" transform="rotate(20 24 18)"/>
+                </svg>`;
+            } else if (stage === 2) {
+                // Growing plant
+                return `<svg viewBox="0 0 40 40" class="garden-plot-svg" aria-hidden="true">
+                    <rect x="2" y="28" width="36" height="10" rx="3" fill="${c.ground}"/>
+                    <line x1="20" y1="28" x2="20" y2="12" stroke="${c.stem}" stroke-width="3" stroke-linecap="round"/>
+                    <ellipse cx="14" cy="14" rx="6" ry="3.5" fill="${c.stem}" transform="rotate(-25 14 14)"/>
+                    <ellipse cx="26" cy="14" rx="6" ry="3.5" fill="${c.stem}" transform="rotate(25 26 14)"/>
+                    <ellipse cx="13" cy="20" rx="5" ry="3" fill="${c.stem}" transform="rotate(-15 13 20)"/>
+                    <ellipse cx="27" cy="20" rx="5" ry="3" fill="${c.stem}" transform="rotate(15 27 20)"/>
+                </svg>`;
+            } else {
+                // Harvest-ready with fruit
+                const fruitShapes = {
+                    carrot: `<rect x="17" y="20" width="6" height="12" rx="3" fill="${c.fruit}"/><polygon points="20,16 17,20 23,20" fill="${c.stem}"/>`,
+                    tomato: `<circle cx="20" cy="22" r="7" fill="${c.fruit}"/><ellipse cx="20" cy="16" rx="4" ry="2" fill="${c.stem}"/>`,
+                    strawberry: `<path d="M20 14 Q14 20 16 26 Q20 30 24 26 Q26 20 20 14Z" fill="${c.fruit}"/><ellipse cx="20" cy="14" rx="4" ry="2" fill="${c.stem}"/><circle cx="18" cy="22" r="0.8" fill="#FFD600"/><circle cx="22" cy="24" r="0.8" fill="#FFD600"/><circle cx="20" cy="20" r="0.8" fill="#FFD600"/>`,
+                    pumpkin: `<ellipse cx="20" cy="24" rx="9" ry="7" fill="${c.fruit}"/><path d="M20 17 Q22 14 20 12" stroke="${c.stem}" stroke-width="2" fill="none"/><ellipse cx="20" cy="24" rx="3" ry="7" fill="rgba(0,0,0,0.08)"/>`,
+                    sunflower: `<circle cx="20" cy="18" r="5" fill="#5D4037"/><circle cx="14" cy="16" r="4" fill="${c.fruit}"/><circle cx="26" cy="16" r="4" fill="${c.fruit}"/><circle cx="14" cy="22" r="4" fill="${c.fruit}"/><circle cx="26" cy="22" r="4" fill="${c.fruit}"/><circle cx="20" cy="13" r="4" fill="${c.fruit}"/><circle cx="20" cy="24" r="4" fill="${c.fruit}"/>`,
+                    apple: `<circle cx="20" cy="20" r="7" fill="${c.fruit}"/><line x1="20" y1="13" x2="20" y2="10" stroke="${c.stem}" stroke-width="2" stroke-linecap="round"/><ellipse cx="22" cy="12" rx="3" ry="2" fill="${c.stem}"/>`
+                };
+                const fruit = fruitShapes[cropId] || fruitShapes.carrot;
+                return `<svg viewBox="0 0 40 40" class="garden-plot-svg" aria-hidden="true">
+                    <rect x="2" y="28" width="36" height="10" rx="3" fill="${c.ground}"/>
+                    <line x1="20" y1="28" x2="20" y2="14" stroke="${c.stem}" stroke-width="3" stroke-linecap="round"/>
+                    ${fruit}
+                </svg>`;
+            }
+        }
+
         function renderGardenUI() {
             const gardenSection = document.getElementById('garden-section');
             if (!gardenSection) return;
@@ -2188,6 +2273,7 @@
                 } else {
                     const crop = GARDEN_CROPS[plot.cropId];
                     const stageEmoji = crop.stages[plot.stage];
+                    const cropSVG = generateCropSVG(plot.cropId, plot.stage);
                     const isReady = plot.stage >= 3;
                     const growMult = seasonData ? seasonData.gardenGrowthMultiplier : 1;
                     const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growMult));
@@ -2209,7 +2295,7 @@
                         <div class="garden-plot ${plotClass}" data-plot="${i}" role="group"
                              aria-label="Plot ${i + 1}: ${crop.name} - ${statusLabel}">
                             <button class="garden-plot-action" data-plot-action="${i}" aria-label="${plotActionLabel}">
-                                <span class="garden-plot-emoji" aria-hidden="true">${stageEmoji}</span>
+                                ${cropSVG}
                                 ${!isReady ? `<div class="garden-plot-progress" role="progressbar" aria-label="${crop.name} growth" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
                                 <span class="garden-plot-status">${statusLine}</span>
                             </button>
@@ -2431,6 +2517,8 @@
                         if (typeof SoundManager !== 'undefined' && pet.type) {
                             SoundManager.playSFX((ctx) => SoundManager.sfx.petSad(ctx, pet.type));
                         }
+                        // Haptic alert for critical stat drop
+                        hapticPattern('critical');
                     }
 
                     // Apply passive decay to non-active pets (gentler rate)

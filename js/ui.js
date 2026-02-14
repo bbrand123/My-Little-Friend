@@ -590,6 +590,7 @@
             const urgency = top.value <= 15 ? 'critical' : 'low';
             return `<div class="thought-bubble ${urgency}" aria-label="${petName} is ${top.label}" role="img">
                 <span class="thought-icon">${top.icon}</span>
+                <span class="thought-text">${petName} is ${top.label}</span>
             </div>`;
         }
 
@@ -692,7 +693,7 @@
                 </div>
                 ${generatePetSwitcherHTML()}
                 ${generateRoomNavHTML(currentRoom)}
-                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
+                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
                     ${weatherHTML}
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
@@ -1379,6 +1380,50 @@
         let actionCooldownTimer = null;
         const ACTION_COOLDOWN_MS = 600;
 
+        // Spawn themed particles above the pet on care actions
+        function spawnCareParticles(container, emojis, count) {
+            if (!container) return;
+            count = count || 5;
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('span');
+                p.className = 'care-particle';
+                p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                const dx = (Math.random() - 0.5) * 80;
+                const dy = -30 - Math.random() * 40;
+                p.style.setProperty('--dx', dx + 'px');
+                p.style.setProperty('--dy', dy + 'px');
+                p.style.left = (40 + Math.random() * 20) + '%';
+                p.style.top = (20 + Math.random() * 20) + '%';
+                p.style.animationDelay = (i * 0.08) + 's';
+                container.appendChild(p);
+                setTimeout(() => p.remove(), 1500);
+            }
+        }
+
+        // Show floating stat change text above pet
+        function showFloatingStatChange(container, label, amount) {
+            if (!container || amount === 0) return;
+            const el = document.createElement('div');
+            el.className = 'stat-change-float ' + (amount > 0 ? 'positive' : 'negative');
+            el.textContent = (amount > 0 ? '+' : '') + amount + ' ' + label;
+            el.style.left = (40 + Math.random() * 20) + '%';
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1600);
+        }
+
+        // Map care actions to themed particle emojis
+        const CARE_PARTICLE_EMOJIS = {
+            feed: ['🍎', '🥕', '🍖', '🧁'],
+            wash: ['🫧', '💧', '✨', '🧼'],
+            play: ['❤️', '⭐', '🎾', '🎈'],
+            sleep: ['💤', '✨', '🌙'],
+            medicine: ['💊', '✨', '💗'],
+            groom: ['✂️', '✨', '🪮'],
+            exercise: ['💪', '🏃', '⭐'],
+            treat: ['🍬', '🍪', '🧁', '⭐'],
+            cuddle: ['❤️', '💕', '💗', '🥰']
+        };
+
         // Shared standard-feed logic used by both careAction('feed') and openFeedMenu
         function performStandardFeed(pet) {
             const feedBonus = Math.round(20 * getRoomBonus('feed'));
@@ -1574,6 +1619,14 @@
                     break;
             }
 
+            // Spawn themed particles and floating stat text
+            if (petContainer) {
+                spawnCareParticles(petContainer, CARE_PARTICLE_EMOJIS[action] || ['✨'], 5);
+            }
+
+            // Haptic feedback per action type
+            if (typeof hapticPattern === 'function') hapticPattern(action);
+
             // Track care actions for growth
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
@@ -1627,6 +1680,7 @@
                 const newAch = checkAchievements();
                 newAch.forEach(ach => {
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
+                    if (typeof hapticPattern === 'function') hapticPattern('achievement');
                     setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
                 });
             }
