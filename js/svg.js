@@ -442,7 +442,17 @@
                 panda: generatePandaSVG,
                 penguin: generatePenguinSVG,
                 unicorn: generateUnicornSVG,
-                dragon: generateDragonSVG
+                dragon: generateDragonSVG,
+                // Hybrid pet types
+                pegasus: generatePegasusSVG,
+                kirin: generateKirinSVG,
+                catbird: generateCatbirdSVG,
+                turtlefrog: generateTurtlefrogSVG,
+                bundgehog: generateBundgehogSVG,
+                pandapenguin: generatePandapenguinSVG,
+                dogfish: generateDogfishSVG,
+                hamsterbird: generateHamsterbirdSVG,
+                dragonturtle: generateDragonturtleSVG
             };
 
             const generator = petGenerators[type] || generateDogSVG;
@@ -1288,6 +1298,396 @@
                     ${mood === 'sleepy' ? '<text x="72" y="18" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="79" y="11" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="84" y="6" font-size="7" fill="#6666aa" opacity="0.4">z</text>' : ''}
                     <!-- Smoke puffs -->
                     ${mood !== 'sleepy' && mood !== 'sad' ? '<circle cx="35" cy="40" r="2" fill="#999" opacity="0.3"><animate attributeName="cy" values="40;35;30" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.3;0.1;0" dur="2s" repeatCount="indefinite"/></circle>' : ''}
+                </svg>
+            `;
+        }
+
+        // ==================== HYBRID PET SVG GENERATORS ====================
+
+        function generateHybridEyes(eyeStyle, cx1, cy1, cx2, cy2, r) {
+            r = r || 3;
+            switch (eyeStyle) {
+                case 'arc':
+                    return `<path d="M${cx1-r} ${cy1} Q${cx1} ${cy1-r*1.5} ${cx1+r} ${cy1}" stroke="#333" stroke-width="2" fill="none"/>
+                            <path d="M${cx2-r} ${cy2} Q${cx2} ${cy2-r*1.5} ${cx2+r} ${cy2}" stroke="#333" stroke-width="2" fill="none"/>`;
+                case 'sad':
+                    return `<ellipse cx="${cx1}" cy="${cy1}" rx="${r}" ry="${r+1}" fill="#333"/>
+                            <ellipse cx="${cx2}" cy="${cy2}" rx="${r}" ry="${r+1}" fill="#333"/>
+                            <circle cx="${cx1+1}" cy="${cy1-1}" r="1" fill="white" opacity="0.6"/>
+                            <circle cx="${cx2+1}" cy="${cy2-1}" r="1" fill="white" opacity="0.6"/>`;
+                case 'sleepy':
+                    return `<line x1="${cx1-r}" y1="${cy1}" x2="${cx1+r}" y2="${cy1}" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="${cx2-r}" y1="${cy2}" x2="${cx2+r}" y2="${cy2}" stroke="#333" stroke-width="2" stroke-linecap="round"/>`;
+                case 'energetic':
+                    return `<circle cx="${cx1}" cy="${cy1}" r="${r+1}" fill="#333"/>
+                            <circle cx="${cx2}" cy="${cy2}" r="${r+1}" fill="#333"/>
+                            <circle cx="${cx1+1}" cy="${cy1-1}" r="1.5" fill="white"/>
+                            <circle cx="${cx2+1}" cy="${cy2-1}" r="1.5" fill="white"/>`;
+                default:
+                    return `<circle cx="${cx1}" cy="${cy1}" r="${r}" fill="#333"/>
+                            <circle cx="${cx2}" cy="${cy2}" r="${r}" fill="#333"/>
+                            <circle cx="${cx1+1}" cy="${cy1-1}" r="1" fill="white" opacity="0.7"/>
+                            <circle cx="${cx2+1}" cy="${cy2-1}" r="1" fill="white" opacity="0.7"/>`;
+            }
+        }
+
+        function generateHybridMouth(mood, cx, cy) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const isDown = mood === 'sad';
+            if (isUp) return `<path d="M${cx-8} ${cy} Q${cx} ${cy+10} ${cx+8} ${cy}" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+            if (isDown) return `<path d="M${cx-6} ${cy+3} Q${cx} ${cy-3} ${cx+6} ${cy+3}" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+            return `<line x1="${cx-5}" y1="${cy}" x2="${cx+5}" y2="${cy}" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>`;
+        }
+
+        function generateSleepyZzz() {
+            return '<text x="72" y="18" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="79" y="11" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="84" y="6" font-size="7" fill="#6666aa" opacity="0.4">z</text>';
+        }
+
+        // Pegasus - unicorn + bird (winged horse)
+        function generatePegasusSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="60" rx="28" ry="22" fill="${color}" class="body"/>
+                    <!-- Legs -->
+                    <rect x="30" y="76" width="8" height="16" rx="3" fill="${color}"/>
+                    <rect x="62" y="76" width="8" height="16" rx="3" fill="${color}"/>
+                    <!-- Head -->
+                    <ellipse cx="50" cy="35" rx="18" ry="16" fill="${color}"/>
+                    <!-- Horn -->
+                    <polygon points="50,10 46,26 54,26" fill="#FFD700"/>
+                    <line x1="48" y1="16" x2="52" y2="22" stroke="#FFF" stroke-width="0.5" opacity="0.5"/>
+                    <!-- Wings -->
+                    <path d="M22 50 Q10 30 20 20 Q25 25 28 35 Q15 28 22 18 Q28 22 30 32 L28 48" fill="#E6E6FA" opacity="${isUp ? 0.9 : 0.7}">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="-5 28 50;10 28 50;-5 28 50" dur="1s" repeatCount="indefinite"/>' : ''}
+                    </path>
+                    <path d="M78 50 Q90 30 80 20 Q75 25 72 35 Q85 28 78 18 Q72 22 70 32 L72 48" fill="#E6E6FA" opacity="${isUp ? 0.9 : 0.7}">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="5 72 50;-10 72 50;5 72 50" dur="1s" repeatCount="indefinite"/>' : ''}
+                    </path>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 42, 33, 58, 33)}
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 43)}
+                    <!-- Mane -->
+                    <path d="M38 22 Q35 15 40 12 Q42 18 44 22" fill="#DDA0DD" opacity="0.7"/>
+                    <path d="M44 20 Q42 12 47 9 Q48 16 49 20" fill="#DDA0DD" opacity="0.7"/>
+                    <!-- Tail -->
+                    <path d="M22 58 Q10 55 8 65 Q12 62 18 60" fill="#DDA0DD" opacity="0.7"/>
+                    ${isUp ? '<circle cx="30" cy="33" r="3" fill="#FFB6C1" opacity="0.4"/><circle cx="70" cy="33" r="3" fill="#FFB6C1" opacity="0.4"/>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Kirin - dragon + unicorn (fire-magic hybrid)
+        function generateKirinSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const glowId = 'kirin-glow-' + Math.random().toString(36).slice(2, 6);
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="${glowId}"><stop offset="0%" stop-color="#FFD700" stop-opacity="0.3"/><stop offset="100%" stop-color="#FFD700" stop-opacity="0"/></radialGradient>
+                    </defs>
+                    ${isUp ? `<circle cx="50" cy="50" r="45" fill="url(#${glowId})"/>` : ''}
+                    <!-- Body -->
+                    <ellipse cx="50" cy="60" rx="25" ry="20" fill="${color}" class="body"/>
+                    <!-- Legs -->
+                    <rect x="32" y="75" width="7" height="15" rx="3" fill="${color}"/>
+                    <rect x="61" y="75" width="7" height="15" rx="3" fill="${color}"/>
+                    <!-- Head -->
+                    <ellipse cx="50" cy="35" rx="16" ry="14" fill="${color}"/>
+                    <!-- Antlers -->
+                    <path d="M40 22 Q36 10 30 8 Q34 14 38 18" fill="#8B4513" stroke="#8B4513" stroke-width="1"/>
+                    <path d="M60 22 Q64 10 70 8 Q66 14 62 18" fill="#8B4513" stroke="#8B4513" stroke-width="1"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 43, 33, 57, 33)}
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 42)}
+                    <!-- Flame mane -->
+                    <path d="M36 26 Q30 18 35 12 Q38 20 40 24" fill="#FF4500" opacity="0.7"/>
+                    <path d="M42 23 Q38 14 43 8 Q44 18 45 22" fill="#FF6347" opacity="0.6"/>
+                    <!-- Scale pattern -->
+                    <path d="M35 55 Q38 52 41 55 Q44 52 47 55" stroke="${color}" stroke-width="1" fill="none" opacity="0.3"/>
+                    <!-- Sparkle tail -->
+                    <circle cx="25" cy="60" r="3" fill="#FFD700" opacity="${isUp ? 0.8 : 0.4}">
+                        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite"/>
+                    </circle>
+                    ${isUp ? '<circle cx="32" cy="33" r="3" fill="#FF6347" opacity="0.3"/><circle cx="68" cy="33" r="3" fill="#FF6347" opacity="0.3"/>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Gryphkitten - cat + bird
+        function generateCatbirdSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="62" rx="22" ry="18" fill="${color}" class="body"/>
+                    <!-- Small wings -->
+                    <path d="M26 55 Q18 42 24 38 Q26 44 28 50" fill="#87CEEB" opacity="0.7">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="-3 28 55;8 28 55;-3 28 55" dur="0.8s" repeatCount="indefinite"/>' : ''}
+                    </path>
+                    <path d="M74 55 Q82 42 76 38 Q74 44 72 50" fill="#87CEEB" opacity="0.7">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="3 72 55;-8 72 55;3 72 55" dur="0.8s" repeatCount="indefinite"/>' : ''}
+                    </path>
+                    <!-- Head -->
+                    <circle cx="50" cy="38" r="16" fill="${color}"/>
+                    <!-- Cat ears -->
+                    <polygon points="36,28 32,14 42,24" fill="${color}"/>
+                    <polygon points="64,28 68,14 58,24" fill="${color}"/>
+                    <polygon points="37,26 34,17 41,24" fill="#FFB6C1" opacity="0.5"/>
+                    <polygon points="63,26 66,17 59,24" fill="#FFB6C1" opacity="0.5"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 43, 36, 57, 36)}
+                    <!-- Whiskers -->
+                    <line x1="30" y1="42" x2="40" y2="41" stroke="#999" stroke-width="0.5"/>
+                    <line x1="30" y1="44" x2="40" y2="44" stroke="#999" stroke-width="0.5"/>
+                    <line x1="60" y1="41" x2="70" y2="42" stroke="#999" stroke-width="0.5"/>
+                    <line x1="60" y1="44" x2="70" y2="44" stroke="#999" stroke-width="0.5"/>
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 44)}
+                    <!-- Tail feathers -->
+                    <path d="M28 68 Q18 72 14 65 Q20 68 24 66" fill="#FFD700" opacity="0.6"/>
+                    <path d="M26 70 Q16 76 12 68 Q18 72 22 70" fill="#FFD700" opacity="0.5"/>
+                    <!-- Feet -->
+                    <ellipse cx="40" cy="80" rx="7" ry="4" fill="${color}"/>
+                    <ellipse cx="60" cy="80" rx="7" ry="4" fill="${color}"/>
+                    ${isUp ? '<circle cx="34" cy="36" r="3" fill="#FFB6C1" opacity="0.3"/><circle cx="66" cy="36" r="3" fill="#FFB6C1" opacity="0.3"/>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Shellhopper - turtle + frog
+        function generateTurtlefrogSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Shell -->
+                    <ellipse cx="50" cy="58" rx="28" ry="20" fill="#556B2F"/>
+                    <ellipse cx="50" cy="55" rx="25" ry="17" fill="#6B8E23" opacity="0.8"/>
+                    <path d="M35 48 L50 42 L65 48 L58 58 L42 58 Z" fill="#556B2F" opacity="0.3"/>
+                    <!-- Body/head (frog-like) -->
+                    <ellipse cx="50" cy="62" rx="22" ry="15" fill="${color}" class="body"/>
+                    <circle cx="50" cy="40" r="14" fill="${color}"/>
+                    <!-- Big frog eyes -->
+                    <circle cx="40" cy="32" r="7" fill="${color}"/>
+                    <circle cx="60" cy="32" r="7" fill="${color}"/>
+                    ${generateHybridEyes(eyeStyle, 40, 32, 60, 32, 4)}
+                    <!-- Mouth (wide frog grin) -->
+                    ${isUp ? '<path d="M36 46 Q50 56 64 46" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>' : generateHybridMouth(mood, 50, 46)}
+                    <!-- Legs (frog legs) -->
+                    <ellipse cx="28" cy="78" rx="10" ry="5" fill="${color}" transform="rotate(-10 28 78)"/>
+                    <ellipse cx="72" cy="78" rx="10" ry="5" fill="${color}" transform="rotate(10 72 78)"/>
+                    <!-- Shell pattern -->
+                    <circle cx="42" cy="52" r="4" fill="#556B2F" opacity="0.2"/>
+                    <circle cx="58" cy="52" r="4" fill="#556B2F" opacity="0.2"/>
+                    <circle cx="50" cy="60" r="4" fill="#556B2F" opacity="0.2"/>
+                    ${isUp ? '<circle cx="32" cy="36" r="3" fill="#90EE90" opacity="0.3"/><circle cx="68" cy="36" r="3" fill="#90EE90" opacity="0.3"/>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Fuzzspike - bunny + hedgehog
+        function generateBundgehogSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Spiky back -->
+                    <polygon points="35,40 38,28 42,40" fill="#8B7355" opacity="0.6"/>
+                    <polygon points="42,38 46,24 50,38" fill="#8B7355" opacity="0.6"/>
+                    <polygon points="50,38 54,24 58,38" fill="#8B7355" opacity="0.6"/>
+                    <polygon points="58,40 62,28 65,40" fill="#8B7355" opacity="0.6"/>
+                    <!-- Body -->
+                    <ellipse cx="50" cy="60" rx="24" ry="20" fill="${color}" class="body"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="40" r="16" fill="${color}"/>
+                    <!-- Bunny ears -->
+                    <ellipse cx="38" cy="18" rx="5" ry="14" fill="${color}" transform="rotate(-10 38 18)"/>
+                    <ellipse cx="62" cy="18" rx="5" ry="14" fill="${color}" transform="rotate(10 62 18)"/>
+                    <ellipse cx="38" cy="18" rx="3" ry="10" fill="#FFB6C1" opacity="0.5" transform="rotate(-10 38 18)"/>
+                    <ellipse cx="62" cy="18" rx="3" ry="10" fill="#FFB6C1" opacity="0.5" transform="rotate(10 62 18)"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 43, 38, 57, 38)}
+                    <!-- Nose -->
+                    <ellipse cx="50" cy="44" rx="3" ry="2" fill="#FFB6C1"/>
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 48)}
+                    <!-- Feet -->
+                    <ellipse cx="38" cy="80" rx="8" ry="5" fill="${color}"/>
+                    <ellipse cx="62" cy="80" rx="8" ry="5" fill="${color}"/>
+                    <!-- Fluffy tail -->
+                    <circle cx="26" cy="62" r="6" fill="#FFFFFF" opacity="0.7"/>
+                    ${isUp ? '<circle cx="34" cy="38" r="3" fill="#FFB6C1" opacity="0.3"/><circle cx="66" cy="38" r="3" fill="#FFB6C1" opacity="0.3"/>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Snowpanda - panda + penguin
+        function generatePandapenguinSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="62" rx="24" ry="22" fill="${color}" class="body"/>
+                    <!-- Belly (penguin-style) -->
+                    <ellipse cx="50" cy="65" rx="16" ry="16" fill="#FFFFFF"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="36" r="18" fill="${color}"/>
+                    <!-- Panda eye patches -->
+                    <ellipse cx="40" cy="35" rx="8" ry="6" fill="#333"/>
+                    <ellipse cx="60" cy="35" rx="8" ry="6" fill="#333"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 40, 35, 60, 35)}
+                    <!-- Ears (round panda ears) -->
+                    <circle cx="34" cy="22" r="6" fill="#333"/>
+                    <circle cx="66" cy="22" r="6" fill="#333"/>
+                    <!-- Penguin beak/nose -->
+                    <polygon points="47,42 53,42 50,46" fill="#FF8C00"/>
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 48)}
+                    <!-- Flipper arms -->
+                    <ellipse cx="26" cy="58" rx="6" ry="12" fill="#333" transform="rotate(15 26 58)"/>
+                    <ellipse cx="74" cy="58" rx="6" ry="12" fill="#333" transform="rotate(-15 74 58)"/>
+                    <!-- Feet -->
+                    <ellipse cx="40" cy="84" rx="8" ry="4" fill="#FF8C00"/>
+                    <ellipse cx="60" cy="84" rx="8" ry="4" fill="#FF8C00"/>
+                    ${isUp ? '<circle cx="30" cy="35" r="3" fill="#FFB6C1" opacity="0.3"/><circle cx="70" cy="35" r="3" fill="#FFB6C1" opacity="0.3"/>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Splashpup - dog + fish
+        function generateDogfishSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Body -->
+                    <ellipse cx="50" cy="58" rx="25" ry="18" fill="${color}" class="body"/>
+                    <!-- Fin on back -->
+                    <polygon points="50,38 45,44 55,44" fill="#4169E1" opacity="0.7"/>
+                    <!-- Side fins -->
+                    <ellipse cx="26" cy="56" rx="5" ry="10" fill="#4169E1" opacity="0.6" transform="rotate(20 26 56)"/>
+                    <ellipse cx="74" cy="56" rx="5" ry="10" fill="#4169E1" opacity="0.6" transform="rotate(-20 74 56)"/>
+                    <!-- Head (dog-like) -->
+                    <circle cx="50" cy="38" r="16" fill="${color}"/>
+                    <!-- Floppy ears -->
+                    <ellipse cx="34" cy="32" rx="8" ry="12" fill="${color}" transform="rotate(15 34 32)"/>
+                    <ellipse cx="66" cy="32" rx="8" ry="12" fill="${color}" transform="rotate(-15 66 32)"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 43, 36, 57, 36)}
+                    <!-- Nose -->
+                    <ellipse cx="50" cy="42" rx="4" ry="3" fill="#333"/>
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 47)}
+                    <!-- Tail fin -->
+                    <polygon points="22,60 12,52 12,68" fill="#4169E1" opacity="0.6">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="-5 22 60;5 22 60;-5 22 60" dur="0.6s" repeatCount="indefinite"/>' : ''}
+                    </polygon>
+                    <!-- Scales shimmer -->
+                    <circle cx="42" cy="55" r="2" fill="#87CEEB" opacity="0.3"/>
+                    <circle cx="50" cy="58" r="2" fill="#87CEEB" opacity="0.3"/>
+                    <circle cx="58" cy="55" r="2" fill="#87CEEB" opacity="0.3"/>
+                    <!-- Feet -->
+                    <ellipse cx="40" cy="76" rx="7" ry="4" fill="${color}"/>
+                    <ellipse cx="60" cy="76" rx="7" ry="4" fill="${color}"/>
+                    <!-- Bubbles -->
+                    ${isUp ? '<circle cx="62" cy="30" r="2" fill="#87CEEB" opacity="0.4"><animate attributeName="cy" values="30;22;14" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.4;0.2;0" dur="2s" repeatCount="indefinite"/></circle>' : ''}
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Fluffwing - hamster + bird
+        function generateHamsterbirdSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Body (round hamster) -->
+                    <ellipse cx="50" cy="60" rx="22" ry="20" fill="${color}" class="body"/>
+                    <!-- Belly -->
+                    <ellipse cx="50" cy="64" rx="14" ry="14" fill="#FFFFFF" opacity="0.4"/>
+                    <!-- Tiny wings -->
+                    <path d="M28 52 Q18 40 24 35 Q26 42 28 48" fill="#87CEEB" opacity="0.6">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="-5 28 52;10 28 52;-5 28 52" dur="0.6s" repeatCount="indefinite"/>' : ''}
+                    </path>
+                    <path d="M72 52 Q82 40 76 35 Q74 42 72 48" fill="#87CEEB" opacity="0.6">
+                        ${isUp ? '<animateTransform attributeName="transform" type="rotate" values="5 72 52;-10 72 52;5 72 52" dur="0.6s" repeatCount="indefinite"/>' : ''}
+                    </path>
+                    <!-- Head -->
+                    <circle cx="50" cy="38" r="15" fill="${color}"/>
+                    <!-- Tiny round ears -->
+                    <circle cx="37" cy="26" r="5" fill="${color}"/>
+                    <circle cx="63" cy="26" r="5" fill="${color}"/>
+                    <circle cx="37" cy="26" r="3" fill="#FFB6C1" opacity="0.4"/>
+                    <circle cx="63" cy="26" r="3" fill="#FFB6C1" opacity="0.4"/>
+                    <!-- Cheek pouches -->
+                    <ellipse cx="36" cy="40" rx="5" ry="4" fill="#FFE4C4" opacity="0.6"/>
+                    <ellipse cx="64" cy="40" rx="5" ry="4" fill="#FFE4C4" opacity="0.6"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 44, 36, 56, 36, 2.5)}
+                    <!-- Beak-nose -->
+                    <polygon points="48,42 52,42 50,45" fill="#FFD700"/>
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 47)}
+                    <!-- Tail feathers -->
+                    <path d="M28 65 Q20 68 18 62" fill="#FFD700" opacity="0.5"/>
+                    <path d="M26 67 Q18 72 16 65" fill="#FFD700" opacity="0.4"/>
+                    <!-- Feet -->
+                    <ellipse cx="40" cy="80" rx="6" ry="3" fill="#FFD700"/>
+                    <ellipse cx="60" cy="80" rx="6" ry="3" fill="#FFD700"/>
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
+                </svg>
+            `;
+        }
+
+        // Dracoturtle - dragon + turtle
+        function generateDragonturtleSVG(color, eyeStyle, mood) {
+            const isUp = mood === 'happy' || mood === 'energetic';
+            const fireId = 'dt-fire-' + Math.random().toString(36).slice(2, 6);
+            return `
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="${fireId}" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#FF4500"/><stop offset="100%" stop-color="#FFD700"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Shell (armored) -->
+                    <ellipse cx="50" cy="58" rx="30" ry="22" fill="#556B2F"/>
+                    <ellipse cx="50" cy="55" rx="27" ry="19" fill="#6B8E23" opacity="0.8"/>
+                    <!-- Shell spikes -->
+                    <polygon points="38,36 42,26 46,36" fill="#8B0000" opacity="0.6"/>
+                    <polygon points="47,34 50,22 53,34" fill="#8B0000" opacity="0.6"/>
+                    <polygon points="54,36 58,26 62,36" fill="#8B0000" opacity="0.6"/>
+                    <!-- Body -->
+                    <ellipse cx="50" cy="62" rx="22" ry="16" fill="${color}" class="body"/>
+                    <!-- Head -->
+                    <circle cx="50" cy="38" r="14" fill="${color}"/>
+                    <!-- Horns -->
+                    <polygon points="38,28 34,16 42,26" fill="#8B0000"/>
+                    <polygon points="62,28 66,16 58,26" fill="#8B0000"/>
+                    <!-- Eyes -->
+                    ${generateHybridEyes(eyeStyle, 43, 36, 57, 36)}
+                    <!-- Mouth -->
+                    ${generateHybridMouth(mood, 50, 45)}
+                    <!-- Fire breath when happy -->
+                    ${isUp ? `<path d="M42 45 Q35 42 30 36 Q33 40 36 43" fill="url(#${fireId})" opacity="0.7"><animate attributeName="opacity" values="0.7;0.3;0.7" dur="0.8s" repeatCount="indefinite"/></path>` : ''}
+                    <!-- Armored legs -->
+                    <ellipse cx="30" cy="80" rx="10" ry="6" fill="${color}"/>
+                    <ellipse cx="70" cy="80" rx="10" ry="6" fill="${color}"/>
+                    <!-- Shell pattern -->
+                    <circle cx="42" cy="52" r="5" fill="#556B2F" opacity="0.2"/>
+                    <circle cx="58" cy="52" r="5" fill="#556B2F" opacity="0.2"/>
+                    <circle cx="50" cy="60" r="5" fill="#556B2F" opacity="0.2"/>
+                    <!-- Spiked tail -->
+                    <path d="M20 60 Q12 58 10 62 Q14 60 16 58" fill="#8B0000" opacity="0.5"/>
+                    ${mood === 'sleepy' ? generateSleepyZzz() : ''}
                 </svg>
             `;
         }

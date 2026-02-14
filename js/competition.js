@@ -127,7 +127,7 @@
             let turnCount = 0;
 
             function renderBattle() {
-                const petName = escapeHTML(pet.name || PET_TYPES[pet.type].name);
+                const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
                 const oppName = escapeHTML(opponent.name);
                 const playerPct = Math.max(0, Math.round((playerHP / playerMaxHP) * 100));
                 const oppPct = Math.max(0, Math.round((oppHP / oppMaxHP) * 100));
@@ -139,7 +139,7 @@
                         <div class="battle-field">
                             <div class="battle-pet player-pet">
                                 <span class="battle-pet-name">${petName}</span>
-                                <span class="battle-pet-emoji">${PET_TYPES[pet.type].emoji}</span>
+                                <span class="battle-pet-emoji">${(getAllPetTypeData(pet.type) || {}).emoji || '🐾'}</span>
                                 <div class="battle-hp-bar" role="progressbar" aria-valuenow="${playerPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${petName} HP: ${playerHP} of ${playerMaxHP}">
                                     <div class="battle-hp-fill player-hp" style="width:${playerPct}%"></div>
                                 </div>
@@ -229,7 +229,7 @@
                 turnCount++;
 
                 const move = BATTLE_MOVES[moveId];
-                const petName = pet.name || PET_TYPES[pet.type].name;
+                const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
                 const oppName = opponent.name;
 
                 // Player turn
@@ -428,7 +428,7 @@
 
                 function renderBossFight() {
                     const currentPet = allPets[currentPetIdx];
-                    const currentPetName = escapeHTML(currentPet.name || PET_TYPES[currentPet.type].name);
+                    const currentPetName = escapeHTML(currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet');
                     const bossPct = Math.max(0, Math.round((bossHP / bossMaxHP) * 100));
                     const petPct = Math.max(0, Math.round((petHPs[currentPetIdx] / petMaxHPs[currentPetIdx]) * 100));
 
@@ -439,7 +439,7 @@
                             <div class="battle-field boss-field">
                                 <div class="battle-pet player-pet">
                                     <span class="battle-pet-name">${currentPetName}</span>
-                                    <span class="battle-pet-emoji">${PET_TYPES[currentPet.type].emoji}</span>
+                                    <span class="battle-pet-emoji">${(getAllPetTypeData(currentPet.type) || {}).emoji || '🐾'}</span>
                                     <div class="battle-hp-bar" role="progressbar" aria-valuenow="${petPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${currentPetName} HP: ${petHPs[currentPetIdx]} of ${petMaxHPs[currentPetIdx]}"><div class="battle-hp-fill player-hp" style="width:${petPct}%"></div></div>
                                     <span class="battle-hp-text">${petHPs[currentPetIdx]}/${petMaxHPs[currentPetIdx]} HP</span>
                                 </div>
@@ -455,8 +455,8 @@
                                 <div class="boss-team-roster">
                                     ${allPets.map((p, i) => `
                                         <span class="boss-team-member ${i === currentPetIdx ? 'active' : ''} ${petHPs[i] <= 0 ? 'fainted' : ''}"
-                                              title="${p.name || PET_TYPES[p.type].name}">
-                                            ${PET_TYPES[p.type].emoji}${petHPs[i] <= 0 ? '💫' : ''}
+                                              title="${p.name || (getAllPetTypeData(p.type) || {}).name || 'Pet'}">
+                                            ${(getAllPetTypeData(p.type) || {}).emoji || '🐾'}${petHPs[i] <= 0 ? '💫' : ''}
                                         </span>
                                     `).join('')}
                                 </div>
@@ -511,7 +511,7 @@
                 function executeBossTurn(moveId) {
                     if (fightOver) return;
                     const currentPet = allPets[currentPetIdx];
-                    const petName = currentPet.name || PET_TYPES[currentPet.type].name;
+                    const petName = currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet';
                     const move = BATTLE_MOVES[moveId];
 
                     // Player attack
@@ -555,7 +555,7 @@
                         const fallback = petHPs.findIndex((hp) => hp > 0);
                         if (nextAlive !== -1) {
                             currentPetIdx = nextAlive;
-                            const nextName = allPets[currentPetIdx].name || PET_TYPES[allPets[currentPetIdx].type].name;
+                            const nextName = allPets[currentPetIdx].name || (getAllPetTypeData(allPets[currentPetIdx].type) || {}).name || 'Pet';
                             bossLog(`${nextName} jumps into the fight!`);
                         } else if (fallback !== -1) {
                             currentPetIdx = fallback;
@@ -726,7 +726,7 @@
             overlay.setAttribute('aria-label', 'Pet Show');
 
             const result = calculateShowScore(pet);
-            const petName = escapeHTML(pet.name || PET_TYPES[pet.type].name);
+            const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
 
             // Prevent stat farming by enforcing a cooldown between shows
             const now = Date.now();
@@ -760,7 +760,7 @@
                     <button class="competition-close-btn" id="show-close" aria-label="Close">&times;</button>
                     <h2 class="competition-title"><span aria-hidden="true">🏆</span> Pet Show Results</h2>
                     <div class="show-pet-display">
-                        <span class="show-pet-emoji">${PET_TYPES[pet.type].emoji}</span>
+                        <span class="show-pet-emoji">${(getAllPetTypeData(pet.type) || {}).emoji || '🐾'}</span>
                         <span class="show-pet-name">${petName}</span>
                     </div>
                     <div class="show-rank">
@@ -849,7 +849,7 @@
             const stageResults = [];
 
             function renderCourse() {
-                const petName = escapeHTML(pet.name || PET_TYPES[pet.type].name);
+                const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
                 const stage = OBSTACLE_COURSE_STAGES[currentStage];
                 const progress = Math.round((currentStage / OBSTACLE_COURSE_STAGES.length) * 100);
 
@@ -1075,7 +1075,7 @@
                 let fightOver = false;
 
                 function renderRivalFight() {
-                    const petName = escapeHTML(pet.name || PET_TYPES[pet.type].name);
+                    const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
                     const playerPct = Math.max(0, Math.round((playerHP / playerMaxHP) * 100));
                     const rivalPct = Math.max(0, Math.round((rivalHP / rivalMaxHP) * 100));
 
@@ -1088,7 +1088,7 @@
                             <div class="battle-field">
                                 <div class="battle-pet player-pet">
                                     <span class="battle-pet-name">${petName}</span>
-                                    <span class="battle-pet-emoji">${PET_TYPES[pet.type].emoji}</span>
+                                    <span class="battle-pet-emoji">${(getAllPetTypeData(pet.type) || {}).emoji || '🐾'}</span>
                                     <div class="battle-hp-bar" role="progressbar" aria-valuenow="${playerPct}" aria-valuemin="0" aria-valuemax="100" aria-label="${petName} HP: ${playerHP} of ${playerMaxHP}"><div class="battle-hp-fill player-hp" style="width:${playerPct}%"></div></div>
                                     <span class="battle-hp-text">${playerHP}/${playerMaxHP} HP</span>
                                 </div>
@@ -1148,7 +1148,7 @@
                 function executeRivalTurn(moveId) {
                     if (fightOver) return;
                     const move = BATTLE_MOVES[moveId];
-                    const petName = pet.name || PET_TYPES[pet.type].name;
+                    const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
 
                     // Player attack
                     if (move.heal) {

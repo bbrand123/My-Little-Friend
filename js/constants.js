@@ -908,7 +908,12 @@ const ACHIEVEMENTS = {
     bestFriend: { id: 'bestFriend', name: 'Best Friends', icon: '💖', description: 'Reach Best Friend with any pet pair', check: (gs) => { const rels = gs.relationships || {}; return Object.values(rels).some(r => r.points >= 180); } },
     nightOwl: { id: 'nightOwl', name: 'Night Owl', icon: '🌙', description: 'Play during nighttime', check: (gs) => (gs.timeOfDay === 'night') },
     weatherWatcher: { id: 'weatherWatcher', name: 'Weather Watcher', icon: '🌧️', description: 'Experience all 3 weather types', check: (gs) => { const seen = gs.weatherSeen || {}; return seen.sunny && seen.rainy && seen.snowy; } },
-    dailyComplete: { id: 'dailyComplete', name: 'Daily Champion', icon: '📋', description: 'Complete all daily tasks', check: (gs) => { const d = gs.dailyChecklist; return d && d.tasks && d.tasks.every(t => t.done); } }
+    dailyComplete: { id: 'dailyComplete', name: 'Daily Champion', icon: '📋', description: 'Complete all daily tasks', check: (gs) => { const d = gs.dailyChecklist; return d && d.tasks && d.tasks.every(t => t.done); } },
+    firstBreeding: { id: 'firstBreeding', name: 'Matchmaker', icon: '💕', description: 'Breed two pets for the first time', check: (gs) => (gs.totalBreedings || 0) >= 1 },
+    hatchBreedingEgg: { id: 'hatchBreedingEgg', name: 'Proud Parent', icon: '🥚', description: 'Hatch your first breeding egg', check: (gs) => (gs.totalBreedingHatches || 0) >= 1 },
+    firstHybrid: { id: 'firstHybrid', name: 'Hybrid Discovery', icon: '🧬', description: 'Create a hybrid pet through breeding', check: (gs) => (gs.totalHybridsCreated || 0) >= 1 },
+    firstMutation: { id: 'firstMutation', name: 'Genetic Marvel', icon: '🌈', description: 'Breed a pet with a rare mutation', check: (gs) => (gs.totalMutations || 0) >= 1 },
+    fiveBreedings: { id: 'fiveBreedings', name: 'Master Breeder', icon: '🏅', description: 'Successfully breed 5 times', check: (gs) => (gs.totalBreedings || 0) >= 5 }
 };
 
 // ==================== DAILY CHECKLIST ====================
@@ -951,7 +956,12 @@ const BADGES = {
     streak30: { id: 'streak30', name: 'Monthly Master', icon: '🌟', description: 'Reach a 30-day streak', category: 'streak', tier: 'gold', check: (gs) => gs.streak && gs.streak.current >= 30 },
     // Exploration
     worldTraveler: { id: 'worldTraveler', name: 'World Traveler', icon: '🗺️', description: 'Visit all 6 rooms', category: 'exploration', tier: 'silver', check: (gs) => { const v = gs.roomsVisited || {}; return ROOM_IDS.every(r => v[r]); } },
-    nightExplorer: { id: 'nightExplorer', name: 'Night Explorer', icon: '🌙', description: 'Play during nighttime', category: 'exploration', tier: 'bronze', check: (gs) => gs.timeOfDay === 'night' }
+    nightExplorer: { id: 'nightExplorer', name: 'Night Explorer', icon: '🌙', description: 'Play during nighttime', category: 'exploration', tier: 'bronze', check: (gs) => gs.timeOfDay === 'night' },
+    // Breeding milestones
+    firstBreed: { id: 'firstBreed', name: 'Matchmaker', icon: '💕', description: 'Breed two pets', category: 'breeding', tier: 'bronze', check: (gs) => (gs.totalBreedings || 0) >= 1 },
+    hybridBreeder: { id: 'hybridBreeder', name: 'Hybrid Creator', icon: '🧬', description: 'Create a hybrid pet', category: 'breeding', tier: 'silver', check: (gs) => (gs.totalHybridsCreated || 0) >= 1 },
+    mutationHunter: { id: 'mutationHunter', name: 'Mutation Hunter', icon: '🌈', description: 'Breed a pet with a mutation', category: 'breeding', tier: 'gold', check: (gs) => (gs.totalMutations || 0) >= 1 },
+    masterBreeder: { id: 'masterBreeder', name: 'Master Breeder', icon: '🏆', description: 'Breed 5 times successfully', category: 'breeding', tier: 'gold', check: (gs) => (gs.totalBreedings || 0) >= 5 }
 };
 
 const BADGE_TIERS = {
@@ -967,7 +977,8 @@ const BADGE_CATEGORIES = {
     garden: { label: 'Garden', icon: '🌻' },
     social: { label: 'Social', icon: '🤝' },
     streak: { label: 'Streak', icon: '🔥' },
-    exploration: { label: 'Explore', icon: '🗺️' }
+    exploration: { label: 'Explore', icon: '🗺️' },
+    breeding: { label: 'Breeding', icon: '🧬' }
 };
 
 // ==================== STICKER COLLECTION ====================
@@ -1005,7 +1016,12 @@ const STICKERS = {
     sparkleSticker: { id: 'sparkleSticker', name: 'Sparkle', emoji: '✨', category: 'special', rarity: 'rare', source: 'Reach Excellent care quality' },
     unicornSticker: { id: 'unicornSticker', name: 'Unicorn', emoji: '🦄', category: 'special', rarity: 'legendary', source: 'Unlock a mythical pet' },
     dragonSticker: { id: 'dragonSticker', name: 'Dragon', emoji: '🐉', category: 'special', rarity: 'legendary', source: 'Raise 3 adults' },
-    streakFlame: { id: 'streakFlame', name: 'Eternal Flame', emoji: '🔥', category: 'special', rarity: 'rare', source: 'Reach a 7-day streak' }
+    streakFlame: { id: 'streakFlame', name: 'Eternal Flame', emoji: '🔥', category: 'special', rarity: 'rare', source: 'Reach a 7-day streak' },
+    // Breeding stickers
+    breedingEgg: { id: 'breedingEgg', name: 'Love Egg', emoji: '🥚', category: 'special', rarity: 'uncommon', source: 'Breed two pets' },
+    dnaSticker: { id: 'dnaSticker', name: 'DNA Helix', emoji: '🧬', category: 'special', rarity: 'rare', source: 'Create a hybrid pet' },
+    mutantStar: { id: 'mutantStar', name: 'Mutant Star', emoji: '🌟', category: 'special', rarity: 'legendary', source: 'Breed a mutated pet' },
+    familyTree: { id: 'familyTree', name: 'Family Tree', emoji: '🌳', category: 'special', rarity: 'rare', source: 'Breed 3 times' }
 };
 
 const STICKER_RARITIES = {
@@ -1046,7 +1062,11 @@ const TROPHIES = {
     // Dedication trophies
     streakLegend: { id: 'streakLegend', name: 'Streak Legend', icon: '🔥', description: 'Reach a 14-day streak', shelf: 'dedication', check: (gs) => gs.streak && gs.streak.current >= 14 },
     dailyDevotee: { id: 'dailyDevotee', name: 'Daily Devotee', icon: '📅', description: 'Complete daily tasks 7 times', shelf: 'dedication', check: (gs) => (gs.totalDailyCompletions || 0) >= 7 },
-    collectorTrophy: { id: 'collectorTrophy', name: 'Collector', icon: '📦', description: 'Collect 15 stickers', shelf: 'dedication', check: (gs) => { const st = gs.stickers || {}; return Object.values(st).filter(v => v.collected).length >= 15; } }
+    collectorTrophy: { id: 'collectorTrophy', name: 'Collector', icon: '📦', description: 'Collect 15 stickers', shelf: 'dedication', check: (gs) => { const st = gs.stickers || {}; return Object.values(st).filter(v => v.collected).length >= 15; } },
+    // Breeding trophies
+    geneticist: { id: 'geneticist', name: 'Geneticist', icon: '🧬', description: 'Breed 3 different hybrid types', shelf: 'breeding', check: (gs) => { const h = gs.hybridsDiscovered || {}; return Object.keys(h).length >= 3; } },
+    breedingLegend: { id: 'breedingLegend', name: 'Breeding Legend', icon: '💕', description: 'Breed 10 times total', shelf: 'breeding', check: (gs) => (gs.totalBreedings || 0) >= 10 },
+    mutationCollector: { id: 'mutationCollector', name: 'Mutation Collector', icon: '🌈', description: 'Collect 3 mutated pets', shelf: 'breeding', check: (gs) => (gs.totalMutations || 0) >= 3 }
 };
 
 const TROPHY_SHELVES = {
@@ -1055,7 +1075,8 @@ const TROPHY_SHELVES = {
     games: { label: 'Games', icon: '🎮' },
     garden: { label: 'Garden', icon: '🌻' },
     social: { label: 'Social', icon: '🤝' },
-    dedication: { label: 'Dedication', icon: '🔥' }
+    dedication: { label: 'Dedication', icon: '🔥' },
+    breeding: { label: 'Breeding', icon: '🧬' }
 };
 
 // ==================== DAILY STREAKS ====================
@@ -1252,5 +1273,204 @@ function getUnlockedPlotCount(totalHarvests) {
         }
     }
     return Math.min(unlocked, MAX_GARDEN_PLOTS);
+}
+
+// ==================== BREEDING & GENETICS SYSTEM ====================
+
+const BREEDING_CONFIG = {
+    minAge: 'adult',                // Both pets must be adult stage
+    minRelationship: 'friend',      // Minimum relationship level between parents
+    cooldownMs: 30 * 60 * 1000,     // 30-minute cooldown between breedings per pet
+    maxBreedingEggs: 2,             // Maximum incubating eggs at once
+    mutationChance: 0.08,           // 8% chance of a mutation per breeding
+    hybridChance: 0.35,             // 35% chance of hybrid when different species breed
+    incubationBaseTicks: 20,        // Base ticks needed to hatch (1 tick per minute)
+    statInheritanceNoise: 10,       // +/- random noise when inheriting hidden stats
+    colorBlendChance: 0.6,          // 60% chance of color blending vs picking one parent's color
+    patternInheritChance: 0.5       // 50/50 chance of inheriting either parent's pattern
+};
+
+// Hidden genetic stats that pass from parent to offspring
+// These affect growth speed, care sensitivity, and competition potential
+const GENETIC_STATS = {
+    vigor: { label: 'Vigor', emoji: '💪', description: 'Growth speed and energy recovery', min: 1, max: 20, default: 10 },
+    charm: { label: 'Charm', emoji: '💫', description: 'Happiness gain and show appeal', min: 1, max: 20, default: 10 },
+    resilience: { label: 'Resilience', emoji: '🛡️', description: 'Slower stat decay and neglect resistance', min: 1, max: 20, default: 10 },
+    appetite: { label: 'Appetite', emoji: '🍽️', description: 'Food efficiency and hunger decay rate', min: 1, max: 20, default: 10 }
+};
+
+// Mutation color palettes - rare colors not normally available
+const MUTATION_COLORS = {
+    prismatic: { name: 'Prismatic', hex: '#FF69B4', description: 'A shimmering rainbow hue' },
+    ghostly: { name: 'Ghostly', hex: '#E8E8FF', description: 'An ethereal pale glow' },
+    golden: { name: 'Golden', hex: '#FFD700', description: 'A radiant golden sheen' },
+    obsidian: { name: 'Obsidian', hex: '#1C1C2E', description: 'Deep dark with purple undertones' },
+    celestial: { name: 'Celestial', hex: '#7B68EE', description: 'A starry purple shimmer' },
+    ember: { name: 'Ember', hex: '#FF4500', description: 'Glowing orange-red like hot coals' },
+    frosted: { name: 'Frosted', hex: '#B0E0E6', description: 'Icy blue with white accents' },
+    jade: { name: 'Jade', hex: '#00A86B', description: 'A deep polished green' }
+};
+
+// Mutation patterns - rare patterns not normally available
+const MUTATION_PATTERNS = {
+    galaxy: { name: 'Galaxy', description: 'Swirling cosmic patterns' },
+    crystalline: { name: 'Crystalline', description: 'Geometric crystal facets' },
+    flame: { name: 'Flame', description: 'Flickering fire-like markings' },
+    floral: { name: 'Floral', description: 'Delicate flower patterns' }
+};
+
+// Hybrid pet types - created by breeding two different species
+const HYBRID_PET_TYPES = {
+    pegasus: {
+        name: 'Pegasus',
+        emoji: '🪽',
+        parents: ['unicorn', 'bird'],
+        colors: ['#E6E6FA', '#FFB6C1', '#87CEEB', '#F0E68C', '#DDA0DD'],
+        sounds: ['*majestic whinny*', '*wing flutter*', '*magical chirp*'],
+        happySounds: ['Soaring high!', 'Rainbow flight!', 'Magical wings!'],
+        sadSounds: ['Drooping wings...', 'Quiet whinny...'],
+        mythical: true,
+        hybrid: true,
+        description: 'A magical winged horse born from unicorn and bird'
+    },
+    kirin: {
+        name: 'Kirin',
+        emoji: '🦌',
+        parents: ['dragon', 'unicorn'],
+        colors: ['#FFD700', '#DC143C', '#DDA0DD', '#FF6347', '#E6E6FA'],
+        sounds: ['*mystical roar*', '*ethereal bell*', '*gentle flame*'],
+        happySounds: ['Blazing sparkles!', 'Mystical dance!', 'Radiant glow!'],
+        sadSounds: ['Fading glow...', 'Quiet chime...'],
+        mythical: true,
+        hybrid: true,
+        description: 'A mythical creature of fire and magic'
+    },
+    catbird: {
+        name: 'Gryphkitten',
+        emoji: '🐱',
+        parents: ['cat', 'bird'],
+        colors: ['#FFA500', '#FFD700', '#808080', '#87CEEB', '#DEB887'],
+        sounds: ['Meow-tweet!', '*purring chirp*', 'Mew-whistle!'],
+        happySounds: ['Pounce-flutter!', 'Happy soaring purr!', 'Feathered bounce!'],
+        sadSounds: ['Quiet mew-chirp...', 'Droopy feathers...'],
+        mythical: false,
+        hybrid: true,
+        description: 'A fluffy feline with tiny wings'
+    },
+    turtlefrog: {
+        name: 'Shellhopper',
+        emoji: '🐸',
+        parents: ['turtle', 'frog'],
+        colors: ['#228B22', '#32CD32', '#6B8E23', '#8FBC8F', '#00FA9A'],
+        sounds: ['Ribbit-bonk!', '*shell hop*', 'Croak-clonk!'],
+        happySounds: ['Armored hop!', 'Shell spin!', 'Bouncy shell!'],
+        sadSounds: ['Slow shell drag...', 'Quiet croak...'],
+        mythical: false,
+        hybrid: true,
+        description: 'A hopping amphibian with a protective shell'
+    },
+    bundgehog: {
+        name: 'Fuzzspike',
+        emoji: '🦔',
+        parents: ['bunny', 'hedgehog'],
+        colors: ['#FFFFFF', '#D4A574', '#8B7355', '#FFB6C1', '#D2B48C'],
+        sounds: ['Hop-snuffle!', '*wiggle bounce*', 'Squeak-thump!'],
+        happySounds: ['Spiky binky!', 'Fuzzy roll!', 'Bouncy snuffle!'],
+        sadSounds: ['Curled and quiet...', 'Slow hop-snuffle...'],
+        mythical: false,
+        hybrid: true,
+        description: 'A fluffy bunny with tiny protective spikes'
+    },
+    pandapenguin: {
+        name: 'Snowpanda',
+        emoji: '🐼',
+        parents: ['panda', 'penguin'],
+        colors: ['#FFFFFF', '#2F4F4F', '#F5F5F5', '#333333', '#FAEBD7'],
+        sounds: ['*waddle munch*', '*slide and roll*', 'Honk-squeak!'],
+        happySounds: ['Belly slide!', 'Snow roll!', 'Bamboo dance!'],
+        sadSounds: ['Slow waddle...', 'Quiet munch...'],
+        mythical: false,
+        hybrid: true,
+        description: 'A roly-poly bear that loves ice and bamboo'
+    },
+    dogfish: {
+        name: 'Splashpup',
+        emoji: '🐕',
+        parents: ['dog', 'fish'],
+        colors: ['#D4A574', '#4169E1', '#FFD700', '#87CEEB', '#00CED1'],
+        sounds: ['Bark-blub!', '*splash woof*', 'Woof-bubble!'],
+        happySounds: ['Splashing fetch!', 'Wave riding!', 'Bubble bark!'],
+        sadSounds: ['Slow paddle...', 'Quiet blub-whimper...'],
+        mythical: false,
+        hybrid: true,
+        description: 'An aquatic puppy with fins and a wagging tail'
+    },
+    hamsterbird: {
+        name: 'Fluffwing',
+        emoji: '🐹',
+        parents: ['hamster', 'bird'],
+        colors: ['#D4A574', '#FFD700', '#F5DEB3', '#87CEEB', '#FFE4C4'],
+        sounds: ['Squeak-tweet!', '*flutter nibble*', 'Chirp-scurry!'],
+        happySounds: ['Wheel-flight!', 'Seed shower!', 'Tiny soar!'],
+        sadSounds: ['Quiet flutter...', 'Slow nibble...'],
+        mythical: false,
+        hybrid: true,
+        description: 'A tiny hamster with delicate feathered wings'
+    },
+    dragonturtle: {
+        name: 'Dracoturtle',
+        emoji: '🐉',
+        parents: ['dragon', 'turtle'],
+        colors: ['#DC143C', '#228B22', '#8B0000', '#556B2F', '#FF4500'],
+        sounds: ['*fire hiss*', '*shell rumble*', 'Rawr-bonk!'],
+        happySounds: ['Flame shell!', 'Lava waddle!', 'Fire fortress!'],
+        sadSounds: ['Smoke sigh...', 'Shell retreat...'],
+        mythical: true,
+        hybrid: true,
+        description: 'An armored dragon with a fire-proof shell'
+    }
+};
+
+// Map of parent type pairs to their hybrid result
+// Both orderings map to the same hybrid
+const HYBRID_LOOKUP = {};
+(function buildHybridLookup() {
+    for (const [hybridId, data] of Object.entries(HYBRID_PET_TYPES)) {
+        const [p1, p2] = data.parents;
+        HYBRID_LOOKUP[`${p1}-${p2}`] = hybridId;
+        HYBRID_LOOKUP[`${p2}-${p1}`] = hybridId;
+    }
+})();
+
+// Incubation room bonuses - certain rooms speed up or add benefits
+const INCUBATION_ROOM_BONUSES = {
+    bedroom: { speedMultiplier: 1.3, bonusStat: 'vigor', label: 'Cozy warmth (+30% speed, +Vigor)' },
+    kitchen: { speedMultiplier: 1.1, bonusStat: 'appetite', label: 'Warm kitchen (+10% speed, +Appetite)' },
+    bathroom: { speedMultiplier: 1.0, bonusStat: 'resilience', label: 'Humid air (+Resilience)' },
+    backyard: { speedMultiplier: 1.2, bonusStat: 'vigor', label: 'Fresh air (+20% speed, +Vigor)' },
+    park: { speedMultiplier: 1.0, bonusStat: 'charm', label: 'Natural setting (+Charm)' },
+    garden: { speedMultiplier: 1.15, bonusStat: 'resilience', label: 'Garden warmth (+15% speed, +Resilience)' }
+};
+
+// Care actions that benefit incubating eggs
+const INCUBATION_CARE_BONUSES = {
+    cuddle: { tickBonus: 2, description: 'Cuddling the egg warms it up!' },
+    sleep: { tickBonus: 1, description: 'Resting near the egg is soothing.' },
+    play: { tickBonus: 1, description: 'The egg responds to playful energy!' }
+};
+
+// Get the hybrid type for two parent types, or null if no hybrid exists
+function getHybridForParents(type1, type2) {
+    return HYBRID_LOOKUP[`${type1}-${type2}`] || null;
+}
+
+// Check if a pet type is a hybrid
+function isHybridType(type) {
+    return !!HYBRID_PET_TYPES[type];
+}
+
+// Get all pet type data (including hybrids)
+function getAllPetTypeData(type) {
+    return PET_TYPES[type] || HYBRID_PET_TYPES[type] || null;
 }
 

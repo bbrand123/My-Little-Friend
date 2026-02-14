@@ -56,7 +56,14 @@
                 showsEntered: 0, bestShowRank: '', bestShowScore: 0,
                 obstacleBestScore: 0, obstacleCompletions: 0,
                 rivalsDefeated: [], currentRivalIndex: 0
-            }
+            },
+            // Breeding system
+            breedingEggs: [],           // Array of incubating breeding eggs
+            totalBreedings: 0,          // Total successful breedings
+            totalBreedingHatches: 0,    // Total breeding eggs hatched
+            totalHybridsCreated: 0,     // Total hybrid pets created
+            totalMutations: 0,          // Total mutations occurred
+            hybridsDiscovered: {}       // { hybridType: true }
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -689,7 +696,7 @@
                             typeof parsed.pet.cleanliness !== 'number' ||
                             typeof parsed.pet.happiness !== 'number' ||
                             !parsed.pet.type ||
-                            !PET_TYPES[parsed.pet.type]) {
+                            !(PET_TYPES[parsed.pet.type] || (typeof HYBRID_PET_TYPES !== 'undefined' && HYBRID_PET_TYPES[parsed.pet.type]))) {
                             // Corrupted pet data, start fresh
                             return null;
                         }
@@ -851,6 +858,14 @@
                         };
                     }
                     if (!Array.isArray(parsed.competition.rivalsDefeated)) parsed.competition.rivalsDefeated = [];
+
+                    // Add breeding system fields if missing (for existing saves)
+                    if (!Array.isArray(parsed.breedingEggs)) parsed.breedingEggs = [];
+                    if (typeof parsed.totalBreedings !== 'number') parsed.totalBreedings = 0;
+                    if (typeof parsed.totalBreedingHatches !== 'number') parsed.totalBreedingHatches = 0;
+                    if (typeof parsed.totalHybridsCreated !== 'number') parsed.totalHybridsCreated = 0;
+                    if (typeof parsed.totalMutations !== 'number') parsed.totalMutations = 0;
+                    if (!parsed.hybridsDiscovered || typeof parsed.hybridsDiscovered !== 'object') parsed.hybridsDiscovered = {};
 
                     // Strip transient _neglectTickCounter from pet objects (old saves)
                     parsed.pets.forEach(p => {
@@ -1037,11 +1052,11 @@
 
         function createPet(specificType) {
             let type = specificType || gameState.pendingPetType || randomFromArray(getUnlockedPetTypes());
-            if (!PET_TYPES[type]) {
+            if (!getAllPetTypeData(type)) {
                 const unlocked = getUnlockedPetTypes();
-                type = unlocked.find(t => PET_TYPES[t]) || Object.keys(PET_TYPES)[0];
+                type = unlocked.find(t => getAllPetTypeData(t)) || Object.keys(PET_TYPES)[0];
             }
-            const petData = PET_TYPES[type];
+            const petData = getAllPetTypeData(type);
             const color = randomFromArray(petData.colors);
 
             // Assign a unique ID to each pet
@@ -1210,8 +1225,8 @@
 
             // Pick a random message
             const message = randomFromArray(interaction.messages);
-            const pet1Name = pet1.name || PET_TYPES[pet1.type].name;
-            const pet2Name = pet2.name || PET_TYPES[pet2.type].name;
+            const pet1Name = pet1.name || (getAllPetTypeData(pet1.type) || {}).name || 'Pet';
+            const pet2Name = pet2.name || (getAllPetTypeData(pet2.type) || {}).name || 'Pet';
 
             saveGame();
 
@@ -1223,6 +1238,342 @@
                 pet1Name: pet1Name,
                 pet2Name: pet2Name
             };
+        }
+
+        // ==================== BREEDING & GENETICS SYSTEM ====================
+
+        function canBreed(pet) {
+            if (!pet) return { eligible: false, reason: 'No pet selected' };
+            if (pet.growthStage !== BREEDING_CONFIG.minAge) return { eligible: false, reason: 'Pet must be adult' };
+            const now = Date.now();
+            if (pet.lastBreedTime && (now - pet.lastBreedTime) < BREEDING_CONFIG.cooldownMs) {
+                const remaining = Math.ceil((BREEDING_CONFIG.cooldownMs - (now - pet.lastBreedTime)) / 60000);
+                return { eligible: false, reason: `Cooldown: ${remaining}m remaining` };
+            }
+            return { eligible: true };
+        }
+
+        function canBreedPair(pet1, pet2) {
+            const check1 = canBreed(pet1);
+            if (!check1.eligible) return { eligible: false, reason: `${pet1.name}: ${check1.reason}` };
+            const check2 = canBreed(pet2);
+            if (!check2.eligible) return { eligible: false, reason: `${pet2.name}: ${check2.reason}` };
+            if (pet1.id === pet2.id) return { eligible: false, reason: 'Cannot breed a pet with itself' };
+            // Check relationship level
+            const rel = getRelationship(pet1.id, pet2.id);
+            const level = getRelationshipLevel(rel.points);
+            const levelIdx = RELATIONSHIP_ORDER.indexOf(level);
+            const minIdx = RELATIONSHIP_ORDER.indexOf(BREEDING_CONFIG.minRelationship);
+            if (levelIdx < minIdx) {
+                return { eligible: false, reason: `Pets need to be at least ${RELATIONSHIP_LEVELS[BREEDING_CONFIG.minRelationship].label} level` };
+            }
+            // Check max breeding eggs
+            const eggs = gameState.breedingEggs || [];
+            if (eggs.length >= BREEDING_CONFIG.maxBreedingEggs) {
+                return { eligible: false, reason: `Maximum ${BREEDING_CONFIG.maxBreedingEggs} breeding eggs at once` };
+            }
+            return { eligible: true };
+        }
+
+        // Generate hidden genetic stats for a pet (used on first-gen pets)
+        function generateBaseGenetics() {
+            const genetics = {};
+            for (const [stat, data] of Object.entries(GENETIC_STATS)) {
+                genetics[stat] = data.default + Math.floor(Math.random() * 7) - 3; // 7-13 range
+                genetics[stat] = clamp(genetics[stat], data.min, data.max);
+            }
+            return genetics;
+        }
+
+        // Ensure a pet has genetics (for legacy pets without them)
+        function ensureGenetics(pet) {
+            if (!pet.genetics) {
+                pet.genetics = generateBaseGenetics();
+            }
+            return pet.genetics;
+        }
+
+        // Inherit genetics from two parents with noise
+        function inheritGenetics(parent1, parent2) {
+            const g1 = ensureGenetics(parent1);
+            const g2 = ensureGenetics(parent2);
+            const childGenetics = {};
+            for (const [stat, data] of Object.entries(GENETIC_STATS)) {
+                // Pick from parent1 or parent2 with slight bias toward higher stat
+                const avg = (g1[stat] + g2[stat]) / 2;
+                const noise = Math.floor(Math.random() * (BREEDING_CONFIG.statInheritanceNoise * 2 + 1)) - BREEDING_CONFIG.statInheritanceNoise;
+                childGenetics[stat] = clamp(Math.round(avg + noise), data.min, data.max);
+            }
+            return childGenetics;
+        }
+
+        // Blend two hex colors
+        function blendColors(hex1, hex2, ratio) {
+            const r1 = parseInt(hex1.slice(1, 3), 16);
+            const g1 = parseInt(hex1.slice(3, 5), 16);
+            const b1 = parseInt(hex1.slice(5, 7), 16);
+            const r2 = parseInt(hex2.slice(1, 3), 16);
+            const g2 = parseInt(hex2.slice(3, 5), 16);
+            const b2 = parseInt(hex2.slice(5, 7), 16);
+            const r = Math.round(r1 * ratio + r2 * (1 - ratio));
+            const g = Math.round(g1 * ratio + g2 * (1 - ratio));
+            const b = Math.round(b1 * ratio + b2 * (1 - ratio));
+            return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Determine offspring color from parents
+        function inheritColor(parent1, parent2, isMutation) {
+            if (isMutation) {
+                const mutationKeys = Object.keys(MUTATION_COLORS);
+                const mutColor = MUTATION_COLORS[mutationKeys[Math.floor(Math.random() * mutationKeys.length)]];
+                return { color: mutColor.hex, mutationColor: mutColor.name, isMutated: true };
+            }
+            if (Math.random() < BREEDING_CONFIG.colorBlendChance) {
+                // Blend the two parent colors
+                const ratio = 0.3 + Math.random() * 0.4; // 30%-70% blend
+                return { color: blendColors(parent1.color, parent2.color, ratio), isMutated: false };
+            }
+            // Pick one parent's color
+            return { color: Math.random() < 0.5 ? parent1.color : parent2.color, isMutated: false };
+        }
+
+        // Determine offspring pattern
+        function inheritPattern(parent1, parent2, isMutation) {
+            if (isMutation) {
+                const mutPatternKeys = Object.keys(MUTATION_PATTERNS);
+                const mutPattern = mutPatternKeys[Math.floor(Math.random() * mutPatternKeys.length)];
+                return { pattern: mutPattern, mutationPattern: MUTATION_PATTERNS[mutPattern].name, isMutated: true };
+            }
+            // Inherit from one parent
+            if (Math.random() < BREEDING_CONFIG.patternInheritChance) {
+                return { pattern: parent1.pattern || 'solid', isMutated: false };
+            }
+            return { pattern: parent2.pattern || 'solid', isMutated: false };
+        }
+
+        // Determine offspring type (same species, or hybrid)
+        function determineOffspringType(parent1, parent2) {
+            if (parent1.type === parent2.type) {
+                return { type: parent1.type, isHybrid: false };
+            }
+            // Check if a hybrid exists for this combination
+            const hybridId = getHybridForParents(parent1.type, parent2.type);
+            if (hybridId && Math.random() < BREEDING_CONFIG.hybridChance) {
+                return { type: hybridId, isHybrid: true };
+            }
+            // No hybrid — offspring is randomly one of the parent types
+            return { type: Math.random() < 0.5 ? parent1.type : parent2.type, isHybrid: false };
+        }
+
+        // Core breeding function — creates a breeding egg
+        function breedPets(pet1Index, pet2Index) {
+            const pet1 = gameState.pets[pet1Index];
+            const pet2 = gameState.pets[pet2Index];
+            if (!pet1 || !pet2) return null;
+
+            const check = canBreedPair(pet1, pet2);
+            if (!check.eligible) return { success: false, reason: check.reason };
+
+            // Check for mutation
+            const hasMutation = Math.random() < BREEDING_CONFIG.mutationChance;
+
+            // Determine offspring type
+            const typeResult = determineOffspringType(pet1, pet2);
+
+            // Inherit color
+            const colorResult = inheritColor(pet1, pet2, hasMutation && Math.random() < 0.5);
+
+            // Inherit pattern
+            const patternResult = inheritPattern(pet1, pet2, hasMutation && !colorResult.isMutated);
+
+            // Inherit genetics
+            const childGenetics = inheritGenetics(pet1, pet2);
+
+            // If mutation, boost a random genetic stat
+            if (hasMutation) {
+                const statKeys = Object.keys(GENETIC_STATS);
+                const boostStat = statKeys[Math.floor(Math.random() * statKeys.length)];
+                childGenetics[boostStat] = clamp(childGenetics[boostStat] + 3, GENETIC_STATS[boostStat].min, GENETIC_STATS[boostStat].max);
+            }
+
+            // Create the breeding egg
+            const breedingEgg = {
+                id: Date.now(),
+                parent1Id: pet1.id,
+                parent2Id: pet2.id,
+                parent1Type: pet1.type,
+                parent2Type: pet2.type,
+                parent1Name: pet1.name || (getAllPetTypeData(pet1.type) || {}).name || 'Unknown',
+                parent2Name: pet2.name || (getAllPetTypeData(pet2.type) || {}).name || 'Unknown',
+                offspringType: typeResult.type,
+                isHybrid: typeResult.isHybrid,
+                color: colorResult.color,
+                mutationColor: colorResult.mutationColor || null,
+                pattern: patternResult.pattern,
+                mutationPattern: patternResult.mutationPattern || null,
+                hasMutation: hasMutation,
+                genetics: childGenetics,
+                incubationTicks: 0,
+                incubationTarget: BREEDING_CONFIG.incubationBaseTicks,
+                roomBonuses: {},  // Track accumulated room bonuses
+                careBonuses: 0,   // Extra ticks from care actions
+                createdAt: Date.now(),
+                currentRoom: gameState.currentRoom || 'bedroom'
+            };
+
+            // Set cooldowns on parents
+            pet1.lastBreedTime = Date.now();
+            pet2.lastBreedTime = Date.now();
+
+            // Add to breeding eggs
+            if (!gameState.breedingEggs) gameState.breedingEggs = [];
+            gameState.breedingEggs.push(breedingEgg);
+
+            // Track breeding stats
+            gameState.totalBreedings = (gameState.totalBreedings || 0) + 1;
+            if (hasMutation) gameState.totalMutations = (gameState.totalMutations || 0) + 1;
+            if (typeResult.isHybrid) {
+                gameState.totalHybridsCreated = (gameState.totalHybridsCreated || 0) + 1;
+                if (!gameState.hybridsDiscovered) gameState.hybridsDiscovered = {};
+                gameState.hybridsDiscovered[typeResult.type] = true;
+            }
+
+            // Add relationship points for breeding
+            addRelationshipPoints(pet1.id, pet2.id, 15);
+
+            // Sync and save
+            gameState.pet = gameState.pets[gameState.activePetIndex];
+            saveGame();
+
+            return {
+                success: true,
+                egg: breedingEgg,
+                hasMutation: hasMutation,
+                isHybrid: typeResult.isHybrid,
+                offspringType: typeResult.type
+            };
+        }
+
+        // Advance incubation for all breeding eggs (called from decay timer)
+        function tickBreedingEggs() {
+            if (!gameState.breedingEggs || gameState.breedingEggs.length === 0) return [];
+
+            const hatched = [];
+            const currentRoom = gameState.currentRoom || 'bedroom';
+            const roomBonus = INCUBATION_ROOM_BONUSES[currentRoom] || { speedMultiplier: 1.0 };
+
+            for (let i = gameState.breedingEggs.length - 1; i >= 0; i--) {
+                const egg = gameState.breedingEggs[i];
+                // Apply room speed multiplier
+                egg.incubationTicks += roomBonus.speedMultiplier;
+                egg.currentRoom = currentRoom;
+
+                // Track room bonus for genetics
+                if (roomBonus.bonusStat) {
+                    if (!egg.roomBonuses[roomBonus.bonusStat]) egg.roomBonuses[roomBonus.bonusStat] = 0;
+                    egg.roomBonuses[roomBonus.bonusStat] += 0.1;
+                }
+
+                // Check if hatched
+                if (egg.incubationTicks >= egg.incubationTarget) {
+                    hatched.push(egg);
+                    gameState.breedingEggs.splice(i, 1);
+                }
+            }
+
+            return hatched;
+        }
+
+        // Apply care action bonus to breeding eggs
+        function applyBreedingEggCareBonus(action) {
+            if (!gameState.breedingEggs || gameState.breedingEggs.length === 0) return;
+            const bonus = INCUBATION_CARE_BONUSES[action];
+            if (!bonus) return;
+            for (const egg of gameState.breedingEggs) {
+                egg.incubationTicks += bonus.tickBonus;
+                egg.careBonuses += bonus.tickBonus;
+            }
+        }
+
+        // Hatch a breeding egg into an actual pet
+        function hatchBreedingEgg(egg) {
+            const typeData = getAllPetTypeData(egg.offspringType);
+            if (!typeData) return null;
+
+            // Generate unique ID
+            if (typeof gameState.nextPetId !== 'number' || isNaN(gameState.nextPetId)) {
+                gameState.nextPetId = (gameState.pets ? gameState.pets.length : 0) + 1;
+            }
+            const petId = gameState.nextPetId;
+            gameState.nextPetId = petId + 1;
+
+            // Apply room bonuses to genetics
+            const genetics = { ...egg.genetics };
+            for (const [stat, bonus] of Object.entries(egg.roomBonuses)) {
+                if (genetics[stat] !== undefined && GENETIC_STATS[stat]) {
+                    genetics[stat] = clamp(Math.round(genetics[stat] + bonus), GENETIC_STATS[stat].min, GENETIC_STATS[stat].max);
+                }
+            }
+
+            const newPet = {
+                id: petId,
+                type: egg.offspringType,
+                name: typeData.name,
+                color: egg.color,
+                pattern: egg.pattern,
+                accessories: [],
+                hunger: 70,
+                cleanliness: 70,
+                happiness: 80,
+                energy: 70,
+                careActions: 0,
+                growthStage: 'baby',
+                birthdate: Date.now(),
+                careHistory: [],
+                neglectCount: 0,
+                careQuality: 'average',
+                careVariant: 'normal',
+                evolutionStage: 'base',
+                lastGrowthStage: 'baby',
+                unlockedAccessories: [],
+                // Breeding-specific data
+                genetics: genetics,
+                parentIds: [egg.parent1Id, egg.parent2Id],
+                parentTypes: [egg.parent1Type, egg.parent2Type],
+                parentNames: [egg.parent1Name, egg.parent2Name],
+                isHybrid: egg.isHybrid,
+                hasMutation: egg.hasMutation,
+                mutationColor: egg.mutationColor || null,
+                mutationPattern: egg.mutationPattern || null,
+                generation: 1 // Track generation depth
+            };
+
+            // Calculate generation from parents
+            const parent1 = gameState.pets.find(p => p && p.id === egg.parent1Id);
+            const parent2 = gameState.pets.find(p => p && p.id === egg.parent2Id);
+            if (parent1 && parent2) {
+                newPet.generation = Math.max(parent1.generation || 0, parent2.generation || 0) + 1;
+            }
+
+            // Track hatching stats
+            gameState.totalBreedingHatches = (gameState.totalBreedingHatches || 0) + 1;
+
+            return newPet;
+        }
+
+        // Get incubation progress as a percentage
+        function getIncubationProgress(egg) {
+            if (!egg) return 0;
+            return Math.min(100, (egg.incubationTicks / egg.incubationTarget) * 100);
+        }
+
+        // Get all adult pets eligible for breeding
+        function getBreedablePets() {
+            if (!gameState.pets) return [];
+            return gameState.pets.filter(p => p && canBreed(p).eligible).map((p, idx) => ({
+                pet: p,
+                index: gameState.pets.indexOf(p)
+            }));
         }
 
         function getMood(pet) {
@@ -2044,7 +2395,7 @@
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
             gameState.totalFeedCount++;
 
-            const petData = PET_TYPES[gameState.pet.type];
+            const petData = getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type];
 
             // Play pet voice sound
             if (typeof SoundManager !== 'undefined') {
@@ -2399,7 +2750,7 @@
             if (!seasonData) return;
 
             const pet = gameState.pet;
-            const petData = PET_TYPES[pet.type];
+            const petData = getAllPetTypeData(pet.type) || PET_TYPES[pet.type];
             const sparkles = document.getElementById('sparkles');
             const petContainer = document.getElementById('pet-container');
 
@@ -2513,7 +2864,7 @@
 
                     // Announce when any stat drops below 20% (threshold crossing)
                     const lowThreshold = 20;
-                    const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                    const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
                     const lowStats = [];
                     if (pet.hunger < lowThreshold && prevHunger >= lowThreshold) lowStats.push('hunger');
                     if (pet.cleanliness < lowThreshold && prevClean >= lowThreshold) lowStats.push('cleanliness');
@@ -2572,16 +2923,16 @@
                         // Morning energy boost when transitioning to sunrise
                         if (newTimeOfDay === 'sunrise' && previousTime === 'night') {
                             pet.energy = clamp(pet.energy + 15, 0, 100);
-                            const morningPetName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                            const morningPetName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
                             announce(`Good morning! ${morningPetName} wakes up feeling refreshed!`);
                         }
                         // Nighttime sleepiness notification
                         if (newTimeOfDay === 'night') {
-                            announce(`It's getting late! ${pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet')} is getting sleepy...`);
+                            announce(`It's getting late! ${pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet')} is getting sleepy...`);
                         }
                         // Sunset wind-down notification
                         if (newTimeOfDay === 'sunset') {
-                            announce(`The sun is setting. ${pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet')} is starting to wind down.`);
+                            announce(`The sun is setting. ${pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet')} is starting to wind down.`);
                         }
                     }
 
@@ -2601,6 +2952,28 @@
                         return; // renderPetPhase will handle the rest
                     }
 
+                    // Tick breeding eggs (incubation progress)
+                    const hatchedEggs = tickBreedingEggs();
+                    if (hatchedEggs.length > 0) {
+                        for (const egg of hatchedEggs) {
+                            const typeData = getAllPetTypeData(egg.offspringType);
+                            const typeName = typeData ? typeData.name : egg.offspringType;
+                            let msg = `🥚 A breeding egg has hatched into a ${typeName}!`;
+                            if (egg.hasMutation) msg += ' It has a rare mutation!';
+                            if (egg.isHybrid) msg += ' It\'s a hybrid!';
+                            showToast(msg, '#E040FB');
+                            announce(msg, true);
+                            hapticPattern('achievement');
+                            // Store hatched egg for player to collect
+                            if (!gameState.hatchedBreedingEggs) gameState.hatchedBreedingEggs = [];
+                            gameState.hatchedBreedingEggs.push(egg);
+                        }
+                        // Update breeding egg display if visible
+                        if (typeof updateBreedingEggDisplay === 'function') {
+                            updateBreedingEggDisplay();
+                        }
+                    }
+
                     // Update care quality tracking
                     const careQualityChange = updateCareHistory(pet);
 
@@ -2615,7 +2988,7 @@
                     // Notify user of care quality changes (after updates to avoid issues)
                     if (careQualityChange && careQualityChange.changed) {
                         const toData = CARE_QUALITY[careQualityChange.to];
-                        const petName = pet.name || (PET_TYPES[pet.type] ? PET_TYPES[pet.type].name : 'Pet');
+                        const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
 
                         if (careQualityChange.improved) {
                             // Combine quality + evolution into a single toast when applicable
@@ -2991,7 +3364,7 @@
                 if (!gardenGrowInterval) {
                     startGardenGrowTimer();
                 }
-                const petData = PET_TYPES[gameState.pet.type];
+                const petData = getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type];
                 if (petData) {
                     const mood = getMood(gameState.pet);
                     const weatherData = WEATHER_TYPES[gameState.weather];

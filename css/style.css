@@ -9142,3 +9142,409 @@
         animation: none !important;
     }
 }
+
+/* ==================== BREEDING & GENETICS SYSTEM ==================== */
+
+/* Breeding Eggs Section */
+.breeding-eggs-section {
+    padding: 8px 12px;
+    margin: 4px 0;
+}
+
+.breeding-eggs-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--text-primary, #333);
+    text-align: center;
+}
+
+.breeding-eggs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.breeding-egg-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg, rgba(255,255,255,0.85));
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 2px solid transparent;
+    transition: border-color 0.3s;
+}
+
+.breeding-egg-card.incubating {
+    border-color: #FFD700;
+}
+
+.breeding-egg-card.hatched {
+    border-color: #E040FB;
+    background: linear-gradient(135deg, rgba(224,64,251,0.08), rgba(255,255,255,0.9));
+}
+
+.breeding-egg-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    animation: egg-wobble 3s ease-in-out infinite;
+}
+
+.breeding-egg-icon.hatched-icon {
+    animation: egg-hatch-bounce 1s ease-in-out infinite;
+}
+
+@keyframes egg-wobble {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg); }
+    75% { transform: rotate(5deg); }
+}
+
+@keyframes egg-hatch-bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.breeding-egg-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.breeding-egg-parents {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #666);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.breeding-egg-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--progress-bg, #e0e0e0);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.breeding-egg-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #FFD700, #E040FB);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.breeding-egg-status {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #666);
+}
+
+.breeding-egg-status.hatched-status {
+    color: #E040FB;
+    font-weight: 600;
+}
+
+.breeding-egg-room-bonus {
+    font-size: 0.7rem;
+    color: #4CAF50;
+    margin-top: 2px;
+}
+
+.breeding-egg-collect-btn {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 6px 14px;
+    background: linear-gradient(135deg, #E040FB, #7C4DFF);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.breeding-egg-collect-btn:hover,
+.breeding-egg-collect-btn:focus {
+    transform: scale(1.05);
+    box-shadow: 0 2px 12px rgba(224,64,251,0.3);
+    outline: none;
+}
+
+.breeding-egg-count {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #666);
+    margin-bottom: 8px;
+}
+
+/* Breeding Modal */
+.breeding-modal .modal-content,
+.breeding-modal-content {
+    max-width: 420px;
+    width: 90vw;
+}
+
+.breeding-modal-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #666);
+    text-align: center;
+    margin: 0 0 12px 0;
+}
+
+.breeding-selection {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.breeding-parent-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.breeding-parent-col h3 {
+    font-size: 0.85rem;
+    text-align: center;
+    margin: 0 0 8px 0;
+    color: var(--text-primary, #333);
+}
+
+.breeding-heart-divider {
+    font-size: 1.5rem;
+    padding-top: 30px;
+    flex-shrink: 0;
+}
+
+.breeding-pet-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.breeding-pet-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 2px solid var(--border-color, #ddd);
+    border-radius: 10px;
+    background: var(--card-bg, white);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    text-align: left;
+    font-size: inherit;
+    color: inherit;
+}
+
+.breeding-pet-option:hover:not(.disabled) {
+    border-color: #E040FB;
+    transform: scale(1.02);
+}
+
+.breeding-pet-option.selected {
+    border-color: #E040FB;
+    background: rgba(224,64,251,0.08);
+    box-shadow: 0 0 0 2px rgba(224,64,251,0.2);
+}
+
+.breeding-pet-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.breeding-pet-emoji {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.breeding-pet-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.breeding-pet-status {
+    font-size: 0.7rem;
+    color: #EF5350;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Breeding Preview */
+.breeding-preview {
+    background: var(--card-bg, rgba(255,255,255,0.9));
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.breeding-preview-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.breeding-preview-rel,
+.breeding-preview-hybrid,
+.breeding-preview-mutation {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #666);
+    margin: 3px 0;
+    text-align: center;
+}
+
+.breeding-preview-hybrid {
+    color: #7C4DFF;
+    font-weight: 500;
+}
+
+.breeding-preview-error {
+    font-size: 0.8rem;
+    color: #EF5350;
+    text-align: center;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+/* Breeding Celebration Modal */
+.breeding-celebration-modal .modal-content,
+.breeding-celebration-content {
+    max-width: 380px;
+    text-align: center;
+}
+
+.breeding-celebration-emoji {
+    font-size: 3rem;
+    margin-bottom: 8px;
+    animation: egg-hatch-bounce 1s ease-in-out 3;
+}
+
+.breeding-celebration-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    background: linear-gradient(135deg, #E040FB, #7C4DFF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.breeding-celebration-message {
+    font-size: 0.9rem;
+    color: var(--text-secondary, #666);
+    margin: 0 0 12px 0;
+}
+
+.breeding-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.breeding-trait {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--tag-bg, #f0f0f0);
+    color: var(--text-secondary, #555);
+}
+
+.breeding-trait.mutation {
+    background: linear-gradient(135deg, #FFD700, #FF69B4);
+    color: white;
+}
+
+.breeding-trait.hybrid {
+    background: linear-gradient(135deg, #7C4DFF, #E040FB);
+    color: white;
+}
+
+.breeding-trait.lineage {
+    background: rgba(0,0,0,0.05);
+}
+
+.breeding-celebration-color {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+}
+
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.1);
+}
+
+.breeding-celebration-pattern {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #666);
+    margin-bottom: 12px;
+}
+
+/* Genetics Display */
+.breeding-genetics-display {
+    background: var(--card-bg, rgba(0,0,0,0.03));
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.genetics-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+}
+
+.genetics-stat-label {
+    font-size: 0.75rem;
+    width: 80px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.genetics-stat-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--progress-bg, #e0e0e0);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.genetics-stat-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7C4DFF, #E040FB);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+.genetics-stat-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 24px;
+    text-align: center;
+}
+
+/* Breed button */
+.breed-btn {
+    background: linear-gradient(135deg, #E040FB22, #7C4DFF22) !important;
+}
+
+.breed-btn:hover {
+    background: linear-gradient(135deg, #E040FB33, #7C4DFF33) !important;
+}
