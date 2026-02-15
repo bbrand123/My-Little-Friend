@@ -1,5 +1,353 @@
         // ==================== RENDER FUNCTIONS ====================
 
+        // ==================== AMBIENT BACKGROUND ELEMENTS (Feature 2) ====================
+        const AMBIENT_ELEMENTS = {
+            park: { emoji: '☁️', cls: 'amb-cloud', count: 3, positions: [{top:'12%',left:'5%'},{top:'20%',left:'60%'},{top:'6%',left:'35%'}] },
+            backyard: { emoji: '🦋', cls: 'amb-butterfly', count: 3, positions: [{top:'15%',left:'20%'},{top:'25%',left:'70%'},{top:'10%',left:'50%'}] },
+            bathroom: { emoji: '🫧', cls: 'amb-bubble', count: 3, positions: [{top:'60%',left:'15%'},{top:'50%',left:'70%'},{top:'55%',left:'40%'}] },
+            kitchen: { emoji: '♨️', cls: 'amb-steam', count: 3, positions: [{top:'70%',left:'20%'},{top:'65%',left:'65%'},{top:'68%',left:'35%'}] },
+            bedroom: { emoji: '💤', cls: 'amb-zzz', count: 3, positions: [{top:'20%',left:'15%'},{top:'15%',left:'60%'},{top:'25%',left:'30%'}] },
+            garden: { emoji: '✨', cls: 'amb-sparkle', count: 3, positions: [{top:'30%',left:'20%'},{top:'40%',left:'75%'},{top:'50%',left:'45%'}] }
+        };
+
+        function generateAmbientLayerHTML(roomId, timeOfDay, weather, isOutdoor) {
+            const config = AMBIENT_ELEMENTS[roomId];
+            if (!config) return '';
+            // Bedroom ambient only shows at night
+            if (roomId === 'bedroom' && timeOfDay !== 'night') return '';
+            let html = '<div class="ambient-layer" aria-hidden="true">';
+            for (let i = 0; i < config.count; i++) {
+                const pos = config.positions[i];
+                html += `<span class="ambient-element ${config.cls}" style="top:${pos.top};left:${pos.left}">${config.emoji}</span>`;
+            }
+            // Night stars for outdoor rooms
+            if (isOutdoor && timeOfDay === 'night') {
+                const starPositions = [{top:'8%',left:'10%'},{top:'12%',left:'55%'},{top:'5%',left:'80%'},{top:'18%',left:'35%'},{top:'3%',left:'65%'}];
+                for (let i = 0; i < starPositions.length; i++) {
+                    const sp = starPositions[i];
+                    html += `<span class="ambient-element amb-star" style="top:${sp.top};left:${sp.left};animation-delay:${(i*0.5)}s">⭐</span>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // ==================== WEATHER PARTICLE EFFECTS (Feature 8) ====================
+        function generateWeatherParticlesHTML(weather, isOutdoor) {
+            if (!isOutdoor || weather === 'sunny') {
+                // Sun rays for sunny outdoor
+                if (isOutdoor && weather === 'sunny') {
+                    let html = '<div class="weather-particles-layer" aria-hidden="true">';
+                    for (let i = 0; i < 5; i++) {
+                        const left = 10 + (i * 18);
+                        const delay = (i * 0.8);
+                        const dur = 3 + (i % 3);
+                        html += `<div class="weather-particle sun-ray" style="left:${left}%;top:0;animation-duration:${dur}s;animation-delay:${delay}s;transform:rotate(${-15 + i * 8}deg)"></div>`;
+                    }
+                    html += '</div>';
+                    return html;
+                }
+                return '';
+            }
+            let html = '<div class="weather-particles-layer" aria-hidden="true">';
+            if (weather === 'rainy') {
+                for (let i = 0; i < 20; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 2;
+                    const dur = 0.8 + Math.random() * 0.6;
+                    html += `<div class="weather-particle rain-drop" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s"></div>`;
+                }
+            } else if (weather === 'snowy') {
+                for (let i = 0; i < 15; i++) {
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 4;
+                    const dur = 3 + Math.random() * 3;
+                    const size = 4 + Math.random() * 4;
+                    html += `<div class="weather-particle snowflake" style="left:${left}%;width:${size}px;height:${size}px;animation-duration:${dur}s;animation-delay:${delay}s"></div>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // ==================== NEEDS ATTENTION DOT (Feature 4) ====================
+        function generateNeedsAttentionDot(pet) {
+            const threshold = 30;
+            const hasLow = pet.hunger < threshold || pet.cleanliness < threshold ||
+                           pet.happiness < threshold || pet.energy < threshold;
+            if (!hasLow) return '';
+            return '<div class="needs-attention-dot" aria-label="Your pet needs attention!" title="A stat is below 30%"></div>';
+        }
+
+        // Update needs attention dot dynamically
+        function updateNeedsAttentionDot() {
+            const pet = gameState.pet;
+            if (!pet) return;
+            const container = document.getElementById('pet-container');
+            if (!container) return;
+            const threshold = 30;
+            const hasLow = pet.hunger < threshold || pet.cleanliness < threshold ||
+                           pet.happiness < threshold || pet.energy < threshold;
+            let dot = container.querySelector('.needs-attention-dot');
+            if (hasLow && !dot) {
+                dot = document.createElement('div');
+                dot.className = 'needs-attention-dot';
+                dot.setAttribute('aria-label', 'Your pet needs attention!');
+                dot.title = 'A stat is below 30%';
+                container.appendChild(dot);
+            } else if (!hasLow && dot) {
+                dot.remove();
+            }
+        }
+
+        // ==================== EMOJI REACTION BURST (Feature 9) ====================
+        const EMOJI_BURST_MAP = {
+            feed: ['🍎', '🥕', '🍖', '🧁', '🍕'],
+            wash: ['🫧', '💧', '🧼', '🚿', '✨'],
+            play: ['❤️', '⚽', '🎾', '🎈', '⭐'],
+            sleep: ['💤', '🌙', '✨', '😴', '☁️'],
+            medicine: ['💊', '💗', '✨', '🩹', '🌟'],
+            groom: ['✂️', '✨', '🪮', '💇', '🌟'],
+            exercise: ['💪', '🏃', '⭐', '🔥', '💨'],
+            treat: ['🍬', '🍪', '🧁', '🍰', '⭐'],
+            cuddle: ['❤️', '💕', '💗', '🥰', '💖']
+        };
+
+        function spawnEmojiBurst(container, action) {
+            if (!container) return;
+            const emojis = EMOJI_BURST_MAP[action] || ['❤️', '⭐', '✨'];
+            const count = 8;
+            const rect = container.getBoundingClientRect();
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('span');
+                el.className = 'emoji-burst-particle';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                const angle = (Math.PI * 2 * i / count) + (Math.random() * 0.5 - 0.25);
+                const dist = 40 + Math.random() * 50;
+                const bx = Math.cos(angle) * dist;
+                const by = Math.sin(angle) * dist - 20;
+                const rot = (Math.random() - 0.5) * 60;
+                el.style.setProperty('--burst-x', bx + 'px');
+                el.style.setProperty('--burst-y', by + 'px');
+                el.style.setProperty('--burst-rot', rot + 'deg');
+                el.style.left = '50%';
+                el.style.top = '40%';
+                el.style.animationDelay = (i * 0.04) + 's';
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 1200);
+            }
+        }
+
+        // ==================== STREAK HUD INDICATOR (Feature 10) ====================
+        function generateStreakHudHTML() {
+            const streak = gameState.streak;
+            if (!streak || streak.current <= 0) return '';
+            const hasBonus = !streak.todayBonusClaimed;
+            return `<span class="streak-hud ${hasBonus ? 'has-bonus' : ''}" id="streak-hud" title="${streak.current}-day streak${hasBonus ? ' (bonus available!)' : ''}" role="button" tabindex="0" aria-label="${streak.current} day streak${hasBonus ? ', bonus available' : ''}">
+                <span class="streak-flame-icon" aria-hidden="true">🔥</span>
+                <span>${streak.current}</span>
+                ${hasBonus ? '<span class="streak-bonus-dot" aria-hidden="true"></span>' : ''}
+            </span>`;
+        }
+
+        // ==================== PET AGE HUD (Feature 3) ====================
+        function generatePetAgeHudHTML(pet) {
+            const ageInHours = getPetAge(pet);
+            let ageText;
+            if (ageInHours < 1) {
+                ageText = 'Just born';
+            } else if (ageInHours < 24) {
+                ageText = Math.floor(ageInHours) + 'h old';
+            } else {
+                const days = Math.floor(ageInHours / 24);
+                ageText = 'Day ' + (days + 1);
+            }
+            return `<span class="pet-age-hud" title="Pet age: ${ageText}" aria-label="Pet age: ${ageText}">🎂 ${ageText}</span>`;
+        }
+
+        // ==================== FAVORITES BAR (Feature 5) ====================
+        const FAVORITE_ACTIONS = {
+            feed: { icon: '🍎', label: 'Feed' },
+            wash: { icon: '🛁', label: 'Wash' },
+            sleep: { icon: '🛏️', label: 'Sleep' },
+            cuddle: { icon: '🤗', label: 'Pet' },
+            play: { icon: '⚽', label: 'Play' },
+            treat: { icon: '🍪', label: 'Treat' },
+            medicine: { icon: '💊', label: 'Medicine' },
+            groom: { icon: '✂️', label: 'Groom' },
+            exercise: { icon: '💪', label: 'Exercise' }
+        };
+
+        function getFavorites() {
+            try {
+                const saved = localStorage.getItem('petCareBuddy_favorites');
+                if (saved) return JSON.parse(saved);
+            } catch (e) {}
+            return [null, null, null];
+        }
+
+        function saveFavorites(favs) {
+            try {
+                localStorage.setItem('petCareBuddy_favorites', JSON.stringify(favs));
+            } catch (e) {}
+        }
+
+        function generateFavoritesBarHTML() {
+            const favs = getFavorites();
+            let html = '<div class="favorites-label">Quick Actions</div><div class="favorites-bar" role="group" aria-label="Favorite actions">';
+            for (let i = 0; i < 3; i++) {
+                const action = favs[i];
+                const data = action ? FAVORITE_ACTIONS[action] : null;
+                if (data) {
+                    html += `<div class="favorite-slot filled" data-fav-idx="${i}" data-fav-action="${action}" title="${data.label}" aria-label="Quick ${data.label}" role="button" tabindex="0">
+                        <span aria-hidden="true">${data.icon}</span>
+                        <span class="fav-remove" data-fav-remove="${i}" title="Remove" aria-label="Remove ${data.label} from favorites" role="button" tabindex="0">&times;</span>
+                    </div>`;
+                } else {
+                    html += `<div class="favorite-slot" data-fav-idx="${i}" title="Add a favorite action" aria-label="Empty favorite slot ${i + 1}, click to assign" role="button" tabindex="0">
+                        <span aria-hidden="true" style="opacity:0.4">+</span>
+                    </div>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function showFavoritesPicker(slotIdx) {
+            const favs = getFavorites();
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Choose a favorite action');
+            let html = '<div class="modal-content" style="max-width:300px;text-align:center;padding:20px;">';
+            html += '<h3 style="margin:0 0 12px;font-size:1.1rem;">Choose Action</h3>';
+            html += '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">';
+            for (const [action, data] of Object.entries(FAVORITE_ACTIONS)) {
+                const alreadySet = favs.includes(action);
+                html += `<button class="action-btn" style="min-width:70px;${alreadySet ? 'opacity:0.4;pointer-events:none;' : ''}" data-pick-action="${action}">
+                    <span class="btn-icon" aria-hidden="true">${data.icon}</span>
+                    <span style="font-size:0.7rem;">${data.label}</span>
+                </button>`;
+            }
+            html += '</div>';
+            html += '<button class="modal-close-btn" style="margin-top:12px;padding:8px 20px;border:1px solid #ccc;border-radius:8px;background:white;cursor:pointer;font-family:inherit;">Cancel</button>';
+            html += '</div>';
+            overlay.innerHTML = html;
+            document.body.appendChild(overlay);
+            overlay.querySelector('.modal-close-btn').addEventListener('click', () => overlay.remove());
+            overlay.querySelectorAll('[data-pick-action]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    favs[slotIdx] = btn.dataset.pickAction;
+                    saveFavorites(favs);
+                    overlay.remove();
+                    updateFavoritesBar();
+                });
+            });
+        }
+
+        function updateFavoritesBar() {
+            const existing = document.querySelector('.favorites-bar');
+            const label = document.querySelector('.favorites-label');
+            if (existing) existing.remove();
+            if (label) label.remove();
+            const section = document.querySelector('.actions-section');
+            if (section) {
+                section.insertAdjacentHTML('beforebegin', generateFavoritesBarHTML());
+                bindFavoritesEvents();
+            }
+        }
+
+        function bindFavoritesEvents() {
+            document.querySelectorAll('.favorite-slot').forEach(slot => {
+                slot.addEventListener('click', (e) => {
+                    if (e.target.closest('.fav-remove')) return;
+                    const action = slot.dataset.favAction;
+                    if (action && typeof careAction === 'function') {
+                        careAction(action);
+                    } else {
+                        showFavoritesPicker(parseInt(slot.dataset.favIdx));
+                    }
+                });
+            });
+            document.querySelectorAll('.fav-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.favRemove);
+                    const favs = getFavorites();
+                    favs[idx] = null;
+                    saveFavorites(favs);
+                    updateFavoritesBar();
+                });
+            });
+        }
+
+        // ==================== WELCOME BACK SUMMARY SCREEN (Feature 7) ====================
+        function showWelcomeBackModal(offlineChanges, pet) {
+            if (!offlineChanges || !pet) return;
+            const petData = (typeof getAllPetTypeData === 'function' ? getAllPetTypeData(pet.type) : null) || PET_TYPES[pet.type] || { emoji: '🐾', name: 'Pet' };
+            const hrs = Math.floor(offlineChanges.minutes / 60);
+            const mins = offlineChanges.minutes % 60;
+            const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
+            function statLine(icon, label, change) {
+                const cls = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+                const prefix = change > 0 ? '+' : '';
+                return `<div class="welcome-back-stat">
+                    <span class="stat-icon" aria-hidden="true">${icon}</span>
+                    <span>${label}</span>
+                    <span class="stat-change ${cls}">${prefix}${change}</span>
+                </div>`;
+            }
+
+            let gardenHTML = '';
+            const garden = gameState.garden;
+            if (garden && garden.plots && garden.plots.some(p => p && p.stage >= 3)) {
+                const readyCount = garden.plots.filter(p => p && p.stage >= 3).length;
+                gardenHTML = `<div class="welcome-back-garden">🌱 ${readyCount} crop${readyCount > 1 ? 's' : ''} ready to harvest!</div>`;
+            }
+
+            let streakHTML = '';
+            const streak = gameState.streak;
+            if (streak && streak.current > 0) {
+                streakHTML = `<div class="welcome-back-streak">🔥 ${streak.current}-day streak!${!streak.todayBonusClaimed ? ' Claim your bonus!' : ''}</div>`;
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'welcome-back-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Welcome back summary');
+            overlay.innerHTML = `
+                <div class="welcome-back-modal">
+                    <div class="welcome-back-pet-emoji" aria-hidden="true">${petData.emoji}</div>
+                    <h2 class="welcome-back-title">Welcome Back!</h2>
+                    <p class="welcome-back-subtitle">You were away for ${timeStr}</p>
+                    <div class="welcome-back-stats">
+                        ${statLine('🍎', 'Hunger', offlineChanges.hunger)}
+                        ${statLine('🛁', 'Cleanliness', offlineChanges.cleanliness)}
+                        ${statLine('💖', 'Happiness', offlineChanges.happiness)}
+                        ${statLine('⚡', 'Energy', offlineChanges.energy)}
+                    </div>
+                    ${gardenHTML}
+                    ${streakHTML}
+                    <button class="welcome-back-close" id="welcome-back-close">Let's Go!</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.querySelector('#welcome-back-close').addEventListener('click', () => {
+                overlay.classList.add('modal-closing');
+                setTimeout(() => overlay.remove(), 220);
+            });
+            // Auto-dismiss after 8 seconds
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.classList.add('modal-closing');
+                    setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 220);
+                }
+            }, 8000);
+        }
+
         // Color name helper for VoiceOver accessibility
         function getColorName(hex) {
             const colorNames = {
@@ -932,13 +1280,16 @@
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
                     ${weatherHTML}
+                    ${generateAmbientLayerHTML(currentRoom, timeOfDay, weather, isOutdoor)}
+                    ${generateWeatherParticlesHTML(weather, isOutdoor)}
                     <div class="sparkles" id="sparkles"></div>
                     <div class="pet-container" id="pet-container">
                         ${generateThoughtBubble(pet)}
                         ${generatePetSVG(pet, mood)}
+                        ${generateNeedsAttentionDot(pet)}
                     </div>
                     <div class="pet-info">
-                        <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span></p>
+                        <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span> ${generatePetAgeHudHTML(pet)} ${generateStreakHudHTML()}</p>
                         ${pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && PERSONALITY_TRAITS[pet.personality] ? `<p class="personality-badge" title="${PERSONALITY_TRAITS[pet.personality].description}">${PERSONALITY_TRAITS[pet.personality].emoji} ${PERSONALITY_TRAITS[pet.personality].label}${pet.growthStage === 'elder' ? ' · 🏛️ Elder' : ''}</p>` : ''}
                         ${(() => {
                             const stage = pet.growthStage || 'baby';
@@ -1122,6 +1473,8 @@
                     }
                     return '';
                 })()}
+
+                ${generateFavoritesBarHTML()}
 
                 <section class="actions-section" aria-label="Care actions">
                     <div class="action-group">
@@ -1380,6 +1733,23 @@
                             evolveBtn.style.opacity = '';
                         }
                     }, 300);
+                });
+            }
+
+            // Bind favorites bar events (Feature 5)
+            bindFavoritesEvents();
+
+            // Streak HUD click handler (Feature 10)
+            const streakHud = document.getElementById('streak-hud');
+            if (streakHud) {
+                streakHud.addEventListener('click', () => {
+                    if (typeof showRewardsHub === 'function') showRewardsHub();
+                });
+                streakHud.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (typeof showRewardsHub === 'function') showRewardsHub();
+                    }
                 });
             }
 
@@ -2001,9 +2371,10 @@
                 }
             }
 
-            // Spawn themed particles and floating stat text
+            // Spawn themed particles, emoji burst, and floating stat text
             if (petContainer) {
                 spawnCareParticles(petContainer, CARE_PARTICLE_EMOJIS[action] || ['✨'], 5);
+                spawnEmojiBurst(petContainer, action);
             }
 
             // Haptic feedback per action type
@@ -2229,6 +2600,9 @@
             updateMini('mini-clean', pet.cleanliness, 'Bath');
             updateMini('mini-happy', pet.happiness, 'Happy');
             updateMini('mini-energy', pet.energy, 'Energy');
+
+            // Update needs attention dot (Feature 4)
+            if (typeof updateNeedsAttentionDot === 'function') updateNeedsAttentionDot();
         }
 
         let _previousMood = null;

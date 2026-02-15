@@ -2442,42 +2442,59 @@
                 const petArea = document.querySelector('.pet-area');
 
                 if (petArea) {
-                    // Add room transition animation
-                    petArea.classList.add('room-transitioning');
-                    setTimeout(() => petArea.classList.remove('room-transitioning'), 450);
+                    // Enhanced slide transition (Feature 6)
+                    petArea.classList.add('room-slide-out');
+                    setTimeout(() => {
+                        petArea.classList.remove('room-slide-out');
 
-                    // Update season class
-                    const season = gameState.season || getCurrentSeason();
-                    ['spring', 'summer', 'autumn', 'winter'].forEach(s => petArea.classList.remove('season-' + s));
-                    petArea.classList.add('season-' + season);
+                        // Update season class
+                        const season = gameState.season || getCurrentSeason();
+                        ['spring', 'summer', 'autumn', 'winter'].forEach(s => petArea.classList.remove('season-' + s));
+                        petArea.classList.add('season-' + season);
 
-                    // Update room class
-                    ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
-                    petArea.classList.add('room-' + roomId);
+                        // Update room class
+                        ROOM_IDS.forEach(id => petArea.classList.remove('room-' + id));
+                        petArea.classList.add('room-' + roomId);
 
-                    // Update background
-                    petArea.style.background = getRoomBackground(roomId, gameState.timeOfDay);
+                        // Update background
+                        petArea.style.background = getRoomBackground(roomId, gameState.timeOfDay);
 
-                    // Update room decor
-                    const decor = petArea.querySelector('.room-decor');
-                    if (decor) {
-                        decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
-                    }
+                        // Update room decor
+                        const decor = petArea.querySelector('.room-decor');
+                        if (decor) {
+                            decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
+                        }
 
-                    // Room label removed from status bar (room nav already highlights active room)
+                        // Update ambient layer (Feature 2)
+                        const oldAmbient = petArea.querySelector('.ambient-layer');
+                        if (oldAmbient) oldAmbient.remove();
+                        const oldWeatherP = petArea.querySelector('.weather-particles-layer');
+                        if (oldWeatherP) oldWeatherP.remove();
+                        const isOutdoor = room.isOutdoor;
+                        if (typeof generateAmbientLayerHTML === 'function') {
+                            const weather = gameState.weather || 'sunny';
+                            const ambHTML = generateAmbientLayerHTML(roomId, gameState.timeOfDay, weather, isOutdoor);
+                            if (ambHTML) petArea.insertAdjacentHTML('afterbegin', ambHTML);
+                            const wpHTML = typeof generateWeatherParticlesHTML === 'function' ? generateWeatherParticlesHTML(weather, isOutdoor) : '';
+                            if (wpHTML) petArea.insertAdjacentHTML('afterbegin', wpHTML);
+                        }
 
-                    // Show/hide outdoor elements based on room type
-                    const isOutdoor = room.isOutdoor;
-                    petArea.querySelectorAll('.cloud').forEach(c => c.style.display = isOutdoor ? '' : 'none');
-                    const sun = petArea.querySelector('.sun');
-                    if (sun) sun.style.display = isOutdoor ? '' : 'none';
-                    const starsOverlay = petArea.querySelector('.stars-overlay');
-                    if (starsOverlay) starsOverlay.style.display = isOutdoor ? '' : 'none';
-                    const moon = petArea.querySelector('.moon');
-                    if (moon) moon.style.display = isOutdoor ? '' : 'none';
+                        // Show/hide outdoor elements based on room type
+                        petArea.querySelectorAll('.cloud').forEach(c => c.style.display = isOutdoor ? '' : 'none');
+                        const sun = petArea.querySelector('.sun');
+                        if (sun) sun.style.display = isOutdoor ? '' : 'none';
+                        const starsOverlay = petArea.querySelector('.stars-overlay');
+                        if (starsOverlay) starsOverlay.style.display = isOutdoor ? '' : 'none';
+                        const moon = petArea.querySelector('.moon');
+                        if (moon) moon.style.display = isOutdoor ? '' : 'none';
 
-                    // Update weather display for the new room
-                    updateWeatherDisplay();
+                        // Update weather display for the new room
+                        updateWeatherDisplay();
+
+                        // Slide in
+                        petArea.classList.add('room-slide-in');
+                        setTimeout(() => petArea.classList.remove('room-slide-in'), 250);
+                    }, 150);
                 }
             }
 
@@ -3873,27 +3890,34 @@
                                          'is glad you\'re back!';
                     announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
                 }
-                // Show offline time summary if pet was away for a while
+                // Show welcome-back summary modal if pet was away for a while (Feature 7)
                 if (gameState._offlineChanges) {
                     const oc = gameState._offlineChanges;
-                    const hrs = Math.floor(oc.minutes / 60);
-                    const mins = oc.minutes % 60;
-                    const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-                    const parts = [];
-                    if (oc.hunger !== 0) parts.push(`Hunger ${oc.hunger > 0 ? '+' : ''}${oc.hunger}`);
-                    if (oc.energy !== 0) parts.push(`Energy ${oc.energy > 0 ? '+' : ''}${oc.energy}`);
-                    if (oc.happiness !== 0) parts.push(`Happiness ${oc.happiness > 0 ? '+' : ''}${oc.happiness}`);
-                    if (oc.cleanliness !== 0) parts.push(`Clean ${oc.cleanliness > 0 ? '+' : ''}${oc.cleanliness}`);
-                    if (parts.length > 0) {
+                    if (typeof showWelcomeBackModal === 'function') {
                         setTimeout(() => {
-                            showToast(`Away ${timeStr}: ${parts.join(', ')}`, '#7C6BFF');
-                        }, 800);
+                            showWelcomeBackModal(oc, gameState.pet);
+                        }, 600);
+                    } else {
+                        // Fallback to toast if modal function not loaded yet
+                        const hrs = Math.floor(oc.minutes / 60);
+                        const mins = oc.minutes % 60;
+                        const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                        const parts = [];
+                        if (oc.hunger !== 0) parts.push(`Hunger ${oc.hunger > 0 ? '+' : ''}${oc.hunger}`);
+                        if (oc.energy !== 0) parts.push(`Energy ${oc.energy > 0 ? '+' : ''}${oc.energy}`);
+                        if (oc.happiness !== 0) parts.push(`Happiness ${oc.happiness > 0 ? '+' : ''}${oc.happiness}`);
+                        if (oc.cleanliness !== 0) parts.push(`Clean ${oc.cleanliness > 0 ? '+' : ''}${oc.cleanliness}`);
+                        if (parts.length > 0) {
+                            setTimeout(() => {
+                                showToast(`Away ${timeStr}: ${parts.join(', ')}`, '#7C6BFF');
+                            }, 800);
+                        }
                     }
                     delete gameState._offlineChanges;
                     saveGame();
                 }
-                // Show streak notification if bonus available
-                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) {
+                // Show streak notification if bonus available (only if no welcome-back modal shown)
+                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed && !gameState._offlineChanges) {
                     setTimeout(() => {
                         showToast(`🔥 ${gameState.streak.current}-day streak! Tap Rewards to claim bonus!`, '#FF6D00');
                     }, 1500);
