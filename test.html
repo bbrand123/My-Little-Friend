@@ -69,8 +69,12 @@
             }
 
             // Test 5: Growth stages timing
-            log(`Baby→Child: ${GROWTH_STAGES.child.hoursNeeded} hours, ${GROWTH_STAGES.child.actionsNeeded} actions`);
-            log(`Child→Adult: ${GROWTH_STAGES.adult.hoursNeeded} hours, ${GROWTH_STAGES.adult.actionsNeeded} actions`);
+            if (typeof GROWTH_STAGES !== 'undefined' && GROWTH_STAGES.child && GROWTH_STAGES.adult) {
+                log(`Baby→Child: ${GROWTH_STAGES.child.hoursNeeded} hours, ${GROWTH_STAGES.child.actionsNeeded} actions`);
+                log(`Child→Adult: ${GROWTH_STAGES.adult.hoursNeeded} hours, ${GROWTH_STAGES.adult.actionsNeeded} actions`);
+            } else {
+                log('GROWTH_STAGES.child or .adult missing', false);
+            }
 
             // Test 6: Functions exist
             if (typeof getGrowthStage === 'function') {
@@ -111,7 +115,9 @@
                 const dull = applyCareVariant(testColor, 'dull');
                 const shiny = applyCareVariant(testColor, 'shiny');
 
-                log(`Color transformation works: dull=${dull}, shiny=${shiny}`);
+                const dullValid = typeof dull === 'string' && dull !== testColor;
+                const shinyValid = typeof shiny === 'string' && shiny !== testColor;
+                log(`Color transformation works: dull=${dull}, shiny=${shiny}`, dullValid && shinyValid);
             } else {
                 log('applyCareVariant() not found', false);
             }
@@ -119,7 +125,8 @@
             // Test 9: Sound manager loaded
             if (typeof SoundManager !== 'undefined') {
                 log('SoundManager loaded');
-                log(`SoundManager has playSFX: ${typeof SoundManager.playSFX === 'function'}`);
+                const hasSFX = typeof SoundManager.playSFX === 'function';
+                log(`SoundManager has playSFX: ${hasSFX}`, hasSFX);
             } else {
                 log('SoundManager not found', false);
             }

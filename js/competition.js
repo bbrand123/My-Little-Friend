@@ -36,6 +36,7 @@
             let stageMult = 1.0;
             if (pet.growthStage === 'child') stageMult = 1.2;
             if (pet.growthStage === 'adult') stageMult = 1.5;
+            if (pet.growthStage === 'elder') stageMult = 1.7;
 
             // Evolution bonus
             const evoMult = pet.evolutionStage === 'evolved' ? 1.3 : 1.0;
@@ -58,11 +59,26 @@
             const statMult = stat / 50; // 1.0 at 50, 2.0 at 100
             let damage = Math.round(move.basePower * statMult);
 
-            // Type advantage check — look up base type for hybrids too
+            // Type advantage check — look up base type for hybrids too (check both parent types)
             const attackerTypeData = typeof getAllPetTypeData === 'function' ? getAllPetTypeData(attacker.type) : null;
-            const baseType = (attackerTypeData && (attackerTypeData.parentTypes || attackerTypeData.parents)) ? (attackerTypeData.parentTypes || attackerTypeData.parents)[0] : attacker.type;
-            const advantages = PET_TYPE_ADVANTAGES[attacker.type] || PET_TYPE_ADVANTAGES[baseType] || [];
-            if (advantages.includes(defender.type)) {
+            const parentTypes = (attackerTypeData && (attackerTypeData.parentTypes || attackerTypeData.parents)) || [];
+            let advantages = PET_TYPE_ADVANTAGES[attacker.type] || [];
+            if (advantages.length === 0 && parentTypes.length > 0) {
+                // Combine advantages from both parent types for hybrids
+                const combined = new Set();
+                for (const pt of parentTypes) {
+                    const adv = PET_TYPE_ADVANTAGES[pt] || [];
+                    adv.forEach(a => combined.add(a));
+                }
+                advantages = [...combined];
+            }
+            // Also check defender's base types for hybrid defenders
+            const defenderTypeData = typeof getAllPetTypeData === 'function' ? getAllPetTypeData(defender.type) : null;
+            const defenderTypes = [defender.type];
+            if (defenderTypeData && (defenderTypeData.parentTypes || defenderTypeData.parents)) {
+                defenderTypes.push(...(defenderTypeData.parentTypes || defenderTypeData.parents));
+            }
+            if (defenderTypes.some(dt => advantages.includes(dt))) {
                 damage = Math.round(damage * 1.3);
             }
 
@@ -172,7 +188,13 @@
                     </div>
                 `;
 
-                overlay.querySelector('#battle-close').addEventListener('click', closeBattle);
+                const battleCloseBtn = overlay.querySelector('#battle-close');
+                if (battleCloseBtn) {
+                    // Replace node to remove any stale handlers from previous renders
+                    const freshBtn = battleCloseBtn.cloneNode(true);
+                    battleCloseBtn.replaceWith(freshBtn);
+                    freshBtn.addEventListener('click', closeBattle);
+                }
                 if (!overlay._overlayClickBound) {
                     overlay.addEventListener('click', (e) => { if (e.target === overlay) closeBattle(); });
                     overlay._overlayClickBound = true;
@@ -616,8 +638,9 @@
                             announce(`Victory! Boss ${boss.name} defeated!`, true);
                         }, 500);
                     } else {
-                        // Consolation rewards
-                        allPets.forEach(p => {
+                        // Consolation rewards (only for non-fainted pets)
+                        allPets.forEach((p, idx) => {
+                            if (!p || petHPs[idx] <= 0) return;
                             p.happiness = clamp(p.happiness + 5, 0, 100);
                         });
                         if (gameState.pets && gameState.pets[gameState.activePetIndex]) {
@@ -817,9 +840,9 @@
                 popModalEscape(closeShow);
                 if (overlay.parentNode) overlay.remove();
                 if (gameState.phase === 'pet') {
-                    updateNeedDisplays();
-                    updatePetMood();
-                    updateWellnessBar();
+                    if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                    if (typeof updatePetMood === 'function') updatePetMood();
+                    if (typeof updateWellnessBar === 'function') updateWellnessBar();
                 }
             }
 
@@ -1081,16 +1104,16 @@
 
                 // Create rival pet from trainer data
                 const rivalPet = {
+                    ...trainer.stats,
                     type: trainer.petType,
                     name: trainer.petName,
-                    ...trainer.stats,
                     growthStage: rivalIdx < 3 ? 'child' : 'adult',
                     careQuality: rivalIdx < 2 ? 'average' : rivalIdx < 5 ? 'good' : 'excellent',
                     evolutionStage: rivalIdx >= 6 ? 'evolved' : 'base'
                 };
 
                 const playerMaxHP = calculateBattleHP(pet);
-                const rivalMaxHP = trainer.battleHP;
+                const rivalMaxHP = calculateBattleHP(rivalPet) || trainer.battleHP;
                 let playerHP = playerMaxHP;
                 let rivalHP = rivalMaxHP;
                 let fightOver = false;

@@ -180,6 +180,7 @@
             }
 
             const content = document.getElementById('game-content');
+            if (!content) return;
             const crackLevel = Math.min(gameState.eggTaps, 3);
             const eggData = EGG_TYPES[gameState.eggType] || EGG_TYPES['furry'];
 
@@ -576,8 +577,9 @@
 
         // Exposed on window so game.js can read/write these flags reliably
         // even if files are loaded as modules in the future.
-        var _petPhaseTimersRunning = false;
-        var _petPhaseLastRoom = null;
+        // Use conditional check matching game.js to avoid resetting values already set.
+        if (typeof _petPhaseTimersRunning === 'undefined') var _petPhaseTimersRunning = false;
+        if (typeof _petPhaseLastRoom === 'undefined') var _petPhaseLastRoom = null;
 
         // ==================== ROOM BONUS BADGE ====================
         // Returns a small badge indicating room bonus for an action button
@@ -606,12 +608,14 @@
             const critical = needs.filter(n => n.value < threshold).sort((a, b) => a.value - b.value);
 
             // Personality-driven thought override (when no critical needs)
+            // Use a time-bucket seed (changes every 30s) to avoid flicker across re-renders
+            const _thoughtSeed = Math.floor(Date.now() / 30000);
             if (critical.length === 0) {
-                // Show personality-driven wants occasionally
-                if (pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && Math.random() < 0.3) {
+                // Show personality-driven wants occasionally (deterministic per time bucket)
+                if (pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && (_thoughtSeed % 10) < 3) {
                     const trait = PERSONALITY_TRAITS[pet.personality];
                     if (trait && trait.thoughtMessages) {
-                        const msg = trait.thoughtMessages[Math.floor(Math.random() * trait.thoughtMessages.length)];
+                        const msg = trait.thoughtMessages[_thoughtSeed % trait.thoughtMessages.length];
                         return `<div class="thought-bubble personality-thought" aria-label="${petName} ${msg}" role="img">
                             <span class="thought-icon">${trait.emoji}</span>
                             <span class="thought-text">${petName} ${msg}</span>
@@ -619,7 +623,7 @@
                     }
                 }
                 // Show favorite food hint when hungry-ish
-                if (pet.hunger < 50 && typeof PET_PREFERENCES !== 'undefined' && Math.random() < 0.2) {
+                if (pet.hunger < 50 && typeof PET_PREFERENCES !== 'undefined' && (_thoughtSeed % 10) < 2) {
                     const prefs = PET_PREFERENCES[pet.type];
                     if (prefs) {
                         return `<div class="thought-bubble favorite-thought" aria-label="${petName} wants ${prefs.favoriteFoodLabel}" role="img">
@@ -827,6 +831,7 @@
                 pendingRenderTimer = null;
             }
             const content = document.getElementById('game-content');
+            if (!content) return;
             const pet = gameState.pet;
             const petData = (typeof getAllPetTypeData === 'function' ? getAllPetTypeData(pet.type) : null) || PET_TYPES[pet.type];
             if (!petData) {
@@ -1092,7 +1097,7 @@
                                     <span aria-hidden="true">✨</span> ${PET_EVOLUTIONS[pet.type]?.name || 'Evolved Form'} <span aria-hidden="true">✨</span>
                                 </div>
                             ` : ''}
-                            ${canEvolve(pet) ? `
+                            ${typeof canEvolve === 'function' && canEvolve(pet) ? `
                                 <button class="evolution-btn" id="evolve-btn" aria-label="Evolve your pet to their special form!">
                                     <span aria-hidden="true">⭐</span> Evolve ${petDisplayName}! <span aria-hidden="true">⭐</span>
                                 </button>
@@ -1263,16 +1268,21 @@
                     careAction(urgentActions[lowestIdx]);
                 });
             }
-            document.getElementById('feed-btn').addEventListener('click', () => careAction('feed'));
-            document.getElementById('wash-btn').addEventListener('click', () => careAction('wash'));
-            document.getElementById('play-btn').addEventListener('click', () => careAction('play'));
-            document.getElementById('sleep-btn').addEventListener('click', () => careAction('sleep'));
-            document.getElementById('medicine-btn').addEventListener('click', () => careAction('medicine'));
-            document.getElementById('groom-btn').addEventListener('click', () => careAction('groom'));
-            document.getElementById('exercise-btn').addEventListener('click', () => careAction('exercise'));
-            document.getElementById('treat-btn').addEventListener('click', () => careAction('treat'));
-            document.getElementById('pet-btn').addEventListener('click', () => careAction('cuddle'));
-            document.getElementById('minigames-btn').addEventListener('click', () => {
+            // Helper to safely attach click listener (avoids crash if element missing)
+            function safeAddClick(id, handler) {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('click', handler);
+            }
+            safeAddClick('feed-btn', () => careAction('feed'));
+            safeAddClick('wash-btn', () => careAction('wash'));
+            safeAddClick('play-btn', () => careAction('play'));
+            safeAddClick('sleep-btn', () => careAction('sleep'));
+            safeAddClick('medicine-btn', () => careAction('medicine'));
+            safeAddClick('groom-btn', () => careAction('groom'));
+            safeAddClick('exercise-btn', () => careAction('exercise'));
+            safeAddClick('treat-btn', () => careAction('treat'));
+            safeAddClick('pet-btn', () => careAction('cuddle'));
+            safeAddClick('minigames-btn', () => {
                 if (typeof openMiniGamesMenu === 'function') {
                     openMiniGamesMenu();
                 } else {
@@ -1281,7 +1291,7 @@
                     setTimeout(() => { if (loader) loader.remove(); }, 2000);
                 }
             });
-            document.getElementById('competition-btn').addEventListener('click', () => {
+            safeAddClick('competition-btn', () => {
                 if (typeof openCompetitionHub === 'function') {
                     openCompetitionHub();
                 } else {
@@ -1290,7 +1300,7 @@
                     setTimeout(() => { if (loader) loader.remove(); }, 2000);
                 }
             });
-            document.getElementById('seasonal-btn').addEventListener('click', () => {
+            safeAddClick('seasonal-btn', () => {
                 if (actionCooldown) return;
                 actionCooldown = true;
                 if (actionCooldownTimer) clearTimeout(actionCooldownTimer);
@@ -1362,7 +1372,7 @@
                     evolveBtn.style.opacity = '0.7';
                     const pet = gameState.pet;
                     setTimeout(() => {
-                        if (evolvePet(pet)) {
+                        if (typeof evolvePet === 'function' && evolvePet(pet)) {
                             renderPetPhase();
                         } else {
                             evolveBtn.disabled = false;
@@ -1655,6 +1665,8 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
+            // SAFETY: message is always from constants/game logic, never raw user input.
+            // If user input is ever passed here, it must be escaped first.
             toast.innerHTML = wrapEmojiForAria(message);
             container.appendChild(toast);
 
@@ -1765,7 +1777,11 @@
                 btn.classList.add('cooldown');
                 btn.disabled = true;
                 btn.setAttribute('aria-disabled', 'true');
-                btn.setAttribute('aria-label', (btn.dataset.originalLabel || btn.textContent.trim()) + ' (cooling down)');
+                // Preserve the original aria-label before overwriting
+                if (!btn.dataset.originalLabel) {
+                    btn.dataset.originalLabel = btn.getAttribute('aria-label') || btn.querySelector('span:not(.btn-icon):not(.action-btn-tooltip):not(.cooldown-count):not(.kbd-hint):not(.room-bonus-badge):not(.feed-crop-badge)')?.textContent.trim() || '';
+                }
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ' (cooling down)');
             });
 
             if (actionCooldownTimer) {
@@ -2105,6 +2121,12 @@
             const actionAnimClasses = ['bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim'];
             actionAnimating = true;
             if (petContainer) {
+                // If reduced motion is preferred, skip animation entirely
+                const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                if (reducedMotion) {
+                    actionAnimClasses.forEach(c => petContainer.classList.remove(c));
+                    actionAnimating = false;
+                } else {
                 const onAnimEnd = () => {
                     petContainer.removeEventListener('animationend', onAnimEnd);
                     actionAnimClasses.forEach(c => petContainer.classList.remove(c));
@@ -2117,6 +2139,7 @@
                     actionAnimClasses.forEach(c => petContainer.classList.remove(c));
                     actionAnimating = false;
                 }, 1200);
+                }
             } else {
                 actionAnimating = false;
             }
@@ -2474,6 +2497,10 @@
         function removeIdleTimer(id) {
             const idx = idleAnimTimers.indexOf(id);
             if (idx !== -1) idleAnimTimers.splice(idx, 1);
+            // Prevent unbounded growth from stale entries
+            if (idleAnimTimers.length > 50) {
+                idleAnimTimers = idleAnimTimers.slice(-20);
+            }
         }
 
         function stopIdleAnimations() {
@@ -3378,7 +3405,7 @@
                             <span class="memorial-emoji">${emoji}</span>
                             <div class="memorial-name-wrap">
                                 <span class="memorial-name">${escapeHTML(m.name)}</span>
-                                <span class="memorial-title">${m.title}</span>
+                                <span class="memorial-title">${escapeHTML(m.title || '')}</span>
                             </div>
                         </div>
                         <div class="memorial-details">
@@ -4205,6 +4232,14 @@
                     const temp = document.createElement('div');
                     temp.innerHTML = newHTML;
                     section.replaceWith(temp.firstElementChild);
+                } else {
+                    // Section doesn't exist yet — insert into game content
+                    const content = document.getElementById('game-content');
+                    if (content) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = newHTML;
+                        content.appendChild(temp.firstElementChild);
+                    }
                 }
                 // Re-attach collect buttons
                 document.querySelectorAll('.breeding-egg-collect-btn').forEach(btn => {
@@ -4383,7 +4418,7 @@
                                 data-parent="1" data-index="${index}" ${isDisabled || disabledByOther1 ? 'disabled' : ''}>
                             <span class="breeding-pet-emoji">${emoji}</span>
                             <span class="breeding-pet-name">${name}</span>
-                            ${isDisabled ? `<span class="breeding-pet-status">${breedCheck.reason}</span>` : ''}
+                            ${isDisabled ? `<span class="breeding-pet-status">${escapeHTML(breedCheck.reason || '')}</span>` : ''}
                         </button>
                     `;
                     parent2Options += `
@@ -4391,7 +4426,7 @@
                                 data-parent="2" data-index="${index}" ${isDisabled || disabledByOther2 ? 'disabled' : ''}>
                             <span class="breeding-pet-emoji">${emoji}</span>
                             <span class="breeding-pet-name">${name}</span>
-                            ${isDisabled ? `<span class="breeding-pet-status">${breedCheck.reason}</span>` : ''}
+                            ${isDisabled ? `<span class="breeding-pet-status">${escapeHTML(breedCheck.reason || '')}</span>` : ''}
                         </button>
                     `;
                 }
@@ -4414,7 +4449,7 @@
                             <div class="breeding-preview-rel">${levelData.emoji} ${levelData.label} (${rel.points} pts)</div>
                             ${hybridData ? `<div class="breeding-preview-hybrid">🧬 Possible Hybrid: ${hybridData.name} (${Math.round(BREEDING_CONFIG.hybridChance * 100)}% chance)</div>` : ''}
                             <div class="breeding-preview-mutation">🌈 Mutation chance: ${Math.round(BREEDING_CONFIG.mutationChance * 100)}%</div>
-                            ${!pairCheck.eligible ? `<div class="breeding-preview-error">${pairCheck.reason}</div>` : ''}
+                            ${!pairCheck.eligible ? `<div class="breeding-preview-error">${escapeHTML(pairCheck.reason || '')}</div>` : ''}
                         </div>
                     `;
                 }
@@ -5675,14 +5710,14 @@
             if (localStorage.getItem('petCareBuddy_tutorialDone')) return;
             let step = 0;
 
-            function renderStep() {
-                const existing = document.querySelector('.tutorial-overlay');
-                if (existing) existing.remove();
+            // Create the overlay once and reuse it across steps
+            const overlay = document.createElement('div');
+            overlay.className = 'tutorial-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            document.body.appendChild(overlay);
 
-                const overlay = document.createElement('div');
-                overlay.className = 'tutorial-overlay';
-                overlay.setAttribute('role', 'dialog');
-                overlay.setAttribute('aria-modal', 'true');
+            function renderStep() {
                 overlay.setAttribute('aria-label', 'Tutorial step ' + (step + 1));
 
                 const s = TUTORIAL_STEPS[step];
@@ -5702,7 +5737,6 @@
                         </div>
                     </div>
                 `;
-                document.body.appendChild(overlay);
                 trapFocus(overlay);
                 overlay.querySelector('#tutorial-next').focus();
 
@@ -5719,8 +5753,7 @@
 
             function closeTutorial() {
                 popModalEscape(closeTutorial);
-                const overlay = document.querySelector('.tutorial-overlay');
-                if (overlay) overlay.remove();
+                if (overlay.parentNode) overlay.remove();
                 try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
             }
 
