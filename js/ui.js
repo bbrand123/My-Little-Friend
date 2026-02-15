@@ -482,12 +482,14 @@
             // Advanced options toggle
             const advancedToggle = document.getElementById('advanced-toggle');
             const advancedPanel = document.getElementById('advanced-options');
-            advancedToggle.addEventListener('click', () => {
-                const expanded = advancedPanel.hidden;
-                advancedPanel.hidden = !expanded;
-                advancedToggle.setAttribute('aria-expanded', String(expanded));
-                advancedToggle.querySelector('.advanced-toggle-arrow').textContent = expanded ? '\u25BC' : '\u25B6';
-            });
+            if (advancedToggle && advancedPanel) {
+                advancedToggle.addEventListener('click', () => {
+                    const expanded = advancedPanel.hidden;
+                    advancedPanel.hidden = !expanded;
+                    advancedToggle.setAttribute('aria-expanded', String(expanded));
+                    advancedToggle.querySelector('.advanced-toggle-arrow').textContent = expanded ? '\u25BC' : '\u25B6';
+                });
+            }
 
             // Text-to-speech
             ttsBtn.addEventListener('click', () => {

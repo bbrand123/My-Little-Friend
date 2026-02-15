@@ -391,7 +391,7 @@
             fetchState._timeouts.push(setTimeout(() => {
                 if (!fetchState || fetchState._ended) return;
                 fetchState.phase = 'fetching';
-                instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Running to get it!`;
+                instruction.textContent = `${(getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Running to get it!`;
                 announce('Running to get it!');
 
                 pet.classList.add('running');
@@ -405,7 +405,7 @@
                 ball.style.opacity = '0';
                 ball.style.transition = 'opacity 0.15s';
 
-                instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Got it!`;
+                instruction.textContent = `${(getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Got it!`;
                 instruction.className = 'fetch-instruction highlight';
                 announce('Got it!');
 
@@ -419,7 +419,7 @@
             fetchState._timeouts.push(setTimeout(() => {
                 if (!fetchState || fetchState._ended) return;
                 fetchState.phase = 'returning';
-                instruction.textContent = `${(PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Bringing it back!`;
+                instruction.textContent = `${(getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type] || {emoji:'🐾'}).emoji} Bringing it back!`;
                 instruction.className = 'fetch-instruction';
                 announce('Bringing it back!');
 

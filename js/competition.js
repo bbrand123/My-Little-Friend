@@ -54,12 +54,14 @@
         }
 
         function calculateMoveDamage(move, attacker, defender) {
-            const stat = attacker[move.stat] || 50;
+            const stat = attacker[move.stat] ?? 50;
             const statMult = stat / 50; // 1.0 at 50, 2.0 at 100
             let damage = Math.round(move.basePower * statMult);
 
-            // Type advantage check
-            const advantages = PET_TYPE_ADVANTAGES[attacker.type] || [];
+            // Type advantage check — look up base type for hybrids too
+            const attackerTypeData = typeof getAllPetTypeData === 'function' ? getAllPetTypeData(attacker.type) : null;
+            const baseType = (attackerTypeData && attackerTypeData.parentTypes) ? attackerTypeData.parentTypes[0] : attacker.type;
+            const advantages = PET_TYPE_ADVANTAGES[attacker.type] || PET_TYPE_ADVANTAGES[baseType] || [];
             if (advantages.includes(defender.type)) {
                 damage = Math.round(damage * 1.3);
             }
@@ -106,6 +108,8 @@
             }
             const oppType = opponentTypes[Math.floor(Math.random() * opponentTypes.length)];
             const oppData = PET_TYPES[oppType];
+            // Scale opponent to match the player's pet growth stage for fairer battles
+            const playerStage = pet.growthStage || 'child';
             const opponent = {
                 type: oppType,
                 name: oppData.name,
@@ -114,7 +118,7 @@
                 cleanliness: 40 + Math.floor(Math.random() * 40),
                 happiness: 40 + Math.floor(Math.random() * 40),
                 energy: 40 + Math.floor(Math.random() * 40),
-                growthStage: 'child',
+                growthStage: playerStage,
                 careQuality: 'average',
                 evolutionStage: 'base'
             };
@@ -296,6 +300,7 @@
                     }, 500);
                 }
                 saveGame();
+                if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
 
                 // Show result overlay
                 setTimeout(() => {
