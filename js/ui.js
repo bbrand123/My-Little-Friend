@@ -125,6 +125,13 @@
                     return;
                 }
 
+                const memorialBtn = target.closest('#memorial-btn');
+                if (memorialBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(memorialBtn, typeof showMemorialHall === 'function' ? showMemorialHall : null, event);
+                    return;
+                }
+
                 const notifHistBtn = target.closest('#notif-history-btn');
                 if (notifHistBtn) {
                     if (event.type === 'touchend') event.preventDefault();
@@ -583,7 +590,8 @@
         }
 
         // ==================== THOUGHT BUBBLE ====================
-        // Shows a small thought bubble above the pet reflecting its most urgent need
+        // Shows a small thought bubble above the pet reflecting its most urgent need,
+        // personality-driven wants, and favorite/fear hints
         function generateThoughtBubble(pet) {
             if (!pet) return '';
             const threshold = 35; // Show thought when stat drops below this
@@ -596,12 +604,48 @@
                 { stat: 'happiness', value: pet.happiness, icon: '⚽', label: 'bored' }
             ];
             const critical = needs.filter(n => n.value < threshold).sort((a, b) => a.value - b.value);
-            if (critical.length === 0) return '';
+
+            // Personality-driven thought override (when no critical needs)
+            if (critical.length === 0) {
+                // Show personality-driven wants occasionally
+                if (pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && Math.random() < 0.3) {
+                    const trait = PERSONALITY_TRAITS[pet.personality];
+                    if (trait && trait.thoughtMessages) {
+                        const msg = trait.thoughtMessages[Math.floor(Math.random() * trait.thoughtMessages.length)];
+                        return `<div class="thought-bubble personality-thought" aria-label="${petName} ${msg}" role="img">
+                            <span class="thought-icon">${trait.emoji}</span>
+                            <span class="thought-text">${petName} ${msg}</span>
+                        </div>`;
+                    }
+                }
+                // Show favorite food hint when hungry-ish
+                if (pet.hunger < 50 && typeof PET_PREFERENCES !== 'undefined' && Math.random() < 0.2) {
+                    const prefs = PET_PREFERENCES[pet.type];
+                    if (prefs) {
+                        return `<div class="thought-bubble favorite-thought" aria-label="${petName} wants ${prefs.favoriteFoodLabel}" role="img">
+                            <span class="thought-icon">💭</span>
+                            <span class="thought-text">Wants ${prefs.favoriteFoodLabel}</span>
+                        </div>`;
+                    }
+                }
+                return '';
+            }
             const top = critical[0];
             const urgency = top.value <= 15 ? 'critical' : 'low';
-            return `<div class="thought-bubble ${urgency}" aria-label="${petName} is ${top.label}" role="img">
+
+            // Enhanced thought with personality flavor
+            let thoughtLabel = `${petName} is ${top.label}`;
+            if (pet.personality === 'grumpy' && top.stat === 'happiness') {
+                thoughtLabel = `${petName} is extra grumpy...`;
+            } else if (pet.personality === 'lazy' && top.stat === 'energy') {
+                thoughtLabel = `${petName} desperately needs a nap...`;
+            } else if (pet.personality === 'energetic' && top.stat === 'happiness') {
+                thoughtLabel = `${petName} needs to burn energy!`;
+            }
+
+            return `<div class="thought-bubble ${urgency}" aria-label="${thoughtLabel}" role="img">
                 <span class="thought-icon">${top.icon}</span>
-                <span class="thought-text">${petName} is ${top.label}</span>
+                <span class="thought-text">${thoughtLabel}</span>
             </div>`;
         }
 
@@ -726,6 +770,42 @@
                 pools.push(...speciesMessages);
                 pools.push(...speciesMessages); // Double weight
             }
+            // Personality-specific messages (high weight)
+            if (pet.personality && typeof PERSONALITY_TRAITS !== 'undefined') {
+                const trait = PERSONALITY_TRAITS[pet.personality];
+                if (trait && trait.speechMessages) {
+                    pools.push(...trait.speechMessages);
+                    pools.push(...trait.speechMessages); // Double weight for personality
+                }
+            }
+            // Preference-based messages (wants & feelings)
+            if (pet.type && typeof PET_PREFERENCES !== 'undefined') {
+                const prefs = PET_PREFERENCES[pet.type];
+                if (prefs) {
+                    // Favorite food desire
+                    if (pet.hunger < 50 && Math.random() < 0.3) {
+                        pools.push(`I want ${prefs.favoriteFoodLabel}!`);
+                        pools.push(`Dreaming of ${prefs.favoriteFoodLabel}...`);
+                    }
+                    // Fear expression
+                    if (Math.random() < 0.15) {
+                        pools.push(`Please no ${prefs.fearLabel}...`);
+                    }
+                    // Favorite activity desire
+                    if (pet.happiness < 50 && Math.random() < 0.3) {
+                        pools.push(`Can we do ${prefs.favoriteActivityLabel}?`);
+                        pools.push(`I love ${prefs.favoriteActivityLabel}!`);
+                    }
+                }
+            }
+            // Elder wisdom messages
+            if (pet.growthStage === 'elder' && Math.random() < 0.3) {
+                pools.push('Wisdom comes with age...');
+                pools.push('I remember when I was young...');
+                pools.push('Let me share my wisdom...');
+                pools.push('These old bones still got it!');
+                pools.push('Back in my day...');
+            }
             // Time of day messages (lower chance)
             const tod = gameState.timeOfDay || 'day';
             if (PET_SPEECH.timeOfDay[tod] && Math.random() < 0.3) {
@@ -832,6 +912,9 @@
                         <button class="top-action-btn" id="journal-btn" type="button" aria-haspopup="dialog" title="Pet Journal" aria-label="Pet Journal">
                             <span class="top-action-btn-icon" aria-hidden="true">📔</span>
                         </button>
+                        <button class="top-action-btn" id="memorial-btn" type="button" aria-haspopup="dialog" title="Hall of Fame" aria-label="Hall of Fame${(gameState.memorials && gameState.memorials.length > 0) ? ` (${gameState.memorials.length} memorials)` : ''}">
+                            <span class="top-action-btn-icon" aria-hidden="true">🏛️</span>
+                        </button>
                         <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
                             <span class="top-action-btn-icon" aria-hidden="true">🔔</span>
                         </button>
@@ -851,6 +934,7 @@
                     </div>
                     <div class="pet-info">
                         <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span></p>
+                        ${pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && PERSONALITY_TRAITS[pet.personality] ? `<p class="personality-badge" title="${PERSONALITY_TRAITS[pet.personality].description}">${PERSONALITY_TRAITS[pet.personality].emoji} ${PERSONALITY_TRAITS[pet.personality].label}${pet.growthStage === 'elder' ? ' · 🏛️ Elder' : ''}</p>` : ''}
                         ${(() => {
                             const stage = pet.growthStage || 'baby';
                             const stageData = GROWTH_STAGES[stage];
@@ -1651,7 +1735,10 @@
 
         // Shared standard-feed logic used by both careAction('feed') and openFeedMenu
         function performStandardFeed(pet) {
-            const feedBonus = Math.round(20 * getRoomBonus('feed'));
+            const feedPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'feed') : 1;
+            const feedPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'feed') : 1;
+            const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+            const feedBonus = Math.round((20 + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref);
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
@@ -1752,24 +1839,37 @@
                     break;
                 }
                 case 'wash': {
-                    const washBonus = Math.round(20 * getRoomBonus('wash'));
+                    const washPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'wash') : 1;
+                    const washPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'wash') : 1;
+                    const washWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const washBonus = Math.round((20 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
+                    if (washPref < 1) message = `😨 ${pet.name || 'Pet'} didn't enjoy that... ${message}`;
+                    else if (washPref > 1) message = `💕 ${pet.name || 'Pet'} loved that! ${message}`;
                     if (petContainer) petContainer.classList.add('sparkle');
                     if (sparkles) createBubbles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.wash);
                     break;
                 }
                 case 'play': {
-                    const playBonus = Math.round(20 * getRoomBonus('play'));
+                    const playPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'play') : 1;
+                    const playPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'play') : 1;
+                    const playWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const playBonus = Math.round((20 + playWisdom) * getRoomBonus('play') * playPersonality * playPref);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
+                    if (playPref < 1) message = `😨 ${pet.name || 'Pet'} wasn't into it... ${message}`;
+                    else if (playPref > 1) message = `💕 ${pet.name || 'Pet'} LOVED playing! ${message}`;
                     if (petContainer) petContainer.classList.add('wiggle');
                     if (sparkles) createHearts(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.play);
                     break;
                 }
                 case 'sleep': {
+                    const sleepPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'sleep') : 1;
+                    const sleepPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'sleep') : 1;
+                    const sleepWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     // Sleep is more effective at night (deep sleep) and less during the day (just a nap)
                     const sleepTime = gameState.timeOfDay || 'day';
                     let sleepBonus = 25; // default nap
@@ -1784,7 +1884,7 @@
                         sleepBonus = 30; // nice morning sleep-in
                         sleepAnnounce = 'Your pet slept in a little!';
                     }
-                    sleepBonus = Math.round(sleepBonus * getRoomBonus('sleep'));
+                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref);
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
                     if (petContainer) petContainer.classList.add('sleep-anim');
@@ -1792,62 +1892,97 @@
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.sleep);
                     break;
                 }
-                case 'medicine':
+                case 'medicine': {
+                    const medPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'medicine') : 1;
+                    const medPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'medicine') : 1;
+                    const medMod = medPersonality * medPref;
                     // Medicine gives a gentle boost to all stats - helps pet feel better
-                    pet.hunger = clamp(pet.hunger + 10, 0, 100);
-                    pet.cleanliness = clamp(pet.cleanliness + 10, 0, 100);
-                    pet.happiness = clamp(pet.happiness + 15, 0, 100);
-                    pet.energy = clamp(pet.energy + 10, 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod), 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(10 * medMod), 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
+                    if (medPref < 1) message = `😨 ${pet.name || 'Pet'} doesn't like medicine! ${message}`;
                     if (petContainer) petContainer.classList.add('heal-anim');
                     if (sparkles) createMedicineParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.medicine);
                     break;
+                }
                 case 'groom': {
+                    const groomPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'groom') : 1;
+                    const groomPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'groom') : 1;
+                    const groomWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     // Grooming - brush fur/feathers and trim nails
                     const groomBonus = getRoomBonus('groom');
-                    const groomClean = Math.round(15 * groomBonus);
-                    const groomHappy = Math.round(10 * groomBonus);
+                    const groomMod = groomPersonality * groomPref;
+                    const groomClean = Math.round((15 + groomWisdom) * groomBonus * groomMod);
+                    const groomHappy = Math.round((10 + groomWisdom) * groomBonus * groomMod);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
+                    if (groomPref < 1) message = `😨 ${pet.name || 'Pet'} squirmed through grooming! ${message}`;
+                    else if (groomPref > 1) message = `💕 ${pet.name || 'Pet'} loved the pampering! ${message}`;
                     if (petContainer) petContainer.classList.add('groom-anim');
                     if (sparkles) createGroomParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.groom);
                     break;
                 }
                 case 'exercise': {
+                    const exPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'exercise') : 1;
+                    const exPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'exercise') : 1;
+                    const exWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     // Exercise - take walks or play fetch
-                    const exBonus = Math.round(20 * getRoomBonus('exercise'));
+                    const exMod = exPersonality * exPref;
+                    const exBonus = Math.round((20 + exWisdom) * getRoomBonus('exercise') * exMod);
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.exercise);
+                    if (exPref < 1) message = `😨 ${pet.name || 'Pet'} got tired quickly! ${message}`;
+                    else if (exPref > 1) message = `💕 ${pet.name || 'Pet'} had an amazing workout! ${message}`;
                     if (petContainer) petContainer.classList.add('exercise-anim');
                     if (sparkles) createExerciseParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.exercise);
                     break;
                 }
                 case 'treat': {
+                    const treatPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'treat') : 1;
+                    const treatWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     // Treats - special snacks that give bonus happiness
                     const treat = randomFromArray(TREAT_TYPES);
-                    pet.happiness = clamp(pet.happiness + 25, 0, 100);
-                    pet.hunger = clamp(pet.hunger + 10, 0, 100);
+                    // Check if this is the pet's favorite treat
+                    const prefs = typeof PET_PREFERENCES !== 'undefined' ? PET_PREFERENCES[pet.type] : null;
+                    let treatMod = treatPersonality;
+                    if (prefs && treat.name === prefs.favoriteTreat) {
+                        treatMod *= 1.5;
+                    }
+                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod), 0, 100);
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                    if (prefs && treat.name === prefs.favoriteTreat) {
+                        message = `${treat.emoji} 💕 FAVORITE treat! ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                    }
                     if (petContainer) petContainer.classList.add('treat-anim');
                     if (sparkles) createTreatParticles(sparkles, treat.emoji);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.treat);
                     break;
                 }
-                case 'cuddle':
+                case 'cuddle': {
+                    const cuddlePersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'cuddle') : 1;
+                    const cuddlePref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'cuddle') : 1;
+                    const cuddleWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const cuddleMod = cuddlePersonality * cuddlePref;
                     // Petting/Cuddling - direct affection boosts happiness and energy
-                    pet.happiness = clamp(pet.happiness + 15, 0, 100);
-                    pet.energy = clamp(pet.energy + 5, 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((15 + cuddleWisdom) * cuddleMod), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(5 * cuddleMod), 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
+                    if (cuddlePref < 1) message = `😨 ${pet.name || 'Pet'} squirmed away! ${message}`;
+                    else if (cuddleMod > 1.2) message = `💕 ${pet.name || 'Pet'} melted into your arms! ${message}`;
                     if (petContainer) petContainer.classList.add('cuddle-anim');
                     if (sparkles) createCuddleParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
+                }
             }
 
             // Spawn themed particles and floating stat text
@@ -3205,6 +3340,167 @@
             trapFocus(overlay);
         }
 
+        // ==================== PET MEMORIAL HALL ====================
+
+        function showMemorialHall() {
+            const existing = document.querySelector('.memorial-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const memorials = typeof getMemorials === 'function' ? getMemorials() : (gameState.memorials || []);
+            const pet = gameState.pet;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay memorial-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Hall of Fame');
+
+            // Memorial entries HTML
+            let memorialsHTML = '';
+            if (memorials.length === 0) {
+                memorialsHTML = `<div class="memorial-empty">
+                    <p>🏛️ The Hall of Fame is empty.</p>
+                    <p class="memorial-empty-hint">Retire an adult or elder pet to honor them here forever.</p>
+                </div>`;
+            } else {
+                memorialsHTML = memorials.map(m => {
+                    const petTypeData = getAllPetTypeData(m.type);
+                    const emoji = petTypeData ? petTypeData.emoji : '🐾';
+                    const personalityData = m.personality && typeof PERSONALITY_TRAITS !== 'undefined' ? PERSONALITY_TRAITS[m.personality] : null;
+                    const personalityLabel = personalityData ? `${personalityData.emoji} ${personalityData.label}` : '';
+                    const retiredDate = new Date(m.retiredAt).toLocaleDateString();
+                    const birthDate = new Date(m.birthdate).toLocaleDateString();
+                    return `<div class="memorial-card ${m.growthStage === 'elder' ? 'elder-memorial' : ''} ${m.evolutionStage === 'evolved' ? 'evolved-memorial' : ''}">
+                        <div class="memorial-header">
+                            <span class="memorial-emoji">${emoji}</span>
+                            <div class="memorial-name-wrap">
+                                <span class="memorial-name">${escapeHTML(m.name)}</span>
+                                <span class="memorial-title">${m.title}</span>
+                            </div>
+                        </div>
+                        <div class="memorial-details">
+                            <span class="memorial-detail">${personalityLabel}</span>
+                            <span class="memorial-detail">📅 ${birthDate} — ${retiredDate}</span>
+                            <span class="memorial-detail">⏰ ${m.ageHours}h lived</span>
+                            <span class="memorial-detail">💝 ${m.careActions} care actions</span>
+                            <span class="memorial-detail">${CARE_QUALITY[m.careQuality] ? CARE_QUALITY[m.careQuality].emoji : ''} ${m.careQuality} care</span>
+                            ${m.isHybrid ? '<span class="memorial-detail">🧬 Hybrid</span>' : ''}
+                            ${m.hasMutation ? '<span class="memorial-detail">🌈 Mutation</span>' : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            // Retire current pet button (only if eligible)
+            let retireHTML = '';
+            if (pet && gameState.pets && gameState.pets.length > 1) {
+                const stageOrder = ['baby', 'child', 'adult', 'elder'];
+                const petStageIdx = stageOrder.indexOf(pet.growthStage);
+                const minStageIdx = stageOrder.indexOf(MEMORIAL_CONFIG.retirementMinStage);
+                const ageHours = typeof getPetAge === 'function' ? getPetAge(pet) : 0;
+                const canRetire = petStageIdx >= minStageIdx && ageHours >= MEMORIAL_CONFIG.retirementMinAge;
+                const petName = escapeHTML(pet.name || 'Pet');
+                if (canRetire) {
+                    retireHTML = `<button class="memorial-retire-btn" id="memorial-retire-btn">🌅 Retire ${petName} to Hall of Fame</button>`;
+                } else {
+                    let reason = '';
+                    if (petStageIdx < minStageIdx) reason = `Must be ${MEMORIAL_CONFIG.retirementMinStage} stage`;
+                    else if (ageHours < MEMORIAL_CONFIG.retirementMinAge) reason = `Must be ${MEMORIAL_CONFIG.retirementMinAge}h+ old`;
+                    retireHTML = `<p class="memorial-retire-hint">🌅 ${petName} can't retire yet: ${reason}</p>`;
+                }
+            } else if (pet && (!gameState.pets || gameState.pets.length <= 1)) {
+                retireHTML = `<p class="memorial-retire-hint">🌅 Adopt another pet first — you need at least one pet remaining!</p>`;
+            }
+
+            overlay.innerHTML = `
+                <div class="modal-content memorial-content">
+                    <h2 class="memorial-title-header">🏛️ Hall of Fame</h2>
+                    <p class="memorial-subtitle">${memorials.length} ${memorials.length === 1 ? 'pet' : 'pets'} honored</p>
+                    <div class="memorial-list">
+                        ${memorialsHTML}
+                    </div>
+                    ${retireHTML}
+                    <button class="modal-btn cancel" id="memorial-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeMemorial() {
+                popModalEscape(closeMemorial);
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('memorial-btn');
+                    if (trigger) trigger.focus();
+                });
+            }
+
+            overlay.querySelector('#memorial-close').focus();
+            overlay.querySelector('#memorial-close').addEventListener('click', closeMemorial);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeMemorial(); });
+            pushModalEscape(closeMemorial);
+            overlay._closeOverlay = closeMemorial;
+            trapFocus(overlay);
+
+            // Retire button handler
+            const retireBtn = overlay.querySelector('#memorial-retire-btn');
+            if (retireBtn) {
+                retireBtn.addEventListener('click', () => {
+                    // Confirmation dialog
+                    const confirmOverlay = document.createElement('div');
+                    confirmOverlay.className = 'modal-overlay';
+                    confirmOverlay.setAttribute('role', 'alertdialog');
+                    confirmOverlay.setAttribute('aria-modal', 'true');
+                    confirmOverlay.setAttribute('aria-label', 'Confirm retirement');
+                    const petName = escapeHTML(gameState.pet.name || 'Pet');
+                    confirmOverlay.innerHTML = `
+                        <div class="modal-content">
+                            <h2 class="modal-title">Retire ${petName}?</h2>
+                            <div class="confirm-dialog-warning">
+                                <span aria-hidden="true">🌅</span>
+                                <span>${petName} will be honored in the Hall of Fame forever. This cannot be undone.</span>
+                            </div>
+                            <div class="modal-buttons modal-buttons-col">
+                                <button class="modal-btn cancel" id="retire-cancel">Keep ${petName}</button>
+                                <button class="modal-btn confirm" id="retire-confirm">🌅 Retire ${petName}</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(confirmOverlay);
+                    const cancelRetire = confirmOverlay.querySelector('#retire-cancel');
+                    const confirmRetire = confirmOverlay.querySelector('#retire-confirm');
+                    cancelRetire.focus();
+                    function closeConfirm() { confirmOverlay.remove(); popModalEscape(closeConfirm); }
+                    cancelRetire.addEventListener('click', closeConfirm);
+                    confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverlay) closeConfirm(); });
+                    pushModalEscape(closeConfirm);
+                    trapFocus(confirmOverlay);
+                    confirmRetire.addEventListener('click', () => {
+                        closeConfirm();
+                        const result = typeof retirePet === 'function' ? retirePet(gameState.activePetIndex) : null;
+                        if (result && result.success) {
+                            closeMemorial();
+                            showToast(`🌅 ${petName} has been retired to the Hall of Fame! ${result.memorial.title}`, '#DDA0DD');
+                            // Grant memorial sticker
+                            if (typeof grantSticker === 'function') grantSticker('memorialSticker');
+                            // Check achievements
+                            if (typeof checkAchievements === 'function') {
+                                const newAch = checkAchievements();
+                                newAch.forEach(ach => {
+                                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 500);
+                                });
+                            }
+                            renderPetPhase();
+                        } else if (result) {
+                            showToast(`Cannot retire: ${result.reason}`, '#FF7043');
+                        }
+                    });
+                });
+            }
+        }
+
         // ==================== FURNITURE CUSTOMIZATION ====================
 
         function showFurnitureModal() {
@@ -3480,6 +3776,23 @@
                                 <div class="stats-card-label">Care Actions</div>
                             </div>
                         </div>
+                        ${pet && pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && PERSONALITY_TRAITS[pet.personality] ? `
+                        <div class="stats-personality-section">
+                            <h3 class="stats-section-title">${PERSONALITY_TRAITS[pet.personality].emoji} Personality: ${PERSONALITY_TRAITS[pet.personality].label}</h3>
+                            <p class="stats-personality-desc">${PERSONALITY_TRAITS[pet.personality].description}</p>
+                        </div>` : ''}
+                        ${pet && pet.type && typeof PET_PREFERENCES !== 'undefined' && PET_PREFERENCES[pet.type] ? (() => {
+                            const prefs = PET_PREFERENCES[pet.type];
+                            return `<div class="stats-prefs-section">
+                                <h3 class="stats-section-title">💝 Favorites & Fears</h3>
+                                <div class="stats-prefs-grid">
+                                    <span class="stats-pref-item fav">💕 Food: ${prefs.favoriteFoodLabel}</span>
+                                    <span class="stats-pref-item fav">💕 Activity: ${prefs.favoriteActivityLabel}</span>
+                                    <span class="stats-pref-item fear">😨 Fear: ${prefs.fearLabel}</span>
+                                    <span class="stats-pref-item fear">😨 Dislikes: ${prefs.dislikedFoodLabel}</span>
+                                </div>
+                            </div>`;
+                        })() : ''}
                         <div class="care-quality-tip">
                             💡 ${careQualityTips[careQuality] || careQualityTips.average}
                         </div>
@@ -3723,6 +4036,9 @@
                 const preservedAchievements = gameState.achievements || {};
                 const preservedRoomsVisited = gameState.roomsVisited || {};
                 const preservedWeatherSeen = gameState.weatherSeen || {};
+                const preservedMemorials = gameState.memorials || [];
+                const preservedPersonalitiesSeen = gameState.personalitiesSeen || {};
+                const preservedEldersRaised = gameState.eldersRaised || 0;
                 const newTypes = getUnlockedPetTypes();
                 const newPetType = randomFromArray(newTypes);
                 const newEggType = getEggTypeForPet(newPetType);
@@ -3760,7 +4076,10 @@
                     achievements: preservedAchievements,
                     roomsVisited: preservedRoomsVisited,
                     weatherSeen: preservedWeatherSeen,
-                    dailyChecklist: null
+                    dailyChecklist: null,
+                    memorials: preservedMemorials,
+                    personalitiesSeen: preservedPersonalitiesSeen,
+                    eldersRaised: preservedEldersRaised
                 });
                 saveGame();
                 announce('Starting fresh with a new egg!', true);

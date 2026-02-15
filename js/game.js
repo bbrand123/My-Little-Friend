@@ -65,7 +65,11 @@
             totalMutations: 0,          // Total mutations occurred
             hybridsDiscovered: {},       // { hybridType: true }
             journal: [],                 // Array of { timestamp, icon, text } entries
-            totalFeedCount: 0            // Lifetime feed count for badges/achievements
+            totalFeedCount: 0,           // Lifetime feed count for badges/achievements
+            memorials: [],               // Hall of fame for retired pets
+            personalitiesSeen: {},       // Track unique personalities for badges
+            eldersRaised: 0,             // Track elder pets raised
+            totalFavoriteFoodFed: 0      // Track favorite food feeds for achievements
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -661,6 +665,128 @@
             return { bonus, milestones: unclaimedMilestones };
         }
 
+        // ==================== PET MEMORIAL SYSTEM ====================
+
+        function retirePet(petIndex) {
+            if (!gameState.pets || petIndex < 0 || petIndex >= gameState.pets.length) return null;
+            const pet = gameState.pets[petIndex];
+            if (!pet) return null;
+
+            // Check minimum requirements
+            const ageInHours = getPetAge(pet);
+            const stageOrder = ['baby', 'child', 'adult', 'elder'];
+            const petStageIdx = stageOrder.indexOf(pet.growthStage);
+            const minStageIdx = stageOrder.indexOf(MEMORIAL_CONFIG.retirementMinStage);
+            if (petStageIdx < minStageIdx) {
+                return { success: false, reason: `Pet must be at least ${MEMORIAL_CONFIG.retirementMinStage} stage to retire` };
+            }
+            if (ageInHours < MEMORIAL_CONFIG.retirementMinAge) {
+                return { success: false, reason: `Pet must be at least ${MEMORIAL_CONFIG.retirementMinAge} hours old to retire` };
+            }
+
+            // Can't retire if it's the only pet
+            if (gameState.pets.length <= 1) {
+                return { success: false, reason: 'You need at least one pet! Adopt another before retiring this one.' };
+            }
+
+            // Create memorial entry
+            const memorial = createMemorial(pet);
+
+            // Add to memorials
+            if (!gameState.memorials) gameState.memorials = [];
+            gameState.memorials.push(memorial);
+            if (gameState.memorials.length > MEMORIAL_CONFIG.maxMemorials) {
+                gameState.memorials = gameState.memorials.slice(-MEMORIAL_CONFIG.maxMemorials);
+            }
+
+            // Track elder retirements
+            if (pet.growthStage === 'elder') {
+                if (typeof gameState.eldersRaised !== 'number') gameState.eldersRaised = 0;
+                gameState.eldersRaised++;
+            }
+
+            // Remove pet from family
+            gameState.pets.splice(petIndex, 1);
+            // Adjust active pet index
+            if (gameState.activePetIndex >= gameState.pets.length) {
+                gameState.activePetIndex = Math.max(0, gameState.pets.length - 1);
+            }
+            if (petIndex <= gameState.activePetIndex && gameState.activePetIndex > 0) {
+                gameState.activePetIndex--;
+            }
+            gameState.pet = gameState.pets[gameState.activePetIndex] || null;
+
+            // Remove relationships involving this pet
+            if (gameState.relationships) {
+                const keysToRemove = Object.keys(gameState.relationships).filter(k => {
+                    const parts = k.split('-');
+                    return parts.includes(String(pet.id));
+                });
+                keysToRemove.forEach(k => delete gameState.relationships[k]);
+            }
+
+            addJournalEntry('🌅', `${pet.name || 'Pet'} retired to the Hall of Fame. ${getMemorialTitle(pet)}`);
+            saveGame();
+
+            return { success: true, memorial: memorial };
+        }
+
+        function createMemorial(pet) {
+            const petData = getAllPetTypeData(pet.type);
+            return {
+                id: pet.id,
+                name: pet.name || (petData ? petData.name : 'Pet'),
+                type: pet.type,
+                color: pet.color,
+                pattern: pet.pattern,
+                personality: pet.personality || 'playful',
+                growthStage: pet.growthStage,
+                evolutionStage: pet.evolutionStage,
+                careQuality: pet.careQuality,
+                careActions: pet.careActions,
+                birthdate: pet.birthdate,
+                retiredAt: Date.now(),
+                ageHours: Math.round(getPetAge(pet)),
+                title: getMemorialTitle(pet),
+                accessories: pet.accessories ? [...pet.accessories] : [],
+                isHybrid: !!pet.isHybrid,
+                hasMutation: !!pet.hasMutation
+            };
+        }
+
+        function getMemorials() {
+            return gameState.memorials || [];
+        }
+
+        // ==================== PERSONALITY HELPERS ====================
+
+        function getPersonalityLabel(pet) {
+            if (!pet || !pet.personality) return '';
+            const trait = PERSONALITY_TRAITS[pet.personality];
+            return trait ? `${trait.emoji} ${trait.label}` : '';
+        }
+
+        // Get personality-adjusted care modifier for an action
+        function getPersonalityCareModifier(pet, action) {
+            if (!pet || !pet.personality) return 1.0;
+            const trait = PERSONALITY_TRAITS[pet.personality];
+            if (!trait || !trait.careModifiers) return 1.0;
+            return trait.careModifiers[action] || 1.0;
+        }
+
+        // Get elder wisdom bonus for stat gains
+        function getElderWisdomBonus(pet) {
+            if (!pet || pet.growthStage !== 'elder') return 0;
+            return ELDER_CONFIG.wisdomBonusBase;
+        }
+
+        // Apply personality modifier to relationship gain for shy pets
+        function getPersonalityRelationshipModifier(pet) {
+            if (!pet || !pet.personality) return 1.0;
+            const trait = PERSONALITY_TRAITS[pet.personality];
+            return trait ? trait.relationshipModifier : 1.0;
+        }
+
         // ==================== SAVE/LOAD ====================
 
         // ==================== PET JOURNAL ====================
@@ -796,9 +922,33 @@
                         if (!parsed.pet.unlockedAccessories) {
                             parsed.pet.unlockedAccessories = [];
                         }
+                        // Add personality if missing (for existing saves)
+                        if (!parsed.pet.personality) {
+                            parsed.pet.personality = getRandomPersonality();
+                        }
+                        if (!parsed.pet.personalityWarmth) {
+                            parsed.pet.personalityWarmth = {};
+                        }
+                        // Re-check growth stage to detect elder
+                        const currentAge = (Date.now() - parsed.pet.birthdate) / (1000 * 60 * 60);
+                        const detectedStage = getGrowthStage(parsed.pet.careActions, currentAge);
+                        if (detectedStage !== parsed.pet.growthStage) {
+                            parsed.pet.growthStage = detectedStage;
+                        }
                         // Add adultsRaised if missing
                         if (typeof parsed.adultsRaised !== 'number') {
                             parsed.adultsRaised = 0;
+                        }
+                        // Add memorials if missing
+                        if (!parsed.memorials) {
+                            parsed.memorials = [];
+                        }
+                        // Add personality tracking if missing
+                        if (!parsed.personalitiesSeen) {
+                            parsed.personalitiesSeen = {};
+                            if (parsed.pet.personality) {
+                                parsed.personalitiesSeen[parsed.pet.personality] = true;
+                            }
                         }
                     }
 
@@ -921,8 +1071,13 @@
                     if (!Array.isArray(parsed.journal)) parsed.journal = [];
 
                     // Strip transient _neglectTickCounter from pet objects (old saves)
+                    // and migrate personality to existing pets
                     parsed.pets.forEach(p => {
-                        if (p) delete p._neglectTickCounter;
+                        if (p) {
+                            delete p._neglectTickCounter;
+                            if (!p.personality) p.personality = getRandomPersonality();
+                            if (!p.personalityWarmth) p.personalityWarmth = {};
+                        }
                     });
 
                     // Ensure active pet is in sync with pets array
@@ -987,14 +1142,24 @@
                                 // Non-active pets get gentler decay (0.5x rate) matching live gameplay
                                 const rateMult = isActive ? 1 : 0.5;
 
+                                // Personality-driven offline decay multipliers
+                                const pTrait = p.personality && PERSONALITY_TRAITS[p.personality];
+                                const pMods = pTrait ? pTrait.statModifiers : null;
+                                const hungerM = pMods ? pMods.hungerDecayMultiplier : 1;
+                                const cleanM = pMods ? pMods.cleanlinessDecayMultiplier : 1;
+                                const happyM = pMods ? pMods.happinessDecayMultiplier : 1;
+                                const energyM = pMods ? pMods.energyDecayMultiplier : 1;
+                                // Elder wisdom offline reduction
+                                const elderR = p.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
+
                                 // Hunger decays faster while away (pet gets hungry)
-                                p.hunger = clamp(p.hunger - Math.floor(decay * 1.5 * rateMult), 0, 100);
+                                p.hunger = clamp(p.hunger - Math.floor(decay * 1.5 * rateMult * hungerM * elderR), 0, 100);
                                 // Cleanliness decays slower (pet isn't doing much)
-                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5 * rateMult), 0, 100);
+                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5 * rateMult * cleanM * elderR), 0, 100);
                                 // Happiness decays at normal rate
-                                p.happiness = clamp(p.happiness - Math.floor(decay * rateMult), 0, 100);
+                                p.happiness = clamp(p.happiness - Math.floor(decay * rateMult * happyM * elderR), 0, 100);
                                 // Energy RECOVERS while away (pet is resting)
-                                p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult), 0, 100);
+                                p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult * energyM), 0, 100);
 
                                 // Pets with friends get a happiness bonus while away (scaled by relationship quality)
                                 if (parsed.pets.length > 1 && parsed.relationships) {
@@ -1123,6 +1288,13 @@
             const petId = gameState.nextPetId;
             gameState.nextPetId = petId + 1;
 
+            // Assign a random personality trait
+            const personality = getRandomPersonality();
+
+            // Track personality for badges
+            if (!gameState.personalitiesSeen) gameState.personalitiesSeen = {};
+            gameState.personalitiesSeen[personality] = true;
+
             return {
                 id: petId,
                 type: type,
@@ -1143,7 +1315,9 @@
                 careVariant: 'normal', // Appearance variant based on care
                 evolutionStage: 'base', // 'base' or 'evolved'
                 lastGrowthStage: 'baby', // Track last stage for birthday celebrations
-                unlockedAccessories: [] // Accessories unlocked through milestones
+                unlockedAccessories: [], // Accessories unlocked through milestones
+                personality: personality, // Personality trait (lazy, energetic, curious, shy, playful, grumpy)
+                personalityWarmth: {} // Track warmth/bond with other pets for shy personality
             };
         }
 
@@ -1217,7 +1391,23 @@
         function addRelationshipPoints(pet1Id, pet2Id, points) {
             const rel = getRelationship(pet1Id, pet2Id);
             const prevLevel = getRelationshipLevel(rel.points);
-            rel.points = Math.max(0, Math.min(300, rel.points + points));
+            // Apply personality and elder modifiers to relationship gains
+            let adjustedPoints = points;
+            if (gameState.pets) {
+                const p1 = gameState.pets.find(p => p && p.id === pet1Id);
+                const p2 = gameState.pets.find(p => p && p.id === pet2Id);
+                if (p1) {
+                    adjustedPoints *= getPersonalityRelationshipModifier(p1);
+                    if (p1.growthStage === 'elder') adjustedPoints *= ELDER_CONFIG.wisdomRelationshipBonus;
+                }
+                if (p2) {
+                    adjustedPoints *= getPersonalityRelationshipModifier(p2);
+                    if (p2.growthStage === 'elder') adjustedPoints *= ELDER_CONFIG.wisdomRelationshipBonus;
+                }
+                // Average the two modifiers if both applied
+                if (p1 && p2) adjustedPoints = points * ((getPersonalityRelationshipModifier(p1) + getPersonalityRelationshipModifier(p2)) / 2);
+            }
+            rel.points = Math.max(0, Math.min(300, rel.points + Math.round(adjustedPoints)));
             const newLevel = getRelationshipLevel(rel.points);
             rel.lastInteraction = Date.now();
 
@@ -1301,7 +1491,10 @@
 
         function canBreed(pet) {
             if (!pet) return { eligible: false, reason: 'No pet selected' };
-            if (pet.growthStage !== BREEDING_CONFIG.minAge) return { eligible: false, reason: 'Pet must be adult' };
+            const stageOrder = GROWTH_ORDER;
+            const petStageIdx = stageOrder.indexOf(pet.growthStage);
+            const minStageIdx = stageOrder.indexOf(BREEDING_CONFIG.minAge);
+            if (petStageIdx < minStageIdx) return { eligible: false, reason: 'Pet must be adult or elder' };
             const now = Date.now();
             if (pet.lastBreedTime && (now - pet.lastBreedTime) < BREEDING_CONFIG.cooldownMs) {
                 const remaining = Math.ceil((BREEDING_CONFIG.cooldownMs - (now - pet.lastBreedTime)) / 60000);
@@ -1673,6 +1866,19 @@
             const isNightTime = (timeOfDay === 'night' || timeOfDay === 'sunset');
             const isMorning = (timeOfDay === 'sunrise');
 
+            // Personality-driven mood biases
+            const personality = pet.personality;
+            if (personality === 'lazy') {
+                // Lazy pets get sleepy easier
+                if (pet.energy < 60) return 'sleepy';
+            } else if (personality === 'energetic') {
+                // Energetic pets are almost always energetic unless stats are low
+                if (adjusted >= 40 && pet.energy >= 40) return 'energetic';
+            } else if (personality === 'grumpy') {
+                // Grumpy pets need higher stats to be happy
+                if (adjusted < 70 && adjusted >= 30) return 'neutral';
+            }
+
             // Sleepy at night when energy is low-ish
             if (isNightTime && pet.energy < 50) return 'sleepy';
 
@@ -1833,6 +2039,14 @@
                     });
                 }
 
+                // Track elders raised
+                if (currentStage === 'elder') {
+                    if (typeof gameState.eldersRaised !== 'number') gameState.eldersRaised = 0;
+                    gameState.eldersRaised++;
+                    // Grant elder sticker
+                    if (typeof grantSticker === 'function') grantSticker('elderSticker');
+                }
+
                 saveGame();
                 return true;
             }
@@ -1843,7 +2057,7 @@
         function canEvolve(pet) {
             if (!pet) return false;
             if (pet.evolutionStage === 'evolved') return false;
-            if (pet.growthStage !== 'adult') return false;
+            if (pet.growthStage !== 'adult' && pet.growthStage !== 'elder') return false;
 
             const qualityData = CARE_QUALITY[pet.careQuality];
             return qualityData && qualityData.canEvolve;
@@ -2480,14 +2694,25 @@
                 delete garden.inventory[cropId];
             }
 
-            // Apply room bonus (e.g. kitchen feeding bonus)
+            // Apply room bonus, preference modifier, and personality modifier
             const feedMultiplier = typeof getRoomBonus === 'function' ? getRoomBonus('feed') : 1.0;
-            gameState.pet.hunger = clamp(gameState.pet.hunger + Math.round(crop.hungerValue * feedMultiplier), 0, 100);
+            const feedPrefMod = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(gameState.pet, 'feed', cropId) : 1.0;
+            const feedPersonalityMod = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(gameState.pet, 'feed') : 1.0;
+            const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(gameState.pet) : 0;
+            const feedTotalMod = feedMultiplier * feedPrefMod * feedPersonalityMod;
+
+            // Track favorite food feeds
+            if (feedPrefMod > 1) {
+                if (typeof gameState.totalFavoriteFoodFed !== 'number') gameState.totalFavoriteFoodFed = 0;
+                gameState.totalFavoriteFoodFed++;
+            }
+
+            gameState.pet.hunger = clamp(gameState.pet.hunger + Math.round((crop.hungerValue + feedWisdom) * feedTotalMod), 0, 100);
             if (crop.happinessValue) {
-                gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
+                gameState.pet.happiness = clamp(gameState.pet.happiness + Math.round(crop.happinessValue * feedTotalMod), 0, 100);
             }
             if (crop.energyValue) {
-                gameState.pet.energy = clamp(gameState.pet.energy + crop.energyValue, 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy + Math.round(crop.energyValue * feedTotalMod), 0, 100);
             }
 
             // Track care actions for growth
@@ -2553,7 +2778,14 @@
             if (crop.energyValue) statChanges.push(`Energy +${crop.energyValue}`);
             const statDesc = statChanges.join(', ');
 
-            showToast(`${crop.seedEmoji} Fed ${escapeHTML(gameState.pet.name || petData.name)} a garden-fresh ${crop.name}! ${statDesc}`, '#FF8C42');
+            // Show preference-aware feedback
+            let feedFeedback = `${crop.seedEmoji} Fed ${escapeHTML(gameState.pet.name || petData.name)} a garden-fresh ${crop.name}! ${statDesc}`;
+            if (feedPrefMod > 1) {
+                feedFeedback = `💕 ${escapeHTML(gameState.pet.name || petData.name)} LOVES ${crop.name}! Bonus stats! ${statDesc}`;
+            } else if (feedPrefMod < 1) {
+                feedFeedback = `😨 ${escapeHTML(gameState.pet.name || petData.name)} doesn't like ${crop.name}... Reduced stats. ${statDesc}`;
+            }
+            showToast(feedFeedback, feedPrefMod > 1 ? '#E040FB' : feedPrefMod < 1 ? '#FF7043' : '#FF8C42');
 
             if (petContainer) {
                 const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
@@ -2989,11 +3221,22 @@
                         energyRegenBonus = 1; // Energy recovers slightly in the morning
                     }
 
-                    // Base decay
-                    pet.hunger = clamp(pet.hunger - 1, 0, 100);
-                    pet.cleanliness = clamp(pet.cleanliness - 1, 0, 100);
-                    pet.happiness = clamp(pet.happiness - 1, 0, 100);
-                    pet.energy = clamp(pet.energy - 1 - energyDecayBonus + energyRegenBonus, 0, 100);
+                    // Personality-driven decay multipliers
+                    const pTrait = pet.personality && PERSONALITY_TRAITS[pet.personality];
+                    const pMods = pTrait ? pTrait.statModifiers : null;
+                    const hungerMult = pMods ? pMods.hungerDecayMultiplier : 1;
+                    const cleanMult = pMods ? pMods.cleanlinessDecayMultiplier : 1;
+                    const happyMult = pMods ? pMods.happinessDecayMultiplier : 1;
+                    const energyMult = pMods ? pMods.energyDecayMultiplier : 1;
+
+                    // Elder wisdom reduces decay
+                    const elderReduction = pet.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
+
+                    // Base decay with personality & elder modifiers
+                    pet.hunger = clamp(pet.hunger - 1 * hungerMult * elderReduction, 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness - 1 * cleanMult * elderReduction, 0, 100);
+                    pet.happiness = clamp(pet.happiness - 1 * happyMult * elderReduction, 0, 100);
+                    pet.energy = clamp(pet.energy - (1 + energyDecayBonus - energyRegenBonus) * energyMult * elderReduction, 0, 100);
 
                     // Extra weather-based decay when outdoors
                     if (isOutdoor) {

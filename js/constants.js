@@ -24,10 +24,18 @@ const GROWTH_STAGES = {
         actionsNeeded: 40,
         hoursNeeded: 6, // 6 hours total for more balanced gameplay
         sizeLabel: 'Full'
+    },
+    elder: {
+        label: 'Elder',
+        emoji: '🏛️',
+        scale: 0.95,
+        actionsNeeded: 120,
+        hoursNeeded: 24, // 24 hours total
+        sizeLabel: 'Wise'
     }
 };
 
-const GROWTH_ORDER = ['baby', 'child', 'adult'];
+const GROWTH_ORDER = ['baby', 'child', 'adult', 'elder'];
 
 // Care quality levels and their thresholds
 const CARE_QUALITY = {
@@ -96,16 +104,25 @@ const BIRTHDAY_REWARDS = {
         message: 'Your pet is now fully grown!',
         accessories: ['crown', 'partyHat'],
         unlockMessage: 'Unlocked special accessories!'
+    },
+    elder: {
+        title: '🏛️ Wisdom of Ages! 🏛️',
+        message: 'Your pet has become a wise elder! Stat gains are boosted by wisdom.',
+        accessories: ['glasses', 'topHat'],
+        unlockMessage: 'Unlocked elder accessories!'
     }
 };
 
 function getGrowthStage(careActions, ageInHours) {
     // Growth requires BOTH time passage AND care actions
+    const hasElderTime = ageInHours >= GROWTH_STAGES.elder.hoursNeeded;
+    const hasElderActions = careActions >= GROWTH_STAGES.elder.actionsNeeded;
     const hasAdultTime = ageInHours >= GROWTH_STAGES.adult.hoursNeeded;
     const hasAdultActions = careActions >= GROWTH_STAGES.adult.actionsNeeded;
     const hasChildTime = ageInHours >= GROWTH_STAGES.child.hoursNeeded;
     const hasChildActions = careActions >= GROWTH_STAGES.child.actionsNeeded;
 
+    if (hasElderTime && hasElderActions) return 'elder';
     if (hasAdultTime && hasAdultActions) return 'adult';
     if (hasChildTime && hasChildActions) return 'child';
     return 'baby';
@@ -913,7 +930,12 @@ const ACHIEVEMENTS = {
     hatchBreedingEgg: { id: 'hatchBreedingEgg', name: 'Proud Parent', icon: '🥚', description: 'Hatch your first breeding egg', check: (gs) => (gs.totalBreedingHatches || 0) >= 1 },
     firstHybrid: { id: 'firstHybrid', name: 'Hybrid Discovery', icon: '🧬', description: 'Create a hybrid pet through breeding', check: (gs) => (gs.totalHybridsCreated || 0) >= 1 },
     firstMutation: { id: 'firstMutation', name: 'Genetic Marvel', icon: '🌈', description: 'Breed a pet with a rare mutation', check: (gs) => (gs.totalMutations || 0) >= 1 },
-    fiveBreedings: { id: 'fiveBreedings', name: 'Master Breeder', icon: '🏅', description: 'Successfully breed 5 times', check: (gs) => (gs.totalBreedings || 0) >= 5 }
+    fiveBreedings: { id: 'fiveBreedings', name: 'Master Breeder', icon: '🏅', description: 'Successfully breed 5 times', check: (gs) => (gs.totalBreedings || 0) >= 5 },
+    // Personality & Elder achievements
+    reachElder: { id: 'reachElder', name: 'Elder Wisdom', icon: '🏛️', description: 'Raise a pet to Elder stage', check: (gs) => (gs.pet && gs.pet.growthStage === 'elder') },
+    retirePet: { id: 'retirePet', name: 'Fond Farewell', icon: '🌅', description: 'Retire a pet to the Hall of Fame', check: (gs) => (gs.memorials && gs.memorials.length >= 1) },
+    fiveMemorials: { id: 'fiveMemorials', name: 'Legacy Builder', icon: '🏆', description: 'Have 5 pets in the Hall of Fame', check: (gs) => (gs.memorials && gs.memorials.length >= 5) },
+    favoriteFed: { id: 'favoriteFed', name: 'Gourmet Chef', icon: '👨‍🍳', description: 'Feed a pet its favorite food', check: (gs) => (gs.totalFavoriteFoodFed || 0) >= 1 }
 };
 
 // ==================== DAILY CHECKLIST ====================
@@ -961,7 +983,11 @@ const BADGES = {
     firstBreed: { id: 'firstBreed', name: 'Matchmaker', icon: '💕', description: 'Breed two pets', category: 'breeding', tier: 'bronze', check: (gs) => (gs.totalBreedings || 0) >= 1 },
     hybridBreeder: { id: 'hybridBreeder', name: 'Hybrid Creator', icon: '🧬', description: 'Create a hybrid pet', category: 'breeding', tier: 'silver', check: (gs) => (gs.totalHybridsCreated || 0) >= 1 },
     mutationHunter: { id: 'mutationHunter', name: 'Mutation Hunter', icon: '🌈', description: 'Breed a pet with a mutation', category: 'breeding', tier: 'gold', check: (gs) => (gs.totalMutations || 0) >= 1 },
-    masterBreeder: { id: 'masterBreeder', name: 'Master Breeder', icon: '🏆', description: 'Breed 5 times successfully', category: 'breeding', tier: 'gold', check: (gs) => (gs.totalBreedings || 0) >= 5 }
+    masterBreeder: { id: 'masterBreeder', name: 'Master Breeder', icon: '🏆', description: 'Breed 5 times successfully', category: 'breeding', tier: 'gold', check: (gs) => (gs.totalBreedings || 0) >= 5 },
+    // Elder & Personality badges
+    elderWise: { id: 'elderWise', name: 'Wise Elder', icon: '🏛️', description: 'Raise a pet to Elder stage', category: 'growth', tier: 'gold', check: (gs) => gs.pet && gs.pet.growthStage === 'elder' },
+    memorialFirst: { id: 'memorialFirst', name: 'Fond Memory', icon: '🌅', description: 'Retire your first pet', category: 'care', tier: 'silver', check: (gs) => (gs.memorials && gs.memorials.length >= 1) },
+    personalityExplorer: { id: 'personalityExplorer', name: 'Personality Expert', icon: '🧠', description: 'Raise 3 pets with different personalities', category: 'care', tier: 'silver', check: (gs) => { const ps = gs.personalitiesSeen || {}; return Object.keys(ps).length >= 3; } }
 };
 
 const BADGE_TIERS = {
@@ -1021,7 +1047,11 @@ const STICKERS = {
     breedingEgg: { id: 'breedingEgg', name: 'Love Egg', emoji: '🥚', category: 'special', rarity: 'uncommon', source: 'Breed two pets' },
     dnaSticker: { id: 'dnaSticker', name: 'DNA Helix', emoji: '🧬', category: 'special', rarity: 'rare', source: 'Create a hybrid pet' },
     mutantStar: { id: 'mutantStar', name: 'Mutant Star', emoji: '🌟', category: 'special', rarity: 'legendary', source: 'Breed a mutated pet' },
-    familyTree: { id: 'familyTree', name: 'Family Tree', emoji: '🌳', category: 'special', rarity: 'rare', source: 'Breed 3 times' }
+    familyTree: { id: 'familyTree', name: 'Family Tree', emoji: '🌳', category: 'special', rarity: 'rare', source: 'Breed 3 times' },
+    // Elder & Memorial stickers
+    elderSticker: { id: 'elderSticker', name: 'Wise Elder', emoji: '🏛️', category: 'special', rarity: 'rare', source: 'Raise a pet to Elder stage' },
+    memorialSticker: { id: 'memorialSticker', name: 'Memorial Rose', emoji: '🌹', category: 'special', rarity: 'rare', source: 'Retire a pet to the Hall of Fame' },
+    wisdomSticker: { id: 'wisdomSticker', name: 'Book of Wisdom', emoji: '📖', category: 'special', rarity: 'legendary', source: 'Have 5 memorials' }
 };
 
 const STICKER_RARITIES = {
@@ -1066,7 +1096,11 @@ const TROPHIES = {
     // Breeding trophies
     geneticist: { id: 'geneticist', name: 'Geneticist', icon: '🧬', description: 'Breed 3 different hybrid types', shelf: 'breeding', check: (gs) => { const h = gs.hybridsDiscovered || {}; return Object.keys(h).length >= 3; } },
     breedingLegend: { id: 'breedingLegend', name: 'Breeding Legend', icon: '💕', description: 'Breed 10 times total', shelf: 'breeding', check: (gs) => (gs.totalBreedings || 0) >= 10 },
-    mutationCollector: { id: 'mutationCollector', name: 'Mutation Collector', icon: '🌈', description: 'Collect 3 mutated pets', shelf: 'breeding', check: (gs) => (gs.totalMutations || 0) >= 3 }
+    mutationCollector: { id: 'mutationCollector', name: 'Mutation Collector', icon: '🌈', description: 'Collect 3 mutated pets', shelf: 'breeding', check: (gs) => (gs.totalMutations || 0) >= 3 },
+    // Elder & Memorial trophies
+    elderMaster: { id: 'elderMaster', name: 'Elder Master', icon: '🏛️', description: 'Raise 2 pets to Elder stage', shelf: 'growth', check: (gs) => (gs.eldersRaised || 0) >= 2 },
+    hallOfFame: { id: 'hallOfFame', name: 'Hall of Fame', icon: '🏆', description: 'Have 5 pets in the memorial', shelf: 'dedication', check: (gs) => (gs.memorials && gs.memorials.length >= 5) },
+    legacyKeeper: { id: 'legacyKeeper', name: 'Legacy Keeper', icon: '📜', description: 'Retire an elder pet', shelf: 'dedication', check: (gs) => (gs.memorials && gs.memorials.some(m => m.growthStage === 'elder')) }
 };
 
 const TROPHY_SHELVES = {
@@ -1472,5 +1506,425 @@ function isHybridType(type) {
 // Get all pet type data (including hybrids)
 function getAllPetTypeData(type) {
     return PET_TYPES[type] || HYBRID_PET_TYPES[type] || null;
+}
+
+// ==================== PERSONALITY SYSTEM ====================
+
+const PERSONALITY_TRAITS = {
+    lazy: {
+        label: 'Lazy',
+        emoji: '😴',
+        description: 'Loves napping and prefers slow activities',
+        statModifiers: {
+            energyDecayMultiplier: 0.7,      // Energy decays slower (conserves it)
+            happinessDecayMultiplier: 0.9,
+            hungerDecayMultiplier: 1.2,       // Gets hungry faster (snacking)
+            cleanlinessDecayMultiplier: 1.1
+        },
+        careModifiers: {
+            sleep: 1.4,    // Sleeps more effectively
+            cuddle: 1.2,
+            exercise: 0.7, // Doesn't enjoy exercise as much
+            play: 0.8
+        },
+        relationshipModifier: 1.0,
+        speechMessages: [
+            "*yawns*", "Five more minutes...", "Too comfy to move...",
+            "Nap time?", "I'll do it later...", "Zzz... oh, hi!",
+            "*stretches lazily*", "This spot is perfect..."
+        ],
+        thoughtMessages: [
+            "wants to nap...", "is feeling sleepy...", "dreams of a cozy bed..."
+        ],
+        idleBehavior: 'yawn'
+    },
+    energetic: {
+        label: 'Energetic',
+        emoji: '⚡',
+        description: 'Always on the go, needs lots of activity',
+        statModifiers: {
+            energyDecayMultiplier: 1.3,       // Burns energy faster
+            happinessDecayMultiplier: 1.2,     // Gets bored faster
+            hungerDecayMultiplier: 1.3,        // Needs more food
+            cleanlinessDecayMultiplier: 1.2
+        },
+        careModifiers: {
+            exercise: 1.5,  // Loves exercise!
+            play: 1.4,
+            sleep: 0.7,     // Too wired to sleep well
+            cuddle: 0.8
+        },
+        relationshipModifier: 1.2,
+        speechMessages: [
+            "LET'S GO!", "Can't sit still!", "ZOOM ZOOM!",
+            "Race you!", "More! More! More!", "I have SO much energy!",
+            "*bouncing around*", "What's next?!"
+        ],
+        thoughtMessages: [
+            "wants to run!", "needs to play!", "is bursting with energy!"
+        ],
+        idleBehavior: 'bounce'
+    },
+    curious: {
+        label: 'Curious',
+        emoji: '🔍',
+        description: 'Loves exploring and discovering new things',
+        statModifiers: {
+            energyDecayMultiplier: 1.1,
+            happinessDecayMultiplier: 1.1,
+            hungerDecayMultiplier: 1.0,
+            cleanlinessDecayMultiplier: 1.2    // Gets dirty from exploring
+        },
+        careModifiers: {
+            play: 1.3,
+            exercise: 1.2,
+            groom: 0.9,
+            wash: 0.9
+        },
+        relationshipModifier: 1.3,             // Curious pets bond faster
+        speechMessages: [
+            "What's that?!", "Ooh, shiny!", "Let me see!",
+            "*sniffs everything*", "I wonder...", "There's something over there!",
+            "*investigates*", "What does this do?"
+        ],
+        thoughtMessages: [
+            "sees something interesting!", "wants to explore!", "is investigating..."
+        ],
+        idleBehavior: 'sniff'
+    },
+    shy: {
+        label: 'Shy',
+        emoji: '🙈',
+        description: 'Takes time to warm up but forms deep bonds',
+        statModifiers: {
+            energyDecayMultiplier: 0.9,
+            happinessDecayMultiplier: 1.1,
+            hungerDecayMultiplier: 0.9,
+            cleanlinessDecayMultiplier: 0.9
+        },
+        careModifiers: {
+            cuddle: 1.4,     // Loves gentle affection
+            sleep: 1.2,
+            play: 0.8,       // Overwhelmed by play
+            exercise: 0.7    // Too many stimuli
+        },
+        relationshipModifier: 0.6,              // Takes longer to warm up
+        speechMessages: [
+            "*peeks out*", "H-hi...", "*hides behind you*",
+            "Is it safe?", "*quiet squeak*", "Stay close, okay?",
+            "*timid wave*", "I trust you..."
+        ],
+        thoughtMessages: [
+            "is feeling nervous...", "wants to hide...", "needs comfort..."
+        ],
+        idleBehavior: 'hide'
+    },
+    playful: {
+        label: 'Playful',
+        emoji: '🎪',
+        description: 'Everything is a game! Mischievous and fun-loving',
+        statModifiers: {
+            energyDecayMultiplier: 1.2,
+            happinessDecayMultiplier: 1.3,     // Needs constant stimulation
+            hungerDecayMultiplier: 1.1,
+            cleanlinessDecayMultiplier: 1.2
+        },
+        careModifiers: {
+            play: 1.5,       // Play is life!
+            treat: 1.3,      // Loves treats
+            exercise: 1.2,
+            groom: 0.7       // Can't sit still for grooming
+        },
+        relationshipModifier: 1.4,
+        speechMessages: [
+            "Catch me!", "Tag, you're it!", "*mischievous grin*",
+            "Play play play!", "Wheee!", "Again again!",
+            "*does a trick*", "Watch this!"
+        ],
+        thoughtMessages: [
+            "wants to play!", "needs a game!", "is feeling mischievous..."
+        ],
+        idleBehavior: 'wiggle'
+    },
+    grumpy: {
+        label: 'Grumpy',
+        emoji: '😤',
+        description: 'Has a tough exterior but secretly loves attention',
+        statModifiers: {
+            energyDecayMultiplier: 0.8,
+            happinessDecayMultiplier: 1.3,     // Hard to keep happy
+            hungerDecayMultiplier: 1.0,
+            cleanlinessDecayMultiplier: 0.8
+        },
+        careModifiers: {
+            feed: 1.3,       // Food is the way to a grumpy pet's heart
+            treat: 1.5,      // REALLY loves treats
+            cuddle: 0.6,     // Acts like it doesn't want cuddles
+            play: 0.8,
+            sleep: 1.2
+        },
+        relationshipModifier: 0.7,
+        speechMessages: [
+            "Hmph!", "*grumbles*", "Leave me alone... (but not really)",
+            "Whatever.", "*side-eye*", "I guess that's okay...",
+            "*reluctant purr*", "Don't touch my stuff."
+        ],
+        thoughtMessages: [
+            "is being grumpy...", "wants to be left alone (maybe)...", "secretly wants attention..."
+        ],
+        idleBehavior: 'grumble'
+    }
+};
+
+const PERSONALITY_LIST = Object.keys(PERSONALITY_TRAITS);
+
+function getRandomPersonality() {
+    return PERSONALITY_LIST[Math.floor(Math.random() * PERSONALITY_LIST.length)];
+}
+
+// ==================== PET FAVORITES & FEARS ====================
+
+// Each pet type has favorite foods, activities, and things they fear/dislike
+const PET_PREFERENCES = {
+    dog: {
+        favoriteFood: 'carrot',
+        favoriteFoodLabel: '🥕 Carrots',
+        favoriteActivity: 'exercise',
+        favoriteActivityLabel: '🏃 Exercise',
+        favoriteTreat: 'Cookie',
+        fear: 'wash',
+        fearLabel: '🛁 Bath time',
+        dislikedFood: 'tomato',
+        dislikedFoodLabel: '🍅 Tomatoes',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    cat: {
+        favoriteFood: 'strawberry',
+        favoriteFoodLabel: '🍓 Strawberries',
+        favoriteActivity: 'cuddle',
+        favoriteActivityLabel: '🤗 Cuddles',
+        favoriteTreat: 'Ice Cream',
+        fear: 'exercise',
+        fearLabel: '🏃 Exercise',
+        dislikedFood: 'pumpkin',
+        dislikedFoodLabel: '🎃 Pumpkin',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    bunny: {
+        favoriteFood: 'carrot',
+        favoriteFoodLabel: '🥕 Carrots',
+        favoriteActivity: 'play',
+        favoriteActivityLabel: '⚽ Play',
+        favoriteTreat: 'Honey',
+        fear: 'medicine',
+        fearLabel: '💊 Medicine',
+        dislikedFood: 'apple',
+        dislikedFoodLabel: '🍎 Apples',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    bird: {
+        favoriteFood: 'sunflower',
+        favoriteFoodLabel: '🌻 Sunflower Seeds',
+        favoriteActivity: 'play',
+        favoriteActivityLabel: '⚽ Play',
+        favoriteTreat: 'Cookie',
+        fear: 'wash',
+        fearLabel: '🛁 Bath time',
+        dislikedFood: 'pumpkin',
+        dislikedFoodLabel: '🎃 Pumpkin',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    hamster: {
+        favoriteFood: 'sunflower',
+        favoriteFoodLabel: '🌻 Sunflower Seeds',
+        favoriteActivity: 'exercise',
+        favoriteActivityLabel: '🏃 Exercise (Wheel!)',
+        favoriteTreat: 'Cookie',
+        fear: 'groom',
+        fearLabel: '✂️ Grooming',
+        dislikedFood: 'tomato',
+        dislikedFoodLabel: '🍅 Tomatoes',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    turtle: {
+        favoriteFood: 'strawberry',
+        favoriteFoodLabel: '🍓 Strawberries',
+        favoriteActivity: 'cuddle',
+        favoriteActivityLabel: '🤗 Cuddles',
+        favoriteTreat: 'Honey',
+        fear: 'exercise',
+        fearLabel: '🏃 Too much exercise',
+        dislikedFood: 'sunflower',
+        dislikedFoodLabel: '🌻 Sunflower Seeds',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    fish: {
+        favoriteFood: 'tomato',
+        favoriteFoodLabel: '🍅 Tomatoes',
+        favoriteActivity: 'play',
+        favoriteActivityLabel: '⚽ Play',
+        favoriteTreat: 'Candy',
+        fear: 'groom',
+        fearLabel: '✂️ Grooming',
+        dislikedFood: 'apple',
+        dislikedFoodLabel: '🍎 Apples',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    frog: {
+        favoriteFood: 'tomato',
+        favoriteFoodLabel: '🍅 Tomatoes',
+        favoriteActivity: 'exercise',
+        favoriteActivityLabel: '🏃 Exercise (Hopping!)',
+        favoriteTreat: 'Candy',
+        fear: 'groom',
+        fearLabel: '✂️ Grooming',
+        dislikedFood: 'carrot',
+        dislikedFoodLabel: '🥕 Carrots',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    hedgehog: {
+        favoriteFood: 'apple',
+        favoriteFoodLabel: '🍎 Apples',
+        favoriteActivity: 'cuddle',
+        favoriteActivityLabel: '🤗 Cuddles',
+        favoriteTreat: 'Honey',
+        fear: 'wash',
+        fearLabel: '🛁 Bath time',
+        dislikedFood: 'sunflower',
+        dislikedFoodLabel: '🌻 Sunflower Seeds',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    panda: {
+        favoriteFood: 'apple',
+        favoriteFoodLabel: '🍎 Apples',
+        favoriteActivity: 'cuddle',
+        favoriteActivityLabel: '🤗 Cuddles',
+        favoriteTreat: 'Honey',
+        fear: 'exercise',
+        fearLabel: '🏃 Too much exercise',
+        dislikedFood: 'tomato',
+        dislikedFoodLabel: '🍅 Tomatoes',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    penguin: {
+        favoriteFood: 'strawberry',
+        favoriteFoodLabel: '🍓 Strawberries',
+        favoriteActivity: 'exercise',
+        favoriteActivityLabel: '🏃 Exercise (Sliding!)',
+        favoriteTreat: 'Ice Cream',
+        fear: 'medicine',
+        fearLabel: '💊 Medicine',
+        dislikedFood: 'pumpkin',
+        dislikedFoodLabel: '🎃 Pumpkin',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    unicorn: {
+        favoriteFood: 'strawberry',
+        favoriteFoodLabel: '🍓 Strawberries',
+        favoriteActivity: 'play',
+        favoriteActivityLabel: '⚽ Play',
+        favoriteTreat: 'Cupcake',
+        fear: 'medicine',
+        fearLabel: '💊 Medicine',
+        dislikedFood: 'pumpkin',
+        dislikedFoodLabel: '🎃 Pumpkin',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    },
+    dragon: {
+        favoriteFood: 'pumpkin',
+        favoriteFoodLabel: '🎃 Pumpkin',
+        favoriteActivity: 'exercise',
+        favoriteActivityLabel: '🏃 Exercise',
+        favoriteTreat: 'Donut',
+        fear: 'wash',
+        fearLabel: '🛁 Bath time',
+        dislikedFood: 'strawberry',
+        dislikedFoodLabel: '🍓 Strawberries',
+        bonusMultiplier: 1.5,
+        penaltyMultiplier: 0.5
+    }
+};
+
+// Get preference modifiers for a care action
+function getPreferenceModifier(pet, action, cropId) {
+    const prefs = PET_PREFERENCES[pet.type];
+    if (!prefs) return 1.0;
+
+    // Check if this is a favorite activity
+    if (action === prefs.favoriteActivity) {
+        return prefs.bonusMultiplier;
+    }
+
+    // Check if this is a feared activity
+    if (action === prefs.fear) {
+        return prefs.penaltyMultiplier;
+    }
+
+    // Check food preferences for feed actions
+    if (action === 'feed' && cropId) {
+        if (cropId === prefs.favoriteFood) {
+            return prefs.bonusMultiplier;
+        }
+        if (cropId === prefs.dislikedFood) {
+            return prefs.penaltyMultiplier;
+        }
+    }
+
+    // Check treat preferences
+    if (action === 'treat') {
+        // Treat name is checked elsewhere
+        return 1.0;
+    }
+
+    return 1.0;
+}
+
+// ==================== ELDER GROWTH STAGE ====================
+
+const ELDER_CONFIG = {
+    hoursNeeded: 24,         // 24 hours of age to reach elder
+    actionsNeeded: 120,      // 120 care actions needed
+    wisdomBonusBase: 10,     // Base wisdom bonus for stat gains
+    wisdomDecayReduction: 0.8, // 20% slower stat decay
+    wisdomRelationshipBonus: 1.5, // 50% faster relationship building
+    elderAccessories: ['glasses', 'topHat'] // Accessories unlocked at elder
+};
+
+// ==================== PET MEMORIAL SYSTEM ====================
+
+const MEMORIAL_CONFIG = {
+    maxMemorials: 20,      // Maximum memorials stored
+    retirementMinAge: 12,  // Minimum 12 hours old to retire honorably
+    retirementMinStage: 'adult' // Must be adult or elder to retire
+};
+
+const MEMORIAL_TITLES = {
+    elder: '🏛️ Wise Elder',
+    evolved: '✨ Transcended',
+    excellent: '🌟 Beloved',
+    adult: '⭐ Cherished',
+    child: '🌱 Young Heart',
+    baby: '🍼 Little Angel'
+};
+
+function getMemorialTitle(pet) {
+    if (pet.growthStage === 'elder') return MEMORIAL_TITLES.elder;
+    if (pet.evolutionStage === 'evolved') return MEMORIAL_TITLES.evolved;
+    if (pet.careQuality === 'excellent') return MEMORIAL_TITLES.excellent;
+    if (pet.growthStage === 'adult') return MEMORIAL_TITLES.adult;
+    if (pet.growthStage === 'child') return MEMORIAL_TITLES.child;
+    return MEMORIAL_TITLES.baby;
 }
 

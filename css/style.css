@@ -338,6 +338,11 @@
             height: 150px;
         }
 
+        .pet-svg.growth-elder {
+            width: 145px;
+            height: 145px;
+        }
+
         /* Egg Styles */
         .egg-container {
             cursor: pointer;
@@ -1688,6 +1693,11 @@
                 height: 120px;
             }
 
+            .pet-svg.growth-elder {
+                width: 116px;
+                height: 116px;
+            }
+
             .need-bubble {
                 width: 50px;
                 height: 50px;
@@ -1873,6 +1883,11 @@
             .pet-svg.growth-adult {
                 width: 90px;
                 height: 90px;
+            }
+
+            .pet-svg.growth-elder {
+                width: 87px;
+                height: 87px;
             }
 
             .needs-section {
@@ -10742,6 +10757,269 @@
 }
 [data-theme="dark"] .journal-entry-text {
     color: #ddd;
+}
+
+/* ==================== PERSONALITY & PREFERENCES IN STATS ==================== */
+.stats-personality-section,
+.stats-prefs-section {
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: #f9f5f0;
+    border-radius: 10px;
+    text-align: left;
+}
+.stats-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: #555;
+}
+.stats-personality-desc {
+    font-size: 0.7rem;
+    color: #777;
+    margin: 0;
+}
+.stats-prefs-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.stats-pref-item {
+    font-size: 0.68rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    display: inline-block;
+}
+.stats-pref-item.fav {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+.stats-pref-item.fear {
+    background: #FFF3E0;
+    color: #E65100;
+}
+[data-theme="dark"] .stats-personality-section,
+[data-theme="dark"] .stats-prefs-section {
+    background: #2a2a4a;
+}
+[data-theme="dark"] .stats-section-title {
+    color: #ccc;
+}
+[data-theme="dark"] .stats-personality-desc {
+    color: #aaa;
+}
+[data-theme="dark"] .stats-pref-item.fav {
+    background: #1a3a1a;
+    color: #81C784;
+}
+[data-theme="dark"] .stats-pref-item.fear {
+    background: #3a2a1a;
+    color: #FFB74D;
+}
+
+/* ==================== PERSONALITY BADGE ==================== */
+.personality-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #7C4DFF;
+    background: rgba(124, 77, 255, 0.1);
+    border: 1px solid rgba(124, 77, 255, 0.2);
+    border-radius: 12px;
+    padding: 1px 8px;
+    margin: 2px auto 0;
+    letter-spacing: 0.3px;
+}
+[data-theme="dark"] .personality-badge {
+    color: #B388FF;
+    background: rgba(179, 136, 255, 0.15);
+    border-color: rgba(179, 136, 255, 0.3);
+}
+
+/* Personality-driven thought bubble variants */
+.thought-bubble.personality-thought {
+    background: #EDE7F6;
+    border: 1px solid #B39DDB;
+    animation: thoughtPulse 3s ease-in-out infinite;
+}
+.thought-bubble.personality-thought::before,
+.thought-bubble.personality-thought::after {
+    background: #EDE7F6;
+}
+.thought-bubble.favorite-thought {
+    background: #FFF3E0;
+    border: 1px solid #FFB74D;
+    animation: thoughtPulse 3s ease-in-out infinite;
+}
+.thought-bubble.favorite-thought::before,
+.thought-bubble.favorite-thought::after {
+    background: #FFF3E0;
+}
+[data-theme="dark"] .thought-bubble.personality-thought {
+    background: #2a1f4a;
+    border-color: #7C4DFF;
+}
+[data-theme="dark"] .thought-bubble.personality-thought::before,
+[data-theme="dark"] .thought-bubble.personality-thought::after {
+    background: #2a1f4a;
+}
+[data-theme="dark"] .thought-bubble.favorite-thought {
+    background: #3a2a1a;
+    border-color: #FFB74D;
+}
+[data-theme="dark"] .thought-bubble.favorite-thought::before,
+[data-theme="dark"] .thought-bubble.favorite-thought::after {
+    background: #3a2a1a;
+}
+
+/* ==================== ELDER PET STYLES ==================== */
+.growth-elder {
+    filter: drop-shadow(0 0 6px rgba(124, 77, 255, 0.3));
+}
+.growth-elder.care-shiny {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4)) drop-shadow(0 0 12px rgba(124, 77, 255, 0.3));
+}
+
+/* ==================== MEMORIAL HALL STYLES ==================== */
+.memorial-content {
+    max-width: 420px;
+    max-height: 85vh;
+    overflow-y: auto;
+    text-align: center;
+}
+.memorial-title-header {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 2px;
+}
+.memorial-subtitle {
+    font-size: 0.75rem;
+    color: #888;
+    margin: 0 0 12px;
+}
+.memorial-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 4px;
+}
+.memorial-empty {
+    padding: 24px 0;
+    color: #888;
+}
+.memorial-empty-hint {
+    font-size: 0.75rem;
+    margin-top: 6px;
+}
+.memorial-card {
+    background: #fff;
+    border: 1px solid #e0d6cc;
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: left;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+}
+.memorial-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+.memorial-card.elder-memorial {
+    border-color: #B39DDB;
+    background: linear-gradient(135deg, #EDE7F6 0%, #fff 100%);
+}
+.memorial-card.evolved-memorial {
+    border-color: #FFD700;
+    background: linear-gradient(135deg, #FFFDE7 0%, #fff 100%);
+}
+.memorial-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.memorial-emoji {
+    font-size: 1.5rem;
+}
+.memorial-name-wrap {
+    display: flex;
+    flex-direction: column;
+}
+.memorial-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+.memorial-title {
+    font-size: 0.7rem;
+    color: #7C4DFF;
+    font-weight: 600;
+}
+.memorial-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-top: 4px;
+}
+.memorial-detail {
+    font-size: 0.68rem;
+    color: #777;
+    background: #f5f0eb;
+    border-radius: 6px;
+    padding: 1px 5px;
+}
+.memorial-retire-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    background: linear-gradient(135deg, #7C4DFF, #B388FF);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.memorial-retire-btn:hover,
+.memorial-retire-btn:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+}
+.memorial-retire-hint {
+    font-size: 0.72rem;
+    color: #999;
+    margin: 8px 0;
+    padding: 6px;
+    background: #f9f5f0;
+    border-radius: 8px;
+}
+
+[data-theme="dark"] .memorial-card {
+    background: #2a2a4a;
+    border-color: #3a3a5a;
+}
+[data-theme="dark"] .memorial-card.elder-memorial {
+    background: linear-gradient(135deg, #2a1f4a 0%, #2a2a4a 100%);
+    border-color: #7C4DFF;
+}
+[data-theme="dark"] .memorial-card.evolved-memorial {
+    background: linear-gradient(135deg, #3a3520 0%, #2a2a4a 100%);
+    border-color: #FFD700;
+}
+[data-theme="dark"] .memorial-detail {
+    background: #3a3a5a;
+    color: #aaa;
+}
+[data-theme="dark"] .memorial-retire-hint {
+    background: #2a2a4a;
+    color: #888;
+}
+[data-theme="dark"] .memorial-empty {
+    color: #888;
 }
 
 @media (prefers-reduced-motion: reduce) {
