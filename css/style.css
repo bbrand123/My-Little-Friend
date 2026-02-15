@@ -529,7 +529,7 @@
             bottom: -28px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.7rem; /* Standardized from 0.58rem */
+            font-size: 0.75rem; /* Accessible minimum */
             color: var(--color-text-secondary);
             white-space: nowrap;
             font-weight: 700;
@@ -567,7 +567,7 @@
             flex-shrink: 0;
             border: none;
             border-radius: var(--radius-md);
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.02em;
             cursor: pointer;
@@ -822,7 +822,7 @@
         }
 
         .wellness-bar-label {
-            font-size: 0.7rem; /* Standardized font size */
+            font-size: 0.75rem; /* Accessible minimum */
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.06em;
@@ -830,7 +830,7 @@
         }
 
         .wellness-bar-value {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 800;
             transition: color 0.5s ease;
         }
@@ -975,7 +975,7 @@
 
         /* Garden countdown timer */
         .garden-plot-timer {
-            font-size: 0.7rem; /* Standardized font size */
+            font-size: 0.75rem; /* Accessible minimum */
             color: rgba(255,255,255,0.85);
             font-weight: 700;
             margin-top: 2px;
@@ -1250,7 +1250,7 @@
             bottom: -18px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.6rem;
+            font-size: 0.75rem;
             color: rgba(0,0,0,0.45);
             white-space: nowrap;
             pointer-events: none;
@@ -1905,7 +1905,7 @@
                 width: 52px;
                 height: 52px;
                 border-radius: 12px;
-                font-size: 0.6rem;
+                font-size: 0.75rem;
             }
 
             .btn-icon {
@@ -1937,7 +1937,7 @@
             }
 
             .room-btn-label {
-                font-size: 0.6rem;
+                font-size: 0.75rem;
             }
 
             .section-divider {
@@ -1956,7 +1956,7 @@
 
             .status-pill {
                 padding: 2px 6px;
-                font-size: 0.6rem;
+                font-size: 0.75rem;
             }
 
             .more-actions-toggle {
@@ -2488,7 +2488,7 @@
 
         .minigame-card-history {
             display: block;
-            font-size: 0.6rem;
+            font-size: 0.75rem;
             font-weight: 400;
             color: #999;
             margin-top: 1px;
@@ -2497,7 +2497,7 @@
 
         .minigame-card-difficulty {
             display: block;
-            font-size: 0.6rem;
+            font-size: 0.75rem;
             font-weight: 600;
             color: #E57373;
             margin-top: 2px;
@@ -2506,7 +2506,7 @@
 
         .minigame-card-desc {
             display: block;
-            font-size: 0.6rem;
+            font-size: 0.75rem;
             color: var(--color-text-secondary);
             margin-top: 2px;
         }
@@ -5976,7 +5976,7 @@
 .pet-tab-emoji { font-size: 1rem; }
 .pet-tab-name { font-weight: 600; color: #333; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pet-tab-wellness {
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     color: #fff;
     padding: 1px 5px;
     border-radius: 8px;
@@ -6115,7 +6115,7 @@
 .interaction-action-emoji { font-size: 1.2rem; }
 .interaction-action-info { display: flex; flex-direction: column; }
 .interaction-action-name { font-weight: 600; font-size: 0.75rem; color: #333; }
-.interaction-action-desc { font-size: 0.6rem; color: #888; }
+.interaction-action-desc { font-size: 0.75rem; color: #888; }
 
 .interaction-close,
 .social-close {
@@ -6217,7 +6217,7 @@
     transition: width 0.3s ease;
 }
 .social-card-next {
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     color: #999;
     text-align: center;
     display: block;
@@ -6226,7 +6226,7 @@
 .social-card-stats {
     display: flex;
     justify-content: space-between;
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     color: #aaa;
 }
 
@@ -6567,7 +6567,7 @@
     right: -2px;
     background: #4CAF50;
     color: white;
-    font-size: 0.5rem;
+    font-size: 0.75rem;
     font-weight: 700;
     min-width: 14px;
     height: 14px;
@@ -7187,7 +7187,7 @@
 .badge-tier[data-tier="bronze"]::before { content: '●'; }
 .badge-tier[data-tier="silver"]::before { content: '◆'; }
 .badge-tier[data-tier="gold"]::before { content: '★'; }
-.badge-date { font-size: 0.6rem; color: var(--color-text-secondary); opacity: 0.7; }
+.badge-date { font-size: 0.75rem; color: var(--color-text-secondary); opacity: 0.7; }
 
 .badges-close {
     display: block;
@@ -7491,7 +7491,7 @@
 .trophy-plaque { flex: 1; }
 .trophy-name { font-weight: 700; font-size: 0.82rem; color: var(--color-text); }
 .trophy-desc { font-size: 0.72rem; color: var(--color-text-secondary); }
-.trophy-date { font-size: 0.6rem; color: var(--color-text-secondary); opacity: 0.7; }
+.trophy-date { font-size: 0.75rem; color: var(--color-text-secondary); opacity: 0.7; }
 
 .trophy-room-close {
     display: block;
@@ -7846,7 +7846,7 @@
 }
 .growth-detail-sep {
     color: #bbb;
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 .growth-detail-item.done {
@@ -7868,7 +7868,7 @@
     right: -4px;
     background: linear-gradient(135deg, #FFD700, #FFA000);
     color: #fff;
-    font-size: 0.5rem;
+    font-size: 0.75rem;
     font-weight: 800;
     padding: 1px 4px;
     border-radius: 6px;
@@ -8476,7 +8476,7 @@
 }
 
 .battle-move-desc {
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     color: var(--color-text-tertiary, #999);
     text-align: center;
 }
@@ -8929,7 +8929,7 @@
 }
 
 .rival-badge {
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     font-weight: 700;
     padding: 3px 8px;
     border-radius: 10px;
@@ -9114,7 +9114,7 @@
 
 /* ==================== ENHANCEMENT: Thought Bubble with Name ==================== */
 .thought-bubble .thought-text {
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     color: #555;
     display: block;
     margin-top: 1px;
@@ -9547,4 +9547,739 @@
 
 .breed-btn:hover {
     background: linear-gradient(135deg, #E040FB33, #7C4DFF33) !important;
+}
+
+/* ==================== QOL & ACCESSIBILITY ADDITIONS ==================== */
+
+/* Item 12: Tooltips for truncated text */
+.need-bubble-value[title],
+.pet-tab-name[title] {
+    cursor: help;
+}
+
+/* Item 13: Secondary indicators for color-coded status (colorblind) */
+.need-status-icon {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    z-index: 2;
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: #EF5350;
+    background: #fff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    line-height: 1;
+    pointer-events: none;
+}
+
+.need-bubble.low .need-status-icon {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.need-bubble.critical .need-status-icon {
+    background: #FFEBEE;
+    color: #C62828;
+    animation: needPulse 1.5s ease-in-out infinite;
+}
+
+/* Wellness bar numeric label */
+.wellness-bar-pct {
+    font-size: 0.8rem;
+    font-weight: 800;
+    min-width: 32px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Item 14: Improved disabled/cooldown button visibility */
+.action-btn.cooldown .cooldown-label {
+    display: block;
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.9);
+    background: rgba(0,0,0,0.45);
+    padding: 1px 5px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Item 16: Scroll indicators for scrollable containers */
+.battle-log,
+.notif-history-list,
+.codex-entries,
+.sticker-book-pages,
+.trophy-shelves,
+.badges-content {
+    position: relative;
+}
+
+.scroll-fade-bottom {
+    position: relative;
+}
+
+.scroll-fade-bottom::after {
+    content: '';
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9));
+    pointer-events: none;
+    display: block;
+}
+
+[data-theme="dark"] .scroll-fade-bottom::after {
+    background: linear-gradient(to bottom, transparent, rgba(36,36,62,0.9));
+}
+
+/* Item 19: Hover/focus states for interactive elements */
+.room-btn:hover,
+.room-btn:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.room-btn:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.color-option:hover,
+.color-option:focus-visible {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px var(--color-secondary);
+}
+
+.color-option:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.garden-plot:hover,
+.garden-plot:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.garden-plot:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.pet-tab:hover,
+.pet-tab:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.pet-tab:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 2px;
+}
+
+/* Item 23: Expanded need bubble click targets */
+.need-bubble {
+    cursor: pointer;
+    padding: 8px;
+}
+
+.need-bubble::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+}
+
+/* Item 22: Save indicator */
+.save-indicator {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 999;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(102, 187, 106, 0.9);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.save-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.save-indicator.error {
+    background: rgba(239, 83, 80, 0.9);
+}
+
+/* Item 18: Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(0,0,0,0.1);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Item 28: Emergency care button */
+.emergency-care-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 16px;
+    margin: 8px 0;
+    border: 2px solid #EF5350;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+    color: #C62828;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    animation: emergencyPulse 2s ease-in-out infinite;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.emergency-care-btn:hover,
+.emergency-care-btn:focus-visible {
+    transform: scale(1.02);
+    box-shadow: 0 2px 12px rgba(239, 83, 80, 0.3);
+}
+
+.emergency-care-btn:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 2px;
+}
+
+@keyframes emergencyPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(239, 83, 80, 0); }
+}
+
+[data-theme="dark"] .emergency-care-btn {
+    background: linear-gradient(135deg, #3a1a1a, #4a2020);
+    color: #FF8A80;
+    border-color: #EF5350;
+}
+
+/* Item 29: Improved action button press feedback */
+.action-btn.btn-pressed {
+    transform: scale(0.9) !important;
+    filter: brightness(1.15);
+    transition: transform 0.08s ease, filter 0.08s ease;
+}
+
+/* Item 30: Text size setting */
+[data-text-size="large"] {
+    font-size: 18px;
+}
+
+[data-text-size="large"] .action-btn {
+    font-size: 0.85rem;
+}
+
+[data-text-size="large"] .need-bubble-value,
+[data-text-size="large"] .need-bubble-label {
+    font-size: 0.85rem;
+}
+
+[data-text-size="large"] .wellness-bar-label,
+[data-text-size="large"] .wellness-bar-value {
+    font-size: 0.85rem;
+}
+
+[data-text-size="large"] .top-action-btn {
+    min-width: 42px;
+    min-height: 42px;
+}
+
+/* Item 26: Breeding egg incubation timer */
+.breeding-egg-timer {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.breeding-egg-timer .timer-icon {
+    font-size: 1rem;
+}
+
+.breeding-egg-ready-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #A5D6A7, #66BB6A);
+    color: #1B5E20;
+    font-size: 0.75rem;
+    font-weight: 700;
+    animation: badgePop 0.3s ease;
+}
+
+/* Item 21: Confirmation dialog styling */
+.confirm-dialog-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    background: #FFF3E0;
+    border: 1px solid #FFB74D;
+    border-radius: var(--radius-md);
+    color: #E65100;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .confirm-dialog-warning {
+    background: #3a2a1a;
+    border-color: #8a6a3a;
+    color: #FFB74D;
+}
+
+.confirm-danger-btn {
+    background: #EF5350 !important;
+    color: #fff !important;
+}
+
+.confirm-danger-btn:hover {
+    background: #E53935 !important;
+}
+
+/* Item 25: Prominent difficulty display */
+.minigame-difficulty-meter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+}
+
+.minigame-difficulty-meter .difficulty-bar {
+    display: flex;
+    gap: 2px;
+}
+
+.minigame-difficulty-meter .difficulty-pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: #e0e0e0;
+    transition: background 0.2s ease;
+}
+
+.minigame-difficulty-meter .difficulty-pip.filled {
+    background: #FFB74D;
+}
+
+.minigame-difficulty-meter .difficulty-pip.filled.high {
+    background: #EF5350;
+}
+
+.minigame-difficulty-meter .difficulty-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+/* Item 9: Accessibility notes in minigame menu */
+.minigame-a11y-note {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+}
+
+.minigame-a11y-note .a11y-icon {
+    font-size: 0.85rem;
+}
+
+/* Item 27: Onboarding tutorial steps */
+.tutorial-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: var(--z-overlay-dialog);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tutorial-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: var(--shadow-overlay);
+    text-align: center;
+}
+
+[data-theme="dark"] .tutorial-card {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+.tutorial-card h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+}
+
+.tutorial-card p {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.tutorial-card .tutorial-step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.tutorial-card .tutorial-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e0e0e0;
+}
+
+.tutorial-card .tutorial-dot.active {
+    background: var(--color-primary);
+}
+
+.tutorial-card .tutorial-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.tutorial-card .tutorial-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tutorial-card .tutorial-btn.primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.tutorial-card .tutorial-btn.secondary {
+    background: #f0f0f0;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .tutorial-card .tutorial-btn.secondary {
+    background: #2e2e4a;
+    color: #ddd;
+}
+
+/* Item 15: Extended dark mode styles for modals and sub-components */
+[data-theme="dark"] .settings-modal,
+[data-theme="dark"] .minigame-menu,
+[data-theme="dark"] .achievements-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .settings-row {
+    border-bottom-color: #3a3a5a;
+}
+
+[data-theme="dark"] .settings-row-label {
+    color: #ddd;
+}
+
+[data-theme="dark"] .settings-keyboard-hints {
+    background: rgba(255,255,255,0.05);
+    color: #aaa;
+}
+
+[data-theme="dark"] .settings-hint-row kbd {
+    background: #2e2e4a;
+    border-color: #555;
+    color: #ddd;
+}
+
+[data-theme="dark"] .minigame-card {
+    background: #2e2e4a;
+    border-color: #444;
+    color: #ddd;
+}
+
+[data-theme="dark"] .minigame-card:hover,
+[data-theme="dark"] .minigame-card:focus-visible {
+    border-color: var(--color-secondary);
+}
+
+[data-theme="dark"] .minigame-card-desc {
+    color: #aaa;
+}
+
+[data-theme="dark"] .minigame-card-difficulty {
+    color: #FFB74D;
+}
+
+[data-theme="dark"] .battle-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .battle-move-btn {
+    background: #2e2e4a;
+    border-color: #444;
+    color: #ddd;
+}
+
+[data-theme="dark"] .battle-move-btn:hover,
+[data-theme="dark"] .battle-move-btn:focus-visible {
+    border-color: var(--color-secondary);
+}
+
+[data-theme="dark"] .battle-log {
+    background: rgba(0,0,0,0.2);
+    color: #ccc;
+}
+
+[data-theme="dark"] .competition-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .competition-hub-card {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .competition-hub-card:hover {
+    border-color: var(--color-secondary);
+}
+
+[data-theme="dark"] .achievements-grid .achievement-item {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .achievement-item.unlocked {
+    background: #2e3a4a;
+}
+
+[data-theme="dark"] .daily-checklist-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .daily-task {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .daily-task.completed {
+    background: #2a3a2a;
+}
+
+[data-theme="dark"] .badge-card {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .badge-card.locked {
+    background: #1e1e36;
+}
+
+[data-theme="dark"] .sticker-slot {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .sticker-slot.empty {
+    background: #1e1e36;
+}
+
+[data-theme="dark"] .trophy-item {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .trophy-item.locked {
+    background: #1e1e36;
+}
+
+[data-theme="dark"] .notif-history-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .notif-history-item {
+    border-bottom-color: #3a3a5a;
+}
+
+[data-theme="dark"] .care-quality-badge {
+    background: #2e2e4a;
+}
+
+[data-theme="dark"] .pet-age-badge {
+    background: #2e2e4a;
+}
+
+[data-theme="dark"] .breeding-modal,
+[data-theme="dark"] .breeding-content {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .social-hub-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .interaction-menu-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .rewards-hub-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .rewards-hub-card {
+    background: #2e2e4a;
+    border-color: #444;
+}
+
+[data-theme="dark"] .rewards-hub-card:hover {
+    border-color: var(--color-secondary);
+}
+
+[data-theme="dark"] .streak-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .confirm-dialog-warning {
+    background: #3a2a1a;
+    border-color: #8a6a3a;
+    color: #FFB74D;
+}
+
+[data-theme="dark"] .coloring-game {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .fetch-game {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .hideseek-game {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .matching-game {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .simonsays-game {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .bubblepop-game {
+    background: #24243e;
+    color: var(--color-text);
+}
+
+/* Keyboard shortcut hint badge */
+.kbd-hint {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 0.65rem;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    z-index: 2;
+    pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .kbd-hint {
+        display: block;
+    }
+}
+
+/* Empty state messaging */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 16px;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.empty-state-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
