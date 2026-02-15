@@ -1,7 +1,8 @@
         // ==================== SVG GENERATION ====================
 
         // Unique SVG gradient IDs to avoid collisions when multiple SVGs coexist
-        function _svgUid() { return '_' + Math.random().toString(36).slice(2, 11); }
+        let _svgUidCounter = 0;
+        function _svgUid() { return '_' + (++_svgUidCounter) + Math.random().toString(36).slice(2, 11); }
 
         // Helper function to adjust color brightness
         function adjustColorBrightness(hexColor, percent) {

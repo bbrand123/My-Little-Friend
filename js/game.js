@@ -15,7 +15,7 @@
             currentRoom: 'bedroom', // 'bedroom', 'kitchen', 'bathroom', 'backyard', 'park', 'garden'
             weather: 'sunny', // 'sunny', 'rainy', 'snowy'
             lastWeatherChange: Date.now(),
-            season: (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring',
+            season: getCurrentSeason(),
             adultsRaised: 0, // Track how many pets reached adult stage (for mythical unlocks)
             furniture: {
                 bedroom: { bed: 'basic', decoration: 'none' },
@@ -261,7 +261,7 @@
             const el = document.createElement('div');
             el.className = 'stat-change-summary';
             el.setAttribute('aria-hidden', 'true');
-            el.innerHTML = changes.map(c => {
+            el.innerHTML = changes.filter(c => !isNaN(c.amount)).map(c => {
                 const sign = c.amount >= 0 ? '+' : '';
                 const cls = c.amount >= 0 ? 'positive' : 'negative';
                 return `<span class="${cls}">${escapeHTML(c.label)} ${sign}${c.amount}</span>`;
@@ -662,8 +662,11 @@
                 // Strip transient data that shouldn't persist
                 const offlineChanges = gameState._offlineChanges;
                 delete gameState._offlineChanges;
+                const completionCounted = gameState.dailyChecklist && gameState.dailyChecklist._completionCounted;
+                if (gameState.dailyChecklist) delete gameState.dailyChecklist._completionCounted;
                 localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
                 if (offlineChanges) gameState._offlineChanges = offlineChanges;
+                if (completionCounted && gameState.dailyChecklist) gameState.dailyChecklist._completionCounted = completionCounted;
             } catch (e) {
                 console.log('Could not save game:', e);
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
@@ -710,10 +713,11 @@
                         }
                         // Add birthdate if missing (estimate based on care actions)
                         if (!parsed.pet.birthdate) {
-                            // Estimate age from care actions with a minimum floor of 2 hours
-                            // so legacy pets aren't incorrectly set to extremely young ages
+                            // Estimate age from care actions. Care actions happen roughly
+                            // every few minutes, so use ~5 minutes per action as a more
+                            // realistic estimate instead of 1 hour per action.
                             const estimatedAgeMs = Math.max(
-                                parsed.pet.careActions * 60 * 60 * 1000,
+                                parsed.pet.careActions * 5 * 60 * 1000,
                                 2 * 60 * 60 * 1000 // minimum 2 hours old
                             );
                             parsed.pet.birthdate = Date.now() - estimatedAgeMs;
@@ -894,8 +898,9 @@
                                         const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growthMult));
                                         // Watered plots get +2 on first tick (then water dries),
                                         // remaining ticks get +1, matching live tick behavior
-                                        const waterBonus = plot.watered ? 1 : 0; // extra +1 for first tick
-                                        plot.growTicks += gardenTicksPassed + waterBonus;
+                                        // First tick: watered=2, unwatered=1. Remaining: always 1.
+                                        const firstTickValue = plot.watered ? 2 : 1;
+                                        plot.growTicks += firstTickValue + (gardenTicksPassed - 1);
                                         plot.watered = false;
                                         const newStage = Math.min(3, Math.floor(plot.growTicks / effectiveGrowTime));
                                         plot.stage = Math.max(plot.stage, newStage);
@@ -914,7 +919,8 @@
                     if (parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
                         const minutesPassed = Math.max(0, timePassed / 60000);
-                        const decay = Math.floor(minutesPassed / 2);
+                        // Cap offline decay to prevent all stats hitting 0 after long absences
+                        const decay = Math.min(Math.floor(minutesPassed / 2), 50);
                         if (decay > 0) {
                             const petsToDecay = parsed.pets && parsed.pets.length > 0 ? parsed.pets : (parsed.pet ? [parsed.pet] : []);
                             let activeOldStats = null;
@@ -966,8 +972,8 @@
                                 if (!p) return;
                                 const isNeglected = p.hunger < 20 || p.cleanliness < 20 || p.happiness < 20 || p.energy < 20;
                                 if (isNeglected) {
-                                    // Scale neglect count by offline time (1 per ~10 minutes of neglect), capped at 3
-                                    const neglectIncrements = Math.min(3, Math.floor(minutesPassed / 10));
+                                    // Scale neglect count by offline time (1 per ~10 minutes of neglect), capped at 10
+                                    const neglectIncrements = Math.min(10, Math.floor(minutesPassed / 10));
                                     if (neglectIncrements > 0) {
                                         p.neglectCount = (p.neglectCount || 0) + neglectIncrements;
                                     }
@@ -1061,7 +1067,9 @@
 
             // Assign a unique ID to each pet
             if (typeof gameState.nextPetId !== 'number' || isNaN(gameState.nextPetId)) {
-                gameState.nextPetId = (gameState.pets ? gameState.pets.length : 0) + 1;
+                let maxId = 0;
+                if (gameState.pets) gameState.pets.forEach(p => { if (p && typeof p.id === 'number' && p.id > maxId) maxId = p.id; });
+                gameState.nextPetId = maxId + 1;
             }
             const petId = gameState.nextPetId;
             gameState.nextPetId = petId + 1;
@@ -1307,8 +1315,18 @@
             return childGenetics;
         }
 
+        // Normalize shorthand hex (#F00) to full form (#FF0000)
+        function normalizeHex(hex) {
+            if (hex.length === 4) {
+                return '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+            }
+            return hex;
+        }
+
         // Blend two hex colors
         function blendColors(hex1, hex2, ratio) {
+            hex1 = normalizeHex(hex1);
+            hex2 = normalizeHex(hex2);
             const r1 = parseInt(hex1.slice(1, 3), 16);
             const g1 = parseInt(hex1.slice(3, 5), 16);
             const b1 = parseInt(hex1.slice(5, 7), 16);
@@ -1396,9 +1414,12 @@
                 childGenetics[boostStat] = clamp(childGenetics[boostStat] + 3, GENETIC_STATS[boostStat].min, GENETIC_STATS[boostStat].max);
             }
 
+            // Determine if any mutation actually applied (color or pattern or genetic boost)
+            const actuallyMutated = hasMutation && (colorResult.isMutated || patternResult.isMutated);
+
             // Create the breeding egg
             const breedingEgg = {
-                id: Date.now(),
+                id: Date.now() + '_' + Math.random().toString(36).slice(2, 9),
                 parent1Id: pet1.id,
                 parent2Id: pet2.id,
                 parent1Type: pet1.type,
@@ -1411,7 +1432,7 @@
                 mutationColor: colorResult.mutationColor || null,
                 pattern: patternResult.pattern,
                 mutationPattern: patternResult.mutationPattern || null,
-                hasMutation: hasMutation,
+                hasMutation: actuallyMutated,
                 genetics: childGenetics,
                 incubationTicks: 0,
                 incubationTarget: BREEDING_CONFIG.incubationBaseTicks,
@@ -1431,7 +1452,7 @@
 
             // Track breeding stats
             gameState.totalBreedings = (gameState.totalBreedings || 0) + 1;
-            if (hasMutation) gameState.totalMutations = (gameState.totalMutations || 0) + 1;
+            if (actuallyMutated) gameState.totalMutations = (gameState.totalMutations || 0) + 1;
             if (typeResult.isHybrid) {
                 gameState.totalHybridsCreated = (gameState.totalHybridsCreated || 0) + 1;
                 if (!gameState.hybridsDiscovered) gameState.hybridsDiscovered = {};
@@ -1441,7 +1462,8 @@
             // Add relationship points for breeding
             addRelationshipPoints(pet1.id, pet2.id, 15);
 
-            // Sync and save
+            // Sync active pet to array first (preserves any stat changes), then re-read
+            syncActivePetToArray();
             gameState.pet = gameState.pets[gameState.activePetIndex];
             saveGame();
 
@@ -1502,7 +1524,9 @@
 
             // Generate unique ID
             if (typeof gameState.nextPetId !== 'number' || isNaN(gameState.nextPetId)) {
-                gameState.nextPetId = (gameState.pets ? gameState.pets.length : 0) + 1;
+                let maxId = 0;
+                if (gameState.pets) gameState.pets.forEach(p => { if (p && typeof p.id === 'number' && p.id > maxId) maxId = p.id; });
+                gameState.nextPetId = maxId + 1;
             }
             const petId = gameState.nextPetId;
             gameState.nextPetId = petId + 1;
@@ -1570,10 +1594,13 @@
         // Get all adult pets eligible for breeding
         function getBreedablePets() {
             if (!gameState.pets) return [];
-            return gameState.pets.filter(p => p && canBreed(p).eligible).map((p, idx) => ({
-                pet: p,
-                index: gameState.pets.indexOf(p)
-            }));
+            const result = [];
+            gameState.pets.forEach((p, idx) => {
+                if (p && canBreed(p).eligible) {
+                    result.push({ pet: p, index: idx });
+                }
+            });
+            return result;
         }
 
         function getMood(pet) {
@@ -2643,8 +2670,9 @@
                     // Calculate remaining time for countdown
                     const totalTicksNeeded = effectiveGrowTime * 3;
                     const ticksRemaining = Math.max(0, totalTicksNeeded - plot.growTicks);
-                    const ticksPerMinute = plot.watered ? 2 : 1;
-                    const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining / ticksPerMinute);
+                    // Water dries after each tick, so only the next tick benefits from watering
+                    const effectiveTickRate = plot.watered ? ((ticksRemaining > 1) ? (1 + 1 / ticksRemaining) : 2) : 1;
+                    const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining / effectiveTickRate);
                     const timerText = isReady ? '' : (minsRemaining > 0 ? `~${minsRemaining}m left` : 'Almost...');
 
                     // Simplified: emoji + progress bar + one status line
@@ -2819,6 +2847,7 @@
 
         function startDecayTimer() {
             if (decayInterval) clearInterval(decayInterval);
+            lastDecayAnnouncement = 0;
 
             // Decrease needs every 30 seconds (gentle for young children)
             decayInterval = setInterval(() => {
@@ -3195,10 +3224,9 @@
                             gameState.activePetIndex = saved.activePetIndex || 0;
                             gameState.pet = gameState.pets[gameState.activePetIndex];
                         } else {
-                            gameState.pet.hunger = saved.pet.hunger;
-                            gameState.pet.cleanliness = saved.pet.cleanliness;
-                            gameState.pet.happiness = saved.pet.happiness;
-                            gameState.pet.energy = saved.pet.energy;
+                            // Restore all pet fields from the loaded save to avoid
+                            // losing careActions, neglectCount, careQuality, etc.
+                            Object.assign(gameState.pet, saved.pet);
                         }
 
                         // Restore garden state (growth may have happened while away)
