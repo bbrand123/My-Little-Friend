@@ -83,6 +83,7 @@
         // Track neglect tick counters per pet (keyed by pet id) — kept out of
         // the pet object so they don't get serialized into the save file.
         const _neglectTickCounters = {};
+        let _lastAnnouncedTimeOfDay = null;
 
         // ==================== HAPTIC FEEDBACK ====================
         // Short vibration on supported mobile devices for tactile satisfaction
@@ -728,6 +729,8 @@
             addJournalEntry('🌅', `${pet.name || 'Pet'} retired to the Hall of Fame. ${getMemorialTitle(pet)}`);
             saveGame();
 
+            announce(`${pet.name || 'Pet'} has been retired to the Hall of Fame. Thank you for the memories!`, true);
+
             return { success: true, memorial: memorial };
         }
 
@@ -816,6 +819,7 @@
                 console.log('Could not save game:', e);
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
                     showToast('Storage full! Progress may not be saved.', '#EF5350');
+                    announce('Warning: Storage full. Your progress may not be saved.', true);
                     showSaveIndicator(true);
                 }
             }
@@ -1215,15 +1219,90 @@
                     return parsed;
                 }
             } catch (e) {
-                console.log('Could not load game:', e);
-                // Clear corrupted data
-                try {
-                    localStorage.removeItem('petCareBuddy');
-                } catch (clearError) {
-                    // Ignore clear errors
-                }
+                console.log('Failed to load game:', e);
+                // Show recovery dialog instead of silently failing
+                _loadError = e;
             }
             return null;
+        }
+
+        let _loadError = null;
+        function showSaveRecoveryDialog() {
+            if (!_loadError) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.setAttribute('role', 'alertdialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Save data corrupted');
+            overlay.innerHTML = `
+                <div class="modal-content" style="max-width:320px;text-align:center;">
+                    <h2 style="margin-bottom:12px;">Save Data Issue</h2>
+                    <p style="margin-bottom:16px;font-size:0.9rem;">Your save data appears to be corrupted. You can try to start fresh or attempt to keep playing.</p>
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button id="recovery-fresh" style="padding:10px 18px;border:none;border-radius:8px;background:#EF5350;color:white;cursor:pointer;font-weight:600;font-family:inherit;">Start Fresh</button>
+                        <button id="recovery-dismiss" style="padding:10px 18px;border:1px solid #ccc;border-radius:8px;background:white;cursor:pointer;font-weight:600;font-family:inherit;">Dismiss</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            document.getElementById('recovery-fresh').addEventListener('click', () => {
+                try { localStorage.removeItem('petCareBuddy'); } catch(e) {}
+                overlay.remove();
+                location.reload();
+            });
+            document.getElementById('recovery-dismiss').addEventListener('click', () => {
+                overlay.remove();
+            });
+            announce('Save data may be corrupted. A recovery dialog is available.', true);
+        }
+
+        // ==================== SAVE EXPORT/IMPORT (Item 47) ====================
+        function exportSaveData() {
+            try {
+                syncActivePetToArray();
+                const data = JSON.stringify(gameState, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pet-care-buddy-save-${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Save data exported!', '#66BB6A');
+                announce('Save data exported successfully.');
+            } catch (e) {
+                showToast('Export failed: ' + e.message, '#EF5350');
+            }
+        }
+
+        function importSaveData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = JSON.parse(evt.target.result);
+                        if (!data || typeof data !== 'object' || !data.phase) {
+                            showToast('Invalid save file!', '#EF5350');
+                            return;
+                        }
+                        localStorage.setItem('petCareBuddy', JSON.stringify(data));
+                        showToast('Save data imported! Reloading...', '#66BB6A');
+                        announce('Save data imported. The game will reload.', true);
+                        setTimeout(() => location.reload(), 1500);
+                    } catch (err) {
+                        showToast('Failed to import: invalid file format', '#EF5350');
+                    }
+                };
+                reader.readAsText(file);
+            });
+            input.click();
         }
 
         // ==================== PET CREATION ====================
@@ -1753,6 +1832,7 @@
                 if (egg.incubationTicks >= egg.incubationTarget) {
                     hatched.push(egg);
                     gameState.breedingEggs.splice(i, 1);
+                    announce('A breeding egg is ready to hatch!', true);
                 }
             }
 
@@ -2024,6 +2104,11 @@
                     addJournalEntry('🎉', `${petName} grew to ${stageLabel} stage!`);
                 }
 
+                // Announce growth stage transition (Item 25)
+                const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                const stageLabel = GROWTH_STAGES[currentStage]?.label || currentStage;
+                announce(`${petName} has grown to the ${stageLabel} stage!`, true);
+
                 // Update adults raised counter
                 if (currentStage === 'adult') {
                     gameState.adultsRaised = (gameState.adultsRaised || 0) + 1;
@@ -2121,6 +2206,7 @@
                     trackWeather();
                     const weatherData = WEATHER_TYPES[newWeather];
                     showToast(`${weatherData.icon} Weather changed to ${weatherData.name}!`, newWeather === 'sunny' ? '#FFD700' : newWeather === 'rainy' ? '#64B5F6' : '#B0BEC5');
+                    announce(`Weather changed to ${weatherData.name}.`);
                     updateWeatherDisplay();
                     updatePetMood();
                 }
@@ -3317,6 +3403,13 @@
                         gameState.timeOfDay = newTimeOfDay;
                         updateDayNightDisplay();
 
+                        // Announce time-of-day changes (Item 24)
+                        if (_lastAnnouncedTimeOfDay && gameState.timeOfDay !== _lastAnnouncedTimeOfDay) {
+                            const timeLabels = { day: 'Daytime', sunset: 'Evening', night: 'Nighttime', sunrise: 'Sunrise' };
+                            announce(`Time changed to ${timeLabels[gameState.timeOfDay] || gameState.timeOfDay}.`);
+                        }
+                        _lastAnnouncedTimeOfDay = gameState.timeOfDay;
+
                         // Morning energy boost when transitioning to sunrise
                         if (newTimeOfDay === 'sunrise' && previousTime === 'night') {
                             pet.energy = clamp(pet.energy + 15, 0, 100);
@@ -3826,6 +3919,30 @@
 
         // Start the game when page loads
         document.addEventListener('DOMContentLoaded', init);
+
+        // ==================== OFFLINE INDICATOR (Item 42) ====================
+        function updateOnlineStatus() {
+            let indicator = document.getElementById('offline-indicator');
+            if (!navigator.onLine) {
+                if (!indicator) {
+                    indicator = document.createElement('div');
+                    indicator.id = 'offline-indicator';
+                    indicator.className = 'offline-indicator';
+                    indicator.setAttribute('role', 'status');
+                    indicator.setAttribute('aria-live', 'assertive');
+                    indicator.textContent = 'You are offline — progress is saved locally';
+                    document.body.appendChild(indicator);
+                }
+                announce('You are now offline. Progress will be saved locally.', true);
+            } else if (indicator) {
+                indicator.classList.add('online');
+                indicator.textContent = 'Back online!';
+                announce('You are back online.');
+                setTimeout(() => { if (indicator.parentNode) indicator.remove(); }, 2500);
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
 
         // Save and cleanup on page unload
         window.addEventListener('beforeunload', () => {
