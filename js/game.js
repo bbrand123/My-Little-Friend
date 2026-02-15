@@ -292,6 +292,12 @@
             // Keep aria-valuenow in sync so screen readers report current wellness
             const bar = fill.parentElement;
             if (bar) bar.setAttribute('aria-valuenow', w);
+            // Update numeric percentage (Item 20)
+            const pctEl = document.getElementById('wellness-pct');
+            if (pctEl) {
+                pctEl.textContent = w + '%';
+                pctEl.style.color = val.style.color;
+            }
         }
 
         let _announceQueue = [];
@@ -667,12 +673,36 @@
                 localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
                 if (offlineChanges) gameState._offlineChanges = offlineChanges;
                 if (completionCounted && gameState.dailyChecklist) gameState.dailyChecklist._completionCounted = completionCounted;
+                // Show save indicator (Item 22)
+                showSaveIndicator();
             } catch (e) {
                 console.log('Could not save game:', e);
                 if (e.name === 'QuotaExceededError' || e.code === 22) {
                     showToast('Storage full! Progress may not be saved.', '#EF5350');
+                    showSaveIndicator(true);
                 }
             }
+        }
+
+        // Visual save indicator (Item 22)
+        let _saveIndicatorTimer = null;
+        function showSaveIndicator(isError) {
+            let indicator = document.getElementById('save-indicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'save-indicator';
+                indicator.className = 'save-indicator';
+                indicator.setAttribute('role', 'status');
+                indicator.setAttribute('aria-live', 'polite');
+                document.body.appendChild(indicator);
+            }
+            indicator.textContent = isError ? '⚠ Save failed' : '✓ Saved';
+            indicator.classList.toggle('error', !!isError);
+            indicator.classList.add('visible');
+            if (_saveIndicatorTimer) clearTimeout(_saveIndicatorTimer);
+            _saveIndicatorTimer = setTimeout(() => {
+                indicator.classList.remove('visible');
+            }, 1500);
         }
 
         function loadGame() {
@@ -2705,7 +2735,7 @@
                 });
                 inventoryHTML = `
                     <div class="garden-inventory">
-                        <strong><span aria-hidden="true">🧺</span> Harvested Food:</strong> <span style="font-size:0.65rem;color:#888;">(tap to feed pet)</span>
+                        <strong><span aria-hidden="true">🧺</span> Harvested Food:</strong> <span style="font-size:0.75rem;color:#888;">(tap to feed pet)</span>
                         <div class="garden-inventory-items">${itemsHTML}</div>
                     </div>
                 `;

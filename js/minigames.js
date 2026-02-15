@@ -10,12 +10,12 @@
         }
 
         const MINI_GAMES = [
-            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet! Click or press Enter to throw.' },
-            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats! Use keyboard (Tab + Enter) or pointer.' },
-            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time! Best with pointer; keyboard possible.' },
-            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs! Use keyboard or click.' },
-            { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds! Use keyboard or click.' },
-            { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Requires pointer (mouse or touch).' }
+            { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet! Click or press Enter to throw.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
+            { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats! Use keyboard (Tab + Enter) or pointer.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
+            { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time! Use pointer or Tab to navigate bubbles.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab to bubbles, Enter to pop' },
+            { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs! Use keyboard or click.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
+            { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds! Use keyboard or click.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
+            { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Use pointer or keyboard.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab to regions, Enter to color' }
         ];
 
         // ==================== CELEBRATION EFFECTS ====================
@@ -149,12 +149,23 @@
                     historyHTML = `<span class="minigame-card-history">Recent: ${historyItems}</span>`;
                 }
                 const plays = playCounts[game.id] || 0;
-                const difficultyHTML = plays > 0 ? `<span class="minigame-card-difficulty" title="Difficulty increases with each play">Difficulty: ${Math.min(plays, 10)}/10</span>` : '';
+                const diffLevel = Math.min(plays, 10);
+                let difficultyHTML = '';
+                if (plays > 0) {
+                    const pips = Array.from({length: 10}, (_, i) => {
+                        const filled = i < diffLevel;
+                        const high = filled && diffLevel >= 7;
+                        return `<span class="difficulty-pip${filled ? ' filled' : ''}${high ? ' high' : ''}"></span>`;
+                    }).join('');
+                    difficultyHTML = `<div class="minigame-difficulty-meter" id="diff-${game.id}" aria-label="Difficulty ${diffLevel} of 10"><span class="difficulty-label">Difficulty:</span><div class="difficulty-bar">${pips}</div></div>`;
+                }
+                const a11yNoteHTML = game.a11yNote ? `<div class="minigame-a11y-note"><span class="a11y-icon" aria-hidden="true">⌨️</span> ${game.a11yNote}</div>` : '';
                 cardsHTML += `
-                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name}${best ? ', best: ' + best : ''}${plays > 0 ? ', difficulty ' + Math.min(plays, 10) + ' of 10' : ''}">
+                    <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name}${best ? ', best: ' + best : ''}${plays > 0 ? ', difficulty ' + diffLevel + ' of 10' : ''}"${plays > 0 ? ` aria-describedby="diff-${game.id}"` : ''}>
                         <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
                         <span class="minigame-card-name">${game.name}</span>
                         <span class="minigame-card-desc">${game.description}</span>
+                        ${a11yNoteHTML}
                         ${bestHTML}
                         ${difficultyHTML}
                         ${historyHTML}
@@ -288,7 +299,7 @@
                             ${generatePetSVG(pet, mood)}
                         </div>
                     </div>
-                    <p class="fetch-instruction" id="fetch-instruction">Click the field or press Enter to throw the ball!</p>
+                    <p class="fetch-instruction" id="fetch-instruction" aria-live="polite">Click the field or press Enter to throw the ball!</p>
                     <div class="fetch-buttons">
                         <button class="fetch-throw-btn" id="fetch-throw-btn">🎾 Throw!</button>
                         <button class="fetch-done-btn" id="fetch-done-btn">Done</button>
@@ -662,7 +673,7 @@
                             ${generatePetSVG(pet, mood)}
                         </div>
                     </div>
-                    <p class="hideseek-instruction" id="hideseek-instruction">Click or tap objects to find the hidden treats!</p>
+                    <p class="hideseek-instruction" id="hideseek-instruction" aria-live="polite">Click or tap objects to find the hidden treats!</p>
                     <div class="hideseek-buttons">
                         <button class="hideseek-done-btn" id="hideseek-done-btn">Done</button>
                     </div>
@@ -986,7 +997,7 @@
                         <div class="bubblepop-suds"></div>
                         <div class="bubblepop-pet" id="bubblepop-pet">${petSVG}</div>
                     </div>
-                    <p class="bubblepop-instruction" id="bubblepop-instruction">Click or tap the bubbles to pop them!</p>
+                    <p class="bubblepop-instruction" id="bubblepop-instruction" aria-live="polite">Click or tap the bubbles to pop them! Use Tab to navigate between bubbles.</p>
                     <div class="bubblepop-buttons">
                         <button class="bubblepop-done-btn" id="bubblepop-done" aria-label="Stop playing Bubble Pop">Done</button>
                     </div>
@@ -995,7 +1006,7 @@
 
             document.body.appendChild(overlay);
 
-            // Delegated event handlers on the field for bubble clicks/keyboard
+            // Delegated event handlers on the field for bubble clicks/keyboard (Item 3 - keyboard accessible)
             const field = overlay.querySelector('#bubblepop-field');
             if (field) {
                 field.addEventListener('click', (e) => {
@@ -1012,6 +1023,17 @@
                             e.preventDefault();
                             popBubble(bubble);
                         }
+                    }
+                    // Arrow key navigation between bubbles
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const bubbles = Array.from(field.querySelectorAll('.bubblepop-bubble:not(.popping)'));
+                        if (bubbles.length === 0) return;
+                        const current = document.activeElement;
+                        const idx = bubbles.indexOf(current);
+                        const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+                        const next = forward ? bubbles[(idx + 1) % bubbles.length] : bubbles[(idx - 1 + bubbles.length) % bubbles.length];
+                        if (next) next.focus();
                     }
                 });
             }
@@ -1734,7 +1756,7 @@
                             <div class="simonsays-center-pet" id="simon-pet">${petSVG}</div>
                         </div>
                     </div>
-                    <p class="simonsays-instruction watching" id="simon-instruction">Watch the pattern...</p>
+                    <p class="simonsays-instruction watching" id="simon-instruction" aria-live="polite">Watch the pattern...</p>
                     <div class="simonsays-buttons">
                         <button class="simonsays-done-btn" id="simon-done" aria-label="Stop playing Simon Says">Done</button>
                     </div>
@@ -2049,7 +2071,7 @@
             overlay.innerHTML = `
                 <div class="coloring-game">
                     <h2 class="coloring-game-title">🎨 Coloring Time!</h2>
-                    <p class="coloring-game-hint" id="coloring-hint">Pick a color, then click or tap to paint!</p>
+                    <p class="coloring-game-hint" id="coloring-hint" aria-live="polite">Pick a color, then click or tap to paint! Use Tab to move between regions.</p>
                     <div class="coloring-canvas-wrap">
                         ${scene}
                     </div>
@@ -2118,12 +2140,32 @@
                 });
             });
 
-            // Palette click listeners
+            // Palette click/keyboard listeners (Item 2 - keyboard accessible)
             overlay.querySelectorAll('.coloring-swatch').forEach(swatch => {
-                swatch.addEventListener('click', () => {
+                function selectSwatch() {
                     coloringState.selectedColor = swatch.getAttribute('data-color');
                     overlay.querySelectorAll('.coloring-swatch').forEach(s => s.classList.remove('selected'));
                     swatch.classList.add('selected');
+                    announce('Selected color: ' + (swatch.getAttribute('aria-label') || 'color'));
+                }
+                swatch.addEventListener('click', selectSwatch);
+                swatch.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectSwatch();
+                    }
+                    // Arrow key navigation between swatches
+                    const swatches = Array.from(overlay.querySelectorAll('.coloring-swatch'));
+                    const idx = swatches.indexOf(swatch);
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const next = swatches[(idx + 1) % swatches.length];
+                        next.focus();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const prev = swatches[(idx - 1 + swatches.length) % swatches.length];
+                        prev.focus();
+                    }
                 });
             });
 

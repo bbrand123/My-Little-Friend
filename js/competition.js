@@ -162,10 +162,10 @@
                         <div class="battle-log" id="battle-log" aria-live="polite"></div>
                         <div class="battle-moves" id="battle-moves">
                             ${Object.entries(BATTLE_MOVES).map(([id, move]) => `
-                                <button class="battle-move-btn" data-move="${id}" ${battleOver ? 'disabled' : ''}>
+                                <button class="battle-move-btn" data-move="${id}" ${battleOver ? 'disabled' : ''} aria-describedby="move-desc-${id}" aria-label="${move.name}: ${move.description}">
                                     <span class="battle-move-emoji" aria-hidden="true">${move.emoji}</span>
                                     <span class="battle-move-name">${move.name}</span>
-                                    <span class="battle-move-desc">${move.description}</span>
+                                    <span class="battle-move-desc" id="move-desc-${id}">${move.description}</span>
                                 </button>
                             `).join('')}
                         </div>
@@ -246,12 +246,16 @@
                     logMessage(`${petName} uses ${move.name}! Deals ${dmg} damage!`);
                 }
 
+                // Announce HP changes (Item 4)
+                announce(`${petName}: ${playerHP} of ${playerMaxHP} HP. ${oppName}: ${oppHP} of ${oppMaxHP} HP.`);
+
                 // Check if opponent fainted
                 if (oppHP <= 0) {
                     battleOver = true;
                     renderBattle();
                     restoreBattleLog();
                     logMessage(`${oppName} is defeated! You win!`);
+                    announce(`${oppName} is defeated! You win!`, true);
                     endBattle(true);
                     return;
                 }
@@ -267,12 +271,16 @@
                     logMessage(`${oppName} uses ${aiMove.name}! Deals ${aiDmg} damage!`);
                 }
 
+                // Announce updated HP after AI turn (Item 4)
+                announce(`${petName}: ${playerHP} of ${playerMaxHP} HP. ${oppName}: ${oppHP} of ${oppMaxHP} HP.`);
+
                 // Check if player fainted
                 if (playerHP <= 0) {
                     battleOver = true;
                     renderBattle();
                     restoreBattleLog();
                     logMessage(`${petName} is defeated! You lose...`);
+                    announce(`${petName} is defeated! You lose.`, true);
                     endBattle(false);
                     return;
                 }

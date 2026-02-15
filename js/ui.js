@@ -666,31 +666,31 @@
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
                     <div class="top-action-buttons" role="group" aria-label="Top actions">
                         <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" title="Codex" aria-label="Codex">
-                            <span class="top-action-btn-icon">📖</span>
+                            <span class="top-action-btn-icon" aria-hidden="true">📖</span>
                         </button>
                         <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" title="Stats" aria-label="Stats">
-                            <span class="top-action-btn-icon">📊</span>
+                            <span class="top-action-btn-icon" aria-hidden="true">📊</span>
                         </button>
-                        <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements (${getAchievementCount()}/${Object.keys(ACHIEVEMENTS).length})">
-                            <span class="top-action-btn-icon">🏆</span>
-                            ${getAchievementCount() > 0 ? `<span class="achievement-count-badge">${getAchievementCount()}</span>` : ''}
+                        <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements: ${getAchievementCount()} of ${Object.keys(ACHIEVEMENTS).length} unlocked">
+                            <span class="top-action-btn-icon" aria-hidden="true">🏆</span>
+                            ${getAchievementCount() > 0 ? `<span class="achievement-count-badge" aria-hidden="true">${getAchievementCount()}</span>` : ''}
                         </button>
-                        <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks">
-                            <span class="top-action-btn-icon">📋</span>
-                            ${isDailyComplete() ? '<span class="daily-complete-badge">✓</span>' : ''}
+                        <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks${isDailyComplete() ? ' (all complete)' : ''}">
+                            <span class="top-action-btn-icon" aria-hidden="true">📋</span>
+                            ${isDailyComplete() ? '<span class="daily-complete-badge" aria-hidden="true">✓</span>' : ''}
                         </button>
-                        <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards (${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies)">
-                            <span class="top-action-btn-icon">🎁</span>
-                            ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge">!</span>' : ''}
+                        <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards: ${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? ', unclaimed streak bonus' : ''}">
+                            <span class="top-action-btn-icon" aria-hidden="true">🎁</span>
+                            ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge" aria-hidden="true">!</span>' : ''}
                         </button>
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
-                            <span class="top-action-btn-icon">🛋️</span>
+                            <span class="top-action-btn-icon" aria-hidden="true">🛋️</span>
                         </button>
                         <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
-                            <span class="top-action-btn-icon">🔔</span>
+                            <span class="top-action-btn-icon" aria-hidden="true">🔔</span>
                         </button>
                         <button class="top-action-btn" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">
-                            <span class="top-action-btn-icon">⚙️</span>
+                            <span class="top-action-btn-icon" aria-hidden="true">⚙️</span>
                         </button>
                     </div>
                 </div>
@@ -810,9 +810,10 @@
                     <div class="wellness-bar-header">
                         <span class="wellness-bar-label">Overall Wellness</span>
                         <span class="wellness-bar-value" id="wellness-value">${getWellnessLabel(pet)}</span>
+                        <span class="wellness-bar-pct" id="wellness-pct">${getWellnessPercent(pet)}%</span>
                     </div>
-                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness" aria-valuenow="${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}" aria-valuemin="0" aria-valuemax="100">
-                        <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${Math.round((pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4)}%;"></div>
+                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness: ${getWellnessPercent(pet)} percent" aria-valuenow="${getWellnessPercent(pet)}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${getWellnessPercent(pet)}%;"></div>
                     </div>
                 </div>
 
@@ -871,6 +872,20 @@
 
                 <div class="section-divider"></div>
 
+                ${(() => {
+                    const stats = [pet.hunger, pet.cleanliness, pet.happiness, pet.energy];
+                    const allLow = stats.every(s => s < 25);
+                    const lowestIdx = stats.indexOf(Math.min(...stats));
+                    const urgentLabels = ['Feed', 'Wash', 'Play', 'Sleep'];
+                    const urgentActions = ['feed', 'wash', 'play', 'sleep'];
+                    const urgentIcons = ['🍎', '🛁', '⚽', '🛏️'];
+                    if (allLow) {
+                        return `<button class="emergency-care-btn" id="emergency-care-btn" aria-label="Emergency care: ${urgentLabels[lowestIdx]} your pet now">
+                            <span aria-hidden="true">🚨</span> Care Now: ${urgentIcons[lowestIdx]} ${urgentLabels[lowestIdx]}
+                        </button>`;
+                    }
+                    return '';
+                })()}
 
                 <section class="actions-section" aria-label="Care actions">
                     <div class="action-group">
@@ -886,6 +901,7 @@
                                 ${cropBadge}
                                 ${getRoomBonusBadge('feed', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">1</span>
                             </button>`;
                             })()}
                             <button class="action-btn wash ${getRoomBonusBadge('wash', currentRoom) ? 'has-room-bonus' : ''}" id="wash-btn">
@@ -894,6 +910,7 @@
                                 <span>Wash</span>
                                 ${getRoomBonusBadge('wash', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">2</span>
                             </button>
                             <button class="action-btn sleep ${getRoomBonusBadge('sleep', currentRoom) ? 'has-room-bonus' : ''}" id="sleep-btn">
                                 <span class="action-btn-tooltip">+Energy</span>
@@ -901,12 +918,14 @@
                                 <span>Sleep</span>
                                 ${getRoomBonusBadge('sleep', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">4</span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">5</span>
                             </button>
                             <button class="action-btn play ${getRoomBonusBadge('play', currentRoom) ? 'has-room-bonus' : ''}" id="play-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
@@ -914,23 +933,27 @@
                                 <span>Play</span>
                                 ${getRoomBonusBadge('play', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">3</span>
                             </button>
                             <button class="action-btn treat" id="treat-btn">
                                 <span class="action-btn-tooltip">+Food, +Happy</span>
                                 <span class="btn-icon" aria-hidden="true">🍪</span>
                                 <span>Treat</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">6</span>
                             </button>
                             <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
                                 <span class="action-btn-tooltip">+Happy, +XP</span>
                                 <span class="btn-icon" aria-hidden="true">🎮</span>
                                 <span>Games</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">7</span>
                             </button>
                             <button class="action-btn competition" id="competition-btn" aria-haspopup="dialog">
                                 <span class="action-btn-tooltip">Battles & Shows</span>
                                 <span class="btn-icon" aria-hidden="true">🏟️</span>
                                 <span>Arena</span>
+                                <span class="kbd-hint" aria-hidden="true">8</span>
                             </button>
                         </div>
                     </div>
@@ -997,6 +1020,18 @@
             `;
 
             // Add event listeners
+            // Emergency care button
+            const emergencyCareBtn = document.getElementById('emergency-care-btn');
+            if (emergencyCareBtn) {
+                emergencyCareBtn.addEventListener('click', () => {
+                    const pet = gameState.pet;
+                    if (!pet) return;
+                    const stats = [pet.hunger, pet.cleanliness, pet.happiness, pet.energy];
+                    const lowestIdx = stats.indexOf(Math.min(...stats));
+                    const urgentActions = ['feed', 'wash', 'play', 'sleep'];
+                    careAction(urgentActions[lowestIdx]);
+                });
+            }
             document.getElementById('feed-btn').addEventListener('click', () => careAction('feed'));
             document.getElementById('wash-btn').addEventListener('click', () => careAction('wash'));
             document.getElementById('play-btn').addEventListener('click', () => careAction('play'));
@@ -1010,14 +1045,18 @@
                 if (typeof openMiniGamesMenu === 'function') {
                     openMiniGamesMenu();
                 } else {
+                    const loader = typeof showLoadingOverlay === 'function' ? showLoadingOverlay('Loading mini-games...') : null;
                     showToast('Mini-games are still loading. Try again in a moment.', '#FFA726');
+                    setTimeout(() => { if (loader) loader.remove(); }, 2000);
                 }
             });
             document.getElementById('competition-btn').addEventListener('click', () => {
                 if (typeof openCompetitionHub === 'function') {
                     openCompetitionHub();
                 } else {
+                    const loader = typeof showLoadingOverlay === 'function' ? showLoadingOverlay('Loading competitions...') : null;
                     showToast('Competition features are still loading. Try again in a moment.', '#FFA726');
+                    setTimeout(() => { if (loader) loader.remove(); }, 2000);
                 }
             });
             document.getElementById('seasonal-btn').addEventListener('click', () => {
@@ -1281,6 +1320,8 @@
             function closeHistory() {
                 popModalEscape(closeHistory);
                 overlay.remove();
+                const trigger = document.getElementById('notif-history-btn');
+                if (trigger) trigger.focus();
             }
             overlay.querySelector('#notif-history-close').addEventListener('click', closeHistory);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHistory(); });
@@ -3291,9 +3332,45 @@
                 });
             }
 
-            // Start over - full reset
+            // Start over - full reset with confirmation
             confirmBtn.addEventListener('click', () => {
-                closeModal();
+                // Show confirmation dialog (Item 21)
+                const confirmOverlay = document.createElement('div');
+                confirmOverlay.className = 'modal-overlay';
+                confirmOverlay.setAttribute('role', 'alertdialog');
+                confirmOverlay.setAttribute('aria-modal', 'true');
+                confirmOverlay.setAttribute('aria-label', 'Confirm start over');
+                confirmOverlay.innerHTML = `
+                    <div class="modal-content">
+                        <h2 class="modal-title">Are you sure?</h2>
+                        <div class="confirm-dialog-warning">
+                            <span aria-hidden="true">⚠️</span>
+                            <span>This will reset your pet and progress. Achievements, scores, and furniture are kept.</span>
+                        </div>
+                        <div class="modal-buttons modal-buttons-col">
+                            <button class="modal-btn cancel" id="confirm-cancel">Go Back</button>
+                            <button class="modal-btn confirm confirm-danger-btn" id="confirm-reset">Yes, Start Over</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(confirmOverlay);
+                const cancelConfirm = confirmOverlay.querySelector('#confirm-cancel');
+                const resetConfirm = confirmOverlay.querySelector('#confirm-reset');
+                cancelConfirm.focus();
+                function closeConfirm() { confirmOverlay.remove(); popModalEscape(closeConfirm); }
+                cancelConfirm.addEventListener('click', closeConfirm);
+                confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverlay) closeConfirm(); });
+                pushModalEscape(closeConfirm);
+                trapFocus(confirmOverlay);
+                resetConfirm.addEventListener('click', () => {
+                    closeConfirm();
+                    closeModal();
+                    doStartOver();
+                });
+                return;
+            });
+
+            function doStartOver() {
                 cleanupAllMiniGames();
                 stopDecayTimer();
                 stopGardenGrowTimer();
@@ -3356,7 +3433,7 @@
                 saveGame();
                 announce('Starting fresh with a new egg!', true);
                 renderEggPhase();
-            });
+            }
 
             cancelBtn.addEventListener('click', closeAndCancel);
             modal.addEventListener('click', (e) => { if (e.target === modal) closeAndCancel(); });
@@ -3430,6 +3507,11 @@
                                 <div class="breeding-egg-progress-fill" style="width: ${progress}%"></div>
                             </div>
                             <div class="breeding-egg-status">${Math.round(progress)}% incubated ${egg.hasMutation ? '🌈' : ''} ${egg.isHybrid ? '🧬' : ''}</div>
+                            ${(() => {
+                                const remaining = 100 - progress;
+                                const estMins = Math.ceil(remaining * 0.5);
+                                return remaining > 0 ? `<div class="breeding-egg-timer"><span class="timer-icon" aria-hidden="true">⏱️</span> ~${estMins}m remaining</div>` : '';
+                            })()}
                             ${roomBonus ? `<div class="breeding-egg-room-bonus">${roomBonus.label}</div>` : ''}
                         </div>
                     </div>
@@ -3827,7 +3909,7 @@
                             aria-selected="${isActive}"
                             tabindex="${isActive ? '0' : '-1'}">
                         <span class="pet-tab-emoji">${petData.emoji}</span>
-                        <span class="pet-tab-name">${name}</span>
+                        <span class="pet-tab-name" title="${name}">${name}</span>
                         ${alertBadge}
                     </button>
                 `;
@@ -4196,6 +4278,8 @@
             function closeAch() {
                 popModalEscape(closeAch);
                 overlay.remove();
+                const trigger = document.getElementById('achievements-btn');
+                if (trigger) trigger.focus();
             }
 
             document.getElementById('achievements-close').focus();
@@ -4332,6 +4416,8 @@
             function closeBadges() {
                 popModalEscape(closeBadges);
                 overlay.remove();
+                const trigger = document.getElementById('rewards-btn');
+                if (trigger) trigger.focus();
             }
 
             document.getElementById('badges-close').focus();
@@ -4405,6 +4491,8 @@
             function closeStickerBook() {
                 popModalEscape(closeStickerBook);
                 overlay.remove();
+                const trigger = document.getElementById('rewards-btn');
+                if (trigger) trigger.focus();
             }
 
             document.getElementById('sticker-book-close').focus();
@@ -4480,6 +4568,8 @@
             function closeTrophyRoom() {
                 popModalEscape(closeTrophyRoom);
                 overlay.remove();
+                const trigger = document.getElementById('rewards-btn');
+                if (trigger) trigger.focus();
             }
 
             document.getElementById('trophy-room-close').focus();
@@ -4720,11 +4810,18 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                         </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🔤 Large Text</span>
+                            <button class="settings-toggle ${document.documentElement.getAttribute('data-text-size') === 'large' ? 'on' : ''}" id="setting-textsize" role="switch" aria-checked="${document.documentElement.getAttribute('data-text-size') === 'large'}" aria-label="Large Text">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
                     </div>
                     <div class="settings-keyboard-hints">
                         <h3 class="settings-hints-title">Keyboard Shortcuts</h3>
-                        <div class="settings-hint-row"><kbd>Tab</kbd> Navigate between buttons</div>
-                        <div class="settings-hint-row"><kbd>Enter</kbd> / <kbd>Space</kbd> Activate button</div>
+                        <div class="settings-hint-row"><kbd>1</kbd> Feed &nbsp; <kbd>2</kbd> Wash &nbsp; <kbd>3</kbd> Play &nbsp; <kbd>4</kbd> Sleep</div>
+                        <div class="settings-hint-row"><kbd>5</kbd> Pet &nbsp; <kbd>6</kbd> Treat &nbsp; <kbd>7</kbd> Games &nbsp; <kbd>8</kbd> Arena</div>
+                        <div class="settings-hint-row"><kbd>Tab</kbd> Navigate &nbsp; <kbd>Enter</kbd> / <kbd>Space</kbd> Activate</div>
                         <div class="settings-hint-row"><kbd>Escape</kbd> Close current dialog</div>
                     </div>
                     <button class="settings-close" id="settings-close">Close</button>
@@ -4781,9 +4878,19 @@
                 try { localStorage.setItem('petCareBuddy_ttsOff', isOn ? 'false' : 'true'); } catch (e) {}
             });
 
+            // Text size toggle (Item 30)
+            document.getElementById('setting-textsize').addEventListener('click', function() {
+                const isOn = this.classList.toggle('on');
+                this.setAttribute('aria-checked', String(isOn));
+                document.documentElement.setAttribute('data-text-size', isOn ? 'large' : 'normal');
+                try { localStorage.setItem('petCareBuddy_textSize', isOn ? 'large' : 'normal'); } catch (e) {}
+            });
+
             function closeSettings() {
                 popModalEscape(closeSettings);
                 overlay.remove();
+                const trigger = document.getElementById('settings-btn');
+                if (trigger) trigger.focus();
             }
 
             document.getElementById('settings-close').focus();
@@ -4835,3 +4942,143 @@
 
         // Ensure activation delegates are active even if render binding fails
         setupGlobalActivateDelegates();
+
+        // ==================== KEYBOARD SHORTCUTS (Item 24) ====================
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts when typing in an input or when a modal is open
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (document.querySelector('.modal-overlay, [role="dialog"]')) return;
+            if (gameState.phase !== 'pet') return;
+
+            const shortcuts = {
+                '1': 'feed-btn',
+                '2': 'wash-btn',
+                '3': 'play-btn',
+                '4': 'sleep-btn',
+                '5': 'pet-btn',
+                '6': 'treat-btn',
+                '7': 'minigames-btn',
+                '8': 'competition-btn'
+            };
+
+            if (shortcuts[e.key]) {
+                e.preventDefault();
+                const btn = document.getElementById(shortcuts[e.key]);
+                if (btn && !btn.disabled) btn.click();
+            }
+        });
+
+        // ==================== BUTTON PRESS FEEDBACK (Item 29) ====================
+        document.addEventListener('pointerdown', (e) => {
+            const btn = e.target.closest('.action-btn');
+            if (btn && !btn.disabled && !btn.classList.contains('cooldown')) {
+                btn.classList.add('btn-pressed');
+            }
+        });
+        document.addEventListener('pointerup', () => {
+            document.querySelectorAll('.action-btn.btn-pressed').forEach(b => b.classList.remove('btn-pressed'));
+        });
+        document.addEventListener('pointercancel', () => {
+            document.querySelectorAll('.action-btn.btn-pressed').forEach(b => b.classList.remove('btn-pressed'));
+        });
+
+        // ==================== TEXT SIZE RESTORE (Item 30) ====================
+        (function restoreTextSize() {
+            try {
+                const size = localStorage.getItem('petCareBuddy_textSize');
+                if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
+            } catch (e) {}
+        })();
+
+        // ==================== LOADING INDICATOR (Item 18) ====================
+        function showLoadingOverlay(message) {
+            const existing = document.querySelector('.loading-overlay-wrap');
+            if (existing) existing.remove();
+            const wrap = document.createElement('div');
+            wrap.className = 'loading-overlay-wrap';
+            wrap.setAttribute('role', 'status');
+            wrap.setAttribute('aria-live', 'polite');
+            wrap.innerHTML = `<div class="loading-overlay"><div class="loading-spinner"></div><span>${escapeHTML(message || 'Loading...')}</span></div>`;
+            document.body.appendChild(wrap);
+            return wrap;
+        }
+        function hideLoadingOverlay() {
+            const el = document.querySelector('.loading-overlay-wrap');
+            if (el) el.remove();
+        }
+
+        // ==================== FIRST-TIME TUTORIAL (Item 27) ====================
+        const TUTORIAL_STEPS = [
+            { title: 'Welcome!', text: 'Take care of your virtual pet by keeping it fed, clean, happy, and rested.', icon: '🐾' },
+            { title: 'Care Actions', text: 'Use the action buttons below your pet. Press 1-8 on your keyboard as shortcuts!', icon: '🍎' },
+            { title: 'Mini Games', text: 'Play games with your pet to boost happiness and earn rewards. Tap the Games button!', icon: '🎮' },
+            { title: 'Garden', text: 'Visit the Garden room to plant and harvest crops for feeding your pet.', icon: '🌱' },
+            { title: 'Competitions', text: 'Battle other pets, enter shows, and earn trophies in the Arena!', icon: '🏟️' },
+            { title: 'Dark Mode', text: 'Open Settings (gear icon) to toggle dark mode, large text, sounds, and more.', icon: '⚙️' }
+        ];
+
+        function showTutorial() {
+            if (localStorage.getItem('petCareBuddy_tutorialDone')) return;
+            let step = 0;
+
+            function renderStep() {
+                const existing = document.querySelector('.tutorial-overlay');
+                if (existing) existing.remove();
+
+                const overlay = document.createElement('div');
+                overlay.className = 'tutorial-overlay';
+                overlay.setAttribute('role', 'dialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.setAttribute('aria-label', 'Tutorial step ' + (step + 1));
+
+                const s = TUTORIAL_STEPS[step];
+                const dots = TUTORIAL_STEPS.map((_, i) =>
+                    `<span class="tutorial-dot ${i === step ? 'active' : ''}"></span>`
+                ).join('');
+
+                overlay.innerHTML = `
+                    <div class="tutorial-card">
+                        <div style="font-size:2rem;" aria-hidden="true">${s.icon}</div>
+                        <h3>${s.title}</h3>
+                        <p>${s.text}</p>
+                        <div class="tutorial-step-indicator">${dots}</div>
+                        <div class="tutorial-buttons">
+                            <button class="tutorial-btn secondary" id="tutorial-skip">Skip</button>
+                            <button class="tutorial-btn primary" id="tutorial-next">${step < TUTORIAL_STEPS.length - 1 ? 'Next' : 'Got it!'}</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                trapFocus(overlay);
+                overlay.querySelector('#tutorial-next').focus();
+
+                overlay.querySelector('#tutorial-skip').addEventListener('click', closeTutorial);
+                overlay.querySelector('#tutorial-next').addEventListener('click', () => {
+                    step++;
+                    if (step >= TUTORIAL_STEPS.length) {
+                        closeTutorial();
+                    } else {
+                        renderStep();
+                    }
+                });
+            }
+
+            function closeTutorial() {
+                const overlay = document.querySelector('.tutorial-overlay');
+                if (overlay) overlay.remove();
+                try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+            }
+
+            renderStep();
+        }
+
+        // Show tutorial on first pet phase render if not already shown
+        const _origRenderPetPhase = typeof renderPetPhase === 'function' ? renderPetPhase : null;
+        if (_origRenderPetPhase) {
+            // Defer tutorial check to after first render
+            setTimeout(() => {
+                if (gameState.phase === 'pet' && !localStorage.getItem('petCareBuddy_tutorialDone')) {
+                    showTutorial();
+                }
+            }, 2000);
+        }
