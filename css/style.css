@@ -1,3 +1,10 @@
+        /* Registered custom properties for animated stat bars */
+        @property --progress {
+            syntax: '<number>';
+            inherits: false;
+            initial-value: 50;
+        }
+
         /* CSS Reset and Base Styles */
         *, *::before, *::after {
             box-sizing: border-box;
@@ -500,7 +507,7 @@
             background: conic-gradient(var(--ring-color) calc(var(--progress) * 1%), #e0e0e0 0);
             mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
             -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
-            transition: background 0.5s ease;
+            transition: --progress 0.8s ease, background 0.5s ease;
         }
 
         .need-bubble-icon {
@@ -3528,6 +3535,32 @@
             z-index: var(--z-overlay-dialog);
             padding: 20px;
             animation: fadeIn 0.2s ease;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.modal-closing,
+        .naming-overlay.modal-closing,
+        .codex-overlay.modal-closing,
+        .stats-overlay.modal-closing,
+        .settings-overlay.modal-closing,
+        .rewards-hub-overlay.modal-closing,
+        .feed-menu-overlay.modal-closing,
+        .furniture-overlay.modal-closing,
+        .breeding-overlay.modal-closing,
+        .journal-overlay.modal-closing {
+            opacity: 0;
+        }
+        .modal-closing .modal-content,
+        .modal-closing .celebration-content,
+        .modal-closing .naming-modal,
+        .modal-closing .settings-modal,
+        .modal-closing .rewards-hub-modal,
+        .modal-closing .feed-menu,
+        .modal-closing .codex-modal,
+        .modal-closing .stats-modal,
+        .modal-closing .furniture-modal,
+        .modal-closing .journal-modal {
+            animation: modalClose 0.2s ease forwards;
         }
 
         .minigame-exit-modal {
@@ -3553,6 +3586,11 @@
         @keyframes modalPop {
             0% { transform: translateY(16px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes modalClose {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(12px) scale(0.95); opacity: 0; }
         }
 
         @keyframes statValueChange {
@@ -10282,4 +10320,433 @@
 .empty-state-text {
     font-size: 0.85rem;
     line-height: 1.4;
+}
+
+/* ==================== SEASONAL UI DECORATIONS ==================== */
+.seasonal-decor {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+/* Spring: flowers along bottom corners */
+.season-spring .seasonal-decor::before {
+    content: '🌸 🌷 🌼';
+    position: absolute;
+    bottom: 4px;
+    left: 8px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+.season-spring .seasonal-decor::after {
+    content: '🦋 🌸';
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    opacity: 0.6;
+    animation: seasonalButterfly 8s ease-in-out infinite;
+}
+@keyframes seasonalButterfly {
+    0%, 100% { transform: translateX(0) translateY(0); }
+    25% { transform: translateX(-8px) translateY(3px); }
+    50% { transform: translateX(-4px) translateY(-2px); }
+    75% { transform: translateX(4px) translateY(1px); }
+}
+
+/* Summer: sun and warmth */
+.season-summer .seasonal-decor::before {
+    content: '🌻 🍉';
+    position: absolute;
+    bottom: 4px;
+    left: 8px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+.season-summer .seasonal-decor::after {
+    content: '☀️';
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 1.1rem;
+    opacity: 0.5;
+    animation: seasonalSunPulse 4s ease-in-out infinite;
+}
+@keyframes seasonalSunPulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.15); opacity: 0.7; }
+}
+
+/* Autumn: falling leaves */
+.season-autumn .seasonal-decor::before {
+    content: '🍂 🍁 🎃';
+    position: absolute;
+    bottom: 4px;
+    left: 8px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+.season-autumn .seasonal-decor::after {
+    content: '🍁';
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 0.9rem;
+    opacity: 0.6;
+    animation: seasonalLeafFall 6s ease-in-out infinite;
+}
+@keyframes seasonalLeafFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+    50% { transform: translateY(15px) rotate(30deg) translateX(-8px); opacity: 0.8; }
+    100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+}
+
+/* Winter: snowflakes */
+.season-winter .seasonal-decor::before {
+    content: '❄️ ⛄ 🎄';
+    position: absolute;
+    bottom: 4px;
+    left: 8px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+.season-winter .seasonal-decor::after {
+    content: '❄️';
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 0.85rem;
+    opacity: 0.5;
+    animation: seasonalSnowDrift 5s ease-in-out infinite;
+}
+@keyframes seasonalSnowDrift {
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
+    50% { transform: translateY(10px) rotate(180deg); opacity: 0.8; }
+}
+
+/* Winter border frost effect */
+.season-winter {
+    box-shadow: inset 0 0 15px rgba(173, 216, 230, 0.3);
+}
+
+/* Spring border bloom effect */
+.season-spring {
+    box-shadow: inset 0 0 12px rgba(255, 182, 193, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .seasonal-decor::after { animation: none !important; }
+}
+
+/* ==================== SPECIES-SPECIFIC IDLE ANIMATIONS ==================== */
+.species-idle-effect {
+    position: absolute;
+    top: -10px;
+    right: -5px;
+    font-size: 1.2rem;
+    animation: speciesIdleFloat 2.5s ease-out forwards;
+    pointer-events: none;
+    z-index: 4;
+}
+@keyframes speciesIdleFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    15% { opacity: 1; transform: translateY(-5px) scale(1); }
+    70% { opacity: 1; transform: translateY(-20px) scale(1); }
+    100% { opacity: 0; transform: translateY(-30px) scale(0.7); }
+}
+
+/* Dog tail wag */
+.idle-species-wag .pet-svg {
+    animation: speciesWag 0.3s ease-in-out 4 alternate;
+}
+@keyframes speciesWag {
+    0% { transform: rotate(-2deg); }
+    100% { transform: rotate(2deg); }
+}
+
+/* Cat grooming */
+.idle-species-groom .pet-svg {
+    animation: speciesGroom 0.6s ease-in-out 2;
+}
+@keyframes speciesGroom {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(5deg) translateX(2px); }
+    75% { transform: rotate(-3deg) translateX(-1px); }
+}
+
+/* Bunny/bird/frog hop */
+.idle-species-hop .pet-svg {
+    animation: speciesHop 0.4s ease-in-out 3;
+}
+@keyframes speciesHop {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+/* Hamster spin */
+.idle-species-spin .pet-svg {
+    animation: speciesSpin 0.8s ease-in-out 2;
+}
+@keyframes speciesSpin {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(10deg) scale(1.05); }
+}
+
+/* Turtle stretch */
+.idle-species-stretch .pet-svg {
+    animation: speciesStretch 1.5s ease-in-out 1;
+}
+@keyframes speciesStretch {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(1.08) scaleY(0.95); }
+}
+
+/* Fish swim */
+.idle-species-swim .pet-svg {
+    animation: speciesSwim 0.5s ease-in-out 3;
+}
+@keyframes speciesSwim {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    25% { transform: translateX(3px) rotate(2deg); }
+    75% { transform: translateX(-3px) rotate(-2deg); }
+}
+
+/* Hedgehog snuffle */
+.idle-species-snuffle .pet-svg {
+    animation: speciesSnuffle 0.3s ease-in-out 4;
+}
+@keyframes speciesSnuffle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(2px) scaleY(0.97); }
+}
+
+/* Panda munch */
+.idle-species-munch .pet-svg {
+    animation: speciesMunch 0.4s ease-in-out 3;
+}
+@keyframes speciesMunch {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.95) scaleX(1.03); }
+}
+
+/* Penguin waddle */
+.idle-species-waddle .pet-svg {
+    animation: speciesWaddle 0.4s ease-in-out 4 alternate;
+}
+@keyframes speciesWaddle {
+    0% { transform: rotate(-4deg) translateX(-2px); }
+    100% { transform: rotate(4deg) translateX(2px); }
+}
+
+/* Unicorn sparkle */
+.idle-species-sparkle .pet-svg {
+    animation: speciesSparkle 1s ease-in-out 1;
+}
+@keyframes speciesSparkle {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2) drop-shadow(0 0 6px rgba(255,215,0,0.5)); }
+}
+
+/* Dragon puff */
+.idle-species-puff .pet-svg {
+    animation: speciesPuff 0.6s ease-in-out 2;
+}
+@keyframes speciesPuff {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.08); }
+    60% { transform: scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .species-idle-effect { animation: none !important; }
+    .idle-species-wag .pet-svg,
+    .idle-species-groom .pet-svg,
+    .idle-species-hop .pet-svg,
+    .idle-species-spin .pet-svg,
+    .idle-species-stretch .pet-svg,
+    .idle-species-swim .pet-svg,
+    .idle-species-snuffle .pet-svg,
+    .idle-species-munch .pet-svg,
+    .idle-species-waddle .pet-svg,
+    .idle-species-sparkle .pet-svg,
+    .idle-species-puff .pet-svg { animation: none !important; }
+}
+
+/* ==================== MOOD FACE INDICATOR ==================== */
+.mood-face {
+    display: inline-block;
+    font-size: 1.1em;
+    vertical-align: middle;
+    margin-left: 4px;
+    transition: transform 0.3s ease;
+    cursor: help;
+}
+.mood-face:hover {
+    transform: scale(1.3);
+}
+
+/* ==================== PET SPEECH BUBBLES ==================== */
+.speech-bubble {
+    position: absolute;
+    top: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border-radius: 16px;
+    padding: 6px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    z-index: 5;
+    animation: speechAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid #fff;
+}
+.speech-bubble .speech-text {
+    font-size: 0.8rem;
+    color: #444;
+    font-style: italic;
+}
+.speech-bubble-fade {
+    animation: speechFade 0.4s ease-out forwards;
+}
+@keyframes speechAppear {
+    0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.8); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes speechFade {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.8); }
+}
+[data-theme="dark"] .speech-bubble {
+    background: #2a2a4a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .speech-bubble::after {
+    border-top-color: #2a2a4a;
+}
+[data-theme="dark"] .speech-bubble .speech-text {
+    color: #ddd;
+}
+/* ==================== PET JOURNAL ==================== */
+.journal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-overlay-dialog);
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+    transition: opacity 0.2s ease;
+}
+.journal-modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--modal-padding);
+    max-width: 400px;
+    width: 100%;
+    box-shadow: var(--shadow-overlay);
+    animation: modalPop 0.3s ease;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+.journal-title {
+    font-size: var(--heading-md);
+    margin-bottom: 12px;
+    text-align: center;
+}
+.journal-entries {
+    overflow-y: auto;
+    max-height: 55vh;
+    flex: 1;
+    padding-right: 4px;
+}
+.journal-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.journal-entry:last-child {
+    border-bottom: none;
+}
+.journal-entry-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.journal-entry-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.journal-entry-text {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.3;
+}
+.journal-entry-time {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+}
+.journal-close {
+    margin-top: 12px;
+    padding: var(--btn-pad-md);
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #4ECDC4, #45B7AA);
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+.journal-close:hover,
+.journal-close:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+[data-theme="dark"] .journal-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+[data-theme="dark"] .journal-entry {
+    border-bottom-color: #3a3a5a;
+}
+[data-theme="dark"] .journal-entry-text {
+    color: #ddd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .speech-bubble { animation: none !important; }
+    .speech-bubble-fade { animation: none !important; opacity: 0; }
+    .modal-closing .modal-content,
+    .modal-closing .celebration-content { animation: none !important; }
 }

@@ -63,7 +63,8 @@
             totalBreedingHatches: 0,    // Total breeding eggs hatched
             totalHybridsCreated: 0,     // Total hybrid pets created
             totalMutations: 0,          // Total mutations occurred
-            hybridsDiscovered: {}       // { hybridType: true }
+            hybridsDiscovered: {},       // { hybridType: true }
+            journal: []                  // Array of { timestamp, icon, text } entries
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -338,6 +339,7 @@
                     if (ach.check(gameState)) {
                         gameState.achievements[id] = { unlocked: true, unlockedAt: Date.now() };
                         newUnlocks.push(ach);
+                        addJournalEntry('🏆', `Achievement unlocked: ${ach.name}!`);
                     }
                 } catch (e) { /* safe guard */ }
             }
@@ -660,6 +662,20 @@
 
         // ==================== SAVE/LOAD ====================
 
+        // ==================== PET JOURNAL ====================
+        function addJournalEntry(icon, text) {
+            if (!gameState.journal) gameState.journal = [];
+            gameState.journal.push({
+                timestamp: Date.now(),
+                icon: icon || '📝',
+                text: text || ''
+            });
+            // Keep journal to a reasonable size (last 100 entries)
+            if (gameState.journal.length > 100) {
+                gameState.journal = gameState.journal.slice(-100);
+            }
+        }
+
         function saveGame() {
             try {
                 // Sync active pet to pets array before saving
@@ -900,6 +916,7 @@
                     if (typeof parsed.totalHybridsCreated !== 'number') parsed.totalHybridsCreated = 0;
                     if (typeof parsed.totalMutations !== 'number') parsed.totalMutations = 0;
                     if (!parsed.hybridsDiscovered || typeof parsed.hybridsDiscovered !== 'object') parsed.hybridsDiscovered = {};
+                    if (!Array.isArray(parsed.journal)) parsed.journal = [];
 
                     // Strip transient _neglectTickCounter from pet objects (old saves)
                     parsed.pets.forEach(p => {
@@ -1482,6 +1499,9 @@
 
             // Track breeding stats
             gameState.totalBreedings = (gameState.totalBreedings || 0) + 1;
+            const p1Name = pet1.name || 'Pet';
+            const p2Name = pet2.name || 'Pet';
+            addJournalEntry('🥚', `${p1Name} and ${p2Name} are expecting! A breeding egg has appeared!`);
             if (actuallyMutated) gameState.totalMutations = (gameState.totalMutations || 0) + 1;
             if (typeResult.isHybrid) {
                 gameState.totalHybridsCreated = (gameState.totalHybridsCreated || 0) + 1;
@@ -1661,6 +1681,18 @@
             return 'sad';
         }
 
+        // Get mood face emoji for the mood indicator
+        function getMoodFaceEmoji(mood, pet) {
+            const avg = pet ? (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4 : 50;
+            if (mood === 'sleepy') return '😴';
+            if (mood === 'energetic') return '🤩';
+            if (avg >= 80) return '😁';
+            if (mood === 'happy') return '😊';
+            if (mood === 'neutral') return '😐';
+            if (avg < 20) return '😰';
+            return '😢';
+        }
+
         // Get time of day based on real time
         // Sunrise: 5:00 AM - 5:59 AM | Day: 6:00 AM - 6:00 PM | Sunset: 6:00 PM - 8:00 PM | Night: 8:00 PM - 4:59 AM
         function getTimeOfDay() {
@@ -1771,6 +1803,9 @@
                 if (currentStage !== 'baby') {
                     hapticBuzz(100);
                     showBirthdayCelebration(currentStage, pet);
+                    const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                    const stageLabel = GROWTH_STAGES[currentStage]?.label || currentStage;
+                    addJournalEntry('🎉', `${petName} grew to ${stageLabel} stage!`);
                 }
 
                 // Update adults raised counter
@@ -1824,6 +1859,7 @@
 
             // Show evolution celebration
             showEvolutionCelebration(pet, evolutionData);
+            addJournalEntry('✨', `${pet.name || 'Pet'} evolved into ${evolutionData.name}!`);
 
             saveGame();
             return true;
@@ -2298,6 +2334,11 @@
             // Track total harvests for progressive plot unlocking
             if (typeof garden.totalHarvests !== 'number') garden.totalHarvests = 0;
             garden.totalHarvests++;
+            if (garden.totalHarvests === 1) {
+                addJournalEntry('🌱', `Harvested first ${crop.name}!`);
+            } else if (garden.totalHarvests % 10 === 0) {
+                addJournalEntry('🌾', `Total harvests reached ${garden.totalHarvests}!`);
+            }
 
             // Track daily checklist progress for harvests
             if (typeof incrementDailyProgress === 'function') {

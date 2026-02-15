@@ -118,6 +118,13 @@
                     return;
                 }
 
+                const journalBtn = target.closest('#journal-btn');
+                if (journalBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(journalBtn, typeof showJournalModal === 'function' ? showJournalModal : null, event);
+                    return;
+                }
+
                 const notifHistBtn = target.closest('#notif-history-btn');
                 if (notifHistBtn) {
                     if (event.type === 'touchend') event.preventDefault();
@@ -316,6 +323,7 @@
             const mythicalNote = isMythical ? ' A mythical creature!' : '';
             const familyNote = gameState.pets.length > 1 ? ' Welcome to the family!' : '';
             announce(`Congratulations! You hatched a baby ${petData.name}! ${petData.emoji}${mythicalNote}${familyNote}`, true);
+            addJournalEntry(petData.emoji, `Hatched a new ${petData.name}! Welcome to the family!`);
 
             showNamingModal(petData);
         }
@@ -597,6 +605,140 @@
             </div>`;
         }
 
+        // ==================== PET SPEECH BUBBLES ====================
+        // Periodic speech/thought messages that make the pet feel alive
+        const PET_SPEECH = {
+            // Mood-based messages
+            happy: [
+                "I love you!", "This is the best!", "Let's play!", "So happy!",
+                "Yay!", "Life is great!", "Best day ever!", "You're the best!"
+            ],
+            neutral: [
+                "Hmm...", "What should we do?", "I wonder...", "Nice day.",
+                "La la la~", "Just chillin'.", "*looks around*"
+            ],
+            sad: [
+                "I miss you...", "Please stay...", "I'm lonely...",
+                "*sigh*", "Can we play?", "Hold me..."
+            ],
+            sleepy: [
+                "Zzz...", "So sleepy...", "*yawn*", "Bedtime?",
+                "Five more minutes...", "Zzz... zzz..."
+            ],
+            energetic: [
+                "Let's GO!", "I'm PUMPED!", "Can't stop!", "WOOO!",
+                "Race me!", "So much energy!", "Let's adventure!"
+            ],
+            // Species-specific messages
+            species: {
+                dog: ["Woof!", "Throw the ball!", "Walkies?!", "Who's a good boy?", "*tail wagging*", "Bark bark!"],
+                cat: ["Purrrr...", "*knocks thing off table*", "Pet me. Now.", "I own this place.", "*slow blink*", "Meow~"],
+                bunny: ["*nose wiggle*", "Hop hop!", "Got carrots?", "*binky jump!*", "Sniff sniff!", "*thump thump*"],
+                bird: ["Tweet tweet!", "*sings a song*", "Pretty bird!", "Fly free!", "*chirp chirp*", "*whistles*"],
+                hamster: ["*runs on wheel*", "Squeak!", "Nom nom seeds!", "*pouches food*", "*scurry scurry*"],
+                turtle: ["*slow blink*", "No rush...", "Slow and steady.", "*retreats into shell*", "Take it easy."],
+                fish: ["Blub blub!", "*bubble bubble*", "*splash!*", "Glub!", "*swims in circles*"],
+                frog: ["Ribbit!", "*hop!*", "Croak!", "*catches fly*", "*sits on lily pad*"],
+                hedgehog: ["*snuffle*", "*curls up*", "Prickly hugs!", "*nose twitch*", "Sniff sniff!"],
+                panda: ["*munch bamboo*", "*rolls over*", "*happy tumble*", "Bamboo time!", "*bear hug*"],
+                penguin: ["*waddle waddle*", "Honk!", "*belly slide!*", "Fish please!", "*flaps flippers*"],
+                unicorn: ["*sparkle sparkle*", "Magic time!", "*rainbow trail*", "Believe in magic!", "*horn glows*"],
+                dragon: ["*tiny roar*", "*puff of smoke*", "Rawr!", "*breathes sparkles*", "*spreads wings*"]
+            },
+            // Time-of-day messages
+            timeOfDay: {
+                sunrise: ["Good morning!", "What a sunrise!", "New day, new fun!"],
+                day: ["Beautiful day!", "Sun is shining!"],
+                sunset: ["Pretty sunset!", "Getting sleepy...", "What a day!"],
+                night: ["Stars are pretty!", "Goodnight!", "Sweet dreams~"]
+            },
+            // Season messages
+            season: {
+                spring: ["I love spring!", "Look, flowers!", "Butterflies!"],
+                summer: ["So warm!", "Summer fun!", "Ice cream?"],
+                autumn: ["Pretty leaves!", "Cozy vibes!", "Pumpkin season!"],
+                winter: ["Brrr! Cold!", "Snow!", "Hot cocoa?"]
+            }
+        };
+
+        let _speechBubbleTimer = null;
+        let _lastSpeechTime = 0;
+
+        function scheduleSpeechBubble() {
+            if (_speechBubbleTimer) {
+                clearTimeout(_speechBubbleTimer);
+                _speechBubbleTimer = null;
+            }
+            // Show speech every 20-40 seconds
+            const delay = 20000 + Math.random() * 20000;
+            _speechBubbleTimer = setTimeout(() => {
+                _speechBubbleTimer = null;
+                showSpeechBubble();
+                scheduleSpeechBubble();
+            }, delay);
+            idleAnimTimers.push(_speechBubbleTimer);
+        }
+
+        function stopSpeechBubble() {
+            if (_speechBubbleTimer) {
+                clearTimeout(_speechBubbleTimer);
+                _speechBubbleTimer = null;
+            }
+        }
+
+        function showSpeechBubble() {
+            if (gameState.phase !== 'pet' || !gameState.pet) return;
+            if (actionAnimating) return;
+            const pet = gameState.pet;
+            const petContainer = document.getElementById('pet-container');
+            if (!petContainer) return;
+
+            // Don't show if a need-based thought bubble is already visible
+            if (petContainer.querySelector('.thought-bubble')) return;
+            // Don't show if a speech bubble is already visible
+            if (petContainer.querySelector('.speech-bubble')) return;
+
+            const mood = getMood(pet);
+            const message = pickSpeechMessage(pet, mood);
+            if (!message) return;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'speech-bubble';
+            bubble.setAttribute('aria-hidden', 'true');
+            bubble.innerHTML = `<span class="speech-text">${escapeHTML(message)}</span>`;
+            petContainer.appendChild(bubble);
+
+            // Remove after display
+            setTimeout(() => {
+                bubble.classList.add('speech-bubble-fade');
+                setTimeout(() => bubble.remove(), 400);
+            }, 3500);
+        }
+
+        function pickSpeechMessage(pet, mood) {
+            const pools = [];
+            // Always include mood-based messages
+            if (PET_SPEECH[mood]) pools.push(...PET_SPEECH[mood]);
+            // Species-specific messages (weighted higher)
+            const speciesMessages = PET_SPEECH.species[pet.type];
+            if (speciesMessages) {
+                pools.push(...speciesMessages);
+                pools.push(...speciesMessages); // Double weight
+            }
+            // Time of day messages (lower chance)
+            const tod = gameState.timeOfDay || 'day';
+            if (PET_SPEECH.timeOfDay[tod] && Math.random() < 0.3) {
+                pools.push(...PET_SPEECH.timeOfDay[tod]);
+            }
+            // Season messages (lower chance)
+            const season = gameState.season || 'spring';
+            if (PET_SPEECH.season[season] && Math.random() < 0.2) {
+                pools.push(...PET_SPEECH.season[season]);
+            }
+            if (pools.length === 0) return null;
+            return pools[Math.floor(Math.random() * pools.length)];
+        }
+
         function renderPetPhase() {
             // Clear any pending deferred render to avoid redundant double re-renders
             if (pendingRenderTimer) {
@@ -686,6 +828,9 @@
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
                             <span class="top-action-btn-icon" aria-hidden="true">🛋️</span>
                         </button>
+                        <button class="top-action-btn" id="journal-btn" type="button" aria-haspopup="dialog" title="Pet Journal" aria-label="Pet Journal">
+                            <span class="top-action-btn-icon" aria-hidden="true">📔</span>
+                        </button>
                         <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
                             <span class="top-action-btn-icon" aria-hidden="true">🔔</span>
                         </button>
@@ -704,7 +849,7 @@
                         ${generatePetSVG(pet, mood)}
                     </div>
                     <div class="pet-info">
-                        <p class="pet-name">${petData.emoji} ${petDisplayName}</p>
+                        <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span></p>
                         ${(() => {
                             const stage = pet.growthStage || 'baby';
                             const stageData = GROWTH_STAGES[stage];
@@ -767,6 +912,7 @@
                         })()}
                     </div>
                     <div class="room-decor" aria-hidden="true">${roomDecor}</div>
+                    <div class="seasonal-decor" aria-hidden="true"></div>
                 </div>
 
                 <section class="needs-section" aria-label="Pet needs" aria-live="polite" aria-atomic="false">
@@ -1388,6 +1534,16 @@
             return text.replace(emojiRegex, '<span aria-hidden="true">$1</span>');
         }
 
+        // Animated modal close: adds closing class, waits for animation, then removes
+        function animateModalClose(overlay, callback) {
+            if (!overlay) { if (callback) callback(); return; }
+            overlay.classList.add('modal-closing');
+            setTimeout(() => {
+                overlay.remove();
+                if (callback) callback();
+            }, 220);
+        }
+
         function showToast(message, color = '#66BB6A') {
             addToNotificationHistory(message);
             let container = document.getElementById('toast-container');
@@ -1947,6 +2103,17 @@
             } else {
                 petContainer.innerHTML = newSvgHTML;
             }
+
+            // Update mood face indicator
+            const moodFace = document.getElementById('mood-face');
+            if (moodFace) {
+                const newEmoji = getMoodFaceEmoji(mood, pet);
+                if (moodFace.textContent !== newEmoji) {
+                    moodFace.textContent = newEmoji;
+                    moodFace.setAttribute('aria-label', 'Mood: ' + mood);
+                    moodFace.setAttribute('title', mood.charAt(0).toUpperCase() + mood.slice(1));
+                }
+            }
         }
 
         // Per-pet growth milestone tracker keyed by pet id
@@ -2173,8 +2340,9 @@
         function stopIdleAnimations() {
             idleAnimTimers.forEach(id => clearTimeout(id));
             idleAnimTimers = [];
+            stopSpeechBubble();
             // Remove any existing idle animation elements
-            document.querySelectorAll('.idle-blink-overlay, .idle-twitch-overlay, .idle-zzz-float, .sleep-nudge-icon, .idle-need-hint').forEach(el => el.remove());
+            document.querySelectorAll('.idle-blink-overlay, .idle-twitch-overlay, .idle-zzz-float, .sleep-nudge-icon, .idle-need-hint, .speech-bubble, .species-idle-effect').forEach(el => el.remove());
         }
 
         function startIdleAnimations() {
@@ -2186,6 +2354,8 @@
             checkLowEnergyAnim();
             checkNightSleepNudge();
             scheduleNeedBasedAnim();
+            scheduleSpeechBubble();
+            scheduleSpeciesIdleAnim();
         }
 
         // Blink: random interval between 8-15 seconds (slowed to reduce visual noise)
@@ -2326,6 +2496,63 @@
                 }
 
                 scheduleNeedBasedAnim();
+            }, delay);
+            idleAnimTimers.push(timerId);
+        }
+
+        // ==================== SPECIES-SPECIFIC IDLE ANIMATIONS ====================
+        const SPECIES_IDLE_BEHAVIORS = {
+            dog: { emoji: '🦴', text: '*tail wag*', cssClass: 'idle-species-wag' },
+            cat: { emoji: '🐾', text: '*grooming*', cssClass: 'idle-species-groom' },
+            bunny: { emoji: '🥕', text: '*nose wiggle*', cssClass: 'idle-species-hop' },
+            bird: { emoji: '🎵', text: '*hop hop*', cssClass: 'idle-species-hop' },
+            hamster: { emoji: '🌻', text: '*wheel spin*', cssClass: 'idle-species-spin' },
+            turtle: { emoji: '🌿', text: '*slow stretch*', cssClass: 'idle-species-stretch' },
+            fish: { emoji: '💧', text: '*bubble*', cssClass: 'idle-species-swim' },
+            frog: { emoji: '🪰', text: '*tongue flick*', cssClass: 'idle-species-hop' },
+            hedgehog: { emoji: '🍂', text: '*snuffle*', cssClass: 'idle-species-snuffle' },
+            panda: { emoji: '🎋', text: '*munch*', cssClass: 'idle-species-munch' },
+            penguin: { emoji: '🐟', text: '*waddle*', cssClass: 'idle-species-waddle' },
+            unicorn: { emoji: '✨', text: '*sparkle*', cssClass: 'idle-species-sparkle' },
+            dragon: { emoji: '🔥', text: '*puff*', cssClass: 'idle-species-puff' }
+        };
+
+        function scheduleSpeciesIdleAnim() {
+            const delay = 18000 + Math.random() * 15000; // Every 18-33 seconds
+            const timerId = setTimeout(() => {
+                removeIdleTimer(timerId);
+                if (gameState.phase !== 'pet' || !gameState.pet) return;
+                if (actionAnimating) { scheduleSpeciesIdleAnim(); return; }
+
+                const pet = gameState.pet;
+                const petContainer = document.getElementById('pet-container');
+                if (!petContainer) { scheduleSpeciesIdleAnim(); return; }
+
+                // Don't overlap with speech or need bubbles
+                if (petContainer.querySelector('.speech-bubble') || petContainer.querySelector('.idle-need-hint')) {
+                    scheduleSpeciesIdleAnim();
+                    return;
+                }
+
+                const behavior = SPECIES_IDLE_BEHAVIORS[pet.type];
+                if (!behavior) { scheduleSpeciesIdleAnim(); return; }
+
+                // Apply CSS class for the animation
+                petContainer.classList.add(behavior.cssClass);
+
+                // Show a small floating species-specific emoji
+                const effect = document.createElement('div');
+                effect.className = 'species-idle-effect';
+                effect.setAttribute('aria-hidden', 'true');
+                effect.textContent = behavior.emoji;
+                petContainer.appendChild(effect);
+
+                setTimeout(() => {
+                    petContainer.classList.remove(behavior.cssClass);
+                    effect.remove();
+                }, 2500);
+
+                scheduleSpeciesIdleAnim();
             }, delay);
             idleAnimTimers.push(timerId);
         }
@@ -2540,10 +2767,11 @@
             const rewardData = BIRTHDAY_REWARDS[growthStage];
             if (!rewardData) return;
 
-            // Enhanced celebration: flash + confetti + size-up animation
+            // Enhanced celebration: flash + confetti + fireworks + size-up animation
             createCelebrationFlash();
             createConfetti();
             createConfetti(); // Double confetti for extra impact
+            createMilestoneFireworks();
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Trigger pet size-up animation
@@ -2612,16 +2840,17 @@
 
             function closeModal() {
                 popModalEscape(closeModal);
-                modal.remove();
-                document.querySelectorAll('.confetti-container').forEach(c => c.remove());
-                const confettiStyleEl = document.getElementById('confetti-style');
-                if (confettiStyleEl) confettiStyleEl.remove();
-                // Return focus to the game content area
-                const gameContent = document.getElementById('game-content');
-                if (gameContent) {
-                    gameContent.setAttribute('tabindex', '-1');
-                    gameContent.focus({ preventScroll: true });
-                }
+                animateModalClose(modal, () => {
+                    document.querySelectorAll('.confetti-container').forEach(c => c.remove());
+                    const confettiStyleEl = document.getElementById('confetti-style');
+                    if (confettiStyleEl) confettiStyleEl.remove();
+                    // Return focus to the game content area
+                    const gameContent = document.getElementById('game-content');
+                    if (gameContent) {
+                        gameContent.setAttribute('tabindex', '-1');
+                        gameContent.focus({ preventScroll: true });
+                    }
+                });
             }
 
             okBtn.addEventListener('click', closeModal);
@@ -2635,10 +2864,11 @@
 
         function showEvolutionCelebration(pet, evolutionData) {
             if (!pet) return;
-            // Enhanced celebration: flash + double confetti
+            // Enhanced celebration: flash + double confetti + fireworks
             createCelebrationFlash();
             createConfetti();
             createConfetti();
+            createMilestoneFireworks();
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
 
             // Trigger pet size-up animation
@@ -2687,15 +2917,16 @@
 
             function closeModal() {
                 popModalEscape(closeModal);
-                modal.remove();
-                // Remove confetti before re-rendering
-                document.querySelectorAll('.confetti-container').forEach(c => c.remove());
-                const confettiStyleEl = document.getElementById('confetti-style');
-                if (confettiStyleEl) confettiStyleEl.remove();
-                // Re-render to show evolved appearance
-                if (typeof renderPetPhase === 'function') {
-                    renderPetPhase();
-                }
+                animateModalClose(modal, () => {
+                    // Remove confetti before re-rendering
+                    document.querySelectorAll('.confetti-container').forEach(c => c.remove());
+                    const confettiStyleEl = document.getElementById('confetti-style');
+                    if (confettiStyleEl) confettiStyleEl.remove();
+                    // Re-render to show evolved appearance
+                    if (typeof renderPetPhase === 'function') {
+                        renderPetPhase();
+                    }
+                });
             }
 
             okBtn.addEventListener('click', closeModal);
@@ -2795,6 +3026,99 @@
             document.body.appendChild(container);
         }
 
+        // ==================== MILESTONE FIREWORKS ====================
+        function createMilestoneFireworks() {
+            const container = document.createElement('div');
+            container.className = 'fireworks-container';
+            container.setAttribute('aria-hidden', 'true');
+            container.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                pointer-events: none; z-index: 9999; overflow: hidden;
+            `;
+
+            const burstCount = 5;
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#FF69B4', '#87CEEB'];
+
+            for (let b = 0; b < burstCount; b++) {
+                const burstX = 15 + Math.random() * 70;
+                const burstY = 15 + Math.random() * 50;
+                const burstDelay = b * 400 + Math.random() * 300;
+                const particleCount = 12 + Math.floor(Math.random() * 8);
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'firework-particle';
+                    const angle = (i / particleCount) * 360;
+                    const distance = 40 + Math.random() * 60;
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const size = 3 + Math.random() * 5;
+
+                    particle.style.cssText = `
+                        position: absolute;
+                        left: ${burstX}%;
+                        top: ${burstY}%;
+                        width: ${size}px;
+                        height: ${size}px;
+                        background: ${color};
+                        border-radius: 50%;
+                        box-shadow: 0 0 ${size * 2}px ${color};
+                        --fw-angle: ${angle}deg;
+                        --fw-distance: ${distance}px;
+                        animation: fireworkBurst 1.2s ease-out ${burstDelay}ms forwards;
+                    `;
+                    container.appendChild(particle);
+                }
+
+                // Add emoji sparkles at burst center
+                const sparkles = ['✨', '🌟', '⭐', '💫'];
+                const sparkle = document.createElement('div');
+                sparkle.className = 'firework-sparkle';
+                sparkle.textContent = sparkles[Math.floor(Math.random() * sparkles.length)];
+                sparkle.style.cssText = `
+                    position: absolute;
+                    left: ${burstX}%;
+                    top: ${burstY}%;
+                    font-size: ${18 + Math.random() * 14}px;
+                    animation: fireworkSparkle 0.8s ease-out ${burstDelay + 100}ms forwards;
+                    opacity: 0;
+                `;
+                container.appendChild(sparkle);
+            }
+
+            // Add/update CSS animation
+            let fwStyle = document.getElementById('fireworks-style');
+            if (!fwStyle || fwStyle.tagName !== 'STYLE') {
+                if (fwStyle) fwStyle.removeAttribute('id');
+                fwStyle = document.createElement('style');
+                fwStyle.id = 'fireworks-style';
+                document.head.appendChild(fwStyle);
+            }
+            fwStyle.textContent = `
+                @keyframes fireworkBurst {
+                    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+                    100% {
+                        transform: translate(
+                            calc(cos(var(--fw-angle)) * var(--fw-distance)),
+                            calc(sin(var(--fw-angle)) * var(--fw-distance))
+                        ) scale(0);
+                        opacity: 0;
+                    }
+                }
+                @keyframes fireworkSparkle {
+                    0% { transform: scale(0); opacity: 0; }
+                    30% { transform: scale(1.5); opacity: 1; }
+                    100% { transform: scale(0.5); opacity: 0; }
+                }
+            `;
+
+            document.body.appendChild(container);
+            setTimeout(() => {
+                container.remove();
+                const styleEl = document.getElementById('fireworks-style');
+                if (styleEl) styleEl.remove();
+            }, 4000);
+        }
+
         // ==================== MINI-GAME CLEANUP ====================
 
         function cleanupAllMiniGames() {
@@ -2806,6 +3130,75 @@
             if (typeof coloringState !== 'undefined' && coloringState && typeof endColoringGame === 'function') endColoringGame();
             // Stop idle animations and earcons during mini-games
             if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
+        }
+
+        // ==================== PET JOURNAL MODAL ====================
+
+        function showJournalModal() {
+            const existing = document.querySelector('.journal-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const journal = gameState.journal || [];
+            const overlay = document.createElement('div');
+            overlay.className = 'journal-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Pet Journal');
+
+            let entriesHTML = '';
+            if (journal.length === 0) {
+                entriesHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📔</div>
+                        <div class="empty-state-text">No journal entries yet. Keep caring for your pet to create memories!</div>
+                    </div>
+                `;
+            } else {
+                // Show newest first
+                const reversed = [...journal].reverse();
+                entriesHTML = reversed.map(entry => {
+                    const date = new Date(entry.timestamp);
+                    const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <div class="journal-entry">
+                            <span class="journal-entry-icon" aria-hidden="true">${escapeHTML(entry.icon)}</span>
+                            <div class="journal-entry-content">
+                                <span class="journal-entry-text">${escapeHTML(entry.text)}</span>
+                                <span class="journal-entry-time">${dateStr} ${timeStr}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            overlay.innerHTML = `
+                <div class="journal-modal">
+                    <h2 class="journal-title">📔 Pet Journal</h2>
+                    <div class="journal-entries">${entriesHTML}</div>
+                    <button class="journal-close" id="journal-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeJournal() {
+                popModalEscape(closeJournal);
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('journal-btn');
+                    if (trigger) trigger.focus();
+                });
+            }
+
+            overlay.querySelector('#journal-close').focus();
+            overlay.querySelector('#journal-close').addEventListener('click', closeJournal);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeJournal(); });
+            pushModalEscape(closeJournal);
+            overlay._closeOverlay = closeJournal;
+            trapFocus(overlay);
         }
 
         // ==================== TUTORIAL / ONBOARDING ====================

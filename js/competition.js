@@ -295,6 +295,11 @@
                     comp.battlesWon++;
                     pet.happiness = clamp(pet.happiness + 15, 0, 100);
                     pet.careActions = (pet.careActions || 0) + 1;
+                    if (typeof addJournalEntry === 'function') {
+                        const petName = pet.name || 'Pet';
+                        if (comp.battlesWon === 1) addJournalEntry('⚔️', `${petName} won their first battle!`);
+                        else if (comp.battlesWon % 5 === 0) addJournalEntry('⚔️', `${petName} has won ${comp.battlesWon} battles!`);
+                    }
                     setTimeout(() => {
                         showToast('⚔️ Battle Won! +15 Happiness!', '#FFD700');
                         announce('Victory! You won the battle! Plus 15 happiness!', true);
@@ -749,6 +754,9 @@
                 if (result.totalScore > comp.bestShowScore) {
                     comp.bestShowScore = result.totalScore;
                     comp.bestShowRank = result.rank.name;
+                }
+                if (typeof addJournalEntry === 'function') {
+                    if (comp.showsEntered === 1) addJournalEntry('🏅', `${petName} entered their first Pet Show! Rank: ${result.rank.name}`);
                 }
                 // Reward pet for participating
                 pet.happiness = clamp(pet.happiness + 10, 0, 100);
