@@ -99,7 +99,7 @@
 
             function close() {
                 popModalEscape(close);
-                if (overlay.parentNode) overlay.remove();
+                if (overlay.parentNode) { overlay.innerHTML = ''; overlay.remove(); }
             }
             overlay.querySelector('#exit-cancel').addEventListener('click', () => close());
             overlay.querySelector('#exit-confirm').addEventListener('click', () => { close(); onConfirm(); });
@@ -191,7 +191,7 @@
 
             function closeMenu() {
                 popModalEscape(closeMenu);
-                if (overlay && overlay.parentNode) overlay.remove();
+                if (overlay && overlay.parentNode) { overlay.innerHTML = ''; overlay.remove(); }
                 if (triggerBtn) triggerBtn.focus();
             }
 
@@ -499,7 +499,7 @@
             }
 
             const overlay = document.querySelector('.fetch-game-overlay');
-            if (overlay) overlay.remove();
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
             // Apply rewards based on score
             if (fetchState && fetchState.score > 0 && gameState.pet) {
@@ -908,7 +908,7 @@
             }
 
             const overlay = document.querySelector('.hideseek-game-overlay');
-            if (overlay) overlay.remove();
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
             // Apply rewards based on treats found
             if (hideSeekState && hideSeekState.treatsFound > 0 && gameState.pet) {
@@ -1310,7 +1310,7 @@
             }
 
             const overlay = document.querySelector('.bubblepop-game-overlay');
-            if (overlay) overlay.remove();
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
             // Apply rewards: bath-themed game boosts cleanliness and happiness
             if (bubblePopState && bubblePopState.score > 0 && gameState.pet) {
@@ -1604,7 +1604,7 @@
             }
 
             const overlay = document.querySelector('.matching-game-overlay');
-            if (overlay) overlay.remove();
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
             // Apply rewards based on performance
             if (matchingState && matchingState.matchesFound > 0 && gameState.pet) {
@@ -1974,7 +1974,7 @@
             }
 
             const overlay = document.querySelector('.simonsays-game-overlay');
-            if (overlay) overlay.remove();
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
@@ -2418,7 +2418,7 @@
             }
 
             const overlay = document.querySelector('.coloring-game-overlay');
-            if (overlay) overlay.remove();
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
             // Apply rewards based on regions colored
             if (coloringState && coloringState.regionsColored.size > 0 && gameState.pet) {

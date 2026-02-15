@@ -1,5 +1,5 @@
 // Update CACHE_VERSION on each deploy to bust stale caches
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 const CACHE_NAME = `pet-care-buddy-v${CACHE_VERSION}`;
 const ASSETS = [
     './',
@@ -17,7 +17,9 @@ const ASSETS = [
     './icon-512-maskable.svg',
     './icon-192.svg',
     './icon-192-maskable.svg',
-    './apple-touch-icon.svg'
+    './apple-touch-icon.svg',
+    './apple-touch-icon.png',
+    './icon-192.png'
 ];
 
 // Install — cache all core assets

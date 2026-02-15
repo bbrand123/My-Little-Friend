@@ -760,12 +760,6 @@
 
         // ==================== PERSONALITY HELPERS ====================
 
-        function getPersonalityLabel(pet) {
-            if (!pet || !pet.personality) return '';
-            const trait = PERSONALITY_TRAITS[pet.personality];
-            return trait ? `${trait.emoji} ${trait.label}` : '';
-        }
-
         // Get personality-adjusted care modifier for an action
         function getPersonalityCareModifier(pet, action) {
             if (!pet || !pet.personality) return 1.0;
@@ -849,6 +843,7 @@
         }
 
         function loadGame() {
+            let _needsSaveAfterLoad = false;
             try {
                 const saved = localStorage.getItem('petCareBuddy');
                 if (saved) {
@@ -923,8 +918,10 @@
                             parsed.pet.unlockedAccessories = [];
                         }
                         // Add personality if missing (for existing saves)
+                        // Save immediately so the same personality persists across sessions
                         if (!parsed.pet.personality) {
                             parsed.pet.personality = getRandomPersonality();
+                            _needsSaveAfterLoad = true;
                         }
                         if (!parsed.pet.personalityWarmth) {
                             parsed.pet.personalityWarmth = {};
@@ -1211,6 +1208,10 @@
                             }
                         }
                     }
+                    // Persist any migrations (e.g. random personality) so they're stable
+                    if (_needsSaveAfterLoad) {
+                        try { localStorage.setItem('petCareBuddy', JSON.stringify(parsed)); } catch (e) {}
+                    }
                     return parsed;
                 }
             } catch (e) {
@@ -1404,8 +1405,14 @@
                     adjustedPoints *= getPersonalityRelationshipModifier(p2);
                     if (p2.growthStage === 'elder') adjustedPoints *= ELDER_CONFIG.wisdomRelationshipBonus;
                 }
-                // Average the two modifiers if both applied
-                if (p1 && p2) adjustedPoints = points * ((getPersonalityRelationshipModifier(p1) + getPersonalityRelationshipModifier(p2)) / 2);
+                // Average the two modifiers if both applied, preserving elder bonus
+                if (p1 && p2) {
+                    const avgPersonalityMod = (getPersonalityRelationshipModifier(p1) + getPersonalityRelationshipModifier(p2)) / 2;
+                    let elderMod = 1;
+                    if (p1.growthStage === 'elder') elderMod *= ELDER_CONFIG.wisdomRelationshipBonus;
+                    if (p2.growthStage === 'elder') elderMod *= ELDER_CONFIG.wisdomRelationshipBonus;
+                    adjustedPoints = points * avgPersonalityMod * elderMod;
+                }
             }
             rel.points = Math.max(0, Math.min(300, rel.points + Math.round(adjustedPoints)));
             const newLevel = getRelationshipLevel(rel.points);
@@ -1850,7 +1857,7 @@
         }
 
         function getMood(pet) {
-            const average = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
+            const average = ((pet.hunger || 0) + (pet.cleanliness || 0) + (pet.happiness || 0) + (pet.energy || 0)) / 4;
             // Weather affects mood thresholds when pet is outdoors
             const weather = gameState.weather || 'sunny';
             const weatherData = WEATHER_TYPES[weather];
@@ -2421,8 +2428,14 @@
         function startGardenGrowTimer() {
             if (gardenGrowInterval) clearInterval(gardenGrowInterval);
             gardenGrowInterval = setInterval(() => {
-                if (gameState.phase === 'pet' && !document.hidden) {
-                    tickGardenGrowth();
+                try {
+                    if (gameState.phase === 'pet' && !document.hidden) {
+                        tickGardenGrowth();
+                    }
+                } catch (e) {
+                    // Reset interval on error to allow clean restart
+                    clearInterval(gardenGrowInterval);
+                    gardenGrowInterval = null;
                 }
             }, 60000); // Grow tick every 60 seconds
         }
@@ -3073,7 +3086,7 @@
                         waterPlot(plotIdx);
                     } else {
                         const crop = GARDEN_CROPS[plot.cropId];
-                        showToast(`${crop.seedEmoji} ${crop.name} is growing... be patient!`, '#81C784');
+                        showToast(`${crop.seedEmoji} ${escapeHTML(crop.name)} is growing... be patient!`, '#81C784');
                     }
                 });
             });
@@ -3197,7 +3210,7 @@
                 if (gameState.phase === 'pet' && gameState.pet && !document.hidden) {
                     const pet = gameState.pet;
                     const weather = gameState.weather || 'sunny';
-                    const weatherData = WEATHER_TYPES[weather];
+                    const weatherData = WEATHER_TYPES[weather] || WEATHER_TYPES['sunny'];
                     const room = ROOMS[gameState.currentRoom || 'bedroom'];
                     const isOutdoor = room ? room.isOutdoor : false;
 
@@ -3232,11 +3245,11 @@
                     // Elder wisdom reduces decay
                     const elderReduction = pet.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
 
-                    // Base decay with personality & elder modifiers
-                    pet.hunger = clamp(pet.hunger - 1 * hungerMult * elderReduction, 0, 100);
-                    pet.cleanliness = clamp(pet.cleanliness - 1 * cleanMult * elderReduction, 0, 100);
-                    pet.happiness = clamp(pet.happiness - 1 * happyMult * elderReduction, 0, 100);
-                    pet.energy = clamp(pet.energy - (1 + energyDecayBonus - energyRegenBonus) * energyMult * elderReduction, 0, 100);
+                    // Base decay with personality & elder modifiers (round to avoid float drift)
+                    pet.hunger = Math.round(clamp(pet.hunger - 1 * hungerMult * elderReduction, 0, 100));
+                    pet.cleanliness = Math.round(clamp(pet.cleanliness - 1 * cleanMult * elderReduction, 0, 100));
+                    pet.happiness = Math.round(clamp(pet.happiness - 1 * happyMult * elderReduction, 0, 100));
+                    pet.energy = Math.round(clamp(pet.energy - (1 + energyDecayBonus - energyRegenBonus) * energyMult * elderReduction, 0, 100));
 
                     // Extra weather-based decay when outdoors
                     if (isOutdoor) {
@@ -3269,11 +3282,12 @@
                         syncActivePetToArray();
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.round(clamp(p.hunger - 0.5, 0, 100));
-                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100));
-                            // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
-                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100));
-                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100));
+                            p.hunger = Math.floor(clamp(p.hunger - 0.5, 0, 100));
+                            p.cleanliness = Math.floor(clamp(p.cleanliness - 0.5, 0, 100));
+                            // Net happiness: -0.5 decay + companion bonus (dynamically calculated)
+                            const companionBonus = (gameState.pets.length > 1) ? 0.3 : 0;
+                            p.happiness = Math.floor(clamp(p.happiness - 0.5 + companionBonus, 0, 100));
+                            p.energy = Math.floor(clamp(p.energy - 0.5, 0, 100));
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -3402,14 +3416,13 @@
                     if (now - lastDecayAnnouncement > 120000) {
                         const mood = getMood(pet);
                         if (mood === 'sad') {
-                            const lowestNeed = Math.min(pet.hunger, pet.cleanliness, pet.happiness, pet.energy);
-                            if (lowestNeed <= 20) {
-                                let needName = '';
-                                if (pet.hunger === lowestNeed) needName = 'hungry';
-                                else if (pet.cleanliness === lowestNeed) needName = 'needs a bath';
-                                else if (pet.energy === lowestNeed) needName = 'tired and needs sleep';
-                                else needName = 'wants to play';
-                                announce(`Your pet is ${needName}! Can you help?`);
+                            const lowNeeds = [];
+                            if (pet.hunger <= 20) lowNeeds.push('hungry');
+                            if (pet.cleanliness <= 20) lowNeeds.push('needs a bath');
+                            if (pet.energy <= 20) lowNeeds.push('tired');
+                            if (pet.happiness <= 20) lowNeeds.push('wants to play');
+                            if (lowNeeds.length > 0) {
+                                announce(`Your pet is ${lowNeeds.join(' and ')}! Can you help?`);
                                 lastDecayAnnouncement = now;
                             }
                         }
@@ -3576,7 +3589,10 @@
                         if (saved.pets && saved.pets.length > 0) {
                             gameState.pets = saved.pets;
                             gameState.activePetIndex = saved.activePetIndex || 0;
-                            gameState.pet = gameState.pets[gameState.activePetIndex];
+                            if (gameState.activePetIndex < 0 || gameState.activePetIndex >= gameState.pets.length) {
+                                gameState.activePetIndex = 0;
+                            }
+                            gameState.pet = gameState.pets[gameState.activePetIndex] || saved.pet;
                         } else {
                             // Restore all pet fields from the loaded save to avoid
                             // losing careActions, neglectCount, careQuality, etc.
@@ -3660,8 +3676,14 @@
             if (saved) {
                 // Mutate in-place so closures that captured the gameState
                 // reference (e.g. timer callbacks) keep working.
-                Object.keys(gameState).forEach(k => delete gameState[k]);
+                // Assign first, then delete stale keys, to avoid a window
+                // where properties are undefined if a timer callback fires.
+                const oldKeys = new Set(Object.keys(gameState));
                 Object.assign(gameState, saved);
+                const newKeys = new Set(Object.keys(saved));
+                for (const k of oldKeys) {
+                    if (!newKeys.has(k)) delete gameState[k];
+                }
             }
 
             // Ensure weather state exists
