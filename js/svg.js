@@ -542,6 +542,32 @@
                 svg = svg.replace('</svg>', `${sparkleEffect}</svg>`);
             }
 
+            // Add elder wisdom aura for elder-stage pets
+            if (growthStage === 'elder') {
+                const elderAura = `<g class="elder-aura" opacity="0.35">
+                    <!-- Gentle wisdom glow -->
+                    <ellipse cx="50" cy="50" rx="42" ry="38" fill="none" stroke="#B388FF" stroke-width="1.5" stroke-dasharray="4 3">
+                        <animate attributeName="rx" values="42;44;42" dur="4s" repeatCount="indefinite"/>
+                        <animate attributeName="ry" values="38;40;38" dur="4s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0.35;0.15;0.35" dur="4s" repeatCount="indefinite"/>
+                    </ellipse>
+                    <!-- Wisdom stars -->
+                    <text x="15" y="20" font-size="6" fill="#B388FF" opacity="0.6">
+                        ✦
+                        <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
+                    </text>
+                    <text x="80" y="25" font-size="5" fill="#B388FF" opacity="0.4">
+                        ✦
+                        <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3.5s" repeatCount="indefinite"/>
+                    </text>
+                    <text x="10" y="70" font-size="4" fill="#7C4DFF" opacity="0.5">
+                        ✧
+                        <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.8s" repeatCount="indefinite"/>
+                    </text>
+                </g>`;
+                svg = svg.replace('</svg>', `${elderAura}</svg>`);
+            }
+
             // Add mood-specific visual overlays
             let moodOverlay = '';
             if (mood === 'sad') {
