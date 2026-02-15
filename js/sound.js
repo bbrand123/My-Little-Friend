@@ -8,6 +8,12 @@
             let currentEarcon = null;
             let currentRoom = null;
             let isEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_soundEnabled'); return v !== 'false'; } catch (e) { return true; } })();
+            let _audioSupported = true; // Item 39: Track Web Audio API support
+
+            // Item 37: Per-category volume controls (0.0 to 1.0)
+            let sfxVolume = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_sfxVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
+            let ambientVolume = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_ambientVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
+            let musicVolumeSetting = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_musicVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
 
             const EARCON_VOLUME = 0.3; // 30% volume to not interfere with screen readers
             const FADE_DURATION = 0.8; // seconds for fade in/out
@@ -22,6 +28,11 @@
                         masterGain.connect(audioCtx.destination);
                     } catch (e) {
                         console.log('Web Audio API not supported');
+                        _audioSupported = false;
+                        // Item 39: Show visible message that sound isn't available
+                        if (typeof showToast === 'function') {
+                            showToast('Sound unavailable: your browser does not support Web Audio.', '#FFA726');
+                        }
                         return null;
                     }
                 }
@@ -486,7 +497,9 @@
             // ==================== ACTION SOUND EFFECTS ====================
             // Short procedural tones for gameplay interactions
 
-            const SFX_VOLUME = 0.3; // Match earcon volume (0.3) to avoid jarring volume jump
+            // Item 37: SFX volume respects per-category setting
+            const SFX_BASE_VOLUME = 0.3;
+            function getSfxVolume() { return SFX_BASE_VOLUME * sfxVolume; }
 
             function playSFX(generator) {
                 if (!isEnabled) return;
@@ -526,7 +539,7 @@
                     osc.type = 'sine';
                     osc.frequency.value = varyPitch(freq);
                     const offset = varyTiming(0.12);
-                    g.gain.setValueAtTime(SFX_VOLUME, t + i * offset);
+                    g.gain.setValueAtTime(getSfxVolume(), t + i * offset);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.1);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -549,7 +562,7 @@
                 filter.type = 'bandpass';
                 filter.frequency.value = varyPitch(600);
                 filter.Q.value = 2;
-                g.gain.setValueAtTime(SFX_VOLUME, t);
+                g.gain.setValueAtTime(getSfxVolume(), t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
                 osc.connect(filter);
                 filter.connect(g);
@@ -568,7 +581,7 @@
                     osc.type = 'triangle';
                     osc.frequency.value = varyPitch(freq);
                     const offset = varyTiming(0.08);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.8, t + i * offset);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.8, t + i * offset);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.12);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -586,7 +599,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(varyPitch(440), t);
                 osc.frequency.exponentialRampToValueAtTime(varyPitch(220), t + 0.5);
-                g.gain.setValueAtTime(SFX_VOLUME * 0.6, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.6, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -609,7 +622,7 @@
                 lfoGain.gain.value = 15;
                 lfo.connect(lfoGain);
                 lfoGain.connect(osc.frequency);
-                g.gain.setValueAtTime(SFX_VOLUME * 0.5, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.5, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -628,7 +641,7 @@
                     const g = ctx.createGain();
                     osc.type = 'sine';
                     osc.frequency.value = varyPitch(freq);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.6, t + i * 0.1);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.6, t + i * 0.1);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.25);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -654,7 +667,7 @@
                     filter.Q.value = 1;
                     const g = ctx.createGain();
                     const offset = varyTiming(0.1);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + i * offset);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.4, t + i * offset);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.08);
                     src.connect(filter);
                     filter.connect(g);
@@ -673,7 +686,7 @@
                     osc.type = 'square';
                     osc.frequency.value = varyPitch(freq);
                     const offset = varyTiming(0.06);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.3, t + i * offset);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.3, t + i * offset);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.08);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -692,7 +705,7 @@
                     osc.type = 'sine';
                     osc.frequency.value = varyPitch(freq);
                     const offset = varyTiming(0.06);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.5, t + i * offset);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.5, t + i * offset);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * offset + 0.15);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -709,7 +722,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(880, t);
                 osc.frequency.exponentialRampToValueAtTime(1320, t + 0.06);
-                g.gain.setValueAtTime(SFX_VOLUME, t);
+                g.gain.setValueAtTime(getSfxVolume(), t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -724,7 +737,7 @@
                 const g = ctx.createGain();
                 osc.type = 'sawtooth';
                 osc.frequency.value = 180;
-                g.gain.setValueAtTime(SFX_VOLUME * 0.5, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.5, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -741,7 +754,7 @@
                     const g = ctx.createGain();
                     osc.type = 'triangle';
                     osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.7, t + i * 0.12);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.7, t + i * 0.12);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.3);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -754,7 +767,7 @@
                     const g = ctx.createGain();
                     osc.type = 'sine';
                     osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + 0.48);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.4, t + 0.48);
                     g.gain.exponentialRampToValueAtTime(0.01, t + 1.2);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -772,7 +785,7 @@
                 const freq = 400 + Math.random() * 300;
                 osc.frequency.setValueAtTime(freq, t);
                 osc.frequency.exponentialRampToValueAtTime(freq * 2, t + 0.04);
-                g.gain.setValueAtTime(SFX_VOLUME * 0.6, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.6, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -788,7 +801,7 @@
                     const g = ctx.createGain();
                     osc.type = 'sine';
                     osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.6, t + i * 0.1);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.6, t + i * 0.1);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.2);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -806,7 +819,7 @@
                 osc.frequency.setValueAtTime(600, t);
                 osc.frequency.exponentialRampToValueAtTime(900, t + 0.08);
                 osc.frequency.exponentialRampToValueAtTime(700, t + 0.15);
-                g.gain.setValueAtTime(SFX_VOLUME * 0.7, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.7, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -831,7 +844,7 @@
                 filter.frequency.exponentialRampToValueAtTime(600, t + 0.25);
                 filter.Q.value = 1.5;
                 const g = ctx.createGain();
-                g.gain.setValueAtTime(SFX_VOLUME * 0.25, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.25, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
                 src.connect(filter);
                 filter.connect(g);
@@ -842,7 +855,7 @@
                 const og = ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.value = 880;
-                og.gain.setValueAtTime(SFX_VOLUME * 0.15, t + 0.05);
+                og.gain.setValueAtTime(getSfxVolume() * 0.15, t + 0.05);
                 og.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
                 osc.connect(og);
                 og.connect(masterGain);
@@ -874,7 +887,7 @@
                     const g = ctx.createGain();
                     osc.type = config.wave;
                     osc.frequency.value = freq * (0.95 + Math.random() * 0.1);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.4, t + i * config.duration);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.4, t + i * config.duration);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * config.duration + config.duration * 0.9);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -899,7 +912,7 @@
                 lfoG.gain.value = 20;
                 lfo.connect(lfoG);
                 lfoG.connect(osc.frequency);
-                g.gain.setValueAtTime(SFX_VOLUME * 0.3, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.3, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
                 osc.connect(g);
                 g.connect(masterGain);
@@ -920,7 +933,7 @@
                     const freq = base + i * (base * 0.15);
                     osc.frequency.setValueAtTime(freq, t + i * 0.08);
                     osc.frequency.exponentialRampToValueAtTime(freq * 1.3, t + i * 0.08 + 0.06);
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.35, t + i * 0.08);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.35, t + i * 0.08);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.08 + 0.08);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -938,7 +951,7 @@
                     const g = ctx.createGain();
                     osc.type = 'sine';
                     osc.frequency.value = freq;
-                    g.gain.setValueAtTime(SFX_VOLUME * 0.5, t + i * 0.1);
+                    g.gain.setValueAtTime(getSfxVolume() * 0.5, t + i * 0.1);
                     g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.3);
                     osc.connect(g);
                     g.connect(masterGain);
@@ -962,7 +975,7 @@
                 filter.frequency.exponentialRampToValueAtTime(2000, t + 0.15);
                 filter.Q.value = 2;
                 const g = ctx.createGain();
-                g.gain.setValueAtTime(SFX_VOLUME * 0.4, t);
+                g.gain.setValueAtTime(getSfxVolume() * 0.4, t);
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
                 src.connect(filter);
                 filter.connect(g);
