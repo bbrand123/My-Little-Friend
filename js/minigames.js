@@ -576,7 +576,8 @@
             const treatIndices = [];
             const indexPool = Array.from({ length: spotCount }, (_, i) => i);
             shuffleArray(indexPool);
-            for (let i = 0; i < totalTreats; i++) {
+            const safeTreatCount = Math.min(totalTreats, indexPool.length);
+            for (let i = 0; i < safeTreatCount; i++) {
                 treatIndices.push(indexPool[i]);
             }
 
@@ -1573,10 +1574,11 @@
             const instruction = document.getElementById('matching-instruction');
             if (instruction) {
                 const moves = matchingState.moves;
+                const pairs = matchingState.totalPairs || 6;
                 let message = '🎉 You matched them all! ';
-                if (moves <= 8) message += 'Amazing memory!';
-                else if (moves <= 12) message += 'Great job!';
-                else if (moves <= 18) message += 'Well done!';
+                if (moves <= pairs) message += 'Amazing memory!';
+                else if (moves <= pairs * 1.5) message += 'Great job!';
+                else if (moves <= pairs * 2.5) message += 'Well done!';
                 else message += 'You did it!';
                 instruction.textContent = message;
                 instruction.classList.add('highlight');
@@ -1976,7 +1978,7 @@
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
-                const roundsCompleted = simonState.highestRound;
+                const roundsCompleted = Math.max(simonState.highestRound, 1);
                 const happinessBonus = Math.min(roundsCompleted * 4, 30);
                 const energyCost = Math.min(roundsCompleted * 2, 10);
 
@@ -2398,6 +2400,8 @@
                     return `
                         <circle cx="${cx-43}" cy="${cy-10}" r="3" fill="#333"/>
                         <circle cx="${cx-44}" cy="${cy-11}" r="1.2" fill="white"/>
+                        <circle cx="${cx+43}" cy="${cy-10}" r="3" fill="#333"/>
+                        <circle cx="${cx+44}" cy="${cy-11}" r="1.2" fill="white"/>
                         <path d="M${cx-48} ${cy} Q${cx-38} ${cy+4} ${cx-33} ${cy}" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
                         <line x1="${cx-10}" y1="${cy-15}" x2="${cx-10}" y2="${cy+25}" stroke="#333" stroke-width="1"/>
                         <line x1="${cx+10}" y1="${cy-15}" x2="${cx+10}" y2="${cy+25}" stroke="#333" stroke-width="1"/>
@@ -2438,6 +2442,7 @@
 
                 announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}!${bestMsg}`);
                 if (isNewBest) {
+                    showToast(`New high score in Coloring: ${colored} parts!`, '#FFD700');
                     showMinigameConfetti();
                     showHighScoreBanner('Coloring', colored);
                 } else if (colored > 0) {

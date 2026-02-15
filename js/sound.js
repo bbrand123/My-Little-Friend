@@ -447,15 +447,20 @@
                 currentRoom = null;
             }
 
+            let _lastRoomBeforeDisable = null;
             function toggle() {
                 isEnabled = !isEnabled;
                 if (!isEnabled) {
+                    _lastRoomBeforeDisable = currentRoom;
                     stopAll();
-                } else if (currentRoom) {
+                } else {
                     // Re-enter the current room to restore earcons after re-enabling
-                    const roomToRestore = currentRoom;
-                    currentRoom = null;
-                    enterRoom(roomToRestore);
+                    const roomToRestore = currentRoom || _lastRoomBeforeDisable || (typeof gameState !== 'undefined' && gameState.currentRoom) || null;
+                    _lastRoomBeforeDisable = null;
+                    if (roomToRestore) {
+                        currentRoom = null;
+                        enterRoom(roomToRestore);
+                    }
                 }
                 try { localStorage.setItem('petCareBuddy_soundEnabled', isEnabled ? 'true' : 'false'); } catch (e) {}
                 return isEnabled;
@@ -488,10 +493,12 @@
                 if (!masterGain) return;
                 const ctx = getContext();
                 if (!ctx) return;
-                // Retry resume if context is still suspended (e.g. browser blocked auto-play)
+                // Resume if context is suspended (e.g. browser blocked auto-play)
                 if (ctx.state === 'suspended') {
-                    ctx.resume().catch(() => {});
-                    return; // Skip this SFX — context will be ready for the next call
+                    ctx.resume().then(() => {
+                        try { generator(ctx); } catch (e) {}
+                    }).catch(() => {});
+                    return;
                 }
                 try {
                     generator(ctx);
@@ -525,6 +532,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * offset);
                     osc.stop(t + i * offset + 0.12);
+                    osc.onended = () => { osc.disconnect(); g.disconnect(); };
                 });
             }
 
@@ -548,6 +556,7 @@
                 g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.4);
+                osc.onended = () => { osc.disconnect(); filter.disconnect(); g.disconnect(); };
             }
 
             // Play: happy bouncy three-note arpeggio
@@ -565,6 +574,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * offset);
                     osc.stop(t + i * offset + 0.15);
+                    osc.onended = () => { osc.disconnect(); g.disconnect(); };
                 });
             }
 
@@ -582,6 +592,7 @@
                 g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.65);
+                osc.onended = () => { osc.disconnect(); g.disconnect(); };
             }
 
             // Cuddle/Pet: soft warm purr-like tone
@@ -606,6 +617,7 @@
                 osc.start(t);
                 osc.stop(t + 0.45);
                 lfo.stop(t + 0.45);
+                osc.onended = () => { osc.disconnect(); g.disconnect(); lfo.disconnect(); lfoGain.disconnect(); };
             }
 
             // Medicine: healing chime
@@ -622,6 +634,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * 0.1);
                     osc.stop(t + i * 0.1 + 0.3);
+                    osc.onended = () => { osc.disconnect(); g.disconnect(); };
                 });
             }
 
@@ -647,6 +660,7 @@
                     filter.connect(g);
                     g.connect(masterGain);
                     src.start(t + i * offset);
+                    src.onended = () => { src.disconnect(); filter.disconnect(); g.disconnect(); };
                 }
             }
 
@@ -665,6 +679,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * offset);
                     osc.stop(t + i * offset + 0.1);
+                    osc.onended = () => { osc.disconnect(); g.disconnect(); };
                 });
             }
 
@@ -1129,10 +1144,10 @@
             // Extend enterRoom to also restart music
             const _origEnterRoom = enterRoom;
             async function enterRoomWithMusic(roomId) {
-                const seqBefore = _enterRoomSeq;
                 await _origEnterRoom(roomId);
                 // If another enterRoom call occurred while awaiting, don't start music with stale roomId
-                if (seqBefore !== _enterRoomSeq || currentRoom !== roomId) return;
+                const seqAfter = _enterRoomSeq;
+                if (currentRoom !== roomId) return;
                 if (musicEnabled && isEnabled && roomId) {
                     const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
                     startMusic(roomId, timeOfDay);

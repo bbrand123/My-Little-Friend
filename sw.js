@@ -50,14 +50,20 @@ self.addEventListener('fetch', (event) => {
             const fetchPromise = fetch(event.request).then((response) => {
                 if (response.ok && event.request.url.startsWith(self.location.origin)) {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, clone);
-                        // Notify clients that a fresh version was fetched (they had a stale cache)
+                    caches.open(CACHE_NAME).then(async (cache) => {
+                        // Only notify clients if the response actually changed
                         if (cached) {
-                            self.clients.matchAll({ type: 'window' }).then((clients) => {
-                                clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
-                            });
+                            try {
+                                const oldBody = await cached.clone().text();
+                                const newBody = await clone.clone().text();
+                                if (oldBody !== newBody) {
+                                    self.clients.matchAll({ type: 'window' }).then((clients) => {
+                                        clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
+                                    });
+                                }
+                            } catch (_) { /* comparison failed, skip notification */ }
                         }
+                        cache.put(event.request, clone);
                     }).catch(() => {});
                 }
                 return response;

@@ -60,7 +60,7 @@
 
             // Type advantage check — look up base type for hybrids too
             const attackerTypeData = typeof getAllPetTypeData === 'function' ? getAllPetTypeData(attacker.type) : null;
-            const baseType = (attackerTypeData && attackerTypeData.parentTypes) ? attackerTypeData.parentTypes[0] : attacker.type;
+            const baseType = (attackerTypeData && (attackerTypeData.parentTypes || attackerTypeData.parents)) ? (attackerTypeData.parentTypes || attackerTypeData.parents)[0] : attacker.type;
             const advantages = PET_TYPE_ADVANTAGES[attacker.type] || PET_TYPE_ADVANTAGES[baseType] || [];
             if (advantages.includes(defender.type)) {
                 damage = Math.round(damage * 1.3);
@@ -348,9 +348,9 @@
                 _battleLogAnnounceQueue = [];
                 if (overlay.parentNode) overlay.remove();
                 if (gameState.phase === 'pet') {
-                    updateNeedDisplays();
-                    updatePetMood();
-                    updateWellnessBar();
+                    if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                    if (typeof updatePetMood === 'function') updatePetMood();
+                    if (typeof updateWellnessBar === 'function') updateWellnessBar();
                 }
             }
 
@@ -409,7 +409,7 @@
                                         <span class="boss-name">${boss.name}</span>
                                         <span class="boss-hp-label">HP: ${boss.maxHP}</span>
                                         ${defeated ? '<span class="boss-defeated-badge">Defeated!</span>' : ''}
-                                        ${boss.season ? `<span class="boss-season">${SEASONS[boss.season].icon} ${SEASONS[boss.season].name}</span>` : '<span class="boss-season">⭐ Special</span>'}
+                                        ${boss.season && SEASONS[boss.season] ? `<span class="boss-season">${SEASONS[boss.season].icon} ${SEASONS[boss.season].name}</span>` : '<span class="boss-season">⭐ Special</span>'}
                                     </button>
                                 `;
                             }).join('')}
@@ -659,9 +659,9 @@
                 popModalEscape(closeBossUI);
                 if (overlay.parentNode) overlay.remove();
                 if (gameState.phase === 'pet') {
-                    updateNeedDisplays();
-                    updatePetMood();
-                    updateWellnessBar();
+                    if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                    if (typeof updatePetMood === 'function') updatePetMood();
+                    if (typeof updateWellnessBar === 'function') updateWellnessBar();
                 }
             }
 
@@ -772,8 +772,8 @@
                 Math.floor(Math.random() * 45) + 35
             ].sort((a, b) => b - a);
 
-            const allScores = [...npcScores, result.totalScore].sort((a, b) => b - a);
-            // Use indexOf to break ties in player's favor (player listed before NPCs with same score)
+            const allScores = [result.totalScore, ...npcScores].sort((a, b) => b - a);
+            // Player is listed first before NPCs so indexOf breaks ties in player's favor
             const placement = allScores.indexOf(result.totalScore) + 1;
 
             overlay.innerHTML = `
@@ -999,9 +999,9 @@
                 popModalEscape(closeObstacle);
                 if (overlay.parentNode) overlay.remove();
                 if (gameState.phase === 'pet') {
-                    updateNeedDisplays();
-                    updatePetMood();
-                    updateWellnessBar();
+                    if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                    if (typeof updatePetMood === 'function') updatePetMood();
+                    if (typeof updateWellnessBar === 'function') updateWellnessBar();
                 }
             }
 
@@ -1275,9 +1275,9 @@
                 popModalEscape(closeRivalUI);
                 if (overlay.parentNode) overlay.remove();
                 if (gameState.phase === 'pet') {
-                    updateNeedDisplays();
-                    updatePetMood();
-                    updateWellnessBar();
+                    if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                    if (typeof updatePetMood === 'function') updatePetMood();
+                    if (typeof updateWellnessBar === 'function') updateWellnessBar();
                 }
             }
 

@@ -268,6 +268,36 @@
                         <path d="M60 50 Q65 45 70 50 Q65 55 60 50" fill="${darkerColor}" opacity="0.5"/>
                         <path d="M40 65 Q45 60 50 65 Q45 70 40 65" fill="${darkerColor}" opacity="0.5"/>
                     `;
+                case 'galaxy':
+                    return `
+                        <circle cx="40" cy="48" r="4" fill="${darkerColor}" opacity="0.5"/>
+                        <circle cx="55" cy="55" r="3" fill="${darkerColor}" opacity="0.4"/>
+                        <circle cx="65" cy="45" r="5" fill="${darkerColor}" opacity="0.5"/>
+                        <circle cx="48" cy="68" r="3.5" fill="${darkerColor}" opacity="0.45"/>
+                        <path d="M35 50 Q50 42 65 52 Q55 60 40 58 Z" fill="${darkerColor}" opacity="0.2"/>
+                    `;
+                case 'crystalline':
+                    return `
+                        <polygon points="38,42 42,35 46,42" fill="${darkerColor}" opacity="0.5"/>
+                        <polygon points="55,48 60,40 65,48" fill="${darkerColor}" opacity="0.5"/>
+                        <polygon points="45,65 50,57 55,65" fill="${darkerColor}" opacity="0.45"/>
+                        <polygon points="30,55 34,48 38,55" fill="${darkerColor}" opacity="0.4"/>
+                    `;
+                case 'flame':
+                    return `
+                        <path d="M35 70 Q37 60 40 65 Q43 55 45 70" fill="${darkerColor}" opacity="0.5"/>
+                        <path d="M50 68 Q52 58 55 63 Q58 53 60 68" fill="${darkerColor}" opacity="0.5"/>
+                        <path d="M65 70 Q67 62 70 66 Q72 58 74 70" fill="${darkerColor}" opacity="0.45"/>
+                    `;
+                case 'floral':
+                    return `
+                        <circle cx="38" cy="48" r="3" fill="${darkerColor}" opacity="0.4"/>
+                        <circle cx="35" cy="45" r="2.5" fill="${darkerColor}" opacity="0.3"/>
+                        <circle cx="41" cy="45" r="2.5" fill="${darkerColor}" opacity="0.3"/>
+                        <circle cx="60" cy="60" r="3" fill="${darkerColor}" opacity="0.4"/>
+                        <circle cx="57" cy="57" r="2.5" fill="${darkerColor}" opacity="0.3"/>
+                        <circle cx="63" cy="57" r="2.5" fill="${darkerColor}" opacity="0.3"/>
+                    `;
                 default:
                     return '';
             }
@@ -469,21 +499,41 @@
 
             // Add idle breathing animation to body elements
             const breatheAnim = `<animateTransform attributeName="transform" type="scale" values="1 1;1.015 0.985;1 1" dur="3s" repeatCount="indefinite" additive="sum" origin="50 70"/>`;
-            // Insert breathing animation after the first body ellipse/circle
-            // Fallback: also try matching without the comment marker
-            const breatheRegex = /(<!-- Body -->\s*<(?:ellipse|circle)[^>]*)(\/?>)/;
-            const breatheFallback = /(<(?:ellipse|circle)[^>]*class="[^"]*body[^"]*"[^>]*)(\/?>)/i;
+            // Insert breathing animation as a child of the first body ellipse/circle
+            // Self-closing tags (/>)  need to become open tags with the animation inside
+            const breatheRegex = /(<!-- Body -->\s*<(?:ellipse|circle)([^>]*))(\/?>)/;
+            const breatheFallback = /(<(?:ellipse|circle)([^>]*class="[^"]*body[^"]*"[^>]*))(\/?>)/i;
+            function insertBreathChild(match, prefix, attrs, close) {
+                if (close === '/>') {
+                    // Determine if it's an ellipse or circle
+                    const tagMatch = prefix.match(/<(ellipse|circle)/);
+                    const tag = tagMatch ? tagMatch[1] : 'ellipse';
+                    return `${prefix}>${breatheAnim}</${tag}>`;
+                }
+                // Already has > closing, insert animation before the closing tag
+                return `${prefix}>${breatheAnim}`;
+            }
             if (breatheRegex.test(svg)) {
-                svg = svg.replace(breatheRegex, `$1$2${breatheAnim}`);
+                svg = svg.replace(breatheRegex, insertBreathChild);
             } else if (breatheFallback.test(svg)) {
-                svg = svg.replace(breatheFallback, `$1$2${breatheAnim}`);
+                svg = svg.replace(breatheFallback, insertBreathChild);
             }
 
             // Add eye blink animation (brief squash of eyes every ~5s)
             const blinkId = 'blinkAnim_' + Math.random().toString(36).slice(2, 8);
             const blinkAnim = `<animate attributeName="ry" values="1;0.2;1" dur="0.15s" begin="0s;${blinkId}.end+${4 + Math.random() * 3}s" id="${blinkId}" fill="freeze"/>`;
-            // Inject blink animation into the first eye ellipse
-            svg = svg.replace(/(<!-- Eyes -->\s*<ellipse[^>]*)(\/?>)/, `$1$2${blinkAnim}`);
+            // Inject blink animation into the first eye ellipse or circle
+            const blinkRegex = /(<!-- Eyes -->\s*<(?:ellipse|circle)[^>]*)(\/?>)/;
+            if (blinkRegex.test(svg)) {
+                svg = svg.replace(blinkRegex, (match, prefix, close) => {
+                    if (close === '/>') {
+                        const tagMatch = prefix.match(/<(ellipse|circle)/);
+                        const tag = tagMatch ? tagMatch[1] : 'ellipse';
+                        return `${prefix}>${blinkAnim}</${tag}>`;
+                    }
+                    return `${prefix}>${blinkAnim}`;
+                });
+            }
 
             // Add sparkle effect for shiny/evolved pets
             const isShiny = careVariant === 'shiny';
