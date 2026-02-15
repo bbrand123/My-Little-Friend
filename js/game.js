@@ -64,7 +64,8 @@
             totalHybridsCreated: 0,     // Total hybrid pets created
             totalMutations: 0,          // Total mutations occurred
             hybridsDiscovered: {},       // { hybridType: true }
-            journal: []                  // Array of { timestamp, icon, text } entries
+            journal: [],                 // Array of { timestamp, icon, text } entries
+            totalFeedCount: 0            // Lifetime feed count for badges/achievements
         };
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -897,6 +898,7 @@
                     if (typeof parsed.totalMedicineUses !== 'number') parsed.totalMedicineUses = 0;
                     if (typeof parsed.totalGroomCount !== 'number') parsed.totalGroomCount = 0;
                     if (typeof parsed.totalDailyCompletions !== 'number') parsed.totalDailyCompletions = 0;
+                    if (typeof parsed.totalFeedCount !== 'number') parsed.totalFeedCount = 0;
 
                     // Add competition state if missing (for existing saves)
                     if (!parsed.competition || typeof parsed.competition !== 'object') {
@@ -1364,6 +1366,7 @@
 
         // Normalize shorthand hex (#F00) to full form (#FF0000)
         function normalizeHex(hex) {
+            if (typeof hex !== 'string') return '#D4A574'; // fallback color
             if (hex.length === 4) {
                 return '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
             }
@@ -1520,7 +1523,7 @@
             return {
                 success: true,
                 egg: breedingEgg,
-                hasMutation: hasMutation,
+                hasMutation: actuallyMutated,
                 isHybrid: typeResult.isHybrid,
                 offspringType: typeResult.type
             };
@@ -2477,7 +2480,9 @@
                 delete garden.inventory[cropId];
             }
 
-            gameState.pet.hunger = clamp(gameState.pet.hunger + crop.hungerValue, 0, 100);
+            // Apply room bonus (e.g. kitchen feeding bonus)
+            const feedMultiplier = typeof getRoomBonus === 'function' ? getRoomBonus('feed') : 1.0;
+            gameState.pet.hunger = clamp(gameState.pet.hunger + Math.round(crop.hungerValue * feedMultiplier), 0, 100);
             if (crop.happinessValue) {
                 gameState.pet.happiness = clamp(gameState.pet.happiness + crop.happinessValue, 0, 100);
             }
@@ -2492,6 +2497,15 @@
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
             gameState.totalFeedCount++;
+
+            // Advance breeding egg incubation
+            if (typeof applyBreedingEggCareBonus === 'function') applyBreedingEggCareBonus('feed');
+
+            // Check pet-type-specific feeding stickers
+            if (typeof checkPetActionSticker === 'function') {
+                const actionStickers = checkPetActionSticker('feed');
+                if (actionStickers) actionStickers.forEach(s => showToast(`${s.emoji} Sticker: ${s.name}!`, '#E040FB'));
+            }
 
             const petData = getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type];
 
@@ -2729,6 +2743,17 @@
                     `;
                 } else {
                     const crop = GARDEN_CROPS[plot.cropId];
+                    if (!crop) {
+                        // Corrupted plot data — treat as empty
+                        garden.plots[i] = null;
+                        plotsHTML += `
+                            <div class="garden-plot empty" data-plot="${i}" role="button" tabindex="0" aria-label="Plot ${i + 1}: Empty. Press Enter to plant.">
+                                <span class="garden-plot-emoji" aria-hidden="true">➕</span>
+                                <span class="garden-plot-label">Plant</span>
+                            </div>
+                        `;
+                        continue;
+                    }
                     const stageEmoji = crop.stages[plot.stage];
                     const cropSVG = generateCropSVG(plot.cropId, plot.stage);
                     const isReady = plot.stage >= 3;
@@ -2741,8 +2766,8 @@
                     // Calculate remaining time for countdown
                     const totalTicksNeeded = effectiveGrowTime * 3;
                     const ticksRemaining = Math.max(0, totalTicksNeeded - plot.growTicks);
-                    // Water dries after each tick, so only the next tick benefits from watering
-                    const effectiveTickRate = plot.watered ? ((ticksRemaining > 1) ? (1 + 1 / ticksRemaining) : 2) : 1;
+                    // Watering speeds up the next tick by 1.5x (water dries after one tick)
+                    const effectiveTickRate = plot.watered ? 1.5 : 1;
                     const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining / effectiveTickRate);
                     const timerText = isReady ? '' : (minsRemaining > 0 ? `~${minsRemaining}m left` : 'Almost...');
 
@@ -2876,6 +2901,9 @@
                 dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
             }
 
+            // Advance breeding egg incubation
+            if (typeof applyBreedingEggCareBonus === 'function') applyBreedingEggCareBonus('play');
+
             // Check achievements
             if (typeof checkAchievements === 'function') {
                 const newAch = checkAchievements();
@@ -2883,6 +2911,18 @@
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
                     setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
                 });
+            }
+            if (typeof checkBadges === 'function') {
+                const nb = checkBadges();
+                nb.forEach(b => setTimeout(() => showToast(`${b.icon} Badge: ${b.name}!`, typeof BADGE_TIERS !== 'undefined' && BADGE_TIERS[b.tier] ? BADGE_TIERS[b.tier].color : '#FFD700'), 500));
+            }
+            if (typeof checkStickers === 'function') {
+                const ns = checkStickers();
+                ns.forEach(s => setTimeout(() => showToast(`${s.emoji} Sticker: ${s.name}!`, '#E040FB'), 700));
+            }
+            if (typeof checkTrophies === 'function') {
+                const nt = checkTrophies();
+                nt.forEach(t => setTimeout(() => showToast(`${t.icon} Trophy: ${t.name}!`, '#FFD700'), 900));
             }
 
             const message = `${petData.emoji} ${escapeHTML(pet.name || petData.name)} ${randomFromArray(seasonData.activityMessages)}`;
@@ -2986,11 +3026,11 @@
                         syncActivePetToArray();
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.round(clamp(p.hunger - 0.5, 0, 100) * 10) / 10;
-                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100) * 10) / 10;
+                            p.hunger = Math.round(clamp(p.hunger - 0.5, 0, 100));
+                            p.cleanliness = Math.round(clamp(p.cleanliness - 0.5, 0, 100));
                             // Net happiness: -0.5 decay + 0.3 companion bonus = -0.2
-                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100) * 10) / 10;
-                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100) * 10) / 10;
+                            p.happiness = Math.round(clamp(p.happiness - 0.2, 0, 100));
+                            p.energy = Math.round(clamp(p.energy - 0.5, 0, 100));
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -3317,6 +3357,8 @@
                         if (saved.streak) gameState.streak = saved.streak;
                         if (saved.dailyChecklist) gameState.dailyChecklist = saved.dailyChecklist;
                         if (saved.competition) gameState.competition = saved.competition;
+                        if (saved.breedingEggs) gameState.breedingEggs = saved.breedingEggs;
+                        if (saved.hatchedBreedingEggs) gameState.hatchedBreedingEggs = saved.hatchedBreedingEggs;
                         if (typeof saved.totalFeedCount === 'number') gameState.totalFeedCount = saved.totalFeedCount;
                         if (typeof saved.adultsRaised === 'number') gameState.adultsRaised = saved.adultsRaised;
 
@@ -3507,7 +3549,7 @@
 
                 // Show tutorial on first visit
                 try {
-                    const tutorialSeen = localStorage.getItem('petCareBuddy_tutorialSeen');
+                    const tutorialSeen = localStorage.getItem('petCareBuddy_tutorialDone');
                     if (!tutorialSeen && !saved) {
                         setTimeout(showTutorial, 500);
                     }

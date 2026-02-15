@@ -672,6 +672,7 @@
             // Show speech every 20-40 seconds
             const delay = 20000 + Math.random() * 20000;
             _speechBubbleTimer = setTimeout(() => {
+                removeIdleTimer(_speechBubbleTimer);
                 _speechBubbleTimer = null;
                 showSpeechBubble();
                 scheduleSpeechBubble();
@@ -1064,14 +1065,14 @@
                                 <span>Sleep</span>
                                 ${getRoomBonusBadge('sleep', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
-                                <span class="kbd-hint" aria-hidden="true">4</span>
+                                <span class="kbd-hint" aria-hidden="true">3</span>
                             </button>
                             <button class="action-btn pet-cuddle" id="pet-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">🤗</span>
                                 <span>Pet</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
-                                <span class="kbd-hint" aria-hidden="true">5</span>
+                                <span class="kbd-hint" aria-hidden="true">4</span>
                             </button>
                             <button class="action-btn play ${getRoomBonusBadge('play', currentRoom) ? 'has-room-bonus' : ''}" id="play-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
@@ -1079,7 +1080,7 @@
                                 <span>Play</span>
                                 ${getRoomBonusBadge('play', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
-                                <span class="kbd-hint" aria-hidden="true">3</span>
+                                <span class="kbd-hint" aria-hidden="true">5</span>
                             </button>
                             <button class="action-btn treat" id="treat-btn">
                                 <span class="action-btn-tooltip">+Food, +Happy</span>
@@ -1570,7 +1571,7 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
-            toast.innerHTML = wrapEmojiForAria(escapeHTML(message));
+            toast.innerHTML = wrapEmojiForAria(message);
             container.appendChild(toast);
 
             // Announce to screen readers — strip HTML tags for plain text
@@ -1694,7 +1695,10 @@
                     btn.classList.remove('cooldown');
                     btn.disabled = false;
                     btn.removeAttribute('aria-disabled');
-                    btn.removeAttribute('aria-label');
+                    // Restore original aria-label instead of removing it entirely
+                    if (btn.dataset.originalLabel) {
+                        btn.setAttribute('aria-label', btn.dataset.originalLabel);
+                    }
                 });
                 announce('Actions ready');
             }, ACTION_COOLDOWN_MS);
@@ -2098,10 +2102,10 @@
                 if (newSvg) {
                     petContainer.replaceChild(newSvg, existingSvg);
                 } else {
-                    petContainer.innerHTML = newSvgHTML;
+                    petContainer.insertAdjacentHTML('afterbegin', newSvgHTML);
                 }
             } else {
-                petContainer.innerHTML = newSvgHTML;
+                petContainer.insertAdjacentHTML('afterbegin', newSvgHTML);
             }
 
             // Update mood face indicator
@@ -3201,71 +3205,6 @@
             trapFocus(overlay);
         }
 
-        // ==================== TUTORIAL / ONBOARDING ====================
-
-        function showTutorial() {
-            const overlay = document.createElement('div');
-            overlay.className = 'naming-overlay';
-            overlay.setAttribute('role', 'dialog');
-            overlay.setAttribute('aria-modal', 'true');
-            overlay.setAttribute('aria-labelledby', 'tutorial-title');
-            overlay.innerHTML = `
-                <div class="naming-modal">
-                    <h2 class="naming-modal-title" id="tutorial-title"><span aria-hidden="true">🎉</span> Welcome to Pet Care Buddy!</h2>
-                    <div class="tutorial-content">
-                        <div class="tutorial-step">
-                            <span class="tutorial-icon" aria-hidden="true">🥚</span>
-                            <h3>Hatch Your Pet</h3>
-                            <p>Tap the egg 5 times to hatch a surprise pet! Different egg colors hint at what's inside.</p>
-                        </div>
-                        <div class="tutorial-step">
-                            <span class="tutorial-icon" aria-hidden="true">🎨</span>
-                            <h3>Customize</h3>
-                            <p>Choose your pet's colors, patterns, and accessories to make them unique!</p>
-                        </div>
-                        <div class="tutorial-step">
-                            <span class="tutorial-icon" aria-hidden="true">💖</span>
-                            <h3>Care & Play</h3>
-                            <p>Keep your pet happy by feeding, bathing, playing, and putting them to bed. Watch the 4 need bubbles!</p>
-                        </div>
-                        <div class="tutorial-step">
-                            <span class="tutorial-icon" aria-hidden="true">🏠</span>
-                            <h3>Explore Rooms</h3>
-                            <p>Visit different rooms for bonuses: Kitchen gives +30% food, Bathroom +30% cleaning, and more!</p>
-                        </div>
-                        <div class="tutorial-step">
-                            <span class="tutorial-icon" aria-hidden="true">⭐</span>
-                            <h3>Grow Together</h3>
-                            <p>As you care for your pet, they'll grow from Baby → Child → Adult. Raise adults to unlock mythical pets!</p>
-                        </div>
-                    </div>
-                    <button class="naming-submit-btn" id="tutorial-done">Let's Start!</button>
-                    <button class="naming-skip-btn" id="tutorial-skip">Skip Tutorial</button>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-
-            const doneBtn = document.getElementById('tutorial-done');
-            const skipBtn = document.getElementById('tutorial-skip');
-
-            function closeTutorial() {
-                popModalEscape(closeTutorial);
-                overlay.remove();
-                // Mark tutorial as seen
-                try {
-                    localStorage.setItem('petCareBuddy_tutorialSeen', 'true');
-                } catch (e) {
-                    // Ignore storage errors
-                }
-            }
-
-            doneBtn.addEventListener('click', closeTutorial);
-            skipBtn.addEventListener('click', closeTutorial);
-
-            pushModalEscape(closeTutorial);
-            trapFocus(overlay);
-        }
-
         // ==================== FURNITURE CUSTOMIZATION ====================
 
         function showFurnitureModal() {
@@ -4057,7 +3996,8 @@
                 overlay.remove();
                 // Open the naming modal
                 if (typeof showNamingModal === 'function') {
-                    showNamingModal();
+                    const petTypeData = getAllPetTypeData(pet.type) || PET_TYPES[pet.type] || { name: pet.type, colors: [pet.color || '#D4A574'] };
+                    showNamingModal(petTypeData);
                 } else {
                     renderPetPhase();
                 }
@@ -4228,7 +4168,7 @@
                             if (result.hasMutation) msg += ' 🌈 A rare mutation was detected!';
                             showToast(msg, '#E040FB');
                             announce(msg, true);
-                            hapticPattern('achievement');
+                            if (typeof hapticPattern === 'function') hapticPattern('achievement');
                             // Check achievements
                             if (typeof checkAchievements === 'function') {
                                 const newAch = checkAchievements();
@@ -4253,7 +4193,6 @@
                     });
                 }
 
-                cancelBtn.focus();
             }
 
             function closeOverlay() {
@@ -4266,6 +4205,9 @@
             overlay._closeOverlay = closeOverlay;
             trapFocus(overlay);
             renderModalContent();
+            // Focus cancel button only on initial open
+            const initialCancel = overlay.querySelector('#breeding-cancel');
+            if (initialCancel) initialCancel.focus();
         }
 
         // ==================== PET SWITCHER ====================
@@ -5212,8 +5154,8 @@
                     </div>
                     <div class="settings-keyboard-hints">
                         <h3 class="settings-hints-title">Keyboard Shortcuts</h3>
-                        <div class="settings-hint-row"><kbd>1</kbd> Feed &nbsp; <kbd>2</kbd> Wash &nbsp; <kbd>3</kbd> Play &nbsp; <kbd>4</kbd> Sleep</div>
-                        <div class="settings-hint-row"><kbd>5</kbd> Pet &nbsp; <kbd>6</kbd> Treat &nbsp; <kbd>7</kbd> Games &nbsp; <kbd>8</kbd> Arena</div>
+                        <div class="settings-hint-row"><kbd>1</kbd> Feed &nbsp; <kbd>2</kbd> Wash &nbsp; <kbd>3</kbd> Sleep &nbsp; <kbd>4</kbd> Pet</div>
+                        <div class="settings-hint-row"><kbd>5</kbd> Play &nbsp; <kbd>6</kbd> Treat &nbsp; <kbd>7</kbd> Games &nbsp; <kbd>8</kbd> Arena</div>
                         <div class="settings-hint-row"><kbd>Tab</kbd> Navigate &nbsp; <kbd>Enter</kbd> / <kbd>Space</kbd> Activate</div>
                         <div class="settings-hint-row"><kbd>Escape</kbd> Close current dialog</div>
                     </div>
@@ -5346,9 +5288,9 @@
             const shortcuts = {
                 '1': 'feed-btn',
                 '2': 'wash-btn',
-                '3': 'play-btn',
-                '4': 'sleep-btn',
-                '5': 'pet-btn',
+                '3': 'sleep-btn',
+                '4': 'pet-btn',
+                '5': 'play-btn',
                 '6': 'treat-btn',
                 '7': 'minigames-btn',
                 '8': 'competition-btn'
@@ -5457,11 +5399,13 @@
             }
 
             function closeTutorial() {
+                popModalEscape(closeTutorial);
                 const overlay = document.querySelector('.tutorial-overlay');
                 if (overlay) overlay.remove();
                 try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
             }
 
+            pushModalEscape(closeTutorial);
             renderStep();
         }
 

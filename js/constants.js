@@ -1118,7 +1118,7 @@ const PET_TYPE_ADVANTAGES = {
     bird: ['frog', 'bunny'], hamster: ['bunny', 'turtle'], turtle: ['hedgehog', 'hamster'],
     fish: ['turtle', 'frog'], frog: ['hamster', 'hedgehog'], hedgehog: ['cat', 'bird'],
     panda: ['dog', 'turtle'], penguin: ['fish', 'bird'],
-    unicorn: ['dragon', 'panda'], dragon: ['unicorn', 'penguin']
+    unicorn: ['dragon', 'panda'], dragon: ['penguin', 'hedgehog']
 };
 
 // Boss encounters - seasonal and special event bosses
