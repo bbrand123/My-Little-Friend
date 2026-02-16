@@ -555,6 +555,130 @@ function getRoomBonus(action) {
 
 const ROOM_IDS = Object.keys(ROOMS);
 
+// ==================== EXPLORATION & WORLD ====================
+
+const EXPLORATION_BIOMES = {
+    forest: {
+        id: 'forest',
+        name: 'Forest',
+        icon: '🌲',
+        description: 'A lush woodland filled with friendly critters and hidden relics.',
+        unlockHint: 'Unlocked by default.',
+        unlockRule: { type: 'default' },
+        npcTypes: ['bunny', 'hedgehog', 'frog']
+    },
+    beach: {
+        id: 'beach',
+        name: 'Beach',
+        icon: '🏖️',
+        description: 'Sunny shores with drift treasures and curious sea friends.',
+        unlockHint: 'Unlock by completing 1 expedition.',
+        unlockRule: { type: 'expeditionsCompleted', count: 1 },
+        npcTypes: ['dog', 'cat', 'penguin']
+    },
+    mountain: {
+        id: 'mountain',
+        name: 'Mountain',
+        icon: '⛰️',
+        description: 'Windy peaks and cliff paths with rare crystals.',
+        unlockHint: 'Unlock by completing 3 expeditions.',
+        unlockRule: { type: 'expeditionsCompleted', count: 3 },
+        npcTypes: ['bird', 'cat', 'dragon']
+    },
+    cave: {
+        id: 'cave',
+        name: 'Cave',
+        icon: '🕳️',
+        description: 'Echoing caverns with glowing stones and dungeon entrances.',
+        unlockHint: 'Unlock by clearing 1 dungeon crawl.',
+        unlockRule: { type: 'dungeonsCleared', count: 1 },
+        npcTypes: ['frog', 'turtle', 'dragon']
+    },
+    skyIsland: {
+        id: 'skyIsland',
+        name: 'Sky Island',
+        icon: '🏝️☁️',
+        description: 'Floating islands above the clouds packed with starlight loot.',
+        unlockHint: 'Unlocked by owning a bird-type pet.',
+        unlockRule: { type: 'birdPet' },
+        npcTypes: ['bird', 'penguin', 'unicorn']
+    },
+    underwater: {
+        id: 'underwater',
+        name: 'Underwater Zone',
+        icon: '🌊',
+        description: 'An underwater world full of coral caches and bubble ruins.',
+        unlockHint: 'Unlocked by owning a fish-type pet.',
+        unlockRule: { type: 'fishPet' },
+        npcTypes: ['fish', 'frog', 'turtle']
+    },
+    skyZone: {
+        id: 'skyZone',
+        name: 'Sky Zone',
+        icon: '🪽',
+        description: 'High-altitude air currents with wind temples and feather shrines.',
+        unlockHint: 'Unlocked by owning a bird-type pet.',
+        unlockRule: { type: 'birdPet' },
+        npcTypes: ['bird', 'penguin', 'dragon']
+    }
+};
+
+const EXPLORATION_LOOT = {
+    forestCharm: { id: 'forestCharm', name: 'Forest Charm', emoji: '🍃', rarity: 'common' },
+    mossStone: { id: 'mossStone', name: 'Moss Stone', emoji: '🪨', rarity: 'common' },
+    berryBundle: { id: 'berryBundle', name: 'Berry Bundle', emoji: '🫐', rarity: 'common' },
+    sunShell: { id: 'sunShell', name: 'Sun Shell', emoji: '🐚', rarity: 'common' },
+    seaGlass: { id: 'seaGlass', name: 'Sea Glass', emoji: '🔹', rarity: 'uncommon' },
+    tidePearl: { id: 'tidePearl', name: 'Tide Pearl', emoji: '🫧', rarity: 'rare' },
+    summitCrystal: { id: 'summitCrystal', name: 'Summit Crystal', emoji: '💎', rarity: 'rare' },
+    eagleFeather: { id: 'eagleFeather', name: 'Eagle Feather', emoji: '🪶', rarity: 'uncommon' },
+    emberOre: { id: 'emberOre', name: 'Ember Ore', emoji: '🔥', rarity: 'uncommon' },
+    caveLantern: { id: 'caveLantern', name: 'Cave Lantern', emoji: '🏮', rarity: 'uncommon' },
+    glowMushroom: { id: 'glowMushroom', name: 'Glow Mushroom', emoji: '🍄', rarity: 'common' },
+    runeFragment: { id: 'runeFragment', name: 'Rune Fragment', emoji: '🧩', rarity: 'rare' },
+    cloudRibbon: { id: 'cloudRibbon', name: 'Cloud Ribbon', emoji: '🎐', rarity: 'uncommon' },
+    stardust: { id: 'stardust', name: 'Stardust', emoji: '✨', rarity: 'rare' },
+    bubbleGem: { id: 'bubbleGem', name: 'Bubble Gem', emoji: '🔮', rarity: 'rare' },
+    coralCrown: { id: 'coralCrown', name: 'Coral Crown', emoji: '🪸', rarity: 'uncommon' },
+    windCompass: { id: 'windCompass', name: 'Wind Compass', emoji: '🧭', rarity: 'uncommon' },
+    skyLantern: { id: 'skyLantern', name: 'Sky Lantern', emoji: '🏮', rarity: 'rare' },
+    ancientCoin: { id: 'ancientCoin', name: 'Ancient Coin', emoji: '🪙', rarity: 'uncommon' },
+    mysteryMap: { id: 'mysteryMap', name: 'Mystery Map', emoji: '🗺️', rarity: 'rare' }
+};
+
+const BIOME_LOOT_POOLS = {
+    forest: ['forestCharm', 'mossStone', 'berryBundle', 'ancientCoin'],
+    beach: ['sunShell', 'seaGlass', 'tidePearl', 'ancientCoin'],
+    mountain: ['summitCrystal', 'eagleFeather', 'emberOre', 'mysteryMap'],
+    cave: ['caveLantern', 'glowMushroom', 'runeFragment', 'ancientCoin'],
+    skyIsland: ['cloudRibbon', 'stardust', 'windCompass', 'skyLantern'],
+    underwater: ['bubbleGem', 'coralCrown', 'tidePearl', 'seaGlass'],
+    skyZone: ['windCompass', 'skyLantern', 'stardust', 'cloudRibbon']
+};
+
+const ROOM_TREASURE_POOLS = {
+    bedroom: ['mysteryMap', 'forestCharm', 'ancientCoin'],
+    kitchen: ['berryBundle', 'sunShell', 'ancientCoin'],
+    bathroom: ['bubbleGem', 'seaGlass', 'ancientCoin'],
+    backyard: ['forestCharm', 'mossStone', 'berryBundle'],
+    park: ['eagleFeather', 'cloudRibbon', 'ancientCoin'],
+    garden: ['glowMushroom', 'forestCharm', 'berryBundle']
+};
+
+const EXPEDITION_DURATIONS = [
+    { id: 'scout', name: 'Scout Run', label: '45s Scout Run', ms: 45000, lootMultiplier: 1.0 },
+    { id: 'journey', name: 'Journey', label: '2m Journey', ms: 120000, lootMultiplier: 1.35 },
+    { id: 'odyssey', name: 'Grand Odyssey', label: '5m Grand Odyssey', ms: 300000, lootMultiplier: 1.8 }
+];
+
+const DUNGEON_ROOM_TYPES = [
+    { id: 'combat', name: 'Battle Room', icon: '⚔️' },
+    { id: 'treasure', name: 'Treasure Room', icon: '💰' },
+    { id: 'trap', name: 'Trap Room', icon: '🪤' },
+    { id: 'rest', name: 'Rest Room', icon: '🔥' },
+    { id: 'npc', name: 'Lost Friend Room', icon: '🐾' }
+];
+
 // ==================== SEASONS SYSTEM ====================
 
 const SEASONS = {
