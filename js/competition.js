@@ -211,6 +211,7 @@
             }
 
             let battleLogHistory = [];
+            let turnLocked = false;
 
             let _battleLogAnnounceTimer = null;
             let _battleLogAnnounceQueue = [];
@@ -251,10 +252,15 @@
             }
 
             function executeTurn(moveId) {
-                if (battleOver) return;
+                if (battleOver || turnLocked) return;
+                turnLocked = true;
                 turnCount++;
 
                 const move = BATTLE_MOVES[moveId];
+                if (!move) {
+                    turnLocked = false;
+                    return;
+                }
                 const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
                 const oppName = opponent.name;
 
@@ -279,6 +285,7 @@
                     logMessage(`${oppName} is defeated! You win!`);
                     announce(`${oppName} is defeated! You win!`, true);
                     endBattle(true);
+                    turnLocked = false;
                     return;
                 }
 
@@ -304,11 +311,13 @@
                     logMessage(`${petName} is defeated! You lose...`);
                     announce(`${petName} is defeated! You lose.`, true);
                     endBattle(false);
+                    turnLocked = false;
                     return;
                 }
 
                 renderBattle();
                 restoreBattleLog();
+                turnLocked = false;
             }
 
             function endBattle(won) {
@@ -339,6 +348,9 @@
 
                 // Show result overlay
                 setTimeout(() => {
+                    if (!overlay.isConnected) return;
+                    const modal = overlay.querySelector('.battle-modal');
+                    if (!modal) return;
                     const resultDiv = document.createElement('div');
                     resultDiv.className = 'battle-result';
                     resultDiv.innerHTML = `
@@ -352,8 +364,7 @@
                             </div>
                         </div>
                     `;
-                    const modal = overlay.querySelector('.battle-modal');
-                    if (modal) modal.appendChild(resultDiv);
+                    modal.appendChild(resultDiv);
                     const doneBtn = overlay.querySelector('#battle-done');
                     if (doneBtn) doneBtn.addEventListener('click', closeBattle);
                     const hubBtn = overlay.querySelector('#battle-back-hub');
@@ -465,6 +476,8 @@
                 let petHPs = allPets.map(p => calculateBattleHP(p));
                 let petMaxHPs = [...petHPs];
                 let fightOver = false;
+                let bossTurnLocked = false;
+                const bossDefender = { type: boss.type || 'dragon' };
 
                 function renderBossFight() {
                     const currentPet = allPets[currentPetIdx];
@@ -549,19 +562,22 @@
                 }
 
                 function executeBossTurn(moveId) {
-                    if (fightOver) return;
+                    if (fightOver || bossTurnLocked) return;
+                    bossTurnLocked = true;
                     const currentPet = allPets[currentPetIdx];
                     const petName = currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet';
                     const move = BATTLE_MOVES[moveId];
+                    if (!move) {
+                        bossTurnLocked = false;
+                        return;
+                    }
 
                     // Player attack
                     if (move.heal) {
                         petHPs[currentPetIdx] = Math.min(petMaxHPs[currentPetIdx], petHPs[currentPetIdx] + move.heal);
                         bossLog(`${petName} rests and recovers ${move.heal} HP!`);
                     } else {
-                        const stat = currentPet[move.stat] || 50;
-                        const statMult = stat / 50;
-                        let dmg = Math.round(move.basePower * statMult * (0.85 + Math.random() * 0.3));
+                        let dmg = calculateMoveDamage(move, currentPet, bossDefender);
                         dmg = Math.max(1, dmg - Math.floor(boss.defense / 3));
                         bossHP = Math.max(0, bossHP - dmg);
                         bossLog(`${petName} uses ${move.name}! Deals ${dmg} damage!`);
@@ -573,18 +589,20 @@
                         restoreBossLog();
                         bossLog(boss.victoryMessage);
                         endBossFight(bossId, true);
+                        bossTurnLocked = false;
                         return;
                     }
 
                     // Boss turn
                     const bossMove = boss.moves[Math.floor(Math.random() * boss.moves.length)];
-                    if (bossMove.healSelf) {
-                        bossHP = Math.min(bossMaxHP, bossHP + bossMove.healSelf);
-                        bossLog(`${boss.name} uses ${bossMove.name}! Heals ${bossMove.healSelf} HP!`);
-                    } else if (bossMove.power) {
+                    if (bossMove.power) {
                         const bossDmg = Math.max(1, Math.round(bossMove.power * (0.85 + Math.random() * 0.3)));
                         petHPs[currentPetIdx] = Math.max(0, petHPs[currentPetIdx] - bossDmg);
                         bossLog(`${boss.name} uses ${bossMove.name}! Deals ${bossDmg} damage!`);
+                    }
+                    if (bossMove.healSelf) {
+                        bossHP = Math.min(bossMaxHP, bossHP + bossMove.healSelf);
+                        bossLog(`${boss.name} uses ${bossMove.name}! Heals ${bossMove.healSelf} HP!`);
                     }
 
                     // Check if current pet fainted
@@ -605,12 +623,14 @@
                             restoreBossLog();
                             bossLog('All pets have fainted! The boss wins...');
                             endBossFight(bossId, false);
+                            bossTurnLocked = false;
                             return;
                         }
                     }
 
                     renderBossFight();
                     restoreBossLog();
+                    bossTurnLocked = false;
                 }
 
                 function endBossFight(bossId, won) {
@@ -638,9 +658,9 @@
                             announce(`Victory! Boss ${boss.name} defeated!`, true);
                         }, 500);
                     } else {
-                        // Consolation rewards (only for non-fainted pets)
-                        allPets.forEach((p, idx) => {
-                            if (!p || petHPs[idx] <= 0) return;
+                        // Consolation rewards apply even if all pets fainted.
+                        allPets.forEach((p) => {
+                            if (!p) return;
                             p.happiness = clamp(p.happiness + 5, 0, 100);
                         });
                         if (gameState.pets && gameState.pets[gameState.activePetIndex]) {
@@ -654,6 +674,9 @@
                     saveGame();
 
                     setTimeout(() => {
+                        if (!overlay.isConnected) return;
+                        const modal = overlay.querySelector('.boss-fight-modal, .boss-select-modal');
+                        if (!modal) return;
                         const resultDiv = document.createElement('div');
                         resultDiv.className = 'battle-result';
                         resultDiv.innerHTML = `
@@ -666,8 +689,7 @@
                                 </div>
                             </div>
                         `;
-                        const modal = overlay.querySelector('.boss-fight-modal, .boss-select-modal');
-                        if (modal) modal.appendChild(resultDiv);
+                        modal.appendChild(resultDiv);
                         const doneBtn = overlay.querySelector('#boss-done');
                         if (doneBtn) doneBtn.addEventListener('click', closeBossUI);
                         const hubBtn2 = overlay.querySelector('#boss-back-hub');
@@ -772,7 +794,10 @@
             // Prevent stat farming by enforcing a cooldown between shows
             const now = Date.now();
             const SHOW_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
-            if (!comp.lastShowTime || (now - comp.lastShowTime) >= SHOW_COOLDOWN_MS) {
+            const cooldownRemainingMs = comp.lastShowTime ? Math.max(0, SHOW_COOLDOWN_MS - (now - comp.lastShowTime)) : 0;
+            const onCooldown = cooldownRemainingMs > 0;
+            const cooldownRemainingMinutes = Math.ceil(cooldownRemainingMs / 60000);
+            if (!onCooldown) {
                 comp.showsEntered++;
                 if (result.totalScore > comp.bestShowScore) {
                     comp.bestShowScore = result.totalScore;
@@ -785,6 +810,8 @@
                 pet.happiness = clamp(pet.happiness + 10, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
                 comp.lastShowTime = now;
+            } else {
+                showToast(`Pet Show rewards are on cooldown for ${cooldownRemainingMinutes} more minute${cooldownRemainingMinutes === 1 ? '' : 's'}.`, '#FFA726');
             }
             saveGame();
 
@@ -795,14 +822,23 @@
                 Math.floor(Math.random() * 45) + 35
             ].sort((a, b) => b - a);
 
-            const allScores = [result.totalScore, ...npcScores].sort((a, b) => b - a);
-            // Player is listed first before NPCs so indexOf breaks ties in player's favor
-            const placement = allScores.indexOf(result.totalScore) + 1;
+            const leaderboard = [
+                { id: 'player', score: result.totalScore },
+                ...npcScores.map((score, i) => ({ id: `npc-${i}`, score }))
+            ];
+            leaderboard.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                if (a.id === 'player') return -1;
+                if (b.id === 'player') return 1;
+                return 0;
+            });
+            const placement = leaderboard.findIndex((entry) => entry.id === 'player') + 1;
 
             overlay.innerHTML = `
                 <div class="modal-content competition-modal show-modal">
                     <button class="competition-close-btn" id="show-close" aria-label="Close">&times;</button>
                     <h2 class="competition-title"><span aria-hidden="true">🏆</span> Pet Show Results</h2>
+                    ${onCooldown ? `<p class="competition-subtitle">Cooldown active: rewards unavailable for ${cooldownRemainingMinutes} more minute${cooldownRemainingMinutes === 1 ? '' : 's'}.</p>` : ''}
                     <div class="show-pet-display">
                         <span class="show-pet-emoji">${(getAllPetTypeData(pet.type) || {}).emoji || '🐾'}</span>
                         <span class="show-pet-name">${petName}</span>
@@ -828,7 +864,7 @@
                         }).join('')}
                     </div>
                     <p class="show-tip">${getShowTip(result.scores)}</p>
-                    <div class="show-stats-summary">Shows entered: ${comp.showsEntered} | Best: ${comp.bestShowRank} (${comp.bestShowScore})</div>
+                    <div class="show-stats-summary">Shows entered: ${comp.showsEntered} | Best: ${comp.bestShowRank} (${comp.bestShowScore})${onCooldown ? ` | Cooldown: ${cooldownRemainingMinutes}m` : ''}</div>
                     <div class="battle-result-actions">
                         <button class="competition-btn primary" id="show-done">Done</button>
                         <button class="competition-btn secondary" id="show-back-hub">Back to Hub</button>
@@ -891,6 +927,7 @@
             let totalScore = 0;
             let courseOver = false;
             const stageResults = [];
+            const coursePet = { ...pet };
 
             function renderCourse() {
                 const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
@@ -912,7 +949,7 @@
                             <h3 class="obstacle-stage-name">${stage.name}</h3>
                             <p class="obstacle-stage-desc">${stage.description}</p>
                             <p class="obstacle-stage-stat">Tests: ${stage.stat.charAt(0).toUpperCase() + stage.stat.slice(1)} (need ${stage.threshold}+)</p>
-                            <p class="obstacle-stage-your-stat">Your ${stage.stat}: ${Math.round(pet[stage.stat] || 0)}</p>
+                            <p class="obstacle-stage-your-stat">Your ${stage.stat}: ${Math.round(coursePet[stage.stat] || 0)}</p>
                         </div>
                         <div class="obstacle-score">Score: ${totalScore}</div>
                         ${!courseOver ? `
@@ -946,7 +983,7 @@
                 if (courseOver) return;
                 if (currentStage < 0 || currentStage >= OBSTACLE_COURSE_STAGES.length) return;
                 const stage = OBSTACLE_COURSE_STAGES[currentStage];
-                const petStat = pet[stage.stat] || 0;
+                const petStat = coursePet[stage.stat] || 0;
 
                 // Success based on stat vs threshold with randomness
                 const roll = petStat + (Math.random() * 20 - 10); // +/- 10 random
@@ -956,10 +993,10 @@
                     totalScore += stage.points;
                     stageResults.push({ ...stage, passed: true });
                     // Small stat cost for effort
-                    pet.energy = clamp(pet.energy - 3, 0, 100);
+                    coursePet.energy = clamp(coursePet.energy - 3, 0, 100);
                 } else {
                     stageResults.push({ ...stage, passed: false });
-                    pet.energy = clamp(pet.energy - 5, 0, 100);
+                    coursePet.energy = clamp(coursePet.energy - 5, 0, 100);
                 }
 
                 currentStage++;
@@ -1113,7 +1150,7 @@
                 };
 
                 const playerMaxHP = calculateBattleHP(pet);
-                const rivalMaxHP = calculateBattleHP(rivalPet) || trainer.battleHP;
+                const rivalMaxHP = Math.max(calculateBattleHP(rivalPet), trainer.battleHP || 0);
                 let playerHP = playerMaxHP;
                 let rivalHP = rivalMaxHP;
                 let fightOver = false;
@@ -1242,13 +1279,14 @@
                 function endRivalFight(rivalIdx, won) {
                     const comp = initCompetitionState();
                     if (won) {
-                        if (!comp.rivalsDefeated.includes(rivalIdx)) {
+                        const isFirstDefeat = !comp.rivalsDefeated.includes(rivalIdx);
+                        if (isFirstDefeat) {
                             comp.rivalsDefeated.push(rivalIdx);
+                            comp.battlesWon++;
                         }
                         if (rivalIdx >= comp.currentRivalIndex) {
                             comp.currentRivalIndex = rivalIdx + 1;
                         }
-                        comp.battlesWon++;
                         pet.happiness = clamp(pet.happiness + 15 + trainer.difficulty * 2, 0, 100);
                         pet.careActions = (pet.careActions || 0) + 1;
                         setTimeout(() => {
@@ -1283,7 +1321,7 @@
                         if (modal) modal.appendChild(resultDiv);
                         const doneBtn = overlay.querySelector('#rival-done');
                         if (doneBtn) doneBtn.addEventListener('click', () => {
-                            renderTrainerSelect();
+                            closeRivalUI();
                         });
                         const hubBtn3 = overlay.querySelector('#rival-back-hub');
                         if (hubBtn3) hubBtn3.addEventListener('click', () => { closeRivalUI(); setTimeout(openCompetitionHub, 100); });

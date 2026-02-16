@@ -73,12 +73,21 @@
             }
         }
 
+        let _activeMiniGameExitClose = null;
+        function dismissMiniGameExitDialog() {
+            if (typeof _activeMiniGameExitClose === 'function') {
+                _activeMiniGameExitClose();
+            }
+        }
+
         // Confirm exit when the player has made progress to prevent accidental loss
         function requestMiniGameExit(score, onConfirm) {
             if (score <= 0) {
+                dismissMiniGameExitDialog();
                 onConfirm();
                 return;
             }
+            dismissMiniGameExitDialog();
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
             overlay.style.zIndex = 'var(--z-overlay-alert)';
@@ -98,9 +107,11 @@
             document.body.appendChild(overlay);
 
             function close() {
+                _activeMiniGameExitClose = null;
                 popModalEscape(close);
                 if (overlay.parentNode) { overlay.innerHTML = ''; overlay.remove(); }
             }
+            _activeMiniGameExitClose = close;
             overlay.querySelector('#exit-cancel').addEventListener('click', () => close());
             overlay.querySelector('#exit-confirm').addEventListener('click', () => { close(); onConfirm(); });
             overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
@@ -488,6 +499,7 @@
         }
 
         function endFetchGame() {
+            dismissMiniGameExitDialog();
             if (fetchState && fetchState._escapeHandler) {
                 popModalEscape(fetchState._escapeHandler);
             }
@@ -888,7 +900,7 @@
             });
 
             // Auto-end the game after a brief pause (consistent with other mini-games)
-            if (hideSeekState) {
+            if (hideSeekState && !hideSeekState._ending && !hideSeekState._autoEndTimeout) {
                 hideSeekState._autoEndTimeout = setTimeout(() => {
                     endHideSeekGame();
                 }, 2500);
@@ -896,6 +908,14 @@
         }
 
         function endHideSeekGame() {
+            if (!hideSeekState) {
+                dismissMiniGameExitDialog();
+                return;
+            }
+            if (hideSeekState._ending) return;
+            hideSeekState._ending = true;
+            dismissMiniGameExitDialog();
+
             if (hideSeekState && hideSeekState._escapeHandler) {
                 popModalEscape(hideSeekState._escapeHandler);
             }
@@ -1259,8 +1279,11 @@
 
         function finishBubblePopRound() {
             if (!bubblePopState) return;
+            if (bubblePopState._finishing) return;
+            bubblePopState._finishing = true;
 
             // Stop spawning
+            if (bubblePopState.timerInterval) clearInterval(bubblePopState.timerInterval);
             if (bubblePopState.spawnInterval) clearInterval(bubblePopState.spawnInterval);
 
             // Pop all remaining bubbles for a satisfying finale
@@ -1291,10 +1314,20 @@
             }
 
             // Auto-end after showing results
-            bubblePopState._autoEndTimeout = setTimeout(() => endBubblePopGame(), 2500);
+            if (!bubblePopState._autoEndTimeout) {
+                bubblePopState._autoEndTimeout = setTimeout(() => endBubblePopGame(), 2500);
+            }
         }
 
         function endBubblePopGame() {
+            if (!bubblePopState) {
+                dismissMiniGameExitDialog();
+                return;
+            }
+            if (bubblePopState._ending) return;
+            bubblePopState._ending = true;
+            dismissMiniGameExitDialog();
+
             if (bubblePopState && bubblePopState.timerInterval) clearInterval(bubblePopState.timerInterval);
             if (bubblePopState && bubblePopState.spawnInterval) clearInterval(bubblePopState.spawnInterval);
             if (bubblePopState && bubblePopState._autoEndTimeout) clearTimeout(bubblePopState._autoEndTimeout);
@@ -1570,6 +1603,8 @@
 
         function finishMatchingGame() {
             if (!matchingState) return;
+            if (matchingState._finishing) return;
+            matchingState._finishing = true;
 
             const instruction = document.getElementById('matching-instruction');
             if (instruction) {
@@ -1591,10 +1626,20 @@
                 }, i * 80);
             });
 
-            matchingState._autoEndTimeout = setTimeout(() => endMatchingGame(), 2500);
+            if (!matchingState._autoEndTimeout) {
+                matchingState._autoEndTimeout = setTimeout(() => endMatchingGame(), 2500);
+            }
         }
 
         function endMatchingGame() {
+            if (!matchingState) {
+                dismissMiniGameExitDialog();
+                return;
+            }
+            if (matchingState._ending) return;
+            matchingState._ending = true;
+            dismissMiniGameExitDialog();
+
             if (matchingState && matchingState._autoEndTimeout) clearTimeout(matchingState._autoEndTimeout);
             if (matchingState && matchingState._escapeHandler) {
                 popModalEscape(matchingState._escapeHandler);
@@ -1726,6 +1771,7 @@
             };
 
             renderSimonSaysGame();
+            if (simonState._roundTransitionTimer) clearTimeout(simonState._roundTransitionTimer);
             simonState._roundTransitionTimer = setTimeout(() => simonNextRound(), 800);
 
             announce('Simon Says! Watch the pattern, then repeat it!');
@@ -1778,21 +1824,21 @@
 
             // Done button
             overlay.querySelector('#simon-done').addEventListener('click', () => {
-                const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                const rounds = simonState ? (simonState.highestRound || 0) : 0;
                 requestMiniGameExit(rounds, () => endSimonSaysGame());
             });
 
             // Close on overlay click
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
-                    const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                    const rounds = simonState ? (simonState.highestRound || 0) : 0;
                     requestMiniGameExit(rounds, () => endSimonSaysGame());
                 }
             });
 
             // Escape to close
             function simonEscapeHandler() {
-                const rounds = simonState ? (simonState.highestRound || simonState.round || 0) : 0;
+                const rounds = simonState ? (simonState.highestRound || 0) : 0;
                 requestMiniGameExit(rounds, () => endSimonSaysGame());
             }
             pushModalEscape(simonEscapeHandler);
@@ -1834,6 +1880,7 @@
             const baseSpeed = Math.max(350, 600 - simonState.round * 25);
             const speed = Math.max(200, Math.round(baseSpeed / (simonState.difficulty || 1)));
 
+            if (simonState._roundTransitionTimer) clearTimeout(simonState._roundTransitionTimer);
             simonState._roundTransitionTimer = setTimeout(() => simonPlayPattern(speed), 400);
         }
 
@@ -1928,6 +1975,7 @@
                     announce(`Round ${simonState.round} complete!`);
 
                     // Next round after a brief pause
+                    if (simonState._roundTransitionTimer) clearTimeout(simonState._roundTransitionTimer);
                     simonState._roundTransitionTimer = setTimeout(() => simonNextRound(), 1000);
                 }
             } else {
@@ -1960,11 +2008,20 @@
                 announce(`Game over! You completed ${completedRound} round${completedRound !== 1 ? 's' : ''}.`);
 
                 // Auto-end after showing result
+                if (simonState._autoEndTimeout) clearTimeout(simonState._autoEndTimeout);
                 simonState._autoEndTimeout = setTimeout(() => endSimonSaysGame(), 2500);
             }
         }
 
         function endSimonSaysGame() {
+            if (!simonState) {
+                dismissMiniGameExitDialog();
+                return;
+            }
+            if (simonState._ending) return;
+            simonState._ending = true;
+            dismissMiniGameExitDialog();
+
             if (simonState && simonState.playbackTimer) clearTimeout(simonState.playbackTimer);
             if (simonState && simonState._autoEndTimeout) clearTimeout(simonState._autoEndTimeout);
             if (simonState && simonState._roundTransitionTimer) clearTimeout(simonState._roundTransitionTimer);
@@ -1978,7 +2035,7 @@
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
-                const roundsCompleted = Math.max(simonState.highestRound, 1);
+                const roundsCompleted = Math.max(simonState.highestRound || 0, 0);
                 const happinessBonus = Math.min(roundsCompleted * 4, 30);
                 const energyCost = Math.min(roundsCompleted * 2, 10);
 
@@ -1993,7 +2050,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Simon Says over! Reached round ${simonState.highestRound}! Happiness +${happinessBonus}!${bestMsg}`);
+                announce(`Simon Says over! Reached round ${roundsCompleted}! Happiness +${happinessBonus}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Simon Says: Round ${roundsCompleted}!`, '#FFD700');
                     showMinigameConfetti();
@@ -2400,8 +2457,8 @@
                     return `
                         <circle cx="${cx-43}" cy="${cy-10}" r="3" fill="#333"/>
                         <circle cx="${cx-44}" cy="${cy-11}" r="1.2" fill="white"/>
-                        <circle cx="${cx+43}" cy="${cy-10}" r="3" fill="#333"/>
-                        <circle cx="${cx+44}" cy="${cy-11}" r="1.2" fill="white"/>
+                        <circle cx="${cx-33}" cy="${cy-10}" r="3" fill="#333"/>
+                        <circle cx="${cx-32}" cy="${cy-11}" r="1.2" fill="white"/>
                         <path d="M${cx-48} ${cy} Q${cx-38} ${cy+4} ${cx-33} ${cy}" stroke="#333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
                         <line x1="${cx-10}" y1="${cy-15}" x2="${cx-10}" y2="${cy+25}" stroke="#333" stroke-width="1"/>
                         <line x1="${cx+10}" y1="${cy-15}" x2="${cx+10}" y2="${cy+25}" stroke="#333" stroke-width="1"/>
@@ -2413,6 +2470,7 @@
         }
 
         function endColoringGame() {
+            dismissMiniGameExitDialog();
             if (coloringState && coloringState._escapeHandler) {
                 popModalEscape(coloringState._escapeHandler);
             }

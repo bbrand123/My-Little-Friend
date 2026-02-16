@@ -20,6 +20,7 @@
             const LOOP_DURATION = 2.5; // seconds per loop
 
             function getContext() {
+                if (!_audioSupported) return null;
                 if (!audioCtx) {
                     try {
                         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -392,7 +393,7 @@
             function fadeIn(gainNode, ctx) {
                 gainNode.gain.cancelScheduledValues(ctx.currentTime);
                 gainNode.gain.setValueAtTime(0, ctx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(EARCON_VOLUME, ctx.currentTime + FADE_DURATION);
+                gainNode.gain.linearRampToValueAtTime(EARCON_VOLUME * ambientVolume, ctx.currentTime + FADE_DURATION);
             }
 
             function fadeOut(gainNode, ctx) {
@@ -453,6 +454,7 @@
                         currentEarcon.gainNode.gain.setValueAtTime(0, ctx.currentTime);
                     }
                     currentEarcon.stop();
+                    try { currentEarcon.gainNode.disconnect(); } catch (e) {}
                     currentEarcon = null;
                 }
                 currentRoom = null;
@@ -503,6 +505,7 @@
 
             function playSFX(generator) {
                 if (!isEnabled) return;
+                if (!_audioSupported) return;
                 if (!masterGain) return;
                 const ctx = getContext();
                 if (!ctx) return;
@@ -528,6 +531,18 @@
             // Timing variation helper: randomize timing by +/- 10%
             function varyTiming(t) {
                 return t * (1 + (Math.random() - 0.5) * 0.2);
+            }
+
+            function disconnectNodes(...nodes) {
+                nodes.forEach((node) => {
+                    if (!node || typeof node.disconnect !== 'function') return;
+                    try { node.disconnect(); } catch (e) {}
+                });
+            }
+
+            function cleanupOnEnded(sourceNode, ...nodes) {
+                if (!sourceNode) return;
+                sourceNode.onended = () => disconnectNodes(sourceNode, ...nodes);
             }
 
             // Feed: warm ascending "nom nom" two-note
@@ -711,6 +726,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * offset);
                     osc.stop(t + i * offset + 0.2);
+                    cleanupOnEnded(osc, g);
                 });
             }
 
@@ -728,6 +744,7 @@
                 g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.15);
+                cleanupOnEnded(osc, g);
             }
 
             // Minigame miss: short low buzz
@@ -743,6 +760,7 @@
                 g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.25);
+                cleanupOnEnded(osc, g);
             }
 
             // Celebration: triumphant fanfare
@@ -760,6 +778,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * 0.12);
                     osc.stop(t + i * 0.12 + 0.35);
+                    cleanupOnEnded(osc, g);
                 });
                 // Final sustained chord
                 [1047, 1320, 1568].forEach(freq => {
@@ -773,6 +792,7 @@
                     g.connect(masterGain);
                     osc.start(t + 0.48);
                     osc.stop(t + 1.3);
+                    cleanupOnEnded(osc, g);
                 });
             }
 
@@ -791,6 +811,7 @@
                 g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.1);
+                cleanupOnEnded(osc, g);
             }
 
             // Match found: satisfying pair chime
@@ -807,6 +828,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * 0.1);
                     osc.stop(t + i * 0.1 + 0.25);
+                    cleanupOnEnded(osc, g);
                 });
             }
 
@@ -825,6 +847,7 @@
                 g.connect(masterGain);
                 osc.start(t);
                 osc.stop(t + 0.25);
+                cleanupOnEnded(osc, g);
             }
 
             // Room transition: soft whoosh/chime cue when switching rooms
@@ -850,6 +873,7 @@
                 filter.connect(g);
                 g.connect(masterGain);
                 src.start(t);
+                cleanupOnEnded(src, filter, g);
                 // Soft chime overtone
                 const osc = ctx.createOscillator();
                 const og = ctx.createGain();
@@ -861,6 +885,7 @@
                 og.connect(masterGain);
                 osc.start(t + 0.05);
                 osc.stop(t + 0.35);
+                cleanupOnEnded(osc, og);
             }
 
             // Pet voice: happy chirp (varies by pet type category)
@@ -893,6 +918,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * config.duration);
                     osc.stop(t + i * config.duration + config.duration);
+                    cleanupOnEnded(osc, g);
                 });
             }
 
@@ -920,6 +946,7 @@
                 osc.start(t);
                 osc.stop(t + 0.55);
                 lfo.stop(t + 0.55);
+                cleanupOnEnded(osc, g, lfo, lfoG);
             }
 
             // Pet voice: excited playful sound
@@ -939,6 +966,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * 0.08);
                     osc.stop(t + i * 0.08 + 0.1);
+                    cleanupOnEnded(osc, g);
                 }
             }
 
@@ -957,6 +985,7 @@
                     g.connect(masterGain);
                     osc.start(t + i * 0.1);
                     osc.stop(t + i * 0.1 + 0.35);
+                    cleanupOnEnded(osc, g);
                 });
             }
 
@@ -981,6 +1010,7 @@
                 filter.connect(g);
                 g.connect(masterGain);
                 src.start(t);
+                cleanupOnEnded(src, filter, g);
             }
 
             // ==================== BACKGROUND MUSIC ====================
@@ -1022,6 +1052,7 @@
             }
 
             function startMusic(roomId, timeOfDay) {
+                if (!_audioSupported) return;
                 if (!musicEnabled || !isEnabled) return;
                 stopMusic();
 
@@ -1036,7 +1067,7 @@
 
                 // Fade in
                 musicGain.gain.setValueAtTime(0, ctx.currentTime);
-                musicGain.gain.linearRampToValueAtTime(MUSIC_VOLUME, ctx.currentTime + 2);
+                musicGain.gain.linearRampToValueAtTime(MUSIC_VOLUME * musicVolumeSetting, ctx.currentTime + 2);
 
                 let stopped = false;
                 let timerId = null;
@@ -1159,7 +1190,6 @@
             async function enterRoomWithMusic(roomId) {
                 await _origEnterRoom(roomId);
                 // If another enterRoom call occurred while awaiting, don't start music with stale roomId
-                const seqAfter = _enterRoomSeq;
                 if (currentRoom !== roomId) return;
                 if (musicEnabled && isEnabled && roomId) {
                     const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
