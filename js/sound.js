@@ -14,10 +14,41 @@
             let sfxVolume = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_sfxVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
             let ambientVolume = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_ambientVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
             let musicVolumeSetting = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_musicVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
+            let samplePackEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_samplePackEnabled'); return v !== 'false'; } catch (e) { return true; } })();
 
             const EARCON_VOLUME = 0.3; // 30% volume to not interfere with screen readers
             const FADE_DURATION = 0.8; // seconds for fade in/out
             const LOOP_DURATION = 2.5; // seconds per loop
+
+            // Optional lightweight sample pack (bundled local assets)
+            const SAMPLE_SFX_FILES = {
+                feed: 'assets/audio/sfx/feed.wav',
+                wash: 'assets/audio/sfx/wash.wav',
+                play: 'assets/audio/sfx/play.wav',
+                sleep: 'assets/audio/sfx/sleep.wav',
+                cuddle: 'assets/audio/sfx/cuddle.wav',
+                medicine: 'assets/audio/sfx/medicine.wav',
+                groom: 'assets/audio/sfx/groom.wav',
+                exercise: 'assets/audio/sfx/exercise.wav',
+                treat: 'assets/audio/sfx/treat.wav',
+                hit: 'assets/audio/sfx/hit.wav',
+                miss: 'assets/audio/sfx/miss.wav',
+                celebration: 'assets/audio/sfx/celebration.wav',
+                bubblePop: 'assets/audio/sfx/bubblePop.wav',
+                match: 'assets/audio/sfx/match.wav',
+                catch: 'assets/audio/sfx/catch.wav',
+                throw: 'assets/audio/sfx/throw.wav',
+                roomTransition: 'assets/audio/sfx/roomTransition.wav',
+                petHappy: 'assets/audio/sfx/petHappy.wav',
+                petSad: 'assets/audio/sfx/petSad.wav',
+                petExcited: 'assets/audio/sfx/petExcited.wav',
+                achievement: 'assets/audio/sfx/achievement.wav'
+            };
+
+            const SAMPLE_MUSIC_TRACKS = {
+                day: 'assets/audio/music/cozy_day_loop.wav',
+                night: 'assets/audio/music/cozy_night_loop.wav'
+            };
 
             function getContext() {
                 if (!_audioSupported) return null;
@@ -503,7 +534,30 @@
             const SFX_BASE_VOLUME = 0.3;
             function getSfxVolume() { return SFX_BASE_VOLUME * sfxVolume; }
 
-            function playSFX(generator) {
+            function getSfxNameFromGenerator(generator) {
+                if (generator === sfxFeed) return 'feed';
+                if (generator === sfxWash) return 'wash';
+                if (generator === sfxPlay) return 'play';
+                if (generator === sfxSleep) return 'sleep';
+                if (generator === sfxCuddle) return 'cuddle';
+                if (generator === sfxMedicine) return 'medicine';
+                if (generator === sfxGroom) return 'groom';
+                if (generator === sfxExercise) return 'exercise';
+                if (generator === sfxTreat) return 'treat';
+                if (generator === sfxHit) return 'hit';
+                if (generator === sfxMiss) return 'miss';
+                if (generator === sfxCelebration) return 'celebration';
+                if (generator === sfxBubblePop) return 'bubblePop';
+                if (generator === sfxMatch) return 'match';
+                if (generator === sfxCatch) return 'catch';
+                if (generator === sfxThrow) return 'throw';
+                if (generator === sfxRoomTransition) return 'roomTransition';
+                if (generator === sfxAchievement) return 'achievement';
+                return null;
+            }
+
+            function playProceduralSFX(generator) {
+                if (typeof generator !== 'function') return;
                 if (!isEnabled) return;
                 if (!_audioSupported) return;
                 if (!masterGain) return;
@@ -521,6 +575,44 @@
                 } catch (e) {
                     // Silently fail if audio can't play
                 }
+            }
+
+            function playSampleSFXByName(name, proceduralFallback) {
+                if (!isEnabled || !samplePackEnabled) return false;
+                const src = SAMPLE_SFX_FILES[name];
+                if (!src) return false;
+
+                try {
+                    const el = new Audio(src);
+                    el.preload = 'auto';
+                    el.volume = Math.max(0, Math.min(1, getSfxVolume() * 1.25));
+                    el.playbackRate = Math.max(0.9, Math.min(1.1, 1 + ((Math.random() - 0.5) * 0.06)));
+                    const maybePromise = el.play();
+                    if (maybePromise && typeof maybePromise.catch === 'function') {
+                        maybePromise.catch(() => {
+                            if (typeof proceduralFallback === 'function') proceduralFallback();
+                        });
+                    }
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function playSFX(generator) {
+                const sfxName = getSfxNameFromGenerator(generator);
+                if (sfxName && playSampleSFXByName(sfxName, () => playProceduralSFX(generator))) {
+                    return;
+                }
+                playProceduralSFX(generator);
+            }
+
+            function playSFXByName(name, generator) {
+                const key = String(name || '').trim();
+                if (key && playSampleSFXByName(key, () => playProceduralSFX(generator))) {
+                    return;
+                }
+                playProceduralSFX(generator);
             }
 
             // Pitch variation helper: randomize frequency by +/- 5%
@@ -1020,6 +1112,7 @@
             const MUSIC_VOLUME = 0.08; // Very quiet background
             let musicEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_musicEnabled'); return v !== 'false'; } catch (e) { return true; } })();
             let currentMusicLoop = null;
+            let currentSampleMusic = null;
 
             // Pentatonic scales (mood-matched)
             const MUSIC_SCALES = {
@@ -1051,10 +1144,51 @@
                 return 1600; // day
             }
 
+            function getSampleMusicTrack(roomId, timeOfDay) {
+                if (timeOfDay === 'night' || timeOfDay === 'sunset') return SAMPLE_MUSIC_TRACKS.night;
+                return SAMPLE_MUSIC_TRACKS.day;
+            }
+
+            function stopSampleMusic() {
+                if (!currentSampleMusic) return;
+                const el = currentSampleMusic;
+                currentSampleMusic = null;
+                try {
+                    el.pause();
+                    el.currentTime = 0;
+                    el.src = '';
+                } catch (e) {}
+            }
+
+            function startSampleMusic(roomId, timeOfDay) {
+                if (!samplePackEnabled || !musicEnabled || !isEnabled) return false;
+                const src = getSampleMusicTrack(roomId, timeOfDay);
+                if (!src) return false;
+
+                stopSampleMusic();
+                try {
+                    const el = new Audio(src);
+                    el.loop = true;
+                    el.preload = 'auto';
+                    el.volume = Math.max(0, Math.min(1, MUSIC_VOLUME * musicVolumeSetting * 2.8));
+                    currentSampleMusic = el;
+                    const maybePromise = el.play();
+                    if (maybePromise && typeof maybePromise.catch === 'function') {
+                        maybePromise.catch(() => {
+                            if (currentSampleMusic === el) currentSampleMusic = null;
+                        });
+                    }
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
             function startMusic(roomId, timeOfDay) {
-                if (!_audioSupported) return;
                 if (!musicEnabled || !isEnabled) return;
                 stopMusic();
+                if (startSampleMusic(roomId, timeOfDay)) return;
+                if (!_audioSupported) return;
 
                 const ctx = getContext();
                 if (!ctx) return;
@@ -1152,6 +1286,7 @@
             }
 
             function stopMusic() {
+                stopSampleMusic();
                 if (!currentMusicLoop) return;
                 const ctx = audioCtx;
                 if (ctx && currentMusicLoop.gainNode) {
@@ -1184,6 +1319,33 @@
             }
 
             function getMusicEnabled() { return musicEnabled; }
+
+            function setSamplePackEnabled(enabled) {
+                const next = !!enabled;
+                if (samplePackEnabled === next) return samplePackEnabled;
+                samplePackEnabled = next;
+                try { localStorage.setItem('petCareBuddy_samplePackEnabled', samplePackEnabled ? 'true' : 'false'); } catch (e) {}
+
+                if (!samplePackEnabled) {
+                    stopSampleMusic();
+                }
+                if (musicEnabled && isEnabled) {
+                    const room = currentRoom || (typeof gameState !== 'undefined' && gameState.currentRoom) || null;
+                    if (room) {
+                        const timeOfDay = (typeof getTimeOfDay === 'function') ? getTimeOfDay() : 'day';
+                        startMusic(room, timeOfDay);
+                    }
+                }
+                return samplePackEnabled;
+            }
+
+            function toggleSamplePack() {
+                return setSamplePackEnabled(!samplePackEnabled);
+            }
+
+            function getSamplePackEnabled() {
+                return samplePackEnabled;
+            }
 
             // Extend enterRoom to also restart music
             const _origEnterRoom = enterRoom;
@@ -1220,11 +1382,14 @@
                 getMasterGain,
                 initOnInteraction,
                 playSFX,
+                playSFXByName,
                 destroy,
                 startMusic,
                 stopMusic,
                 toggleMusic,
                 getMusicEnabled,
+                toggleSamplePack,
+                getSamplePackEnabled,
                 sfx: {
                     feed: sfxFeed,
                     wash: sfxWash,
