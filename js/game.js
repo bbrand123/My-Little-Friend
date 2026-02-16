@@ -3530,7 +3530,7 @@
 
             // Play pet voice sound
             if (typeof SoundManager !== 'undefined') {
-                SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, gameState.pet.type));
+                SoundManager.playSFXByName('petHappy', (ctx) => SoundManager.sfx.petHappy(ctx, gameState.pet.type));
             }
 
             // Track daily checklist progress
@@ -3920,7 +3920,7 @@
 
             // Play pet voice sound
             if (typeof SoundManager !== 'undefined') {
-                SoundManager.playSFX((ctx) => SoundManager.sfx.petExcited(ctx, pet.type));
+                SoundManager.playSFXByName('petExcited', (ctx) => SoundManager.sfx.petExcited(ctx, pet.type));
             }
 
             // Track daily checklist progress
@@ -4061,7 +4061,7 @@
                         announce(`Warning: ${petName}'s ${lowStats.join(' and ')} ${lowStats.length === 1 ? 'is' : 'are'} critically low!`, true);
                         // Play sad pet whimper when stats drop critically
                         if (typeof SoundManager !== 'undefined' && pet.type) {
-                            SoundManager.playSFX((ctx) => SoundManager.sfx.petSad(ctx, pet.type));
+                            SoundManager.playSFXByName('petSad', (ctx) => SoundManager.sfx.petSad(ctx, pet.type));
                         }
                         // Haptic alert for critical stat drop
                         hapticPattern('critical');

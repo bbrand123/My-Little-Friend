@@ -1,5 +1,5 @@
 // Update CACHE_VERSION on each deploy to bust stale caches
-const CACHE_VERSION = 9;
+const CACHE_VERSION = 10;
 const CACHE_NAME = `pet-care-buddy-v${CACHE_VERSION}`;
 const FONT_CACHE_NAME = `pet-care-buddy-fonts-v${CACHE_VERSION}`;
 
@@ -14,6 +14,30 @@ const ASSETS = [
     './js/ui.js',
     './js/minigames.js',
     './js/competition.js',
+    './assets/audio/README.md',
+    './assets/audio/music/cozy_day_loop.wav',
+    './assets/audio/music/cozy_night_loop.wav',
+    './assets/audio/sfx/achievement.wav',
+    './assets/audio/sfx/bubblePop.wav',
+    './assets/audio/sfx/catch.wav',
+    './assets/audio/sfx/celebration.wav',
+    './assets/audio/sfx/cuddle.wav',
+    './assets/audio/sfx/exercise.wav',
+    './assets/audio/sfx/feed.wav',
+    './assets/audio/sfx/groom.wav',
+    './assets/audio/sfx/hit.wav',
+    './assets/audio/sfx/match.wav',
+    './assets/audio/sfx/medicine.wav',
+    './assets/audio/sfx/miss.wav',
+    './assets/audio/sfx/petExcited.wav',
+    './assets/audio/sfx/petHappy.wav',
+    './assets/audio/sfx/petSad.wav',
+    './assets/audio/sfx/play.wav',
+    './assets/audio/sfx/roomTransition.wav',
+    './assets/audio/sfx/sleep.wav',
+    './assets/audio/sfx/throw.wav',
+    './assets/audio/sfx/treat.wav',
+    './assets/audio/sfx/wash.wav',
     './manifest.json',
     './icon-512.svg',
     './icon-512-maskable.svg',

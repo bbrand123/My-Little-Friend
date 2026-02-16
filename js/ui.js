@@ -548,6 +548,7 @@
         }
 
         function renderEggPhase(maintainFocus = false) {
+            document.body.classList.remove('has-core-care-dock');
             // Initialize egg if not set
             if (!gameState.eggType || !gameState.pendingPetType) {
                 initializeNewEgg();
@@ -1201,6 +1202,35 @@
             return pools[Math.floor(Math.random() * pools.length)];
         }
 
+        const EARLY_SESSION_LIMIT = 3;
+        const EARLY_SESSION_ACTION_LIMIT = 24;
+
+        function markPetSessionSeen() {
+            try {
+                if (sessionStorage.getItem('petCareBuddy_petSessionSeen') === 'true') return;
+                const raw = localStorage.getItem('petCareBuddy_petSessions');
+                const count = Number.parseInt(raw || '0', 10);
+                localStorage.setItem('petCareBuddy_petSessions', String(Number.isFinite(count) ? count + 1 : 1));
+                sessionStorage.setItem('petCareBuddy_petSessionSeen', 'true');
+            } catch (e) {}
+        }
+
+        function getPetSessionCount() {
+            try {
+                const raw = localStorage.getItem('petCareBuddy_petSessions');
+                const count = Number.parseInt(raw || '0', 10);
+                return Number.isFinite(count) ? count : 0;
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        function useSimplifiedActionPanel(pet) {
+            if (!pet) return false;
+            if ((pet.careActions || 0) >= EARLY_SESSION_ACTION_LIMIT) return false;
+            return getPetSessionCount() < EARLY_SESSION_LIMIT;
+        }
+
         function renderPetPhase() {
             // Clear any pending deferred render to avoid redundant double re-renders
             if (pendingRenderTimer) {
@@ -1218,6 +1248,8 @@
                 renderEggPhase();
                 return;
             }
+            markPetSessionSeen();
+            document.body.classList.add('has-core-care-dock');
             const mood = getMood(pet);
 
             // Update time of day
@@ -1277,6 +1309,61 @@
             const treasureActionLabel = typeof getTreasureActionLabel === 'function'
                 ? getTreasureActionLabel(currentRoom)
                 : (room && room.isOutdoor ? 'Dig' : 'Search');
+            const simplifiedActionPanel = useSimplifiedActionPanel(pet);
+            const secondaryQuickActionsHTML = `
+                            <button class="action-btn pet-cuddle" id="pet-btn">
+                                <span class="action-btn-tooltip">+Happy</span>
+                                <span class="btn-icon" aria-hidden="true">🤗</span>
+                                <span>Pet</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">4</span>
+                            </button>
+                            <button class="action-btn treat" id="treat-btn">
+                                <span class="action-btn-tooltip">+Food, +Happy</span>
+                                <span class="btn-icon" aria-hidden="true">🍪</span>
+                                <span>Treat</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">6</span>
+                            </button>
+                            <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
+                                <span class="action-btn-tooltip">+Happy, +XP</span>
+                                <span class="btn-icon" aria-hidden="true">🎮</span>
+                                <span>Games</span>
+                                <span class="cooldown-count" aria-hidden="true"></span>
+                                <span class="kbd-hint" aria-hidden="true">7</span>
+                            </button>
+                            <button class="action-btn competition" id="competition-btn" aria-haspopup="dialog">
+                                <span class="action-btn-tooltip">Battles & Shows</span>
+                                <span class="btn-icon" aria-hidden="true">🏟️</span>
+                                <span>Arena</span>
+                                <span class="kbd-hint" aria-hidden="true">8</span>
+                            </button>
+            `;
+            const simplifiedActionsHintHTML = simplifiedActionPanel
+                ? '<div class="actions-simplified-hint">Starter mode: Core care is pinned at the bottom. Tap More for extra actions.</div>'
+                : '';
+            const coreCareDockHTML = `
+                <nav class="core-care-dock-wrap" aria-label="Core care dock">
+                    <div class="core-care-dock" role="group" aria-label="Core care actions">
+                        <button class="core-care-btn feed" id="core-feed-btn" type="button" aria-label="Feed">
+                            <span class="core-care-icon" aria-hidden="true">🍎</span>
+                            <span class="core-care-label">Feed</span>
+                        </button>
+                        <button class="core-care-btn wash" id="core-wash-btn" type="button" aria-label="Wash">
+                            <span class="core-care-icon" aria-hidden="true">🛁</span>
+                            <span class="core-care-label">Wash</span>
+                        </button>
+                        <button class="core-care-btn play" id="core-play-btn" type="button" aria-label="Play">
+                            <span class="core-care-icon" aria-hidden="true">⚽</span>
+                            <span class="core-care-label">Play</span>
+                        </button>
+                        <button class="core-care-btn sleep" id="core-sleep-btn" type="button" aria-label="Sleep">
+                            <span class="core-care-icon" aria-hidden="true">🛏️</span>
+                            <span class="core-care-label">Sleep</span>
+                        </button>
+                    </div>
+                </nav>
+            `;
 
 
             content.innerHTML = `
@@ -1342,6 +1429,8 @@
                     ${weatherHTML}
                     ${generateAmbientLayerHTML(currentRoom, timeOfDay, weather, isOutdoor)}
                     ${generateWeatherParticlesHTML(weather, isOutdoor)}
+                    <div class="room-art-layer room-art-back" aria-hidden="true"></div>
+                    <div class="room-art-layer room-art-front" aria-hidden="true"></div>
                     <div class="sparkles" id="sparkles"></div>
                     <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Give ${petDisplayName} cuddles">
                         ${generateThoughtBubble(pet)}
@@ -1569,13 +1658,6 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">3</span>
                             </button>
-                            <button class="action-btn pet-cuddle" id="pet-btn">
-                                <span class="action-btn-tooltip">+Happy</span>
-                                <span class="btn-icon" aria-hidden="true">🤗</span>
-                                <span>Pet</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                                <span class="kbd-hint" aria-hidden="true">4</span>
-                            </button>
                             <button class="action-btn play ${getRoomBonusBadge('play', currentRoom) ? 'has-room-bonus' : ''}" id="play-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
@@ -1584,34 +1666,17 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">5</span>
                             </button>
-                            <button class="action-btn treat" id="treat-btn">
-                                <span class="action-btn-tooltip">+Food, +Happy</span>
-                                <span class="btn-icon" aria-hidden="true">🍪</span>
-                                <span>Treat</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                                <span class="kbd-hint" aria-hidden="true">6</span>
-                            </button>
-                            <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
-                                <span class="action-btn-tooltip">+Happy, +XP</span>
-                                <span class="btn-icon" aria-hidden="true">🎮</span>
-                                <span>Games</span>
-                                <span class="cooldown-count" aria-hidden="true"></span>
-                                <span class="kbd-hint" aria-hidden="true">7</span>
-                            </button>
-                            <button class="action-btn competition" id="competition-btn" aria-haspopup="dialog">
-                                <span class="action-btn-tooltip">Battles & Shows</span>
-                                <span class="btn-icon" aria-hidden="true">🏟️</span>
-                                <span>Arena</span>
-                                <span class="kbd-hint" aria-hidden="true">8</span>
-                            </button>
+                            ${simplifiedActionPanel ? '' : secondaryQuickActionsHTML}
                         </div>
                     </div>
+                    ${simplifiedActionsHintHTML}
                     <button class="more-actions-toggle" id="more-actions-toggle" type="button" aria-expanded="false" aria-controls="more-actions-panel">
                         <span class="more-actions-toggle-icon">▸</span> More
                     </button>
                     <div class="more-actions-panel" id="more-actions-panel" hidden>
                         <div class="action-group">
                             <div class="action-group-buttons" role="group" aria-label="Additional actions">
+                                ${simplifiedActionPanel ? secondaryQuickActionsHTML : ''}
                                 <button class="action-btn exercise ${getRoomBonusBadge('exercise', currentRoom) ? 'has-room-bonus' : ''}" id="exercise-btn">
                                     <span class="action-btn-tooltip">+Happy, −Energy</span>
                                     <span class="btn-icon" aria-hidden="true">🏃</span>
@@ -1665,6 +1730,8 @@
                     </div>
                 </section>
 
+                ${coreCareDockHTML}
+
                 ${generateBreedingEggsHTML()}
 
                 ${currentRoom === 'garden' ? '<section class="garden-section" id="garden-section" aria-label="Garden"></section>' : ''}
@@ -1696,6 +1763,10 @@
             safeAddClick('wash-btn', () => careAction('wash'));
             safeAddClick('play-btn', () => careAction('play'));
             safeAddClick('sleep-btn', () => careAction('sleep'));
+            safeAddClick('core-feed-btn', () => careAction('feed'));
+            safeAddClick('core-wash-btn', () => careAction('wash'));
+            safeAddClick('core-play-btn', () => careAction('play'));
+            safeAddClick('core-sleep-btn', () => careAction('sleep'));
             safeAddClick('medicine-btn', () => careAction('medicine'));
             safeAddClick('groom-btn', () => careAction('groom'));
             safeAddClick('exercise-btn', () => careAction('exercise'));
@@ -1730,6 +1801,7 @@
             safeAddClick('treat-btn', () => careAction('treat'));
             safeAddClick('pet-btn', () => careAction('cuddle'));
             safeAddClick('minigames-btn', () => {
+                markCoachChecklistProgress('open_minigame');
                 if (typeof openMiniGamesMenu === 'function') {
                     openMiniGamesMenu();
                 } else {
@@ -1882,6 +1954,7 @@
 
             // Show first-time onboarding hints
             showOnboardingHints(currentRoom);
+            renderCoachChecklist();
         }
 
         // ==================== ONBOARDING HINTS ====================
@@ -2202,6 +2275,64 @@
             setTimeout(() => toast.remove(), 3500);
         }
 
+        const REWARD_CARD_META = {
+            achievement: { title: 'Achievement Unlocked', fallbackIcon: '🏆' },
+            badge: { title: 'Badge Earned', fallbackIcon: '🎖️' },
+            sticker: { title: 'Sticker Collected', fallbackIcon: '📓' },
+            trophy: { title: 'Trophy Earned', fallbackIcon: '🥇' }
+        };
+        let _rewardCardQueue = [];
+        let _rewardCardActive = false;
+        let _rewardCardTimer = null;
+
+        function queueRewardCard(type, reward, color) {
+            if (!reward) return;
+            const meta = REWARD_CARD_META[type];
+            if (!meta) return;
+            _rewardCardQueue.push({
+                type,
+                title: meta.title,
+                icon: reward.icon || reward.emoji || meta.fallbackIcon,
+                name: reward.name || 'New reward',
+                color: sanitizeCssColor(color || '#FFD700')
+            });
+            if (!_rewardCardActive) showNextRewardCard();
+        }
+
+        function showNextRewardCard() {
+            if (_rewardCardQueue.length === 0) {
+                _rewardCardActive = false;
+                return;
+            }
+            _rewardCardActive = true;
+            const cardData = _rewardCardQueue.shift();
+            const existing = document.querySelector('.reward-card-pop');
+            if (existing) existing.remove();
+
+            const card = document.createElement('aside');
+            card.className = 'reward-card-pop';
+            card.setAttribute('aria-live', 'polite');
+            card.innerHTML = `
+                <div class="reward-card-icon" aria-hidden="true">${escapeHTML(cardData.icon)}</div>
+                <div class="reward-card-copy">
+                    <div class="reward-card-title">${escapeHTML(cardData.title)}</div>
+                    <div class="reward-card-name">${escapeHTML(cardData.name)}</div>
+                </div>
+            `;
+            card.style.setProperty('--reward-card-accent', cardData.color);
+            document.body.appendChild(card);
+            requestAnimationFrame(() => card.classList.add('show'));
+
+            if (_rewardCardTimer) clearTimeout(_rewardCardTimer);
+            _rewardCardTimer = setTimeout(() => {
+                card.classList.remove('show');
+                setTimeout(() => {
+                    card.remove();
+                    showNextRewardCard();
+                }, 260);
+            }, 1900);
+        }
+
         // Toast color map for actions
         const TOAST_COLORS = {
             feed: '#FF8C42',
@@ -2272,6 +2403,34 @@
             setTimeout(() => el.remove(), 1600);
         }
 
+        const STAT_DELTA_TARGETS = {
+            hunger: { id: 'hunger-bubble', label: 'Hunger' },
+            cleanliness: { id: 'clean-bubble', label: 'Cleanliness' },
+            happiness: { id: 'happy-bubble', label: 'Happiness' },
+            energy: { id: 'energy-bubble', label: 'Energy' }
+        };
+
+        function showNeedBubbleStatDelta(statKey, amount) {
+            if (!amount || amount === 0) return;
+            const target = STAT_DELTA_TARGETS[statKey];
+            if (!target) return;
+            const bubble = document.getElementById(target.id);
+            if (!bubble) return;
+            const delta = document.createElement('div');
+            delta.className = `stat-bar-delta ${amount > 0 ? 'positive' : 'negative'}`;
+            delta.textContent = `${amount > 0 ? '+' : '−'}${target.label}`;
+            delta.style.left = `${44 + (Math.random() * 12 - 6)}%`;
+            bubble.appendChild(delta);
+            setTimeout(() => delta.remove(), 1150);
+        }
+
+        function showStatDeltaNearNeedBubbles(deltas) {
+            if (!deltas || typeof deltas !== 'object') return;
+            Object.entries(deltas).forEach(([key, amount]) => {
+                showNeedBubbleStatDelta(key, amount);
+            });
+        }
+
         // Map care actions to themed particle emojis
         const CARE_PARTICLE_EMOJIS = {
             feed: ['🍎', '🥕', '🍖', '🧁'],
@@ -2298,7 +2457,7 @@
             const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
             const petContainer = document.getElementById('pet-container');
             const sparkles = document.getElementById('sparkles');
-            if (petContainer) petContainer.classList.add('bounce');
+            if (petContainer) petContainer.classList.add('bounce', 'pet-munch-loop');
             if (sparkles) createFoodParticles(sparkles);
             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.feed);
             return msg;
@@ -2360,6 +2519,12 @@
             const petData = (typeof getAllPetTypeData === 'function' ? getAllPetTypeData(pet.type) : null) || PET_TYPES[pet.type] || { emoji: '🐾', name: 'Pet' };
             const petContainer = document.getElementById('pet-container');
             const sparkles = document.getElementById('sparkles');
+            const beforeStats = {
+                hunger: pet.hunger,
+                cleanliness: pet.cleanliness,
+                happiness: pet.happiness,
+                energy: pet.energy
+            };
             let message = '';
 
             switch (action) {
@@ -2371,6 +2536,7 @@
                         // Quick feed: only one crop type, skip the menu
                         // Return early since feedFromGarden handles careActions increment itself
                         feedFromGarden(availableCrops[0]);
+                        markCoachChecklistProgress('feed');
                         // Reset cooldown since feedFromGarden handled the action directly
                         cancelActionCooldownAndRestoreButtons();
                         return;
@@ -2393,7 +2559,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     if (washPref < 1) message = `😨 ${pet.name || 'Pet'} didn't enjoy that... ${message}`;
                     else if (washPref > 1) message = `💕 ${pet.name || 'Pet'} loved that! ${message}`;
-                    if (petContainer) petContainer.classList.add('sparkle');
+                    if (petContainer) petContainer.classList.add('sparkle', 'pet-scrub-shake');
                     if (sparkles) createBubbles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.wash);
                     break;
@@ -2407,7 +2573,7 @@
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     if (playPref < 1) message = `😨 ${pet.name || 'Pet'} wasn't into it... ${message}`;
                     else if (playPref > 1) message = `💕 ${pet.name || 'Pet'} LOVED playing! ${message}`;
-                    if (petContainer) petContainer.classList.add('wiggle');
+                    if (petContainer) petContainer.classList.add('wiggle', 'pet-happy-bounce');
                     if (sparkles) createHearts(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.play);
                     break;
@@ -2433,7 +2599,7 @@
                     sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref);
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
-                    if (petContainer) petContainer.classList.add('sleep-anim');
+                    if (petContainer) petContainer.classList.add('sleep-anim', 'pet-sleepy-nod');
                     if (sparkles) createZzz(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.sleep);
                     break;
@@ -2536,6 +2702,13 @@
                 spawnCareParticles(petContainer, CARE_PARTICLE_EMOJIS[action] || ['✨'], 5);
                 spawnEmojiBurst(petContainer, action);
             }
+            const statDeltas = {
+                hunger: pet.hunger - beforeStats.hunger,
+                cleanliness: pet.cleanliness - beforeStats.cleanliness,
+                happiness: pet.happiness - beforeStats.happiness,
+                energy: pet.energy - beforeStats.energy
+            };
+            showStatDeltaNearNeedBubbles(statDeltas);
 
             // Haptic feedback per action type
             if (typeof hapticPattern === 'function') hapticPattern(action);
@@ -2543,6 +2716,7 @@
             // Track care actions for growth
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
+            markCoachChecklistProgress(action);
 
             // Apply incubation bonus to breeding eggs from care actions
             if (typeof applyBreedingEggCareBonus === 'function') {
@@ -2554,10 +2728,10 @@
                 const petType = pet.type;
                 let reactionEmoji = '';
                 if (action === 'feed' || action === 'treat' || action === 'cuddle') {
-                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, petType));
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFXByName('petHappy', (ctx) => SoundManager.sfx.petHappy(ctx, petType));
                     reactionEmoji = action === 'feed' ? '😋' : action === 'treat' ? '🤤' : '🥰';
                 } else if (action === 'play' || action === 'exercise') {
-                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX((ctx) => SoundManager.sfx.petExcited(ctx, petType));
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFXByName('petExcited', (ctx) => SoundManager.sfx.petExcited(ctx, petType));
                     reactionEmoji = action === 'play' ? '😄' : '💪';
                 } else if (action === 'wash') {
                     reactionEmoji = '✨';
@@ -2599,7 +2773,10 @@
                 newAch.forEach(ach => {
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
                     if (typeof hapticPattern === 'function') hapticPattern('achievement');
-                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                    setTimeout(() => {
+                        showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700');
+                        queueRewardCard('achievement', ach, '#FFD700');
+                    }, 300);
                 });
             }
 
@@ -2607,25 +2784,38 @@
             if (typeof checkBadges === 'function') {
                 const newBadges = checkBadges();
                 newBadges.forEach(badge => {
-                    setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, BADGE_TIERS[badge.tier].color), 500);
+                    const badgeColor = BADGE_TIERS[badge.tier] ? BADGE_TIERS[badge.tier].color : '#FFD700';
+                    setTimeout(() => {
+                        showToast(`${badge.icon} Badge: ${badge.name}!`, badgeColor);
+                        queueRewardCard('badge', badge, badgeColor);
+                    }, 500);
                 });
             }
             if (typeof checkPetActionSticker === 'function') {
                 const newStickers = checkPetActionSticker(action);
                 newStickers.forEach(sticker => {
-                    setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                    setTimeout(() => {
+                        showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB');
+                        queueRewardCard('sticker', sticker, '#E040FB');
+                    }, 700);
                 });
             }
             if (typeof checkStickers === 'function') {
                 const newStickers = checkStickers();
                 newStickers.forEach(sticker => {
-                    setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                    setTimeout(() => {
+                        showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB');
+                        queueRewardCard('sticker', sticker, '#E040FB');
+                    }, 700);
                 });
             }
             if (typeof checkTrophies === 'function') {
                 const newTrophies = checkTrophies();
                 newTrophies.forEach(trophy => {
-                    setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
+                    setTimeout(() => {
+                        showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700');
+                        queueRewardCard('trophy', trophy, '#FFD700');
+                    }, 900);
                 });
             }
 
@@ -2649,7 +2839,7 @@
             updateGrowthDisplay();
 
             // Remove animation class on animationend (avoids flash from idle anim overlap)
-            const actionAnimClasses = ['bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim'];
+            const actionAnimClasses = ['bounce', 'wiggle', 'sparkle', 'sleep-anim', 'heal-anim', 'groom-anim', 'exercise-anim', 'treat-anim', 'cuddle-anim', 'pet-munch-loop', 'pet-scrub-shake', 'pet-sleepy-nod', 'pet-happy-bounce'];
             actionAnimating = true;
             if (petContainer) {
                 // If reduced motion is preferred, skip animation entirely
@@ -3388,16 +3578,17 @@
                     showToast(`${(getAllPetTypeData(currentPet.type) || {}).emoji || '🐾'} ${msg}`, TOAST_COLORS.feed);
                     const petContainer = document.getElementById('pet-container');
                     if (petContainer) {
-                        const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); };
+                        const onEnd = () => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce', 'pet-munch-loop'); };
                         petContainer.addEventListener('animationend', onEnd);
-                        setTimeout(() => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce'); }, 1200);
+                        setTimeout(() => { petContainer.removeEventListener('animationend', onEnd); petContainer.classList.remove('bounce', 'pet-munch-loop'); }, 1200);
                     }
                     if (typeof currentPet.careActions !== 'number') currentPet.careActions = 0;
                     currentPet.careActions++;
+                    markCoachChecklistProgress('feed');
 
                     // Play pet voice sound
                     if (typeof SoundManager !== 'undefined') {
-                        SoundManager.playSFX((ctx) => SoundManager.sfx.petHappy(ctx, currentPet.type));
+                        SoundManager.playSFXByName('petHappy', (ctx) => SoundManager.sfx.petHappy(ctx, currentPet.type));
                     }
 
                     // Track daily checklist progress
@@ -3413,32 +3604,48 @@
                         const newAch = checkAchievements();
                         newAch.forEach(ach => {
                             if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.achievement);
-                            setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 300);
+                            setTimeout(() => {
+                                showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700');
+                                queueRewardCard('achievement', ach, '#FFD700');
+                            }, 300);
                         });
                     }
                     // Check badges, stickers, trophies
                     if (typeof checkBadges === 'function') {
                         const newBadges = checkBadges();
                         newBadges.forEach(badge => {
-                            setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, '#FFD700'), 600);
+                            const badgeColor = BADGE_TIERS[badge.tier] ? BADGE_TIERS[badge.tier].color : '#FFD700';
+                            setTimeout(() => {
+                                showToast(`${badge.icon} Badge: ${badge.name}!`, badgeColor);
+                                queueRewardCard('badge', badge, badgeColor);
+                            }, 600);
                         });
                     }
                     if (typeof checkStickers === 'function') {
                         const newStickers = checkStickers();
                         newStickers.forEach(sticker => {
-                            setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 700);
+                            setTimeout(() => {
+                                showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB');
+                                queueRewardCard('sticker', sticker, '#E040FB');
+                            }, 700);
                         });
                     }
                     if (typeof checkPetActionSticker === 'function') {
                         const actionStickers = checkPetActionSticker('feed');
                         actionStickers.forEach(sticker => {
-                            setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), 800);
+                            setTimeout(() => {
+                                showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB');
+                                queueRewardCard('sticker', sticker, '#E040FB');
+                            }, 800);
                         });
                     }
                     if (typeof checkTrophies === 'function') {
                         const newTrophies = checkTrophies();
                         newTrophies.forEach(trophy => {
-                            setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
+                            setTimeout(() => {
+                                showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700');
+                                queueRewardCard('trophy', trophy, '#FFD700');
+                            }, 900);
                         });
                     }
 
@@ -3463,6 +3670,7 @@
                     const cropId = btn.getAttribute('data-feed-crop');
                     closeMenu();
                     feedFromGarden(cropId);
+                    markCoachChecklistProgress('feed');
                 });
             });
 
@@ -4084,7 +4292,10 @@
                             if (typeof checkAchievements === 'function') {
                                 const newAch = checkAchievements();
                                 newAch.forEach(ach => {
-                                    setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 500);
+                                    setTimeout(() => {
+                                        showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700');
+                                        queueRewardCard('achievement', ach, '#FFD700');
+                                    }, 500);
                                 });
                             }
                             renderPetPhase();
@@ -5128,19 +5339,32 @@
                             // Check achievements
                             if (typeof checkAchievements === 'function') {
                                 const newAch = checkAchievements();
-                                newAch.forEach(ach => setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), 500));
+                                newAch.forEach(ach => setTimeout(() => {
+                                    showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700');
+                                    queueRewardCard('achievement', ach, '#FFD700');
+                                }, 500));
                             }
                             if (typeof checkBadges === 'function') {
                                 const nb = checkBadges();
-                                nb.forEach(b => setTimeout(() => showToast(`${b.icon} Badge: ${b.name}!`, BADGE_TIERS[b.tier].color), 700));
+                                nb.forEach(b => setTimeout(() => {
+                                    const badgeColor = BADGE_TIERS[b.tier] ? BADGE_TIERS[b.tier].color : '#FFD700';
+                                    showToast(`${b.icon} Badge: ${b.name}!`, badgeColor);
+                                    queueRewardCard('badge', b, badgeColor);
+                                }, 700));
                             }
                             if (typeof checkStickers === 'function') {
                                 const ns = checkStickers();
-                                ns.forEach(s => setTimeout(() => showToast(`${s.emoji} Sticker: ${s.name}!`, '#E040FB'), 900));
+                                ns.forEach(s => setTimeout(() => {
+                                    showToast(`${s.emoji} Sticker: ${s.name}!`, '#E040FB');
+                                    queueRewardCard('sticker', s, '#E040FB');
+                                }, 900));
                             }
                             if (typeof checkTrophies === 'function') {
                                 const nt = checkTrophies();
-                                nt.forEach(t => setTimeout(() => showToast(`${t.icon} Trophy: ${t.name}!`, '#FFD700'), 1100));
+                                nt.forEach(t => setTimeout(() => {
+                                    showToast(`${t.icon} Trophy: ${t.name}!`, '#FFD700');
+                                    queueRewardCard('trophy', t, '#FFD700');
+                                }, 1100));
                             }
                             renderPetPhase();
                         } else if (result) {
@@ -6398,6 +6622,9 @@
             }
 
             const soundEnabled = typeof SoundManager !== 'undefined' && SoundManager.getEnabled();
+            const samplePackEnabled = typeof SoundManager !== 'undefined' && typeof SoundManager.getSamplePackEnabled === 'function'
+                ? SoundManager.getSamplePackEnabled()
+                : true;
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
                 (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
             const hapticEnabled = !(localStorage.getItem('petCareBuddy_hapticOff') === 'true');
@@ -6421,6 +6648,12 @@
                         <div class="settings-row">
                             <span class="settings-row-label">🎵 Music</span>
                             <button class="settings-toggle ${typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled() ? 'on' : ''}" id="setting-music" role="switch" aria-checked="${typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled()}" aria-label="Background Music">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🎧 Sample Audio Pack</span>
+                            <button class="settings-toggle ${samplePackEnabled ? 'on' : ''}" id="setting-sample-pack" role="switch" aria-checked="${samplePackEnabled}" aria-label="Sample Audio Pack">
                                 <span class="settings-toggle-knob"></span>
                             </button>
                         </div>
@@ -6477,6 +6710,16 @@
                     const enabled = SoundManager.toggleMusic();
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
+                }
+            });
+
+            // Sample-pack toggle
+            document.getElementById('setting-sample-pack').addEventListener('click', function() {
+                if (typeof SoundManager !== 'undefined' && typeof SoundManager.toggleSamplePack === 'function') {
+                    const enabled = SoundManager.toggleSamplePack();
+                    this.classList.toggle('on', enabled);
+                    this.setAttribute('aria-checked', String(enabled));
+                    showToast(enabled ? '🎧 Sample audio pack enabled' : '🎛️ Sample audio pack disabled', '#A8D8EA');
                 }
             });
 
@@ -6605,16 +6848,16 @@
 
         // ==================== BUTTON PRESS FEEDBACK (Item 29) ====================
         document.addEventListener('pointerdown', (e) => {
-            const btn = e.target.closest('.action-btn');
+            const btn = e.target.closest('.action-btn, .core-care-btn');
             if (btn && !btn.disabled && !btn.classList.contains('cooldown')) {
                 btn.classList.add('btn-pressed');
             }
         });
         document.addEventListener('pointerup', () => {
-            document.querySelectorAll('.action-btn.btn-pressed').forEach(b => b.classList.remove('btn-pressed'));
+            document.querySelectorAll('.action-btn.btn-pressed, .core-care-btn.btn-pressed').forEach(b => b.classList.remove('btn-pressed'));
         });
         document.addEventListener('pointercancel', () => {
-            document.querySelectorAll('.action-btn.btn-pressed').forEach(b => b.classList.remove('btn-pressed'));
+            document.querySelectorAll('.action-btn.btn-pressed, .core-care-btn.btn-pressed').forEach(b => b.classList.remove('btn-pressed'));
         });
 
         // ==================== TEXT SIZE RESTORE (Item 30) ====================
@@ -6642,69 +6885,129 @@
             if (el) el.remove();
         }
 
-        // ==================== FIRST-TIME TUTORIAL (Item 27) ====================
-        const TUTORIAL_STEPS = [
-            { title: 'Welcome!', text: 'Take care of your virtual pet by keeping it fed, clean, happy, and rested.', icon: '🐾' },
-            { title: 'Care Actions', text: 'Use the action buttons below your pet. Press 1-8 on your keyboard as shortcuts!', icon: '🍎' },
-            { title: 'Mini Games', text: 'Play games with your pet to boost happiness and earn rewards. Tap the Games button!', icon: '🎮' },
-            { title: 'Garden', text: 'Visit the Garden room to plant and harvest crops for feeding your pet.', icon: '🌱' },
-            { title: 'Competitions', text: 'Battle other pets, enter shows, and earn trophies in the Arena!', icon: '🏟️' },
-            { title: 'Dark Mode', text: 'Open Settings (gear icon) to toggle dark mode, large text, sounds, and more.', icon: '⚙️' }
+        // ==================== NON-BLOCKING COACH CHECKLIST ====================
+        const COACH_CHECKLIST_STORAGE_KEY = 'petCareBuddy_coachChecklist';
+        const COACH_CHECKLIST_STEPS = [
+            { id: 'feed_once', label: 'Feed once', icon: '🍎' },
+            { id: 'play_once', label: 'Play once', icon: '⚽' },
+            { id: 'open_minigame', label: 'Open mini-game', icon: '🎮' }
         ];
 
-        function showTutorial() {
-            if (localStorage.getItem('petCareBuddy_tutorialDone')) return;
-            let step = 0;
+        function getCoachChecklistState() {
+            const defaults = { feed_once: false, play_once: false, open_minigame: false };
+            try {
+                const raw = localStorage.getItem(COACH_CHECKLIST_STORAGE_KEY);
+                if (!raw) return defaults;
+                const parsed = JSON.parse(raw);
+                return {
+                    feed_once: !!parsed.feed_once,
+                    play_once: !!parsed.play_once,
+                    open_minigame: !!parsed.open_minigame
+                };
+            } catch (e) {
+                return defaults;
+            }
+        }
 
-            // Create the overlay once and reuse it across steps
-            const overlay = document.createElement('div');
-            overlay.className = 'tutorial-overlay';
-            overlay.setAttribute('role', 'dialog');
-            overlay.setAttribute('aria-modal', 'true');
-            document.body.appendChild(overlay);
+        function saveCoachChecklistState(state) {
+            try { localStorage.setItem(COACH_CHECKLIST_STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+        }
 
-            function renderStep() {
-                overlay.setAttribute('aria-label', 'Tutorial step ' + (step + 1));
+        function isCoachChecklistComplete(state) {
+            return COACH_CHECKLIST_STEPS.every((step) => !!state[step.id]);
+        }
 
-                const s = TUTORIAL_STEPS[step];
-                const dots = TUTORIAL_STEPS.map((_, i) =>
-                    `<span class="tutorial-dot ${i === step ? 'active' : ''}"></span>`
-                ).join('');
+        function removeCoachChecklist() {
+            const existing = document.querySelector('.coach-checklist');
+            if (existing) existing.remove();
+        }
 
-                overlay.innerHTML = `
-                    <div class="tutorial-card">
-                        <div style="font-size:2rem;" aria-hidden="true">${s.icon}</div>
-                        <h3>${s.title}</h3>
-                        <p>${s.text}</p>
-                        <div class="tutorial-step-indicator">${dots}</div>
-                        <div class="tutorial-buttons">
-                            <button class="tutorial-btn secondary" id="tutorial-skip">Skip</button>
-                            <button class="tutorial-btn primary" id="tutorial-next">${step < TUTORIAL_STEPS.length - 1 ? 'Next' : 'Got it!'}</button>
-                        </div>
-                    </div>
-                `;
-                trapFocus(overlay);
-                overlay.querySelector('#tutorial-next').focus();
+        function markCoachChecklistProgress(stepOrAction) {
+            try {
+                if (localStorage.getItem('petCareBuddy_tutorialDone') === 'true') return;
+            } catch (e) {}
+            const state = getCoachChecklistState();
+            let changed = false;
 
-                overlay.querySelector('#tutorial-skip').addEventListener('click', closeTutorial);
-                overlay.querySelector('#tutorial-next').addEventListener('click', () => {
-                    step++;
-                    if (step >= TUTORIAL_STEPS.length) {
-                        closeTutorial();
-                    } else {
-                        renderStep();
-                    }
+            if ((stepOrAction === 'feed' || stepOrAction === 'feed_once') && !state.feed_once) {
+                state.feed_once = true;
+                changed = true;
+            }
+            if ((stepOrAction === 'play' || stepOrAction === 'play_once') && !state.play_once) {
+                state.play_once = true;
+                changed = true;
+            }
+            if ((stepOrAction === 'open_minigame' || stepOrAction === 'minigames') && !state.open_minigame) {
+                state.open_minigame = true;
+                changed = true;
+            }
+            if (!changed) return;
+
+            saveCoachChecklistState(state);
+            if (isCoachChecklistComplete(state)) {
+                try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+                removeCoachChecklist();
+                showToast('✅ Coach checklist complete!', '#66BB6A', { announce: false });
+                return;
+            }
+            renderCoachChecklist(true);
+        }
+
+        function renderCoachChecklist(forceVisible = false) {
+            if (!gameState || gameState.phase !== 'pet') {
+                removeCoachChecklist();
+                return;
+            }
+            try {
+                if (localStorage.getItem('petCareBuddy_tutorialDone') === 'true') {
+                    removeCoachChecklist();
+                    return;
+                }
+            } catch (e) {}
+
+            const state = getCoachChecklistState();
+            if (isCoachChecklistComplete(state)) {
+                try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+                removeCoachChecklist();
+                return;
+            }
+
+            if (!forceVisible && document.querySelector('.modal-overlay, [role="dialog"]')) return;
+
+            let panel = document.querySelector('.coach-checklist');
+            if (!panel) {
+                panel = document.createElement('aside');
+                panel.className = 'coach-checklist';
+                panel.setAttribute('aria-live', 'polite');
+                document.body.appendChild(panel);
+            }
+
+            const itemsHTML = COACH_CHECKLIST_STEPS.map((step) => `
+                <li class="coach-checklist-item ${state[step.id] ? 'done' : ''}">
+                    <span class="coach-check-icon" aria-hidden="true">${state[step.id] ? '✓' : step.icon}</span>
+                    <span>${escapeHTML(step.label)}</span>
+                </li>
+            `).join('');
+
+            panel.innerHTML = `
+                <div class="coach-checklist-head">
+                    <div class="coach-checklist-title">Quick Start</div>
+                    <button class="coach-checklist-skip" type="button" data-coach-skip>Skip</button>
+                </div>
+                <ul class="coach-checklist-list">${itemsHTML}</ul>
+            `;
+
+            const skipBtn = panel.querySelector('[data-coach-skip]');
+            if (skipBtn) {
+                skipBtn.addEventListener('click', () => {
+                    try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+                    removeCoachChecklist();
                 });
             }
+        }
 
-            function closeTutorial() {
-                popModalEscape(closeTutorial);
-                if (overlay.parentNode) overlay.remove();
-                try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
-            }
-
-            pushModalEscape(closeTutorial);
-            renderStep();
+        function showTutorial() {
+            renderCoachChecklist(true);
         }
 
         // Show tutorial on first pet phase render if not already shown
