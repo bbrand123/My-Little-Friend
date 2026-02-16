@@ -84,6 +84,49 @@
             totalFavoriteFoodFed: 0      // Track favorite food feeds for achievements
         };
 
+        function createDefaultCompetitionState() {
+            return {
+                battlesWon: 0,
+                battlesLost: 0,
+                bossesDefeated: {},
+                showsEntered: 0,
+                bestShowRank: '',
+                bestShowScore: 0,
+                obstacleBestScore: 0,
+                obstacleCompletions: 0,
+                rivalsDefeated: [],
+                currentRivalIndex: 0
+            };
+        }
+
+        function normalizeCompetitionState(competition) {
+            const state = (competition && typeof competition === 'object' && !Array.isArray(competition))
+                ? competition
+                : createDefaultCompetitionState();
+            if (typeof state.battlesWon !== 'number' || !Number.isFinite(state.battlesWon)) state.battlesWon = 0;
+            if (typeof state.battlesLost !== 'number' || !Number.isFinite(state.battlesLost)) state.battlesLost = 0;
+            if (!state.bossesDefeated || typeof state.bossesDefeated !== 'object' || Array.isArray(state.bossesDefeated)) state.bossesDefeated = {};
+            if (typeof state.showsEntered !== 'number' || !Number.isFinite(state.showsEntered)) state.showsEntered = 0;
+            if (typeof state.bestShowRank !== 'string') state.bestShowRank = '';
+            if (typeof state.bestShowScore !== 'number' || !Number.isFinite(state.bestShowScore)) state.bestShowScore = 0;
+            if (typeof state.obstacleBestScore !== 'number' || !Number.isFinite(state.obstacleBestScore)) state.obstacleBestScore = 0;
+            if (typeof state.obstacleCompletions !== 'number' || !Number.isFinite(state.obstacleCompletions)) state.obstacleCompletions = 0;
+            if (!Array.isArray(state.rivalsDefeated)) state.rivalsDefeated = [];
+            const rivalCount = (typeof RIVAL_TRAINERS !== 'undefined' && Array.isArray(RIVAL_TRAINERS)) ? RIVAL_TRAINERS.length : 0;
+            state.rivalsDefeated = [...new Set(state.rivalsDefeated
+                .map((idx) => Number(idx))
+                .filter((idx) => Number.isInteger(idx) && idx >= 0 && (rivalCount === 0 || idx < rivalCount)))];
+            if (!Number.isInteger(state.currentRivalIndex) || state.currentRivalIndex < 0) state.currentRivalIndex = 0;
+            if (state.rivalsDefeated.length > 0) {
+                const furthestDefeated = Math.max(...state.rivalsDefeated);
+                state.currentRivalIndex = Math.max(state.currentRivalIndex, furthestDefeated + 1);
+            }
+            if (rivalCount > 0) {
+                state.currentRivalIndex = Math.min(state.currentRivalIndex, rivalCount);
+            }
+            return state;
+        }
+
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
         // via startGardenGrowTimer(), and stopped during cleanup/reset.
         let gardenGrowInterval = null;
@@ -1317,13 +1360,17 @@
             }
 
             // Remove pet from family
+            const previousActiveIndex = gameState.activePetIndex;
             gameState.pets.splice(petIndex, 1);
-            // Adjust active pet index
-            if (gameState.activePetIndex >= gameState.pets.length) {
-                gameState.activePetIndex = Math.max(0, gameState.pets.length - 1);
-            }
-            if (petIndex <= gameState.activePetIndex && gameState.activePetIndex > 0) {
-                gameState.activePetIndex--;
+            // Adjust active pet index exactly once after removal.
+            if (gameState.pets.length === 0) {
+                gameState.activePetIndex = 0;
+            } else if (previousActiveIndex === petIndex) {
+                gameState.activePetIndex = Math.min(petIndex, gameState.pets.length - 1);
+            } else if (petIndex < previousActiveIndex) {
+                gameState.activePetIndex = previousActiveIndex - 1;
+            } else {
+                gameState.activePetIndex = Math.min(previousActiveIndex, gameState.pets.length - 1);
             }
             gameState.pet = gameState.pets[gameState.activePetIndex] || null;
 
@@ -1659,19 +1706,17 @@
                     if (typeof parsed.totalDailyCompletions !== 'number') parsed.totalDailyCompletions = 0;
                     if (typeof parsed.totalFeedCount !== 'number') parsed.totalFeedCount = 0;
 
-                    // Add competition state if missing (for existing saves)
-                    if (!parsed.competition || typeof parsed.competition !== 'object') {
-                        parsed.competition = {
-                            battlesWon: 0, battlesLost: 0, bossesDefeated: {},
-                            showsEntered: 0, bestShowRank: '', bestShowScore: 0,
-                            obstacleBestScore: 0, obstacleCompletions: 0,
-                            rivalsDefeated: [], currentRivalIndex: 0
-                        };
-                    }
-                    if (!Array.isArray(parsed.competition.rivalsDefeated)) parsed.competition.rivalsDefeated = [];
+                    // Add competition state if missing or partial (for existing saves)
+                    parsed.competition = normalizeCompetitionState(parsed.competition);
 
                     // Add breeding system fields if missing (for existing saves)
                     if (!Array.isArray(parsed.breedingEggs)) parsed.breedingEggs = [];
+                    parsed.breedingEggs = parsed.breedingEggs
+                        .filter((egg) => egg && typeof egg === 'object')
+                        .map((egg) => {
+                            ensureBreedingEggData(egg);
+                            return egg;
+                        });
                     if (typeof parsed.lastBreedingIncubationTick !== 'number') parsed.lastBreedingIncubationTick = Date.now();
                     if (typeof parsed.totalBreedings !== 'number') parsed.totalBreedings = 0;
                     if (typeof parsed.totalBreedingHatches !== 'number') parsed.totalBreedingHatches = 0;
@@ -2221,6 +2266,26 @@
             return { eligible: true };
         }
 
+        function ensureBreedingEggData(egg) {
+            if (!egg || typeof egg !== 'object') return false;
+            if (typeof egg.incubationTicks !== 'number' || !Number.isFinite(egg.incubationTicks) || egg.incubationTicks < 0) {
+                egg.incubationTicks = 0;
+            }
+            if (typeof egg.incubationTarget !== 'number' || !Number.isFinite(egg.incubationTarget) || egg.incubationTarget <= 0) {
+                egg.incubationTarget = BREEDING_CONFIG.incubationBaseTicks;
+            }
+            if (!egg.roomBonuses || typeof egg.roomBonuses !== 'object' || Array.isArray(egg.roomBonuses)) {
+                egg.roomBonuses = {};
+            }
+            if (typeof egg.careBonuses !== 'number' || !Number.isFinite(egg.careBonuses)) {
+                egg.careBonuses = 0;
+            }
+            if (!egg.genetics || typeof egg.genetics !== 'object' || Array.isArray(egg.genetics)) {
+                egg.genetics = {};
+            }
+            return true;
+        }
+
         function canBreedPair(pet1, pet2) {
             if (!pet1 || !pet2) {
                 return { eligible: false, reason: 'Both pets must be selected' };
@@ -2467,6 +2532,7 @@
 
             for (let i = gameState.breedingEggs.length - 1; i >= 0; i--) {
                 const egg = gameState.breedingEggs[i];
+                if (!ensureBreedingEggData(egg)) continue;
                 // Apply room speed multiplier
                 egg.incubationTicks += roomBonus.speedMultiplier;
                 egg.currentRoom = currentRoom;
@@ -2515,6 +2581,7 @@
             const bonus = INCUBATION_CARE_BONUSES[action];
             if (!bonus) return;
             for (const egg of gameState.breedingEggs) {
+                if (!ensureBreedingEggData(egg)) continue;
                 egg.incubationTicks += bonus.tickBonus;
                 egg.careBonuses += bonus.tickBonus;
             }
@@ -2522,6 +2589,7 @@
 
         // Hatch a breeding egg into an actual pet
         function hatchBreedingEgg(egg) {
+            if (!ensureBreedingEggData(egg)) return null;
             const typeData = getAllPetTypeData(egg.offspringType);
             if (!typeData) return null;
 
@@ -2592,7 +2660,7 @@
 
         // Get incubation progress as a percentage
         function getIncubationProgress(egg) {
-            if (!egg) return 0;
+            if (!ensureBreedingEggData(egg)) return 0;
             return Math.min(100, (egg.incubationTicks / egg.incubationTarget) * 100);
         }
 
@@ -3471,13 +3539,21 @@
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
         }
 
-        function feedFromGarden(cropId) {
+        function feedFromGarden(cropId, options) {
             const garden = gameState.garden;
-            if (!garden.inventory[cropId] || garden.inventory[cropId] <= 0) return;
-            if (!gameState.pet) return;
+            const opts = options || {};
+            if (!garden.inventory[cropId] || garden.inventory[cropId] <= 0) return false;
+            if (!gameState.pet) return false;
 
             const crop = GARDEN_CROPS[cropId];
-            if (!crop) return;
+            if (!crop) return false;
+            if (opts.enforceCooldown !== false && typeof isActionCooldownActive === 'function' && isActionCooldownActive()) {
+                if (typeof announceCooldownOnce === 'function') announceCooldownOnce();
+                return false;
+            }
+            if (opts.enforceCooldown !== false && typeof startActionCooldownWindow === 'function') {
+                startActionCooldownWindow();
+            }
             const beforeStats = {
                 hunger: gameState.pet.hunger,
                 happiness: gameState.pet.happiness,
@@ -3555,7 +3631,7 @@
                 showToast(`${crop.seedEmoji} Fed ${escapeHTML(gameState.pet.name || petData.name)} a garden-fresh ${crop.name}!`, '#FF8C42');
                 saveGame();
                 renderPetPhase();
-                return;
+                return true;
             }
 
             const sparkles = document.getElementById('sparkles');
@@ -3599,6 +3675,7 @@
             if (gameState.currentRoom === 'garden') {
                 renderGardenUI();
             }
+            return true;
         }
 
         function openSeedPicker(plotIndex) {
@@ -4436,9 +4513,12 @@
                         if (saved.trophies) gameState.trophies = saved.trophies;
                         if (saved.streak) gameState.streak = saved.streak;
                         if (saved.dailyChecklist) gameState.dailyChecklist = saved.dailyChecklist;
-                        if (saved.competition) gameState.competition = saved.competition;
+                        if (saved.competition) gameState.competition = normalizeCompetitionState(saved.competition);
                         if (saved.exploration) gameState.exploration = saved.exploration;
-                        if (saved.breedingEggs) gameState.breedingEggs = saved.breedingEggs;
+                        if (saved.breedingEggs) {
+                            gameState.breedingEggs = saved.breedingEggs.filter((egg) => egg && typeof egg === 'object');
+                            gameState.breedingEggs.forEach((egg) => ensureBreedingEggData(egg));
+                        }
                         if (saved.hatchedBreedingEggs) gameState.hatchedBreedingEggs = saved.hatchedBreedingEggs;
                         if (typeof saved.totalFeedCount === 'number') gameState.totalFeedCount = saved.totalFeedCount;
                         if (typeof saved.adultsRaised === 'number') gameState.adultsRaised = saved.adultsRaised;
