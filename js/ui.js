@@ -235,15 +235,26 @@
             html += '</div>';
             overlay.innerHTML = html;
             document.body.appendChild(overlay);
-            overlay.querySelector('.modal-close-btn').addEventListener('click', () => overlay.remove());
+
+            function closePicker() {
+                popModalEscape(closePicker);
+                overlay.remove();
+            }
+
+            overlay.querySelector('.modal-close-btn').addEventListener('click', closePicker);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
             overlay.querySelectorAll('[data-pick-action]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     favs[slotIdx] = btn.dataset.pickAction;
                     saveFavorites(favs);
-                    overlay.remove();
+                    closePicker();
                     updateFavoritesBar();
                 });
             });
+            pushModalEscape(closePicker);
+            trapFocus(overlay);
+            const closeBtn = overlay.querySelector('.modal-close-btn');
+            if (closeBtn) closeBtn.focus();
         }
 
         function updateFavoritesBar() {
@@ -1889,9 +1900,26 @@
         // Notification history (keeps last 20 for review)
         const MAX_NOTIFICATION_HISTORY = 20;
         let _notificationHistory = [];
+        const _toastDecodeEl = document.createElement('textarea');
+
+        function decodeEntities(text) {
+            _toastDecodeEl.innerHTML = text;
+            return _toastDecodeEl.value;
+        }
+
+        function sanitizeToastText(message) {
+            const decoded = decodeEntities(String(message || ''));
+            return decoded.replace(/[\x00-\x1F\x7F]+/g, ' ').trim();
+        }
+
+        function sanitizeCssColor(value) {
+            const color = String(value || '').trim();
+            if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color)) return color;
+            return '#D4A574';
+        }
 
         function addToNotificationHistory(message) {
-            const plainText = message.replace(/<[^>]*>/g, '').trim();
+            const plainText = sanitizeToastText(message);
             if (!plainText) return;
             _notificationHistory.push({
                 text: plainText,
@@ -2010,7 +2038,9 @@
         }
 
         function showToast(message, color = '#66BB6A') {
-            addToNotificationHistory(message);
+            const plainText = sanitizeToastText(message);
+            const safeMessage = escapeHTML(plainText);
+            addToNotificationHistory(plainText);
             let container = document.getElementById('toast-container');
 
             // Create container if it doesn't exist
@@ -2035,13 +2065,9 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
-            // SAFETY: message is always from constants/game logic, never raw user input.
-            // If user input is ever passed here, it must be escaped first.
-            toast.innerHTML = wrapEmojiForAria(message);
+            toast.innerHTML = wrapEmojiForAria(safeMessage);
             container.appendChild(toast);
 
-            // Announce to screen readers — strip HTML tags for plain text
-            const plainText = message.replace(/<[^>]*>/g, '').trim();
             if (plainText && typeof announce === 'function') {
                 announce(plainText);
             }
@@ -3564,6 +3590,13 @@
             `;
 
             document.body.appendChild(container);
+            setTimeout(() => {
+                if (container.parentNode) container.remove();
+                if (!document.querySelector('.confetti-container')) {
+                    const confettiStyleEl = document.getElementById('confetti-style');
+                    if (confettiStyleEl) confettiStyleEl.remove();
+                }
+            }, 5200);
         }
 
         // ==================== MILESTONE FIREWORKS ====================
@@ -3588,8 +3621,10 @@
                 for (let i = 0; i < particleCount; i++) {
                     const particle = document.createElement('div');
                     particle.className = 'firework-particle';
-                    const angle = (i / particleCount) * 360;
+                    const angle = (i / particleCount) * (Math.PI * 2);
                     const distance = 40 + Math.random() * 60;
+                    const dx = Math.cos(angle) * distance;
+                    const dy = Math.sin(angle) * distance;
                     const color = colors[Math.floor(Math.random() * colors.length)];
                     const size = 3 + Math.random() * 5;
 
@@ -3602,8 +3637,8 @@
                         background: ${color};
                         border-radius: 50%;
                         box-shadow: 0 0 ${size * 2}px ${color};
-                        --fw-angle: ${angle}deg;
-                        --fw-distance: ${distance}px;
+                        --fw-x: ${dx.toFixed(2)}px;
+                        --fw-y: ${dy.toFixed(2)}px;
                         animation: fireworkBurst 1.2s ease-out ${burstDelay}ms forwards;
                     `;
                     container.appendChild(particle);
@@ -3637,10 +3672,7 @@
                 @keyframes fireworkBurst {
                     0% { transform: translate(0, 0) scale(1); opacity: 1; }
                     100% {
-                        transform: translate(
-                            calc(cos(var(--fw-angle)) * var(--fw-distance)),
-                            calc(sin(var(--fw-angle)) * var(--fw-distance))
-                        ) scale(0);
+                        transform: translate(var(--fw-x), var(--fw-y)) scale(0);
                         opacity: 0;
                     }
                 }
@@ -3798,17 +3830,17 @@
             // Retire current pet button (only if eligible)
             let retireHTML = '';
             if (pet && gameState.pets && gameState.pets.length > 1) {
-                const stageOrder = ['baby', 'child', 'adult', 'elder'];
-                const petStageIdx = stageOrder.indexOf(pet.growthStage);
-                const minStageIdx = stageOrder.indexOf(MEMORIAL_CONFIG.retirementMinStage);
+                const allowedStages = Array.isArray(MEMORIAL_CONFIG.retirementAllowedStages) && MEMORIAL_CONFIG.retirementAllowedStages.length
+                    ? MEMORIAL_CONFIG.retirementAllowedStages
+                    : ['adult', 'elder'];
                 const ageHours = typeof getPetAge === 'function' ? getPetAge(pet) : 0;
-                const canRetire = petStageIdx >= minStageIdx && ageHours >= MEMORIAL_CONFIG.retirementMinAge;
+                const canRetire = allowedStages.includes(pet.growthStage) && ageHours >= MEMORIAL_CONFIG.retirementMinAge;
                 const petName = escapeHTML(pet.name || 'Pet');
                 if (canRetire) {
                     retireHTML = `<button class="memorial-retire-btn" id="memorial-retire-btn">🌅 Retire ${petName} to Hall of Fame</button>`;
                 } else {
                     let reason = '';
-                    if (petStageIdx < minStageIdx) reason = `Must be ${MEMORIAL_CONFIG.retirementMinStage} stage`;
+                    if (!allowedStages.includes(pet.growthStage)) reason = `Must be ${allowedStages.join(' or ')} stage`;
                     else if (ageHours < MEMORIAL_CONFIG.retirementMinAge) reason = `Must be ${MEMORIAL_CONFIG.retirementMinAge}h+ old`;
                     retireHTML = `<p class="memorial-retire-hint">🌅 ${petName} can't retire yet: ${reason}</p>`;
                 }
@@ -4424,6 +4456,23 @@
                 _petPhaseLastRoom = null;
                 if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
                 if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
+                actionAnimating = false;
+                actionCooldown = false;
+                if (actionCooldownTimer) {
+                    clearTimeout(actionCooldownTimer);
+                    actionCooldownTimer = null;
+                }
+                if (_careToastTimer) {
+                    clearTimeout(_careToastTimer);
+                    _careToastTimer = null;
+                }
+                _careToastQueue = [];
+                _previousMood = null;
+                document.querySelectorAll('.confetti-container, .fireworks-container, .minigame-celebration, .new-highscore-banner').forEach((el) => el.remove());
+                const confettiStyleEl = document.getElementById('confetti-style');
+                if (confettiStyleEl) confettiStyleEl.remove();
+                const fireworksStyleEl = document.getElementById('fireworks-style');
+                if (fireworksStyleEl) fireworksStyleEl.remove();
 
                 const preservedAdultsRaised = gameState.adultsRaised || 0;
                 const preservedFurniture = gameState.furniture || {
@@ -4694,6 +4743,9 @@
             if (pet.mutationPattern) traitsHTML += `<span class="breeding-trait mutation">✨ ${pet.mutationPattern} Pattern</span>`;
             if (pet.isHybrid) traitsHTML += `<span class="breeding-trait hybrid">🧬 Hybrid</span>`;
             if (pet.parentNames) traitsHTML += `<span class="breeding-trait lineage">👪 Parents: ${escapeHTML(pet.parentNames[0])} & ${escapeHTML(pet.parentNames[1])}</span>`;
+            const safePetColor = sanitizeCssColor(pet.color);
+            const mutationPatternMap = (typeof MUTATION_PATTERNS !== 'undefined' && MUTATION_PATTERNS) ? MUTATION_PATTERNS : {};
+            const patternDisplayName = (PET_PATTERNS[pet.pattern] || mutationPatternMap[pet.pattern] || { name: pet.pattern }).name;
 
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay breeding-celebration-modal';
@@ -4707,10 +4759,10 @@
                     ${traitsHTML ? `<div class="breeding-traits">${traitsHTML}</div>` : ''}
                     ${geneticsHTML}
                     <div class="breeding-celebration-color">
-                        <span class="color-swatch" style="background-color: ${pet.color}"></span>
-                        <span>Color: ${getColorName(pet.color)}${pet.mutationColor ? ' (Mutation!)' : ''}</span>
+                        <span class="color-swatch" style="background-color: ${safePetColor}"></span>
+                        <span>Color: ${getColorName(safePetColor)}${pet.mutationColor ? ' (Mutation!)' : ''}</span>
                     </div>
-                    <div class="breeding-celebration-pattern">Pattern: ${(PET_PATTERNS[pet.pattern] || MUTATION_PATTERNS[pet.pattern] || { name: pet.pattern }).name}${pet.mutationPattern ? ' (Mutation!)' : ''}</div>
+                    <div class="breeding-celebration-pattern">Pattern: ${patternDisplayName}${pet.mutationPattern ? ' (Mutation!)' : ''}</div>
                     <div class="modal-buttons">
                         <button class="modal-btn confirm" id="breeding-celebrate-ok">Name Your Pet</button>
                     </div>

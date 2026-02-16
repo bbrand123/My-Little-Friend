@@ -84,11 +84,20 @@ const PET_EVOLUTIONS = {
     turtle: { name: 'Ancient Turtle', emoji: '🌊🐢', colorShift: 15, sparkle: true },
     fish: { name: 'Celestial Fish', emoji: '🌟🐟', colorShift: 20, sparkle: true },
     frog: { name: 'Jade Frog', emoji: '💎🐸', colorShift: 25, sparkle: true },
-    hedgehog: { name: 'Crystal Hedgehog', emoji: '💎🦔', colorShift: 20, sparkle: true },
+    hedgehog: { name: 'Crystal Hedgehog', emoji: '🔮🦔', colorShift: 20, sparkle: true },
     panda: { name: 'Zen Master', emoji: '☯️🐼', colorShift: 10, sparkle: true },
     penguin: { name: 'Emperor Penguin', emoji: '👑🐧', colorShift: 15, sparkle: true },
     unicorn: { name: 'Alicorn', emoji: '🦄✨', colorShift: 30, sparkle: true },
-    dragon: { name: 'Ancient Dragon', emoji: '🐉👑', colorShift: 35, sparkle: true }
+    dragon: { name: 'Ancient Dragon', emoji: '🐉👑', colorShift: 35, sparkle: true },
+    pegasus: { name: 'Sky Sovereign', emoji: '🌤️🪽', colorShift: 24, sparkle: true },
+    kirin: { name: 'Celestial Kirin', emoji: '🔥🦌', colorShift: 28, sparkle: true },
+    catbird: { name: 'Aero Gryphkitten', emoji: '🪶🐱', colorShift: 18, sparkle: true },
+    turtlefrog: { name: 'Ancient Shellhopper', emoji: '🏛️🐸', colorShift: 18, sparkle: true },
+    bundgehog: { name: 'Moon Fuzzspike', emoji: '🌙🦔', colorShift: 17, sparkle: true },
+    pandapenguin: { name: 'Aurora Snowpanda', emoji: '🌌🐼', colorShift: 20, sparkle: true },
+    dogfish: { name: 'Tidal Splashpup', emoji: '🌊🐕', colorShift: 19, sparkle: true },
+    hamsterbird: { name: 'Starlight Fluffwing', emoji: '✨🐹', colorShift: 17, sparkle: true },
+    dragonturtle: { name: 'Elder Dracoturtle', emoji: '🛡️🐉', colorShift: 30, sparkle: true }
 };
 
 // Birthday milestone rewards based on growth stage
@@ -166,7 +175,7 @@ function getCareQuality(averageStats, neglectCount) {
             return level;
         }
     }
-    return 'poor';
+    return CARE_QUALITY_ORDER[CARE_QUALITY_ORDER.length - 1] || 'poor';
 }
 
 // ==================== EGG TYPES ====================
@@ -570,7 +579,7 @@ const SEASONS = {
         months: [5, 6, 7], // June, July, August
         decorEmoji: '🌻 🦋 🍉',
         nightDecorEmoji: '🌻 🌟 🦗',
-        weatherBias: { sunny: 0.7, rainy: 0.2, snowy: 0.1 },
+        weatherBias: { sunny: 0.8, rainy: 0.2, snowy: 0.0 },
         moodBonus: 5,
         gardenGrowthMultiplier: 1.5,
         activityName: 'Splash Play',
@@ -913,7 +922,7 @@ const ACHIEVEMENTS = {
     tenCareActions: { id: 'tenCareActions', name: 'Caring Heart', icon: '💝', description: 'Perform 10 care actions', check: (gs) => (gs.pet && gs.pet.careActions >= 10) },
     fiftyCareActions: { id: 'fiftyCareActions', name: 'Devoted Caretaker', icon: '🏅', description: 'Perform 50 care actions', check: (gs) => (gs.pet && gs.pet.careActions >= 50) },
     raiseChild: { id: 'raiseChild', name: 'Growing Up', icon: '🌱', description: 'Raise a pet to Child stage', check: (gs) => (gs.pet && gs.pet.growthStage !== 'baby') },
-    raiseAdult: { id: 'raiseAdult', name: 'All Grown Up', icon: '⭐', description: 'Raise a pet to Adult stage', check: (gs) => (gs.pet && gs.pet.growthStage === 'adult') },
+    raiseAdult: { id: 'raiseAdult', name: 'All Grown Up', icon: '⭐', description: 'Raise a pet to Adult stage', check: (gs) => (gs.pet && ['adult', 'elder'].includes(gs.pet.growthStage)) },
     excellentCare: { id: 'excellentCare', name: 'Perfect Parent', icon: '🌟', description: 'Reach Excellent care quality', check: (gs) => (gs.pet && gs.pet.careQuality === 'excellent') },
     evolvePet: { id: 'evolvePet', name: 'Transcendence', icon: '✨', description: 'Evolve a pet to their special form', check: (gs) => (gs.pet && gs.pet.evolutionStage === 'evolved') },
     unlockMythical: { id: 'unlockMythical', name: 'Mythical Discovery', icon: '🦄', description: 'Unlock a mythical pet type', check: (gs) => (gs.adultsRaised >= 2) },
@@ -961,7 +970,7 @@ const BADGES = {
     // Growth milestones
     babySteps: { id: 'babySteps', name: 'Baby Steps', icon: '👣', description: 'Hatch your first pet', category: 'growth', tier: 'bronze', check: (gs) => gs.phase === 'pet' && gs.pet },
     growUp: { id: 'growUp', name: 'Growing Pains', icon: '🌱', description: 'Raise a pet to Child stage', category: 'growth', tier: 'silver', check: (gs) => gs.pet && gs.pet.growthStage !== 'baby' },
-    fullyGrown: { id: 'fullyGrown', name: 'All Grown Up', icon: '🌳', description: 'Raise a pet to Adult stage', category: 'growth', tier: 'gold', check: (gs) => gs.pet && gs.pet.growthStage === 'adult' },
+    fullyGrown: { id: 'fullyGrown', name: 'All Grown Up', icon: '🌳', description: 'Raise a pet to Adult stage', category: 'growth', tier: 'gold', check: (gs) => gs.pet && ['adult', 'elder'].includes(gs.pet.growthStage) },
     // Care milestones
     cleanFreak: { id: 'cleanFreak', name: 'Squeaky Clean', icon: '🧼', description: 'Reach 100% cleanliness', category: 'care', tier: 'bronze', check: (gs) => gs.pet && gs.pet.cleanliness >= 100 },
     happyCamper: { id: 'happyCamper', name: 'Happy Camper', icon: '😊', description: 'Reach 100% happiness', category: 'care', tier: 'bronze', check: (gs) => gs.pet && gs.pet.happiness >= 100 },
@@ -1037,7 +1046,7 @@ const STICKERS = {
     musicSticker: { id: 'musicSticker', name: 'Music Note', emoji: '🎵', category: 'fun', rarity: 'common', source: 'Play Simon Says' },
     artSticker: { id: 'artSticker', name: 'Art Palette', emoji: '🎨', category: 'fun', rarity: 'common', source: 'Play the Coloring game' },
     // Special stickers - earned through milestones
-    heartSticker: { id: 'heartSticker', name: 'Big Heart', emoji: '💖', category: 'special', rarity: 'rare', source: 'Reach Best Friend relationship' },
+    heartSticker: { id: 'heartSticker', name: 'Big Heart', emoji: '💖', category: 'special', rarity: 'rare', source: 'Reach Best Friend relationship or a 14-day streak' },
     crownSticker: { id: 'crownSticker', name: 'Royal Crown', emoji: '👑', category: 'special', rarity: 'rare', source: 'Evolve a pet' },
     sparkleSticker: { id: 'sparkleSticker', name: 'Sparkle', emoji: '✨', category: 'special', rarity: 'rare', source: 'Reach Excellent care quality' },
     unicornSticker: { id: 'unicornSticker', name: 'Unicorn', emoji: '🦄', category: 'special', rarity: 'legendary', source: 'Unlock a mythical pet' },
@@ -1159,6 +1168,7 @@ const PET_TYPE_ADVANTAGES = {
 const BOSS_ENCOUNTERS = {
     springBlossom: {
         name: 'Blossom Beast', emoji: '🌸👹', season: 'spring',
+        type: 'frog',
         maxHP: 100, attack: 8, defense: 4,
         moves: [
             { name: 'Petal Storm', emoji: '🌸', power: 12, description: 'A flurry of petals!' },
@@ -1170,6 +1180,7 @@ const BOSS_ENCOUNTERS = {
     },
     summerInferno: {
         name: 'Sun Scorcher', emoji: '☀️🔥', season: 'summer',
+        type: 'dragon',
         maxHP: 120, attack: 10, defense: 3,
         moves: [
             { name: 'Heat Wave', emoji: '🔥', power: 14, description: 'Scorching heat!' },
@@ -1181,6 +1192,7 @@ const BOSS_ENCOUNTERS = {
     },
     autumnPhantom: {
         name: 'Harvest Phantom', emoji: '🎃👻', season: 'autumn',
+        type: 'hedgehog',
         maxHP: 110, attack: 9, defense: 5,
         moves: [
             { name: 'Spooky Howl', emoji: '👻', power: 13, description: 'A chilling howl!' },
@@ -1192,6 +1204,7 @@ const BOSS_ENCOUNTERS = {
     },
     winterFrost: {
         name: 'Frost Giant', emoji: '❄️🧊', season: 'winter',
+        type: 'penguin',
         maxHP: 130, attack: 7, defense: 7,
         moves: [
             { name: 'Blizzard', emoji: '🌨️', power: 12, description: 'A freezing storm!' },
@@ -1203,6 +1216,7 @@ const BOSS_ENCOUNTERS = {
     },
     cosmicBeast: {
         name: 'Cosmic Beast', emoji: '🌟👾', season: null, // Special event boss (any season)
+        type: 'unicorn',
         maxHP: 150, attack: 11, defense: 6,
         moves: [
             { name: 'Star Shower', emoji: '⭐', power: 15, description: 'Stars rain down!' },
@@ -1473,6 +1487,17 @@ const HYBRID_LOOKUP = {};
         const [p1, p2] = data.parents;
         HYBRID_LOOKUP[`${p1}-${p2}`] = hybridId;
         HYBRID_LOOKUP[`${p2}-${p1}`] = hybridId;
+    }
+})();
+
+// Hybrids inherit combined type advantages from their parent species.
+(function applyHybridTypeAdvantages() {
+    for (const [hybridId, data] of Object.entries(HYBRID_PET_TYPES)) {
+        const combined = new Set();
+        (data.parents || []).forEach((parentType) => {
+            (PET_TYPE_ADVANTAGES[parentType] || []).forEach((targetType) => combined.add(targetType));
+        });
+        PET_TYPE_ADVANTAGES[hybridId] = [...combined];
     }
 })();
 
@@ -2012,8 +2037,8 @@ function getPreferenceModifier(pet, action, cropId) {
 // ==================== ELDER GROWTH STAGE ====================
 
 const ELDER_CONFIG = {
-    hoursNeeded: 24,         // 24 hours of age to reach elder
-    actionsNeeded: 120,      // 120 care actions needed
+    hoursNeeded: GROWTH_STAGES.elder.hoursNeeded,
+    actionsNeeded: GROWTH_STAGES.elder.actionsNeeded,
     wisdomBonusBase: 10,     // Base wisdom bonus for stat gains
     wisdomDecayReduction: 0.8, // 20% slower stat decay
     wisdomRelationshipBonus: 1.5, // 50% faster relationship building
@@ -2025,7 +2050,7 @@ const ELDER_CONFIG = {
 const MEMORIAL_CONFIG = {
     maxMemorials: 20,      // Maximum memorials stored
     retirementMinAge: 12,  // Minimum 12 hours old to retire honorably
-    retirementMinStage: 'adult' // Must be adult or elder to retire
+    retirementAllowedStages: ['adult', 'elder']
 };
 
 const MEMORIAL_TITLES = {
@@ -2045,4 +2070,3 @@ function getMemorialTitle(pet) {
     if (pet.growthStage === 'child') return MEMORIAL_TITLES.child;
     return MEMORIAL_TITLES.baby;
 }
-

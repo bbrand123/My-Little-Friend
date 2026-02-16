@@ -675,11 +675,11 @@
 
             // Check minimum requirements
             const ageInHours = getPetAge(pet);
-            const stageOrder = ['baby', 'child', 'adult', 'elder'];
-            const petStageIdx = stageOrder.indexOf(pet.growthStage);
-            const minStageIdx = stageOrder.indexOf(MEMORIAL_CONFIG.retirementMinStage);
-            if (petStageIdx < minStageIdx) {
-                return { success: false, reason: `Pet must be at least ${MEMORIAL_CONFIG.retirementMinStage} stage to retire` };
+            const allowedStages = Array.isArray(MEMORIAL_CONFIG.retirementAllowedStages) && MEMORIAL_CONFIG.retirementAllowedStages.length
+                ? MEMORIAL_CONFIG.retirementAllowedStages
+                : ['adult', 'elder'];
+            if (!allowedStages.includes(pet.growthStage)) {
+                return { success: false, reason: `Pet must be ${allowedStages.join(' or ')} stage to retire` };
             }
             if (ageInHours < MEMORIAL_CONFIG.retirementMinAge) {
                 return { success: false, reason: `Pet must be at least ${MEMORIAL_CONFIG.retirementMinAge} hours old to retire` };
@@ -1150,6 +1150,8 @@
                                 const cleanM = pMods ? pMods.cleanlinessDecayMultiplier : 1;
                                 const happyM = pMods ? pMods.happinessDecayMultiplier : 1;
                                 const energyM = pMods ? pMods.energyDecayMultiplier : 1;
+                                // Decay multipliers > 1 should not also increase passive recovery.
+                                const energyRecoveryM = energyM > 0 ? (1 / energyM) : 1;
                                 // Elder wisdom offline reduction
                                 const elderR = p.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
 
@@ -1160,7 +1162,7 @@
                                 // Happiness decays at normal rate
                                 p.happiness = clamp(p.happiness - Math.floor(decay * rateMult * happyM * elderR), 0, 100);
                                 // Energy RECOVERS while away (pet is resting)
-                                p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult * energyM), 0, 100);
+                                p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult * energyRecoveryM), 0, 100);
 
                                 // Pets with friends get a happiness bonus while away (scaled by relationship quality)
                                 if (parsed.pets.length > 1 && parsed.relationships) {
@@ -1229,7 +1231,10 @@
         let _loadError = null;
         function showSaveRecoveryDialog() {
             if (!_loadError) return;
+            if (document.getElementById('save-recovery-overlay')) return;
+            _loadError = null;
             const overlay = document.createElement('div');
+            overlay.id = 'save-recovery-overlay';
             overlay.className = 'modal-overlay';
             overlay.setAttribute('role', 'alertdialog');
             overlay.setAttribute('aria-modal', 'true');
@@ -1260,7 +1265,10 @@
         function exportSaveData() {
             try {
                 syncActivePetToArray();
-                const data = JSON.stringify(gameState, null, 2);
+                const exportState = JSON.parse(JSON.stringify(gameState));
+                delete exportState._offlineChanges;
+                if (exportState.dailyChecklist) delete exportState.dailyChecklist._completionCounted;
+                const data = JSON.stringify(exportState, null, 2);
                 const blob = new Blob([data], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1278,6 +1286,20 @@
         }
 
         function importSaveData() {
+            function isValidImport(data) {
+                if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+                if (!['egg', 'hatching', 'pet'].includes(data.phase)) return false;
+                if (data.phase === 'pet') {
+                    const hasPetObject = data.pet && typeof data.pet === 'object';
+                    const hasPetArray = Array.isArray(data.pets) && data.pets.length > 0;
+                    if (!hasPetObject && !hasPetArray) return false;
+                }
+                if (data.pet && typeof data.pet !== 'object') return false;
+                if (data.pets && !Array.isArray(data.pets)) return false;
+                if (data.activePetIndex != null && (!Number.isInteger(data.activePetIndex) || data.activePetIndex < 0)) return false;
+                return true;
+            }
+
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
@@ -1288,7 +1310,7 @@
                 reader.onload = (evt) => {
                     try {
                         const data = JSON.parse(evt.target.result);
-                        if (!data || typeof data !== 'object' || !data.phase) {
+                        if (!isValidImport(data)) {
                             showToast('Invalid save file!', '#EF5350');
                             return;
                         }
@@ -1590,10 +1612,15 @@
         }
 
         function canBreedPair(pet1, pet2) {
+            if (!pet1 || !pet2) {
+                return { eligible: false, reason: 'Both pets must be selected' };
+            }
             const check1 = canBreed(pet1);
-            if (!check1.eligible) return { eligible: false, reason: `${pet1.name}: ${check1.reason}` };
+            const pet1Name = pet1.name || (getAllPetTypeData(pet1.type) || {}).name || 'Pet 1';
+            const pet2Name = pet2.name || (getAllPetTypeData(pet2.type) || {}).name || 'Pet 2';
+            if (!check1.eligible) return { eligible: false, reason: `${pet1Name}: ${check1.reason}` };
             const check2 = canBreed(pet2);
-            if (!check2.eligible) return { eligible: false, reason: `${pet2.name}: ${check2.reason}` };
+            if (!check2.eligible) return { eligible: false, reason: `${pet2Name}: ${check2.reason}` };
             if (pet1.id === pet2.id) return { eligible: false, reason: 'Cannot breed a pet with itself' };
             // Check relationship level
             const rel = getRelationship(pet1.id, pet2.id);
@@ -1737,14 +1764,22 @@
             const childGenetics = inheritGenetics(pet1, pet2);
 
             // If mutation, boost a random genetic stat
+            let geneticMutationApplied = false;
+            let mutationStat = null;
             if (hasMutation) {
                 const statKeys = Object.keys(GENETIC_STATS);
                 const boostStat = statKeys[Math.floor(Math.random() * statKeys.length)];
-                childGenetics[boostStat] = clamp(childGenetics[boostStat] + 3, GENETIC_STATS[boostStat].min, GENETIC_STATS[boostStat].max);
+                const beforeBoost = childGenetics[boostStat];
+                const boosted = clamp(beforeBoost + 3, GENETIC_STATS[boostStat].min, GENETIC_STATS[boostStat].max);
+                childGenetics[boostStat] = boosted;
+                if (boosted !== beforeBoost) {
+                    geneticMutationApplied = true;
+                    mutationStat = boostStat;
+                }
             }
 
             // Determine if any mutation actually applied (color or pattern or genetic boost)
-            const actuallyMutated = hasMutation && (colorResult.isMutated || patternResult.isMutated);
+            const actuallyMutated = hasMutation && (colorResult.isMutated || patternResult.isMutated || geneticMutationApplied);
 
             // Create the breeding egg
             const breedingEgg = {
@@ -1761,6 +1796,7 @@
                 mutationColor: colorResult.mutationColor || null,
                 pattern: patternResult.pattern,
                 mutationPattern: patternResult.mutationPattern || null,
+                mutationStat: mutationStat,
                 hasMutation: actuallyMutated,
                 genetics: childGenetics,
                 incubationTicks: 0,
@@ -1904,6 +1940,11 @@
                 mutationPattern: egg.mutationPattern || null,
                 generation: 1 // Track generation depth
             };
+
+            newPet.personality = getRandomPersonality();
+            newPet.personalityWarmth = {};
+            if (!gameState.personalitiesSeen) gameState.personalitiesSeen = {};
+            gameState.personalitiesSeen[newPet.personality] = true;
 
             // Calculate generation from parents
             const parent1 = gameState.pets.find(p => p && p.id === egg.parent1Id);
@@ -2079,7 +2120,7 @@
             return levels[quality] || 0;
         }
 
-        let _milestoneCheckInProgress = false;
+        const _milestoneCheckInProgress = {};
         function checkGrowthMilestone(pet) {
             if (!pet) return false;
 
@@ -2089,9 +2130,10 @@
 
             if (currentStage !== lastStage) {
                 // Guard against duplicate celebration if called multiple times
-                if (_milestoneCheckInProgress) return false;
-                _milestoneCheckInProgress = true;
-                setTimeout(() => { _milestoneCheckInProgress = false; }, 100);
+                const milestoneKey = pet.id != null ? String(pet.id) : '__active__';
+                if (_milestoneCheckInProgress[milestoneKey]) return false;
+                _milestoneCheckInProgress[milestoneKey] = true;
+                setTimeout(() => { delete _milestoneCheckInProgress[milestoneKey]; }, 100);
                 pet.growthStage = currentStage;
                 pet.lastGrowthStage = currentStage;
 
@@ -2805,6 +2847,11 @@
 
             const crop = GARDEN_CROPS[cropId];
             if (!crop) return;
+            const beforeStats = {
+                hunger: gameState.pet.hunger,
+                happiness: gameState.pet.happiness,
+                energy: gameState.pet.energy
+            };
             garden.inventory[cropId]--;
             if (garden.inventory[cropId] <= 0) {
                 delete garden.inventory[cropId];
@@ -2889,9 +2936,12 @@
 
             // Build stat change description
             let statChanges = [];
-            if (crop.hungerValue) statChanges.push(`Hunger +${crop.hungerValue}`);
-            if (crop.happinessValue) statChanges.push(`Happiness +${crop.happinessValue}`);
-            if (crop.energyValue) statChanges.push(`Energy +${crop.energyValue}`);
+            const hungerDelta = Math.max(0, Math.round(gameState.pet.hunger - beforeStats.hunger));
+            const happinessDelta = Math.max(0, Math.round(gameState.pet.happiness - beforeStats.happiness));
+            const energyDelta = Math.max(0, Math.round(gameState.pet.energy - beforeStats.energy));
+            if (hungerDelta > 0) statChanges.push(`Hunger +${hungerDelta}`);
+            if (happinessDelta > 0) statChanges.push(`Happiness +${happinessDelta}`);
+            if (energyDelta > 0) statChanges.push(`Energy +${energyDelta}`);
             const statDesc = statChanges.join(', ');
 
             // Show preference-aware feedback
@@ -3383,14 +3433,22 @@
                     if (gameState.pets && gameState.pets.length > 1) {
                         // Sync active pet to array first so its decayed stats are preserved
                         syncActivePetToArray();
+                        const applyProbabilisticDecay = (value, amount) => {
+                            const safeAmount = Math.max(0, amount);
+                            const whole = Math.floor(safeAmount);
+                            const fractional = safeAmount - whole;
+                            let delta = whole;
+                            if (Math.random() < fractional) delta += 1;
+                            return clamp(value - delta, 0, 100);
+                        };
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
-                            p.hunger = Math.floor(clamp(p.hunger - 0.5, 0, 100));
-                            p.cleanliness = Math.floor(clamp(p.cleanliness - 0.5, 0, 100));
+                            p.hunger = applyProbabilisticDecay(p.hunger, 0.5);
+                            p.cleanliness = applyProbabilisticDecay(p.cleanliness, 0.5);
                             // Net happiness: -0.5 decay + companion bonus (dynamically calculated)
                             const companionBonus = (gameState.pets.length > 1) ? 0.3 : 0;
-                            p.happiness = Math.floor(clamp(p.happiness - 0.5 + companionBonus, 0, 100));
-                            p.energy = Math.floor(clamp(p.energy - 0.5, 0, 100));
+                            p.happiness = applyProbabilisticDecay(p.happiness, 0.5 - companionBonus);
+                            p.energy = applyProbabilisticDecay(p.energy, 0.5);
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -3407,6 +3465,9 @@
                                     }
                                 }
                             }
+
+                            // Keep care quality current for inactive pets as their stats drift.
+                            updateCareHistory(p);
                         });
                     }
 
@@ -3675,6 +3736,10 @@
                 clearInterval(decayInterval);
                 decayInterval = null;
             }
+            if (pendingRenderTimer) {
+                clearTimeout(pendingRenderTimer);
+                pendingRenderTimer = null;
+            }
         }
 
         // ==================== VISIBILITY HANDLING ====================
@@ -3795,6 +3860,9 @@
                     if (!newKeys.has(k)) delete gameState[k];
                 }
             }
+            if (!saved && _loadError) {
+                showSaveRecoveryDialog();
+            }
 
             // Ensure weather state exists
             if (!gameState.weather || !WEATHER_TYPES[gameState.weather]) {
@@ -3839,15 +3907,31 @@
 
             // Update daily streak
             updateStreak();
-            // Run initial badge/trophy/sticker checks
-            checkBadges();
-            checkTrophies();
-            checkStickers();
-            // Save after streak/badge/trophy/sticker initialization
+            // Run initial unlock checks and surface newly-qualified items.
+            const startupAchievements = checkAchievements() || [];
+            const startupBadges = checkBadges() || [];
+            const startupTrophies = checkTrophies() || [];
+            const startupStickers = checkStickers() || [];
+            // Save after streak/unlock initialization
             saveGame();
-
-            // Run initial achievement check (in case returning player qualifies)
-            checkAchievements();
+            let startupToastDelay = 900;
+            startupAchievements.forEach((ach) => {
+                setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), startupToastDelay);
+                startupToastDelay += 220;
+            });
+            startupBadges.forEach((badge) => {
+                const badgeColor = (typeof BADGE_TIERS !== 'undefined' && BADGE_TIERS[badge.tier]) ? BADGE_TIERS[badge.tier].color : '#FFD700';
+                setTimeout(() => showToast(`${badge.icon} Badge: ${badge.name}!`, badgeColor), startupToastDelay);
+                startupToastDelay += 220;
+            });
+            startupStickers.forEach((sticker) => {
+                setTimeout(() => showToast(`${sticker.emoji} Sticker: ${sticker.name}!`, '#E040FB'), startupToastDelay);
+                startupToastDelay += 220;
+            });
+            startupTrophies.forEach((trophy) => {
+                setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), startupToastDelay);
+                startupToastDelay += 220;
+            });
 
             // Ensure multi-pet fields exist
             if (!Array.isArray(gameState.pets)) {
@@ -3893,6 +3977,7 @@
                 // Show welcome-back summary modal if pet was away for a while (Feature 7)
                 if (gameState._offlineChanges) {
                     const oc = gameState._offlineChanges;
+                    const hadOfflineChanges = true;
                     if (typeof showWelcomeBackModal === 'function') {
                         setTimeout(() => {
                             showWelcomeBackModal(oc, gameState.pet);
@@ -3915,13 +4000,17 @@
                     }
                     delete gameState._offlineChanges;
                     saveGame();
+                    gameState._hadOfflineChangesOnLoad = hadOfflineChanges;
+                } else {
+                    gameState._hadOfflineChangesOnLoad = false;
                 }
                 // Show streak notification if bonus available (only if no welcome-back modal shown)
-                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed && !gameState._offlineChanges) {
+                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed && !gameState._hadOfflineChangesOnLoad) {
                     setTimeout(() => {
                         showToast(`🔥 ${gameState.streak.current}-day streak! Tap Rewards to claim bonus!`, '#FF6D00');
                     }, 1500);
                 }
+                delete gameState._hadOfflineChangesOnLoad;
             } else {
                 // Reset to egg phase if not in pet phase
                 gameState.phase = 'egg';
@@ -3971,10 +4060,6 @@
         // Save and cleanup on page unload
         window.addEventListener('beforeunload', () => {
             saveGame();
-            stopDecayTimer();
-            stopGardenGrowTimer();
-            if (typeof SoundManager !== 'undefined') SoundManager.stopAll();
-            if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         });
 
         // Also handle page hide for mobile browsers

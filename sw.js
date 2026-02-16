@@ -1,6 +1,8 @@
 // Update CACHE_VERSION on each deploy to bust stale caches
-const CACHE_VERSION = 8;
+const CACHE_VERSION = 9;
 const CACHE_NAME = `pet-care-buddy-v${CACHE_VERSION}`;
+const FONT_CACHE_NAME = `pet-care-buddy-fonts-v${CACHE_VERSION}`;
+
 const ASSETS = [
     './',
     './index.html',
@@ -19,79 +21,181 @@ const ASSETS = [
     './icon-192-maskable.svg',
     './apple-touch-icon.svg',
     './apple-touch-icon.png',
-    './icon-192.png'
+    './icon-192.png',
+    './icon-512.png'
 ];
 
-// Install — cache all core assets
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(ASSETS))
-            .then(() => self.skipWaiting())
-    );
-});
+const FONT_STYLESHEETS = [
+    'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap'
+];
 
-// Activate — clean up old caches
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(
-                keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-            )
-        ).then(() => self.clients.claim())
-    );
-});
+const OFFLINE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pet Care Buddy</title>
+  <style>
+    body { font-family: Nunito, system-ui, -apple-system, sans-serif; margin: 0; background: #fff8f0; color: #3e2723; }
+    main { min-height: 100vh; display: grid; place-items: center; padding: 24px; text-align: center; }
+    h1 { margin: 0 0 12px; font-size: 1.8rem; }
+    p { margin: 0; max-width: 34rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main>
+    <div>
+      <h1>You're offline</h1>
+      <p>Pet Care Buddy will load automatically once your connection returns.</p>
+    </div>
+  </main>
+</body>
+</html>`;
 
-// Fetch — stale-while-revalidate: serve cached immediately, update in background
-self.addEventListener('fetch', (event) => {
-    // Only handle GET requests (skip POST, etc.)
-    if (event.request.method !== 'GET') return;
-    event.respondWith(
-        caches.match(event.request).then((cached) => {
-            // Always fetch from network to update cache for next load
-            const fetchPromise = fetch(event.request).then((response) => {
-                if (response.ok && event.request.url.startsWith(self.location.origin)) {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then(async (cache) => {
-                        // Only notify clients if the response actually changed
-                        if (cached) {
-                            try {
-                                const oldBody = await cached.clone().text();
-                                const newBody = await clone.clone().text();
-                                if (oldBody !== newBody) {
-                                    self.clients.matchAll({ type: 'window' }).then((clients) => {
-                                        clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
-                                    });
-                                }
-                            } catch (_) { /* comparison failed, skip notification */ }
-                        }
-                        cache.put(event.request, clone);
-                    }).catch(() => {});
-                }
-                return response;
-            }).catch(() => null);
+function isFontRequest(request) {
+    const url = new URL(request.url);
+    return url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
+}
 
-            // Return cached immediately if available, otherwise wait for network
-            return cached || fetchPromise.then((response) => {
-                if (response) return response;
-                // Offline fallback
-                if (event.request.mode === 'navigate') {
-                    return caches.match('./index.html');
-                }
-                // Return empty responses with correct content types for JS/CSS to avoid parse errors
-                const url = event.request.url;
-                if (url.endsWith('.js')) {
-                    return new Response('/* offline */', { status: 503, headers: { 'Content-Type': 'application/javascript' } });
-                }
-                if (url.endsWith('.css')) {
-                    return new Response('/* offline */', { status: 503, headers: { 'Content-Type': 'text/css' } });
-                }
-                return new Response('Service Unavailable', {
-                    status: 503,
-                    statusText: 'Service Unavailable',
-                    headers: { 'Content-Type': 'text/plain' }
-                });
-            });
+async function cacheCoreAssets() {
+    const cache = await caches.open(CACHE_NAME);
+    const fontCache = await caches.open(FONT_CACHE_NAME);
+    await Promise.allSettled(
+        ASSETS.map(async (asset) => {
+            try {
+                await cache.add(asset);
+            } catch (err) {
+                console.warn('[SW] Failed to precache asset:', asset, err);
+            }
         })
     );
+
+    await Promise.allSettled(
+        FONT_STYLESHEETS.map(async (url) => {
+            try {
+                const req = new Request(url, { mode: 'cors' });
+                const res = await fetch(req);
+                if (res && (res.ok || res.type === 'opaque')) {
+                    await fontCache.put(req, res.clone());
+                }
+            } catch (err) {
+                console.warn('[SW] Failed to precache font stylesheet:', url, err);
+            }
+        })
+    );
+}
+
+self.addEventListener('install', (event) => {
+    event.waitUntil((async () => {
+        try {
+            await cacheCoreAssets();
+        } catch (err) {
+            // Install should still complete so one missing asset does not brick the SW.
+            console.error('[SW] Install encountered errors:', err);
+        }
+        await self.skipWaiting();
+    })());
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil((async () => {
+        const keys = await caches.keys();
+        await Promise.all(
+            keys
+                .filter((key) => key !== CACHE_NAME && key !== FONT_CACHE_NAME)
+                .map((key) => caches.delete(key))
+        );
+        await self.clients.claim();
+    })());
+});
+
+async function handleFontRequest(request) {
+    const fontCache = await caches.open(FONT_CACHE_NAME);
+    const cached = await fontCache.match(request);
+
+    const networkPromise = fetch(request)
+        .then((response) => {
+            if (response && (response.ok || response.type === 'opaque')) {
+                fontCache.put(request, response.clone()).catch(() => {});
+            }
+            return response;
+        })
+        .catch(() => null);
+
+    return cached || (await networkPromise) || new Response('', { status: 204 });
+}
+
+async function handleNavigationFallback() {
+    const cachedIndex = await caches.match('./index.html');
+    if (cachedIndex) return cachedIndex;
+    return new Response(OFFLINE_HTML, {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'text/html; charset=UTF-8' }
+    });
+}
+
+self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') return;
+
+    if (isFontRequest(event.request)) {
+        event.respondWith(handleFontRequest(event.request));
+        return;
+    }
+
+    event.respondWith((async () => {
+        const cached = await caches.match(event.request);
+
+        const fetchPromise = fetch(event.request)
+            .then(async (response) => {
+                if (response && response.ok && event.request.url.startsWith(self.location.origin)) {
+                    const clone = response.clone();
+                    const cache = await caches.open(CACHE_NAME);
+                    if (cached) {
+                        try {
+                            const oldBody = await cached.clone().text();
+                            const newBody = await clone.clone().text();
+                            if (oldBody !== newBody) {
+                                const clients = await self.clients.matchAll({ type: 'window' });
+                                clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
+                            }
+                        } catch (_) {
+                            // Skip update comparison for non-text responses.
+                        }
+                    }
+                    cache.put(event.request, clone).catch(() => {});
+                }
+                return response;
+            })
+            .catch(() => null);
+
+        if (cached) return cached;
+
+        const response = await fetchPromise;
+        if (response) return response;
+
+        if (event.request.mode === 'navigate') {
+            return handleNavigationFallback();
+        }
+
+        const url = event.request.url;
+        if (url.endsWith('.js')) {
+            return new Response('/* offline */', {
+                status: 503,
+                headers: { 'Content-Type': 'application/javascript' }
+            });
+        }
+        if (url.endsWith('.css')) {
+            return new Response('/* offline */', {
+                status: 503,
+                headers: { 'Content-Type': 'text/css' }
+            });
+        }
+
+        return new Response('Service Unavailable', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' }
+        });
+    })());
 });

@@ -431,34 +431,37 @@
 
             // Eye style based on mood
             let eyeStyle = '';
-            let mouthPath = '';
 
             switch (mood) {
                 case 'happy':
                     eyeStyle = 'arc'; // Happy curved eyes
-                    mouthPath = 'M35 75 Q50 90 65 75'; // Big smile
                     break;
                 case 'neutral':
                     eyeStyle = 'normal';
-                    mouthPath = 'M40 78 L60 78'; // Straight line
                     break;
                 case 'sad':
                     eyeStyle = 'sad';
-                    mouthPath = 'M35 82 Q50 72 65 82'; // Frown
                     break;
                 case 'sleepy':
                     eyeStyle = 'sleepy'; // Half-closed droopy eyes
-                    mouthPath = 'M40 80 Q50 84 60 80'; // Gentle yawn/open mouth
                     break;
                 case 'energetic':
                     eyeStyle = 'energetic'; // Wide bright eyes
-                    mouthPath = 'M35 75 Q50 92 65 75'; // Big excited smile
                     break;
                 default:
                     eyeStyle = 'normal';
-                    mouthPath = 'M40 78 L60 78'; // Straight line (same as neutral)
                     break;
             }
+
+            // Mouth path is currently consumed by species with mouthPath support (dog/cat).
+            const moodMouthPaths = {
+                happy: 'M35 75 Q50 90 65 75',
+                neutral: 'M40 78 L60 78',
+                sad: 'M35 82 Q50 72 65 82',
+                sleepy: 'M40 80 Q50 84 60 80',
+                energetic: 'M35 75 Q50 92 65 75'
+            };
+            const mouthPath = moodMouthPaths[mood] || moodMouthPaths.neutral;
 
             const petGenerators = {
                 dog: generateDogSVG,
@@ -487,8 +490,7 @@
             };
 
             const generator = petGenerators[type] || generateDogSVG;
-            const usesMouthPath = type === 'dog' || type === 'cat';
-            let svg = usesMouthPath ? generator(color, eyeStyle, mouthPath, mood) : generator(color, eyeStyle, mood);
+            let svg = generator.length >= 4 ? generator(color, eyeStyle, mouthPath, mood) : generator(color, eyeStyle, mood);
 
             // Apply growth stage class for size
             let classes = `pet-svg growth-${growthStage}`;
@@ -498,7 +500,7 @@
             svg = svg.replace('class="pet-svg"', `class="${classes}"`);
 
             // Add idle breathing animation to body elements
-            const breatheAnim = `<animateTransform attributeName="transform" type="scale" values="1 1;1.015 0.985;1 1" dur="3s" repeatCount="indefinite" additive="sum" origin="50 70"/>`;
+            const breatheAnim = `<animate attributeName="transform" values="translate(0 0) scale(1 1);translate(-0.75 1.05) scale(1.015 0.985);translate(0 0) scale(1 1)" dur="3s" repeatCount="indefinite"/>`;
             // Insert breathing animation as a child of the first body ellipse/circle
             // Self-closing tags (/>)  need to become open tags with the animation inside
             const breatheRegex = /(<!-- Body -->\s*<(?:ellipse|circle)([^>]*))(\/?>)/;
@@ -521,14 +523,17 @@
 
             // Add eye blink animation (brief squash of eyes every ~5s)
             const blinkId = 'blinkAnim_' + Math.random().toString(36).slice(2, 8);
-            const blinkAnim = `<animate attributeName="ry" values="1;0.2;1" dur="0.15s" begin="0s;${blinkId}.end+${4 + Math.random() * 3}s" id="${blinkId}" fill="freeze"/>`;
             // Inject blink animation into the first eye ellipse or circle
-            const blinkRegex = /(<!-- Eyes -->\s*<(?:ellipse|circle)[^>]*)(\/?>)/;
+            const blinkRegex = /(<!-- Eyes(?:[^>]*)? -->\s*<(ellipse|circle)([^>]*))(\/?>)/i;
             if (blinkRegex.test(svg)) {
-                svg = svg.replace(blinkRegex, (match, prefix, close) => {
+                svg = svg.replace(blinkRegex, (match, prefix, tag, attrs, close) => {
+                    const radiusAttr = tag === 'circle' ? 'r' : 'ry';
+                    const radiusMatch = attrs.match(new RegExp(`${radiusAttr}="([^"]+)"`));
+                    const fallbackMatch = tag === 'ellipse' ? attrs.match(/rx="([^"]+)"/) : null;
+                    const openRadius = parseFloat((radiusMatch && radiusMatch[1]) || (fallbackMatch && fallbackMatch[1]) || '3') || 3;
+                    const closedRadius = Math.max(0.2, +(openRadius * 0.2).toFixed(2));
+                    const blinkAnim = `<animate attributeName="${radiusAttr}" values="${openRadius};${closedRadius};${openRadius}" dur="0.15s" begin="0s;${blinkId}.end+${(4 + Math.random() * 3).toFixed(2)}s" id="${blinkId}"/>`;
                     if (close === '/>') {
-                        const tagMatch = prefix.match(/<(ellipse|circle)/);
-                        const tag = tagMatch ? tagMatch[1] : 'ellipse';
                         return `${prefix}>${blinkAnim}</${tag}>`;
                     }
                     return `${prefix}>${blinkAnim}`;
@@ -920,6 +925,7 @@
             const ariaLabel = mood === 'happy' ? 'A happy turtle basking in the sun' : mood === 'sad' ? 'A sad turtle hiding in its shell' : mood === 'sleepy' ? 'A sleepy turtle retreating into its shell' : mood === 'energetic' ? 'An energetic turtle stretching out' : 'A calm turtle';
             return `
                 <svg class="pet-svg" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
+                    <!-- Body -->
                     <!-- Shell -->
                     <ellipse cx="50" cy="60" rx="38" ry="30" fill="${color}"/>
                     <!-- Shell pattern -->
@@ -998,7 +1004,7 @@
                     <!-- Eye bumps -->
                     <circle cx="34" cy="26" r="12" fill="${color}"/>
                     <circle cx="66" cy="26" r="12" fill="${color}"/>
-                    <!-- Eyes (big and round) -->
+                    <!-- Eyes -->
                     ${eyeStyle === 'arc' ? `
                         <circle cx="34" cy="24" r="9" fill="white"/>
                         <circle cx="66" cy="24" r="9" fill="white"/>
@@ -1092,7 +1098,7 @@
                     <path d="M66 33 L74 22 L78 36" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
                     <path d="M73 42 L84 34 L82 46" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
                     <path d="M78 52 L90 48 L85 58" fill="${spikeColor}" stroke="#6B4E31" stroke-width="1"/>
-                    <!-- Body (belly) -->
+                    <!-- Body -->
                     <ellipse cx="45" cy="65" rx="25" ry="22" fill="${color}"/>
                     <!-- Belly lighter area -->
                     <ellipse cx="42" cy="68" rx="15" ry="14" fill="#F5DEB3"/>
@@ -1420,11 +1426,22 @@
             return '<text x="72" y="18" font-size="12" fill="#6666aa" opacity="0.8">z</text><text x="79" y="11" font-size="9" fill="#6666aa" opacity="0.6">z</text><text x="84" y="6" font-size="7" fill="#6666aa" opacity="0.4">z</text>';
         }
 
+        function getHybridAriaLabel(speciesName, mood) {
+            const moodLabel = {
+                happy: 'happy',
+                energetic: 'energetic',
+                sleepy: 'sleepy',
+                sad: 'sad'
+            }[mood] || 'calm';
+            return `A ${moodLabel} ${speciesName} hybrid pet`;
+        }
+
         // Pegasus - unicorn + bird (winged horse)
         function generatePegasusSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Pegasus', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="60" rx="28" ry="22" fill="${color}" class="body"/>
                     <!-- Legs -->
@@ -1460,9 +1477,10 @@
         // Kirin - dragon + unicorn (fire-magic hybrid)
         function generateKirinSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Kirin', mood);
             const glowId = 'kirin-glow-' + Math.random().toString(36).slice(2, 6);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <defs>
                         <radialGradient id="${glowId}"><stop offset="0%" stop-color="#FFD700" stop-opacity="0.3"/><stop offset="100%" stop-color="#FFD700" stop-opacity="0"/></radialGradient>
                     </defs>
@@ -1499,8 +1517,9 @@
         // Gryphkitten - cat + bird
         function generateCatbirdSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Gryphkitten', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="62" rx="22" ry="18" fill="${color}" class="body"/>
                     <!-- Small wings -->
@@ -1541,8 +1560,9 @@
         // Shellhopper - turtle + frog
         function generateTurtlefrogSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Shellhopper', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Shell -->
                     <ellipse cx="50" cy="58" rx="28" ry="20" fill="#556B2F"/>
                     <ellipse cx="50" cy="55" rx="25" ry="17" fill="#6B8E23" opacity="0.8"/>
@@ -1572,8 +1592,9 @@
         // Fuzzspike - bunny + hedgehog
         function generateBundgehogSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Fuzzspike', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Spiky back -->
                     <polygon points="35,40 38,28 42,40" fill="#8B7355" opacity="0.6"/>
                     <polygon points="42,38 46,24 50,38" fill="#8B7355" opacity="0.6"/>
@@ -1608,8 +1629,9 @@
         // Snowpanda - panda + penguin
         function generatePandapenguinSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Snowpanda', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="62" rx="24" ry="22" fill="${color}" class="body"/>
                     <!-- Belly (penguin-style) -->
@@ -1643,8 +1665,9 @@
         // Splashpup - dog + fish
         function generateDogfishSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Splashpup', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Body -->
                     <ellipse cx="50" cy="58" rx="25" ry="18" fill="${color}" class="body"/>
                     <!-- Fin on back -->
@@ -1684,8 +1707,9 @@
         // Fluffwing - hamster + bird
         function generateHamsterbirdSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Fluffwing', mood);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <!-- Body (round hamster) -->
                     <ellipse cx="50" cy="60" rx="22" ry="20" fill="${color}" class="body"/>
                     <!-- Belly -->
@@ -1727,9 +1751,10 @@
         // Dracoturtle - dragon + turtle
         function generateDragonturtleSVG(color, eyeStyle, mood) {
             const isUp = mood === 'happy' || mood === 'energetic';
+            const ariaLabel = getHybridAriaLabel('Dracoturtle', mood);
             const fireId = 'dt-fire-' + Math.random().toString(36).slice(2, 6);
             return `
-                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg">
+                <svg viewBox="0 0 100 100" class="pet-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ariaLabel}">
                     <defs>
                         <linearGradient id="${fireId}" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#FF4500"/><stop offset="100%" stop-color="#FFD700"/>
@@ -1768,4 +1793,3 @@
                 </svg>
             `;
         }
-
