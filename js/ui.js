@@ -704,11 +704,21 @@
             showNamingModal(petData);
         }
 
-        function showNamingModal(petData) {
+        function showNamingModal(petData, options) {
             const existingOverlay = document.querySelector('.naming-overlay');
             if (existingOverlay) existingOverlay.remove();
 
             const pet = gameState.pet;
+            const namingOptions = options || {};
+            const initialColor = (typeof namingOptions.initialColor === 'string' && namingOptions.initialColor)
+                ? namingOptions.initialColor
+                : ((pet && typeof pet.color === 'string' && pet.color) ? pet.color : (petData.colors[0] || '#D4A574'));
+            const initialPattern = (typeof namingOptions.initialPattern === 'string' && namingOptions.initialPattern)
+                ? namingOptions.initialPattern
+                : ((pet && typeof pet.pattern === 'string' && pet.pattern) ? pet.pattern : 'solid');
+            const initialAccessory = Object.prototype.hasOwnProperty.call(namingOptions, 'initialAccessory')
+                ? namingOptions.initialAccessory
+                : ((pet && Array.isArray(pet.accessories) && pet.accessories.length > 0) ? pet.accessories[0] : null);
             const overlay = document.createElement('div');
             overlay.className = 'naming-overlay';
             overlay.setAttribute('role', 'dialog');
@@ -716,25 +726,26 @@
             overlay.setAttribute('aria-labelledby', 'naming-title');
 
             // Generate color options
-            let colorOptions = petData.colors.map((color, idx) => `
-                <button class="color-option ${idx === 0 ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="${getColorName(color)}${idx === 0 ? ', selected' : ''}">
-                    ${idx === 0 ? '✓' : ''}
+            let colorOptions = petData.colors.map((color) => `
+                <button class="color-option ${color === initialColor ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="${getColorName(color)}${color === initialColor ? ', selected' : ''}">
+                    ${color === initialColor ? '✓' : ''}
                 </button>
             `).join('');
 
             // Generate pattern options
-            let patternOptions = Object.entries(PET_PATTERNS).map(([id, pattern], idx) => `
-                <button class="pattern-option ${idx === 0 ? 'selected' : ''}" data-pattern="${id}" aria-label="${pattern.name}${idx === 0 ? ', selected' : ''}">
+            let patternOptions = Object.entries(PET_PATTERNS).map(([id, pattern]) => `
+                <button class="pattern-option ${id === initialPattern ? 'selected' : ''}" data-pattern="${id}" aria-label="${pattern.name}${id === initialPattern ? ', selected' : ''}">
                     <span class="pattern-label">${pattern.name}</span>
                 </button>
             `).join('');
 
             // Generate accessory options (just a few basic ones to start)
+            const defaultAccessory = initialAccessory || 'none';
             let accessoryOptions = `
-                <button class="accessory-option" data-accessory="none" aria-label="None">None</button>
-                <button class="accessory-option" data-accessory="bow" aria-label="Bow"><span aria-hidden="true">🎀</span> Bow</button>
-                <button class="accessory-option" data-accessory="glasses" aria-label="Glasses"><span aria-hidden="true">👓</span> Glasses</button>
-                <button class="accessory-option" data-accessory="partyHat" aria-label="Party Hat"><span aria-hidden="true">🎉</span> Party Hat</button>
+                <button class="accessory-option ${defaultAccessory === 'none' ? 'selected' : ''}" data-accessory="none" aria-label="None${defaultAccessory === 'none' ? ', selected' : ''}">None</button>
+                <button class="accessory-option ${defaultAccessory === 'bow' ? 'selected' : ''}" data-accessory="bow" aria-label="Bow${defaultAccessory === 'bow' ? ', selected' : ''}"><span aria-hidden="true">🎀</span> Bow</button>
+                <button class="accessory-option ${defaultAccessory === 'glasses' ? 'selected' : ''}" data-accessory="glasses" aria-label="Glasses${defaultAccessory === 'glasses' ? ', selected' : ''}"><span aria-hidden="true">👓</span> Glasses</button>
+                <button class="accessory-option ${defaultAccessory === 'partyHat' ? 'selected' : ''}" data-accessory="partyHat" aria-label="Party Hat${defaultAccessory === 'partyHat' ? ', selected' : ''}"><span aria-hidden="true">🎉</span> Party Hat</button>
             `;
 
             overlay.innerHTML = `
@@ -794,9 +805,9 @@
             const ttsBtn = document.getElementById('tts-button');
 
             // Selected customization values
-            let selectedColor = petData.colors[0];
-            let selectedPattern = 'solid';
-            let selectedAccessory = null;
+            let selectedColor = initialColor;
+            let selectedPattern = initialPattern;
+            let selectedAccessory = initialAccessory || null;
 
             // Live preview updater
             const previewEl = document.getElementById('pet-preview-container');
@@ -2371,6 +2382,32 @@
             showToast(message, '#FFA726', { announce: false });
         }
 
+        function isActionCooldownActive() {
+            return actionCooldown;
+        }
+
+        function startActionCooldownWindow() {
+            actionCooldown = true;
+            const buttons = document.querySelectorAll('.action-btn');
+            buttons.forEach(btn => {
+                btn.classList.add('cooldown');
+                btn.disabled = true;
+                btn.setAttribute('aria-disabled', 'true');
+                if (!btn.dataset.originalLabel) {
+                    btn.dataset.originalLabel = btn.getAttribute('aria-label') || btn.querySelector('span:not(.btn-icon):not(.action-btn-tooltip):not(.cooldown-count):not(.kbd-hint):not(.room-bonus-badge):not(.feed-crop-badge)')?.textContent.trim() || '';
+                }
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ' (cooling down)');
+            });
+            if (actionCooldownTimer) {
+                clearTimeout(actionCooldownTimer);
+            }
+            actionCooldownTimer = setTimeout(() => {
+                actionCooldown = false;
+                actionCooldownTimer = null;
+                restoreActionButtonsFromCooldown();
+            }, ACTION_COOLDOWN_MS);
+        }
+
         // Spawn themed particles above the pet on care actions
         function spawnCareParticles(container, emojis, count) {
             if (!container) return;
@@ -2534,11 +2571,14 @@
                     const availableCrops = Object.keys(gardenInv).filter(k => gardenInv[k] > 0);
                     if (availableCrops.length === 1) {
                         // Quick feed: only one crop type, skip the menu
-                        // Return early since feedFromGarden handles careActions increment itself
-                        feedFromGarden(availableCrops[0]);
+                        // Return early since feedFromGarden handles careActions increment itself.
+                        // Keep current cooldown active because a feed action occurred.
+                        const fed = feedFromGarden(availableCrops[0], { enforceCooldown: false });
+                        if (!fed) {
+                            cancelActionCooldownAndRestoreButtons();
+                            return;
+                        }
                         markCoachChecklistProgress('feed');
-                        // Reset cooldown since feedFromGarden handled the action directly
-                        cancelActionCooldownAndRestoreButtons();
                         return;
                     } else if (availableCrops.length > 1) {
                         // Multiple crop types: show the feed menu
@@ -3567,12 +3607,7 @@
 
                     // Set global action cooldown (same as careAction) so that
                     // subsequent care actions respect the 600ms cooldown window.
-                    actionCooldown = true;
-                    if (actionCooldownTimer) clearTimeout(actionCooldownTimer);
-                    actionCooldownTimer = setTimeout(() => {
-                        actionCooldown = false;
-                        actionCooldownTimer = null;
-                    }, ACTION_COOLDOWN_MS);
+                    startActionCooldownWindow();
 
                     const msg = performStandardFeed(currentPet);
                     showToast(`${(getAllPetTypeData(currentPet.type) || {}).emoji || '🐾'} ${msg}`, TOAST_COLORS.feed);
@@ -3669,8 +3704,8 @@
                 btn.addEventListener('click', () => {
                     const cropId = btn.getAttribute('data-feed-crop');
                     closeMenu();
-                    feedFromGarden(cropId);
-                    markCoachChecklistProgress('feed');
+                    const fed = feedFromGarden(cropId);
+                    if (fed) markCoachChecklistProgress('feed');
                 });
             });
 
@@ -5164,7 +5199,11 @@
                 // Open the naming modal
                 if (typeof showNamingModal === 'function') {
                     const petTypeData = getAllPetTypeData(pet.type) || PET_TYPES[pet.type] || { name: pet.type, colors: [pet.color || '#D4A574'] };
-                    showNamingModal(petTypeData);
+                    showNamingModal(petTypeData, {
+                        initialColor: pet.color,
+                        initialPattern: pet.pattern,
+                        initialAccessory: Array.isArray(pet.accessories) && pet.accessories.length > 0 ? pet.accessories[0] : null
+                    });
                 } else {
                     renderPetPhase();
                 }
@@ -5183,16 +5222,21 @@
                 return;
             }
 
-            // Find eligible adult pets
-            const adultPets = [];
+            // Find pets that are old enough to breed (adult or elder by default)
+            const ageEligiblePets = [];
+            const stageOrder = Array.isArray(GROWTH_ORDER) ? GROWTH_ORDER : ['baby', 'child', 'adult', 'elder'];
+            const configuredMinStageIdx = stageOrder.indexOf(BREEDING_CONFIG.minAge);
+            const minStageIdx = configuredMinStageIdx >= 0 ? configuredMinStageIdx : stageOrder.indexOf('adult');
             gameState.pets.forEach((p, idx) => {
-                if (p && p.growthStage === 'adult') {
-                    adultPets.push({ pet: p, index: idx });
+                if (!p) return;
+                const stageIdx = stageOrder.indexOf(p.growthStage);
+                if (stageIdx >= minStageIdx) {
+                    ageEligiblePets.push({ pet: p, index: idx });
                 }
             });
 
-            if (adultPets.length < 2) {
-                showToast('You need at least 2 adult pets to breed!', '#FFA726');
+            if (ageEligiblePets.length < 2) {
+                showToast('You need at least 2 adult or elder pets to breed!', '#FFA726');
                 return;
             }
 
@@ -5215,7 +5259,7 @@
                 // Build pet selection grid
                 let parent1Options = '';
                 let parent2Options = '';
-                for (const { pet, index } of adultPets) {
+                for (const { pet, index } of ageEligiblePets) {
                     const typeData = getAllPetTypeData(pet.type) || PET_TYPES[pet.type];
                     const name = escapeHTML(pet.name || (typeData ? typeData.name : 'Pet'));
                     const emoji = typeData ? typeData.emoji : '🐾';
@@ -6301,8 +6345,40 @@
             document.body.appendChild(overlay);
 
             let selectedDurationId = (Array.isArray(EXPEDITION_DURATIONS) && EXPEDITION_DURATIONS[0]) ? EXPEDITION_DURATIONS[0].id : 'scout';
+            let expeditionCountdownTimer = null;
+
+            function clearExpeditionCountdownTimer() {
+                if (expeditionCountdownTimer) {
+                    clearTimeout(expeditionCountdownTimer);
+                    expeditionCountdownTimer = null;
+                }
+            }
+
+            function scheduleExpeditionCountdown() {
+                clearExpeditionCountdownTimer();
+                expeditionCountdownTimer = setTimeout(() => {
+                    if (!document.body.contains(overlay)) {
+                        clearExpeditionCountdownTimer();
+                        return;
+                    }
+                    const ex = (gameState.exploration && gameState.exploration.expedition) ? gameState.exploration.expedition : null;
+                    if (!ex) {
+                        clearExpeditionCountdownTimer();
+                        return;
+                    }
+                    const remaining = Math.max(0, ex.endAt - Date.now());
+                    if (remaining <= 0) {
+                        renderExplorationModal();
+                        return;
+                    }
+                    const timerEl = overlay.querySelector('#explore-expedition-time');
+                    if (timerEl) timerEl.textContent = `Time left: ${formatCountdown(remaining)}`;
+                    scheduleExpeditionCountdown();
+                }, 1000);
+            }
 
             function renderExplorationModal() {
+                clearExpeditionCountdownTimer();
                 if (typeof ensureExplorationState === 'function') ensureExplorationState();
                 const ex = gameState.exploration || {};
                 const expedition = ex.expedition || null;
@@ -6348,7 +6424,7 @@
                         <div class="explore-expedition-panel ${expeditionReady ? 'ready' : ''}">
                             <div class="explore-expedition-title">${biome.icon} ${biome.name}</div>
                             <div class="explore-expedition-meta">Pet: ${escapeHTML(expedition.petName || 'Pet')}</div>
-                            <div class="explore-expedition-meta">${expeditionReady ? 'Ready to collect rewards!' : `Time left: ${formatCountdown(remaining)}`}</div>
+                            <div class="explore-expedition-meta" id="explore-expedition-time">${expeditionReady ? 'Ready to collect rewards!' : `Time left: ${formatCountdown(remaining)}`}</div>
                             <button class="modal-btn confirm" id="expedition-collect-btn">${expeditionReady ? 'Collect Loot' : 'Force Return & Collect'}</button>
                         </div>
                     `;
@@ -6592,9 +6668,14 @@
                     });
                 });
 
+                if (expedition && !expeditionReady) {
+                    scheduleExpeditionCountdown();
+                }
+
             }
 
             function closeExplorationModal() {
+                clearExpeditionCountdownTimer();
                 popModalEscape(closeExplorationModal);
                 overlay.remove();
                 const trigger = document.getElementById('explore-btn');

@@ -5,7 +5,7 @@
 
         // Initialize competition state on gameState if missing
         function initCompetitionState() {
-            if (!gameState.competition) {
+            if (!gameState.competition || typeof gameState.competition !== 'object' || Array.isArray(gameState.competition)) {
                 gameState.competition = {
                     battlesWon: 0,
                     battlesLost: 0,
@@ -19,7 +19,29 @@
                     currentRivalIndex: 0    // Next rival to face
                 };
             }
-            return gameState.competition;
+            const comp = gameState.competition;
+            if (typeof comp.battlesWon !== 'number' || !Number.isFinite(comp.battlesWon)) comp.battlesWon = 0;
+            if (typeof comp.battlesLost !== 'number' || !Number.isFinite(comp.battlesLost)) comp.battlesLost = 0;
+            if (!comp.bossesDefeated || typeof comp.bossesDefeated !== 'object' || Array.isArray(comp.bossesDefeated)) comp.bossesDefeated = {};
+            if (typeof comp.showsEntered !== 'number' || !Number.isFinite(comp.showsEntered)) comp.showsEntered = 0;
+            if (typeof comp.bestShowRank !== 'string') comp.bestShowRank = '';
+            if (typeof comp.bestShowScore !== 'number' || !Number.isFinite(comp.bestShowScore)) comp.bestShowScore = 0;
+            if (typeof comp.obstacleBestScore !== 'number' || !Number.isFinite(comp.obstacleBestScore)) comp.obstacleBestScore = 0;
+            if (typeof comp.obstacleCompletions !== 'number' || !Number.isFinite(comp.obstacleCompletions)) comp.obstacleCompletions = 0;
+            if (!Array.isArray(comp.rivalsDefeated)) comp.rivalsDefeated = [];
+            const rivalCount = (typeof RIVAL_TRAINERS !== 'undefined' && Array.isArray(RIVAL_TRAINERS)) ? RIVAL_TRAINERS.length : 0;
+            comp.rivalsDefeated = [...new Set(comp.rivalsDefeated
+                .map((idx) => Number(idx))
+                .filter((idx) => Number.isInteger(idx) && idx >= 0 && (rivalCount === 0 || idx < rivalCount)))];
+            if (!Number.isInteger(comp.currentRivalIndex) || comp.currentRivalIndex < 0) comp.currentRivalIndex = 0;
+            if (comp.rivalsDefeated.length > 0) {
+                const furthestDefeated = Math.max(...comp.rivalsDefeated);
+                comp.currentRivalIndex = Math.max(comp.currentRivalIndex, furthestDefeated + 1);
+            }
+            if (rivalCount > 0) {
+                comp.currentRivalIndex = Math.min(comp.currentRivalIndex, rivalCount);
+            }
+            return comp;
         }
 
         // ==================== BATTLE SYSTEM ====================

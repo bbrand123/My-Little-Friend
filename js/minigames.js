@@ -1395,6 +1395,18 @@
 
         let matchingState = null;
 
+        function matchingCardAriaLabel(card, index) {
+            if (!card) return `Card ${index + 1}.`;
+            if (card.matched) return `Card ${index + 1}: ${card.name}. Matched pair.`;
+            if (card.flipped) return `Card ${index + 1}: ${card.name}. Revealed.`;
+            return `Card ${index + 1}. Face down. Activate to reveal.`;
+        }
+
+        function announceMatchingLive(message) {
+            const live = document.getElementById('matching-live');
+            if (live) live.textContent = message;
+        }
+
         function startMatchingGame() {
             if (!gameState.pet) {
                 if (typeof showToast === 'function') {
@@ -1454,7 +1466,7 @@
             let cardsHTML = '';
             matchingState.cards.forEach((card, i) => {
                 cardsHTML += `
-                    <button class="matching-card" data-index="${i}" aria-label="Card ${i + 1} - click or press Enter to flip">
+                    <button class="matching-card" data-index="${i}" aria-label="${matchingCardAriaLabel(card, i)}" aria-pressed="false">
                         <div class="matching-card-inner">
                             <div class="matching-card-front">❓</div>
                             <div class="matching-card-back">${card.emoji}</div>
@@ -1468,6 +1480,7 @@
                     <h2 class="matching-game-title">🃏 Matching Game!</h2>
                     <p class="matching-game-score" id="matching-score" aria-live="polite">Pairs found: 0 / ${matchingState.totalPairs}</p>
                     <p class="matching-game-moves" id="matching-moves">Moves: 0</p>
+                    <p class="sr-only" id="matching-live" aria-live="assertive" aria-atomic="true"></p>
                     <div class="matching-grid" id="matching-grid">
                         ${cardsHTML}
                     </div>
@@ -1524,7 +1537,12 @@
             matchingState.flippedCards.push(index);
 
             const cardEl = document.querySelector(`.matching-card[data-index="${index}"]`);
-            if (cardEl) cardEl.classList.add('flipped');
+            if (cardEl) {
+                cardEl.classList.add('flipped');
+                cardEl.setAttribute('aria-label', matchingCardAriaLabel(card, index));
+                cardEl.setAttribute('aria-pressed', 'true');
+            }
+            announceMatchingLive(`Card ${index + 1} reveals ${card.name}.`);
 
             // Check if two cards are flipped
             if (matchingState.flippedCards.length === 2) {
@@ -1552,8 +1570,19 @@
                     // Mark cards as matched visually
                     const el1 = document.querySelector(`.matching-card[data-index="${first}"]`);
                     const el2 = document.querySelector(`.matching-card[data-index="${second}"]`);
-                    if (el1) el1.classList.add('matched');
-                    if (el2) el2.classList.add('matched');
+                    if (el1) {
+                        el1.classList.add('matched');
+                        el1.setAttribute('aria-label', matchingCardAriaLabel(card1, first));
+                        el1.setAttribute('aria-pressed', 'true');
+                        el1.setAttribute('aria-disabled', 'true');
+                    }
+                    if (el2) {
+                        el2.classList.add('matched');
+                        el2.setAttribute('aria-label', matchingCardAriaLabel(card2, second));
+                        el2.setAttribute('aria-pressed', 'true');
+                        el2.setAttribute('aria-disabled', 'true');
+                    }
+                    announceMatchingLive(`${card1.name} pair matched.`);
 
                     // Show encouraging message
                     const instruction = document.getElementById('matching-instruction');
@@ -1583,8 +1612,17 @@
 
                         const el1 = document.querySelector(`.matching-card[data-index="${first}"]`);
                         const el2 = document.querySelector(`.matching-card[data-index="${second}"]`);
-                        if (el1) el1.classList.remove('flipped');
-                        if (el2) el2.classList.remove('flipped');
+                        if (el1) {
+                            el1.classList.remove('flipped');
+                            el1.setAttribute('aria-label', matchingCardAriaLabel(card1, first));
+                            el1.setAttribute('aria-pressed', 'false');
+                        }
+                        if (el2) {
+                            el2.classList.remove('flipped');
+                            el2.setAttribute('aria-label', matchingCardAriaLabel(card2, second));
+                            el2.setAttribute('aria-pressed', 'false');
+                        }
+                        announceMatchingLive(`No match. ${card1.name} and ${card2.name}.`);
 
                         const instruction = document.getElementById('matching-instruction');
                         if (instruction) {
