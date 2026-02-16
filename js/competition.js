@@ -745,8 +745,11 @@
 
             // Bond score (based on relationship level if multi-pet)
             let bondScore = 40; // base
-            if (gameState.relationships) {
-                const rels = Object.values(gameState.relationships);
+            if (gameState.relationships && pet && pet.id != null) {
+                const petId = String(pet.id);
+                const rels = Object.entries(gameState.relationships)
+                    .filter(([relKey]) => relKey.split('-').includes(petId))
+                    .map(([, rel]) => rel);
                 if (rels.length > 0) {
                     const bestRel = Math.max(...rels.map(r => r.points || 0));
                     bondScore = Math.min(100, 30 + Math.round(bestRel / 3));
@@ -1202,6 +1205,7 @@
                 }
 
                 const _rivalLogHistory = [];
+                let rivalTurnLocked = false;
                 function rivalLog(msg) {
                     _rivalLogHistory.push(msg);
                     const log = overlay.querySelector('#rival-log');
@@ -1227,8 +1231,13 @@
                 }
 
                 function executeRivalTurn(moveId) {
-                    if (fightOver) return;
+                    if (fightOver || rivalTurnLocked) return;
+                    rivalTurnLocked = true;
                     const move = BATTLE_MOVES[moveId];
+                    if (!move) {
+                        rivalTurnLocked = false;
+                        return;
+                    }
                     const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
 
                     // Player attack
@@ -1247,6 +1256,7 @@
                         restoreRivalLog();
                         rivalLog(`${trainer.petName} is defeated! ${trainer.winMessage}`);
                         endRivalFight(rivalIdx, true);
+                        rivalTurnLocked = false;
                         return;
                     }
 
@@ -1269,11 +1279,13 @@
                         restoreRivalLog();
                         rivalLog(`${petName} is defeated! ${trainer.loseMessage}`);
                         endRivalFight(rivalIdx, false);
+                        rivalTurnLocked = false;
                         return;
                     }
 
                     renderRivalFight();
                     restoreRivalLog();
+                    rivalTurnLocked = false;
                 }
 
                 function endRivalFight(rivalIdx, won) {

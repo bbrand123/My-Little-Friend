@@ -477,6 +477,13 @@
                     return;
                 }
 
+                const exploreBtn = target.closest('#explore-btn');
+                if (exploreBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(exploreBtn, typeof showExplorationModal === 'function' ? showExplorationModal : null, event);
+                    return;
+                }
+
                 const journalBtn = target.closest('#journal-btn');
                 if (journalBtn) {
                     if (event.type === 'touchend') event.preventDefault();
@@ -866,10 +873,20 @@
                 });
             }
 
+            const ttsEnabled = () => {
+                try {
+                    return localStorage.getItem('petCareBuddy_ttsOff') !== 'true';
+                } catch (e) {
+                    return true;
+                }
+            };
+
             // Text-to-speech
             ttsBtn.addEventListener('click', () => {
                 const name = input.value.trim() || petData.name;
-                if ('speechSynthesis' in window) {
+                if (!ttsEnabled()) {
+                    showToast('Text-to-speech is turned off in Settings', '#FFA726');
+                } else if ('speechSynthesis' in window) {
                     const utterance = new SpeechSynthesisUtterance(name);
                     utterance.rate = 0.9;
                     utterance.pitch = 1.1;
@@ -896,7 +913,7 @@
                 if (name) {
                     gameState.pet.name = name;
                     // Text-to-speech on submit — cancel any ongoing speech first
-                    if ('speechSynthesis' in window && !useDefaults) {
+                    if ('speechSynthesis' in window && !useDefaults && ttsEnabled()) {
                         window.speechSynthesis.cancel();
                         const utterance = new SpeechSynthesisUtterance(name);
                         utterance.rate = 0.9;
@@ -1247,6 +1264,10 @@
             }
 
             const petDisplayName = escapeHTML(pet.name || petData.name);
+            const explorationAlerts = typeof getExplorationAlertCount === 'function' ? getExplorationAlertCount() : 0;
+            const treasureActionLabel = typeof getTreasureActionLabel === 'function'
+                ? getTreasureActionLabel(currentRoom)
+                : (room && room.isOutdoor ? 'Dig' : 'Search');
 
 
             content.innerHTML = `
@@ -1269,6 +1290,10 @@
                         <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards: ${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? ', unclaimed streak bonus' : ''}">
                             <span class="top-action-btn-icon" aria-hidden="true">🎁</span>
                             ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge" aria-hidden="true">!</span>' : ''}
+                        </button>
+                        <button class="top-action-btn" id="explore-btn" type="button" aria-haspopup="dialog" title="Exploration" aria-label="Exploration map${explorationAlerts > 0 ? ` (${explorationAlerts} updates)` : ''}">
+                            <span class="top-action-btn-icon" aria-hidden="true">🗺️</span>
+                            ${explorationAlerts > 0 ? `<span class="explore-alert-badge" aria-hidden="true">${Math.min(9, explorationAlerts)}</span>` : ''}
                         </button>
                         <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
                             <span class="top-action-btn-icon" aria-hidden="true">🛋️</span>
@@ -1583,6 +1608,12 @@
                                     ${getRoomBonusBadge('groom', currentRoom)}
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
+                                <button class="action-btn treasure-hunt-btn" id="treasure-btn">
+                                    <span class="action-btn-tooltip">Hidden treasure in this room</span>
+                                    <span class="btn-icon" aria-hidden="true">🧭</span>
+                                    <span>${treasureActionLabel}</span>
+                                    <span class="cooldown-count" aria-hidden="true"></span>
+                                </button>
                                 <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" title="${Object.entries(seasonData.activityEffects || {}).map(([k, v]) => (v >= 0 ? '+' : '') + v + ' ' + k).join(', ')}">
                                     <span class="action-btn-tooltip">${Object.entries(seasonData.activityEffects || {}).map(([k, v]) => (v >= 0 ? '+' : '') + v + ' ' + k.charAt(0).toUpperCase() + k.slice(1)).join(', ')}</span>
                                     <span class="btn-icon" aria-hidden="true">${seasonData.activityIcon}</span>
@@ -1644,6 +1675,34 @@
             safeAddClick('medicine-btn', () => careAction('medicine'));
             safeAddClick('groom-btn', () => careAction('groom'));
             safeAddClick('exercise-btn', () => careAction('exercise'));
+            safeAddClick('treasure-btn', () => {
+                if (typeof runTreasureHunt !== 'function') return;
+                const roomId = gameState.currentRoom || 'bedroom';
+                const result = runTreasureHunt(roomId);
+                if (!result || !result.ok) {
+                    if (result && result.reason === 'cooldown') {
+                        const sec = Math.max(1, Math.ceil((result.remainingMs || 0) / 1000));
+                        showToast(`🕒 ${sec}s until you can ${typeof getTreasureActionLabel === 'function' ? getTreasureActionLabel(roomId).toLowerCase() : 'search'} again.`, '#FFA726');
+                    } else {
+                        showToast('No hidden treasures right now.', '#FFA726');
+                    }
+                    return;
+                }
+
+                if (result.foundTreasure && result.rewards && result.rewards.length > 0) {
+                    const summary = result.rewards.map((r) => `${r.data.emoji}x${r.count}`).join(' ');
+                    showToast(`🧭 ${result.action} success! Found ${summary}`, '#66BB6A');
+                } else {
+                    const actionPast = result.action === 'Dig' ? 'dug' : 'searched';
+                    showToast(`🧭 You ${actionPast} around but only found dusty clues.`, '#90A4AE');
+                }
+                if (result.npc) {
+                    setTimeout(() => showToast(`${result.npc.icon} You discovered ${result.npc.name} nearby!`, '#FFD54F'), 240);
+                }
+                updateNeedDisplays();
+                updatePetMood();
+                updateWellnessBar();
+            });
             safeAddClick('treat-btn', () => careAction('treat'));
             safeAddClick('pet-btn', () => careAction('cuddle'));
             safeAddClick('minigames-btn', () => {
@@ -1830,6 +1889,7 @@
             { id: 'room_bonus', trigger: 'first_render', message: 'Tip: Each room gives a bonus to certain actions! Look for the +30% badges on buttons.' },
             { id: 'garden_intro', trigger: 'garden', message: 'Tip: Plant seeds and water them to grow food for your pet!' },
             { id: 'minigames_intro', trigger: 'first_render', message: 'Tip: Play mini-games to earn happiness and unlock achievements!' },
+            { id: 'explore_intro', trigger: 'first_render', message: 'Tip: Open the 🗺️ button for world map biomes, expeditions, dungeons, and wild NPC pets.' },
             { id: 'multi_pet', trigger: 'multi_pet', message: 'Tip: With multiple pets, they can interact and build relationships!' },
             { id: 'growth_system', trigger: 'first_render', message: 'Tip: Your pet grows based on both care actions and time. Keep taking good care!' }
         ];
@@ -2160,6 +2220,26 @@
             return msg;
         }
 
+        function restoreActionButtonsFromCooldown() {
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.classList.remove('cooldown');
+                btn.disabled = false;
+                btn.removeAttribute('aria-disabled');
+                if (btn.dataset.originalLabel) {
+                    btn.setAttribute('aria-label', btn.dataset.originalLabel);
+                }
+            });
+        }
+
+        function cancelActionCooldownAndRestoreButtons() {
+            actionCooldown = false;
+            if (actionCooldownTimer) {
+                clearTimeout(actionCooldownTimer);
+                actionCooldownTimer = null;
+            }
+            restoreActionButtonsFromCooldown();
+        }
+
         function careAction(action) {
             // Prevent rapid clicking
             if (actionCooldown) {
@@ -2188,17 +2268,8 @@
             actionCooldownTimer = setTimeout(() => {
                 actionCooldown = false;
                 actionCooldownTimer = null;
-                // Re-query the DOM for current buttons; the original NodeList may be
-                // stale if renderPetPhase() rebuilt the DOM during the cooldown window.
-                document.querySelectorAll('.action-btn').forEach(btn => {
-                    btn.classList.remove('cooldown');
-                    btn.disabled = false;
-                    btn.removeAttribute('aria-disabled');
-                    // Restore original aria-label instead of removing it entirely
-                    if (btn.dataset.originalLabel) {
-                        btn.setAttribute('aria-label', btn.dataset.originalLabel);
-                    }
-                });
+                // Re-query current buttons in case renderPetPhase() rebuilt the DOM.
+                restoreActionButtonsFromCooldown();
                 announce('Actions ready');
             }, ACTION_COOLDOWN_MS);
 
@@ -2218,33 +2289,13 @@
                         // Return early since feedFromGarden handles careActions increment itself
                         feedFromGarden(availableCrops[0]);
                         // Reset cooldown since feedFromGarden handled the action directly
-                        actionCooldown = false;
-                        if (actionCooldownTimer) {
-                            clearTimeout(actionCooldownTimer);
-                            actionCooldownTimer = null;
-                        }
-                        const btns = document.querySelectorAll('.action-btn');
-                        btns.forEach(btn => {
-                            btn.classList.remove('cooldown');
-                            btn.disabled = false;
-                            btn.removeAttribute('aria-disabled');
-                        });
+                        cancelActionCooldownAndRestoreButtons();
                         return;
                     } else if (availableCrops.length > 1) {
                         // Multiple crop types: show the feed menu
                         openFeedMenu();
                         // Reset cooldown since we opened a menu
-                        actionCooldown = false;
-                        if (actionCooldownTimer) {
-                            clearTimeout(actionCooldownTimer);
-                            actionCooldownTimer = null;
-                        }
-                        const btns = document.querySelectorAll('.action-btn');
-                        btns.forEach(btn => {
-                            btn.classList.remove('cooldown');
-                            btn.disabled = false;
-                            btn.removeAttribute('aria-disabled');
-                        });
+                        cancelActionCooldownAndRestoreButtons();
                         return;
                     }
                     message = performStandardFeed(pet);
@@ -4527,6 +4578,19 @@
                     roomsVisited: preservedRoomsVisited,
                     weatherSeen: preservedWeatherSeen,
                     dailyChecklist: null,
+                    exploration: (typeof createDefaultExplorationState === 'function')
+                        ? createDefaultExplorationState()
+                        : {
+                            biomeUnlocks: { forest: true, beach: false, mountain: false, cave: false, skyIsland: false, underwater: false, skyZone: false },
+                            discoveredBiomes: { forest: true },
+                            lootInventory: {},
+                            expedition: null,
+                            expeditionHistory: [],
+                            roomTreasureCooldowns: {},
+                            npcEncounters: [],
+                            dungeon: { active: false, seed: 0, rooms: [], currentIndex: 0, log: [], rewards: [], startedAt: 0 },
+                            stats: { expeditionsCompleted: 0, treasuresFound: 0, dungeonsCleared: 0, npcsBefriended: 0, npcsAdopted: 0 }
+                        },
                     memorials: preservedMemorials,
                     personalitiesSeen: preservedPersonalitiesSeen,
                     eldersRaised: preservedEldersRaised
@@ -4677,6 +4741,12 @@
         function collectHatchedEgg(index) {
             if (!gameState.hatchedBreedingEggs || index < 0 || index >= gameState.hatchedBreedingEggs.length) return;
 
+            // Validate capacity before mutating hatch progression state
+            if (getPetCount() >= MAX_PETS) {
+                showToast(`You have ${MAX_PETS} pets already! Release one to collect this baby.`, '#FFA726');
+                return;
+            }
+
             const egg = gameState.hatchedBreedingEggs[index];
             const newPet = hatchBreedingEgg(egg);
             if (!newPet) {
@@ -4684,14 +4754,9 @@
                 return;
             }
 
-            // Check if we can add to family
-            if (getPetCount() >= MAX_PETS) {
-                showToast(`You have ${MAX_PETS} pets already! Release one to collect this baby.`, '#FFA726');
-                return;
-            }
-
             // Add to family
             addPetToFamily(newPet);
+            gameState.totalBreedingHatches = (gameState.totalBreedingHatches || 0) + 1;
 
             // Remove from hatched list
             gameState.hatchedBreedingEggs.splice(index, 1);
@@ -5871,6 +5936,345 @@
             trapFocus(overlay);
         }
 
+        // ==================== EXPLORATION MODAL ====================
+
+        function formatCountdown(ms) {
+            const totalSec = Math.max(0, Math.ceil((ms || 0) / 1000));
+            const min = Math.floor(totalSec / 60);
+            const sec = totalSec % 60;
+            if (min > 0) return `${min}m ${sec}s`;
+            return `${sec}s`;
+        }
+
+        function showExplorationModal() {
+            const existing = document.querySelector('.exploration-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            if (typeof ensureExplorationState === 'function') ensureExplorationState();
+            if (typeof updateExplorationUnlocks === 'function') updateExplorationUnlocks(true);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay exploration-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Exploration World Map');
+            document.body.appendChild(overlay);
+
+            let selectedDurationId = (Array.isArray(EXPEDITION_DURATIONS) && EXPEDITION_DURATIONS[0]) ? EXPEDITION_DURATIONS[0].id : 'scout';
+
+            function renderExplorationModal() {
+                if (typeof ensureExplorationState === 'function') ensureExplorationState();
+                const ex = gameState.exploration || {};
+                const expedition = ex.expedition || null;
+                const expeditionReady = expedition && Date.now() >= expedition.endAt;
+                const dungeon = ex.dungeon || { active: false, rooms: [], currentIndex: 0, log: [] };
+                const lootInventory = ex.lootInventory || {};
+                const canAdopt = typeof canAdoptMore === 'function' ? canAdoptMore() : true;
+
+                const biomeCards = Object.values(EXPLORATION_BIOMES).map((biome) => {
+                    const unlocked = !!(ex.biomeUnlocks && ex.biomeUnlocks[biome.id]);
+                    const discovered = !!(ex.discoveredBiomes && ex.discoveredBiomes[biome.id]);
+                    const buttonDisabled = !unlocked || !!expedition || (dungeon && dungeon.active);
+                    const buttonLabel = !unlocked ? 'Locked' : expedition ? 'Expedition Active' : (dungeon && dungeon.active) ? 'Dungeon Active' : 'Send Expedition';
+                    return `
+                        <article class="explore-biome-card ${unlocked ? 'unlocked' : 'locked'} ${discovered ? 'discovered' : ''}">
+                            <div class="explore-biome-top">
+                                <span class="explore-biome-icon" aria-hidden="true">${biome.icon}</span>
+                                <div>
+                                    <h3 class="explore-biome-name">${biome.name}</h3>
+                                    <p class="explore-biome-desc">${biome.description}</p>
+                                </div>
+                            </div>
+                            <div class="explore-biome-meta">
+                                ${unlocked ? `<span class="explore-status-tag">Unlocked</span>` : `<span class="explore-lock-hint">${biome.unlockHint}</span>`}
+                                ${discovered ? '<span class="explore-discovered-tag">Explored</span>' : ''}
+                            </div>
+                            <button class="modal-btn ${buttonDisabled ? '' : 'confirm'}" data-start-expedition="${biome.id}" ${buttonDisabled ? 'disabled' : ''}>
+                                ${buttonLabel}
+                            </button>
+                        </article>
+                    `;
+                }).join('');
+
+                const durationOptions = (EXPEDITION_DURATIONS || []).map((d) => (
+                    `<option value="${d.id}" ${d.id === selectedDurationId ? 'selected' : ''}>${d.label}</option>`
+                )).join('');
+
+                let expeditionPanel = '<p class="explore-subtext">No active expedition. Pick a biome and send your pet adventuring.</p>';
+                if (expedition) {
+                    const biome = EXPLORATION_BIOMES[expedition.biomeId] || { name: expedition.biomeId, icon: '🧭' };
+                    const remaining = Math.max(0, expedition.endAt - Date.now());
+                    expeditionPanel = `
+                        <div class="explore-expedition-panel ${expeditionReady ? 'ready' : ''}">
+                            <div class="explore-expedition-title">${biome.icon} ${biome.name}</div>
+                            <div class="explore-expedition-meta">Pet: ${escapeHTML(expedition.petName || 'Pet')}</div>
+                            <div class="explore-expedition-meta">${expeditionReady ? 'Ready to collect rewards!' : `Time left: ${formatCountdown(remaining)}`}</div>
+                            <button class="modal-btn confirm" id="expedition-collect-btn">${expeditionReady ? 'Collect Loot' : 'Force Return & Collect'}</button>
+                        </div>
+                    `;
+                }
+
+                const currentDungeonRoom = dungeon && dungeon.active ? dungeon.rooms[dungeon.currentIndex] : null;
+                const dungeonPanel = dungeon && dungeon.active
+                    ? `
+                        <div class="explore-dungeon-panel active">
+                            <div class="explore-expedition-title">🏰 Dungeon Crawl Active</div>
+                            <div class="explore-expedition-meta">Room ${Math.min((dungeon.currentIndex || 0) + 1, dungeon.rooms.length)} of ${dungeon.rooms.length}</div>
+                            ${currentDungeonRoom ? `<div class="explore-expedition-meta">Next: ${currentDungeonRoom.icon} ${currentDungeonRoom.name}</div>` : ''}
+                            <button class="modal-btn confirm" id="dungeon-advance-btn">Advance Room</button>
+                        </div>
+                    `
+                    : `
+                        <div class="explore-dungeon-panel">
+                            <div class="explore-expedition-title">🏰 Dungeon Crawl</div>
+                            <div class="explore-expedition-meta">Procedurally generated rooms with escalating rewards.</div>
+                            <button class="modal-btn confirm" id="dungeon-start-btn" ${expedition ? 'disabled' : ''}>Start Dungeon Crawl</button>
+                        </div>
+                    `;
+
+                const dungeonLog = (dungeon.log || []).slice(0, 4).map((entry) => (
+                    `<li><span aria-hidden="true">${entry.icon || '•'}</span> ${escapeHTML(entry.message || '')}</li>`
+                )).join('');
+
+                const npcCards = (ex.npcEncounters || []).slice(0, 8).map((npc) => {
+                    const bond = Math.max(0, Math.min(100, npc.bond || 0));
+                    const befriendDisabled = npc.status === 'adopted';
+                    const adoptDisabled = npc.status === 'adopted' || !canAdopt || (!npc.adoptable && bond < 100);
+                    return `
+                        <article class="explore-npc-card ${npc.status === 'adopted' ? 'adopted' : ''}">
+                            <div class="explore-npc-header">
+                                <span class="explore-npc-icon" aria-hidden="true">${npc.icon || '🐾'}</span>
+                                <div>
+                                    <h4>${escapeHTML(npc.name || 'Wild Friend')}</h4>
+                                    <p>${escapeHTML(npc.sourceLabel || 'Wilds')} · Bond ${bond}%</p>
+                                </div>
+                            </div>
+                            <div class="explore-bond-bar"><span style="width:${bond}%"></span></div>
+                            <div class="explore-npc-actions">
+                                <button class="modal-btn" data-npc-befriend="${npc.id}" ${befriendDisabled ? 'disabled' : ''}>Befriend</button>
+                                <button class="modal-btn confirm" data-npc-adopt="${npc.id}" ${adoptDisabled ? 'disabled' : ''}>Adopt</button>
+                            </div>
+                            ${npc.status === 'adopted' ? '<div class="explore-npc-status">Adopted</div>' : ''}
+                        </article>
+                    `;
+                }).join('');
+
+                const lootEntries = Object.entries(lootInventory)
+                    .filter(([, count]) => count > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10)
+                    .map(([lootId, count]) => {
+                        const loot = EXPLORATION_LOOT[lootId] || { emoji: '📦', name: lootId };
+                        return `<li><span aria-hidden="true">${loot.emoji}</span> ${loot.name} x${count}</li>`;
+                    }).join('');
+
+                const stats = ex.stats || {};
+
+                overlay.innerHTML = `
+                    <div class="exploration-modal">
+                        <div class="explore-header">
+                            <h2>🗺️ Exploration & World</h2>
+                            <div class="explore-header-actions">
+                                <button class="modal-btn" id="explore-refresh-btn">Refresh</button>
+                                <button class="modal-btn" id="explore-close-btn">Close</button>
+                            </div>
+                        </div>
+
+                        <div class="explore-summary-grid">
+                            <div class="explore-summary-card"><strong>${stats.expeditionsCompleted || 0}</strong><span>Expeditions</span></div>
+                            <div class="explore-summary-card"><strong>${stats.treasuresFound || 0}</strong><span>Treasures</span></div>
+                            <div class="explore-summary-card"><strong>${stats.dungeonsCleared || 0}</strong><span>Dungeons</span></div>
+                            <div class="explore-summary-card"><strong>${stats.npcsAdopted || 0}</strong><span>NPC Adoptions</span></div>
+                        </div>
+
+                        <section class="explore-section">
+                            <h3>Expeditions</h3>
+                            <label class="explore-duration-label" for="expedition-duration-select">Duration</label>
+                            <select id="expedition-duration-select" class="explore-duration-select" ${expedition ? 'disabled' : ''}>
+                                ${durationOptions}
+                            </select>
+                            ${expeditionPanel}
+                        </section>
+
+                        <section class="explore-section">
+                            <h3>World Map</h3>
+                            <div class="explore-biome-grid">${biomeCards}</div>
+                        </section>
+
+                        <section class="explore-section">
+                            <h3>Dungeon Crawl</h3>
+                            ${dungeonPanel}
+                            ${dungeonLog ? `<ul class="explore-log-list">${dungeonLog}</ul>` : '<p class="explore-subtext">No dungeon log yet.</p>'}
+                        </section>
+
+                        <section class="explore-section">
+                            <h3>Wild NPC Pets</h3>
+                            ${npcCards || '<p class="explore-subtext">No wild friends discovered yet. Explore biomes and dungeon rooms to meet them.</p>'}
+                        </section>
+
+                        <section class="explore-section">
+                            <h3>Loot Inventory</h3>
+                            ${lootEntries ? `<ul class="explore-loot-list">${lootEntries}</ul>` : '<p class="explore-subtext">No loot collected yet.</p>'}
+                        </section>
+                    </div>
+                `;
+
+                const closeBtn = overlay.querySelector('#explore-close-btn');
+                if (closeBtn) closeBtn.addEventListener('click', closeExplorationModal);
+                const refreshBtn = overlay.querySelector('#explore-refresh-btn');
+                if (refreshBtn) refreshBtn.addEventListener('click', renderExplorationModal);
+
+                const durationSelect = overlay.querySelector('#expedition-duration-select');
+                if (durationSelect) {
+                    durationSelect.addEventListener('change', () => {
+                        selectedDurationId = durationSelect.value;
+                    });
+                }
+
+                overlay.querySelectorAll('[data-start-expedition]').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        if (typeof startExpedition !== 'function') return;
+                        const biomeId = btn.getAttribute('data-start-expedition');
+                        const res = startExpedition(biomeId, selectedDurationId);
+                        if (!res || !res.ok) {
+                            const reasonMap = {
+                                'already-running': 'An expedition is already active.',
+                                'dungeon-active': 'Finish your dungeon crawl first.',
+                                'locked-biome': 'This biome is still locked.',
+                                'no-pet': 'You need an active pet to explore.'
+                            };
+                            showToast(`🧭 ${reasonMap[res.reason] || 'Could not start expedition.'}`, '#FFA726');
+                            return;
+                        }
+                        showToast(`🧭 ${res.expedition.petName} departed for ${res.biome.name}!`, '#4ECDC4');
+                        renderExplorationModal();
+                    });
+                });
+
+                const collectBtn = overlay.querySelector('#expedition-collect-btn');
+                if (collectBtn) {
+                    collectBtn.addEventListener('click', () => {
+                        if (typeof resolveExpeditionIfReady !== 'function') return;
+                        const res = resolveExpeditionIfReady(true, false);
+                        if (!res || !res.ok) {
+                            showToast('Expedition results are not ready yet.', '#FFA726');
+                            return;
+                        }
+                        updateNeedDisplays();
+                        updatePetMood();
+                        updateWellnessBar();
+                        renderExplorationModal();
+                    });
+                }
+
+                const startDungeonBtn = overlay.querySelector('#dungeon-start-btn');
+                if (startDungeonBtn) {
+                    startDungeonBtn.addEventListener('click', () => {
+                        if (typeof startDungeonCrawl !== 'function') return;
+                        const res = startDungeonCrawl();
+                        if (!res || !res.ok) {
+                            const msg = res && res.reason === 'expedition-active'
+                                ? 'Finish your expedition first.'
+                                : 'A dungeon run is already active.';
+                            showToast(`🏰 ${msg}`, '#FFA726');
+                            return;
+                        }
+                        showToast('🏰 Dungeon crawl started!', '#4ECDC4');
+                        renderExplorationModal();
+                    });
+                }
+
+                const advanceDungeonBtn = overlay.querySelector('#dungeon-advance-btn');
+                if (advanceDungeonBtn) {
+                    advanceDungeonBtn.addEventListener('click', () => {
+                        if (typeof advanceDungeonCrawl !== 'function') return;
+                        const res = advanceDungeonCrawl();
+                        if (!res || !res.ok) {
+                            showToast('Dungeon crawl is not active.', '#FFA726');
+                            renderExplorationModal();
+                            return;
+                        }
+                        showToast(`${res.message}`, '#4ECDC4');
+                        if (res.rewards && res.rewards.length > 0) {
+                            const rewardText = res.rewards.map((r) => `${r.data.emoji}x${r.count}`).join(' ');
+                            setTimeout(() => showToast(`🎁 Found ${rewardText}`, '#66BB6A'), 200);
+                        }
+                        if (res.npc) {
+                            setTimeout(() => showToast(`${res.npc.icon} Met ${res.npc.name}!`, '#FFD54F'), 350);
+                        }
+                        if (res.cleared) {
+                            setTimeout(() => showToast('🏆 Dungeon cleared!', '#FFD700'), 520);
+                        }
+                        updateNeedDisplays();
+                        updatePetMood();
+                        updateWellnessBar();
+                        renderExplorationModal();
+                    });
+                }
+
+                overlay.querySelectorAll('[data-npc-befriend]').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        if (typeof befriendNpc !== 'function') return;
+                        const npcId = btn.getAttribute('data-npc-befriend');
+                        const res = befriendNpc(npcId);
+                        if (!res || !res.ok) {
+                            if (res && res.reason === 'cooldown') {
+                                showToast(`🤝 Try again in ${formatCountdown(res.remainingMs || 0)}.`, '#FFA726');
+                            } else {
+                                showToast('Could not befriend this NPC right now.', '#FFA726');
+                            }
+                            return;
+                        }
+                        showToast(`🤝 Bond +${res.gain}% with ${res.npc.name}!`, '#81C784');
+                        if (res.gift) {
+                            setTimeout(() => showToast(`🎁 ${res.npc.name} gifted ${res.gift.data.emoji} ${res.gift.data.name}!`, '#66BB6A'), 180);
+                        }
+                        renderExplorationModal();
+                    });
+                });
+
+                overlay.querySelectorAll('[data-npc-adopt]').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        if (typeof adoptNpcPet !== 'function') return;
+                        const npcId = btn.getAttribute('data-npc-adopt');
+                        const res = adoptNpcPet(npcId);
+                        if (!res || !res.ok) {
+                            const reasonMap = {
+                                'family-full': 'Your family is full. Free a slot before adopting.',
+                                'bond-too-low': 'Build bond to 100% before adopting.'
+                            };
+                            showToast(`🏡 ${reasonMap[res.reason] || 'Could not adopt right now.'}`, '#FFA726');
+                            return;
+                        }
+                        showToast(`🏡 ${res.pet.name} joined your family!`, '#4ECDC4');
+                        if (typeof renderPetPhase === 'function') renderPetPhase();
+                        renderExplorationModal();
+                    });
+                });
+
+            }
+
+            function closeExplorationModal() {
+                popModalEscape(closeExplorationModal);
+                overlay.remove();
+                const trigger = document.getElementById('explore-btn');
+                if (trigger) trigger.focus();
+            }
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeExplorationModal();
+            });
+            pushModalEscape(closeExplorationModal);
+            overlay._closeOverlay = closeExplorationModal;
+            trapFocus(overlay);
+            renderExplorationModal();
+            const closeBtn = overlay.querySelector('#explore-close-btn');
+            if (closeBtn) closeBtn.focus();
+        }
+
         // ==================== SETTINGS MODAL ====================
 
         function showSettingsModal() {
@@ -5984,6 +6388,7 @@
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
                 try { localStorage.setItem('petCareBuddy_hapticOff', isOn ? 'false' : 'true'); } catch (e) {}
+                if (!isOn && navigator.vibrate) navigator.vibrate(0);
             });
 
             // TTS toggle
@@ -5991,6 +6396,7 @@
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
                 try { localStorage.setItem('petCareBuddy_ttsOff', isOn ? 'false' : 'true'); } catch (e) {}
+                if (!isOn && 'speechSynthesis' in window) window.speechSynthesis.cancel();
             });
 
             // Text size toggle (Item 30)
@@ -6073,7 +6479,8 @@
                 '5': 'play-btn',
                 '6': 'treat-btn',
                 '7': 'minigames-btn',
-                '8': 'competition-btn'
+                '8': 'competition-btn',
+                '9': 'treasure-btn'
             };
 
             if (shortcuts[e.key]) {

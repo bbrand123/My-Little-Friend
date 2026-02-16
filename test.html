@@ -226,7 +226,7 @@
                 const next2 = getNextGrowthStage('adult');
                 const next3 = getNextGrowthStage('invalid');
                 log(`getNextGrowthStage('baby') = ${next1} (expected: child)`, next1 === 'child');
-                log(`getNextGrowthStage('adult') = ${next2} (expected: null)`, next2 === null);
+                log(`getNextGrowthStage('adult') = ${next2} (expected: elder)`, next2 === 'elder');
                 log(`getNextGrowthStage('invalid') = ${next3} (expected: null)`, next3 === null);
             } else {
                 log('getNextGrowthStage() not found', false);
