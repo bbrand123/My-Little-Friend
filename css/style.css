@@ -53,6 +53,8 @@
             --color-text-secondary: #666;
             --color-text-tertiary: #999;
             --focus-outline: 3px solid #7C6BFF;
+            --text-size-floor: 0.78rem;
+            --button-label-color: #1D2528;
 
             /* Consistent modal spacing */
             --modal-padding: 24px;
@@ -106,13 +108,14 @@
             position: absolute;
             top: -40px;
             left: 0;
-            background: var(--color-primary);
+            background: #7A1F2D;
             color: white;
             padding: 10px 20px;
             z-index: 100;
             border-radius: 0 0 10px 0;
             font-weight: bold;
             text-decoration: none;
+            border: 2px solid #4F101B;
         }
 
         .skip-link:focus {
@@ -124,6 +127,19 @@
         *:focus-visible {
             outline: var(--focus-outline);
             outline-offset: 3px;
+        }
+
+        [role="dialog"] button:focus-visible,
+        [role="dialog"] [href]:focus-visible,
+        [role="dialog"] input:focus-visible,
+        [role="dialog"] select:focus-visible,
+        [role="dialog"] textarea:focus-visible,
+        [role="alertdialog"] button:focus-visible,
+        [role="alertdialog"] [href]:focus-visible,
+        [role="alertdialog"] input:focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(124, 107, 255, 0.25);
         }
 
         /* Main Game Container */
@@ -234,6 +250,13 @@
             position: relative;
             z-index: 1;
             transition: transform 0.3s ease;
+            display: block;
+            margin: 0 auto;
+            border: none;
+            background: transparent;
+            padding: 0;
+            appearance: none;
+            -webkit-appearance: none;
         }
 
         .pet-container:focus-visible {
@@ -600,8 +623,8 @@
             flex-shrink: 0;
             border: none;
             border-radius: var(--radius-md);
-            font-size: 0.75rem;
-            font-weight: 700;
+            font-size: 0.8rem;
+            font-weight: 800;
             letter-spacing: 0.02em;
             cursor: pointer;
             position: relative;
@@ -612,10 +635,14 @@
             gap: 3px;
             transition: all 0.25s ease-out;
             box-shadow: var(--shadow-subtle);
-            color: white;
-            text-shadow: var(--text-shadow-on-dark);
+            color: var(--button-label-color);
+            text-shadow: none;
             font-family: inherit;
             touch-action: manipulation; /* Prevent double-tap zoom delay on mobile */
+        }
+
+        .action-btn .btn-icon {
+            color: #111;
         }
 
         .cooldown-count {
@@ -760,14 +787,14 @@
         .new-pet-btn {
             margin-top: 12px;
             padding: 8px 18px;
-            font-size: 0.85rem;
-            background: transparent;
-            color: var(--color-text-tertiary);
-            border: 1.5px dashed #ccc;
+            font-size: 0.9rem;
+            background: #F5F8FB;
+            color: #34495E;
+            border: 1.5px dashed #8CA2B6;
             border-radius: var(--radius-sm);
             cursor: pointer;
             font-family: inherit;
-            font-weight: 600;
+            font-weight: 700;
             transition: all 0.2s ease;
             touch-action: manipulation;
             position: relative;
@@ -776,9 +803,9 @@
 
         .new-pet-btn:hover,
         .new-pet-btn:focus {
-            color: #7B1FA2;
-            border-color: #9C27B0;
-            background: rgba(156, 39, 176, 0.06);
+            color: #0F5E73;
+            border-color: #0F5E73;
+            background: #E7F5F8;
             transform: translateY(-1px);
         }
 
@@ -868,16 +895,17 @@
         }
 
         .wellness-bar-label {
-            font-size: 0.75rem; /* Accessible minimum */
-            font-weight: 700;
+            font-size: 0.82rem;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: var(--color-text-tertiary);
+            color: #4E5D67;
         }
 
         .wellness-bar-value {
-            font-size: 0.75rem;
+            font-size: 0.82rem;
             font-weight: 800;
+            color: #2F3D45;
             transition: color 0.5s ease;
         }
 
@@ -1379,13 +1407,13 @@
         }
 
         .room-btn.active {
-            background: var(--color-primary);
+            background: #B33A4E;
             color: white;
-            border-color: var(--color-primary);
+            border-color: #8D2638;
             border-width: 2.5px;
             box-shadow: var(--shadow-medium);
             transform: translateY(-2px) scale(1.05);
-            font-weight: 700;
+            font-weight: 800;
         }
 
         .room-btn-icon {
@@ -1394,8 +1422,8 @@
         }
 
         .room-btn-label {
-            font-size: 0.7rem;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -1443,11 +1471,12 @@
             position: absolute;
             top: 8px;
             left: 12px;
-            background: rgba(255,255,255,0.7);
-            padding: 2px 8px;
+            background: rgba(255,255,255,0.84);
+            color: #253238;
+            padding: 4px 10px;
             border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 700;
             z-index: 2;
             pointer-events: none;
         }
@@ -1480,7 +1509,7 @@
                 font-size: 1.1rem;
             }
             .room-btn-label {
-                font-size: 0.7rem;
+                font-size: 0.78rem;
             }
         }
 
@@ -1703,6 +1732,18 @@
                 border-radius: 15px;
             }
 
+            .top-action-bar {
+                margin-bottom: 14px;
+            }
+
+            .pet-switcher {
+                margin: 2px 0 10px;
+            }
+
+            .room-nav {
+                margin: 8px 0 10px;
+            }
+
             .game-title {
                 font-size: 1.5rem;
             }
@@ -1766,6 +1807,7 @@
                 width: 60px;
                 height: 60px;
                 border-radius: 15px;
+                font-size: 0.8rem;
             }
 
             .btn-icon {
@@ -2008,13 +2050,17 @@
             }
 
             .top-action-buttons {
-                gap: 4px;
+                gap: 6px;
             }
 
             .top-action-btn {
-                min-height: 36px;
-                min-width: 36px;
-                padding: 6px;
+                min-height: 48px;
+                min-width: 54px;
+                padding: 6px 8px;
+            }
+
+            .top-action-btn-label {
+                font-size: 0.72rem;
             }
 
             .status-pill {
@@ -2046,7 +2092,7 @@
 
             .new-pet-btn {
                 padding: 8px 16px;
-                font-size: 0.8rem;
+                font-size: 0.88rem;
             }
         }
 
@@ -2368,18 +2414,32 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 8px;
+            gap: 8px;
+            margin-bottom: 12px;
             position: relative;
             z-index: 5;
             padding-top: env(safe-area-inset-top);
+            width: 100%;
         }
 
         .top-action-buttons {
             display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .top-action-group {
+            display: flex;
             justify-content: center;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .top-action-group-secondary {
+            padding-top: 6px;
+            border-top: 1px solid rgba(0,0,0,0.08);
         }
 
         .status-stack {
@@ -2410,45 +2470,63 @@
 
 
         .top-action-btn {
-            padding: 10px;
+            padding: 8px 10px 7px;
             border: 1.5px solid #E0E0E0;
             border-radius: var(--radius-md);
-            background: white;
-            font-size: 0.7rem;
+            background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+            font-size: 0.75rem;
             font-weight: 700;
-            color: var(--color-text-secondary);
+            color: #34495E;
             cursor: pointer;
             font-family: inherit;
             transition: border-color 0.2s ease-out,
+                        background 0.2s ease-out,
                         color 0.2s ease-out,
                         transform 0.2s ease-out,
                         box-shadow 0.2s ease-out;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 44px;
-            min-width: 44px;
+            gap: 3px;
+            min-height: 52px;
+            min-width: 58px;
             touch-action: manipulation;
             position: relative;
         }
 
         .top-action-btn:hover,
         .top-action-btn:focus-visible {
-            border-color: var(--color-secondary);
-            color: var(--color-secondary);
+            border-color: #329F95;
+            color: #225C67;
+            background: #ECF9F7;
             transform: translateY(-1px);
-            box-shadow: var(--shadow-subtle);
-            outline: 3px solid var(--color-secondary);
+            box-shadow: var(--shadow-medium);
+            outline: 3px solid rgba(50, 159, 149, 0.35);
             outline-offset: 2px;
+        }
+
+        .top-action-btn:active {
+            transform: translateY(0);
         }
 
         .top-action-btn-icon {
             font-size: 1rem;
+            line-height: 1;
+        }
+
+        .top-action-btn-label {
+            font-size: 0.69rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 0.02em;
         }
 
         /* Mini Games Button */
         .action-btn.mini-games {
             background: #7C4DFF;
+            color: #fff;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.2);
         }
 
         /* Mini Games Menu Modal */
@@ -2491,11 +2569,11 @@
         }
 
         .minigame-menu-keyboard-note {
-            font-size: 0.85rem;
-            color: var(--color-text-tertiary);
+            font-size: 0.9rem;
+            color: #4A5A64;
             background: var(--color-bg-secondary, #f5f5f5);
             border-radius: 8px;
-            padding: 6px 12px;
+            padding: 8px 12px;
             margin-bottom: 14px;
         }
 
@@ -2508,8 +2586,9 @@
         }
 
         .minigame-card {
-            width: 100px;
-            padding: 14px 8px;
+            width: 136px;
+            min-height: 146px;
+            padding: 12px 12px;
             border: 2.5px solid #e0e0e0;
             border-radius: var(--radius-md);
             background: #fafafa;
@@ -2519,7 +2598,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            text-align: center;
         }
 
         .minigame-card:hover,
@@ -2535,43 +2615,51 @@
         }
 
         .minigame-card-name {
-            font-size: 0.85rem;
-            font-weight: bold;
+            font-size: 0.92rem;
+            font-weight: 800;
             color: var(--color-text);
         }
 
         .minigame-card-best {
             display: block;
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: #FFB300;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #B46900;
             margin-top: 2px;
             text-shadow: none;
         }
 
         .minigame-card-history {
             display: block;
-            font-size: 0.75rem;
-            font-weight: 400;
-            color: #999;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #5E6B73;
             margin-top: 1px;
             text-shadow: none;
         }
 
         .minigame-card-difficulty {
             display: block;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 600;
-            color: #E57373;
+            color: #B84848;
             margin-top: 2px;
             text-shadow: none;
         }
 
         .minigame-card-desc {
             display: block;
-            font-size: 0.75rem;
+            font-size: 0.82rem;
             color: var(--color-text-secondary);
             margin-top: 2px;
+        }
+
+        @media (max-width: 480px) {
+            .minigame-card {
+                width: calc(50% - 10px);
+                min-width: 140px;
+                max-width: 180px;
+            }
         }
 
         .minigame-close-btn {
@@ -3865,28 +3953,42 @@
         /* ===== Toast Notifications ===== */
         .toast-container {
             position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 2000;
+            bottom: calc(env(safe-area-inset-bottom) + 14px);
+            right: max(12px, env(safe-area-inset-right));
+            left: auto;
+            transform: none;
+            width: min(92vw, 360px);
+            z-index: calc(var(--z-overlay) - 1);
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: stretch;
             gap: 8px;
             pointer-events: none;
         }
 
         .toast {
             background: white;
-            padding: 10px 20px;
+            padding: 10px 12px;
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-medium);
-            font-size: 1rem;
-            font-weight: bold;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.35;
             font-family: inherit;
             animation: toastIn 0.4s ease forwards, toastOut 0.4s ease 3s forwards;
-            white-space: nowrap;
+            white-space: normal;
+            overflow-wrap: anywhere;
             border-left: 4px solid var(--toast-color, #66BB6A);
+            max-width: 100%;
+        }
+
+        @media (max-width: 480px) {
+            .toast-container {
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                width: min(94vw, 360px);
+            }
         }
 
         @keyframes toastIn {
@@ -3999,18 +4101,23 @@
         .naming-skip-btn {
             display: block;
             margin: 10px auto 0;
-            padding: var(--btn-pad-sm);
-            background: transparent;
-            border: none;
-            color: var(--color-text-tertiary);
-            font-size: 0.85rem;
+            padding: 7px 14px;
+            background: #F4F7FA;
+            border: 1px solid #C8D2DB;
+            border-radius: 8px;
+            color: #425466;
+            font-size: 0.88rem;
+            font-weight: 700;
             cursor: pointer;
             font-family: inherit;
-            transition: color 0.2s ease;
+            transition: all 0.2s ease;
         }
 
-        .naming-skip-btn:hover {
-            color: var(--color-text-secondary);
+        .naming-skip-btn:hover,
+        .naming-skip-btn:focus-visible {
+            color: #233A52;
+            border-color: #8AA3B5;
+            background: #EEF5FB;
         }
 
         /* ==================== CUSTOMIZATION MODAL STYLES ==================== */
@@ -5701,6 +5808,10 @@
             color: #ddd;
         }
 
+        [data-theme="dark"] .top-action-group-secondary {
+            border-top-color: rgba(255,255,255,0.12);
+        }
+
         [data-theme="dark"] .top-action-btn:hover,
         [data-theme="dark"] .top-action-btn:focus-visible {
             border-color: var(--color-secondary);
@@ -5714,6 +5825,14 @@
 
         /* Dark mode surfaces — override hardcoded white backgrounds */
         [data-theme="dark"] .action-btn {
+            color: var(--button-label-color);
+        }
+
+        [data-theme="dark"] .action-btn.competition {
+            color: #2A1B05;
+        }
+
+        [data-theme="dark"] .action-btn.mini-games {
             color: #fff;
         }
 
@@ -5734,6 +5853,15 @@
             background: #2e2e4a;
         }
 
+        [data-theme="dark"] .wellness-bar-label {
+            color: #B8C6D1;
+        }
+
+        [data-theme="dark"] .wellness-bar-value,
+        [data-theme="dark"] .wellness-bar-pct {
+            color: #E3EDF3;
+        }
+
         [data-theme="dark"] .new-pet-btn {
             background: #2e2e4a;
             border-color: #555;
@@ -5743,6 +5871,16 @@
         [data-theme="dark"] .new-pet-btn:hover {
             border-color: var(--color-primary);
             color: var(--color-primary);
+        }
+
+        [data-theme="dark"] .favorites-label {
+            color: #C3D0D8;
+        }
+
+        [data-theme="dark"] .favorite-slot.favorite-slot-empty {
+            background: rgba(255,255,255,0.05);
+            border-color: #5A6670;
+            color: #9EB0BC;
         }
 
         [data-theme="dark"] .action-group-label {
@@ -5833,6 +5971,19 @@
             color: #ddd;
         }
 
+        [data-theme="dark"] .naming-skip-btn {
+            background: #2F3A55;
+            border-color: #5A6785;
+            color: #D8E3ED;
+        }
+
+        [data-theme="dark"] .naming-skip-btn:hover,
+        [data-theme="dark"] .naming-skip-btn:focus-visible {
+            background: #3B4B69;
+            border-color: #7C8FB0;
+            color: #F0F6FB;
+        }
+
         /* Dark mode toast */
         [data-theme="dark"] .toast {
             box-shadow: var(--shadow-overlay);
@@ -5898,7 +6049,8 @@
 
         /* Dark mode skip link */
         [data-theme="dark"] .skip-link {
-            background: var(--color-primary);
+            background: #A63A52;
+            border-color: #7A253A;
         }
 
         /* Dark mode: room decor, bubbles, weather particles, seasonal elements */
@@ -5983,6 +6135,10 @@
                 color: #ddd;
             }
 
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .top-action-group-secondary {
+                border-top-color: rgba(255,255,255,0.12);
+            }
+
             :root:not([data-theme="light"]):not([data-theme="dark"]) .need-bubble {
                 background: #2e2e4a;
             }
@@ -6027,13 +6183,32 @@
                 color: #ddd;
             }
 
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .naming-skip-btn {
+                background: #2F3A55;
+                border-color: #5A6785;
+                color: #D8E3ED;
+            }
+
             :root:not([data-theme="light"]):not([data-theme="dark"]) .wellness-bar {
                 background: #2e2e4a;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .wellness-bar-label {
+                color: #B8C6D1;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .wellness-bar-value,
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .wellness-bar-pct {
+                color: #E3EDF3;
             }
 
             :root:not([data-theme="light"]):not([data-theme="dark"]) .status-pill {
                 background: rgba(255, 255, 255, 0.08);
                 color: #ddd;
+            }
+
+            :root:not([data-theme="light"]):not([data-theme="dark"]) .favorites-label {
+                color: #C3D0D8;
             }
 
             /* Auto dark: scroll fade hint for action buttons */
@@ -6964,23 +7139,25 @@
     border-top: 1px solid rgba(0,0,0,0.08);
 }
 .settings-hints-title {
-    font-size: 0.8rem;
+    font-size: 0.92rem;
     font-weight: 700;
     margin-bottom: 8px;
     color: var(--color-text, #2D3436);
 }
 .settings-hint-row {
-    font-size: 0.75rem;
-    color: var(--color-text-secondary, #666);
+    font-size: 0.84rem;
+    color: #4D5A63;
     margin-bottom: 4px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
 }
 .settings-hint-row kbd {
     display: inline-block;
-    padding: 1px 6px;
-    font-size: 0.7rem;
+    padding: 2px 7px;
+    font-size: 0.8rem;
+    font-weight: 700;
     font-family: inherit;
     background: rgba(0,0,0,0.06);
     border: 1px solid rgba(0,0,0,0.12);
@@ -7075,7 +7252,7 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: none;
 }
 
 @keyframes pulse-glow {
@@ -7991,7 +8168,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     z-index: 2;
     pointer-events: none;
-    animation: bonusBadgeGlow 2s ease-in-out infinite;
+    animation: none;
 }
 .action-btn.has-room-bonus {
     box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.4), var(--shadow-subtle);
@@ -8004,18 +8181,19 @@
 /* ==================== ONBOARDING TOOLTIPS (Feature 5) ==================== */
 .onboarding-tooltip {
     position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: max(88px, calc(env(safe-area-inset-top) + 12px));
+    right: max(12px, env(safe-area-inset-right));
+    left: auto;
+    transform: none;
     background: linear-gradient(135deg, #4A90D9, #357ABD);
     color: #fff;
     padding: 12px 18px;
     border-radius: 14px;
-    font-size: 0.82rem;
+    font-size: 0.86rem;
     line-height: 1.4;
-    max-width: 340px;
+    max-width: min(340px, calc(100vw - 24px));
     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    z-index: 9998;
+    z-index: calc(var(--z-overlay-dialog) - 2);
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -8044,8 +8222,8 @@
     background: rgba(255,255,255,0.35);
 }
 @keyframes tooltipSlideUp {
-    from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    from { transform: translateY(16px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 /* ==================== NEED-BASED IDLE ANIMATIONS (Feature 6) ==================== */
@@ -8272,8 +8450,8 @@
 /* Competition button */
 .action-btn.competition {
     background: linear-gradient(135deg, #FF6B6B, #FFD93D);
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    color: #2A1B05;
+    text-shadow: none;
 }
 
 .action-btn.competition:hover {
@@ -9706,11 +9884,12 @@
 
 /* Wellness bar numeric label */
 .wellness-bar-pct {
-    font-size: 0.8rem;
+    font-size: 0.86rem;
     font-weight: 800;
-    min-width: 32px;
+    min-width: 36px;
     text-align: right;
     font-variant-numeric: tabular-nums;
+    color: #2F3D45;
 }
 
 /* Item 14: Improved disabled/cooldown button visibility */
@@ -10070,7 +10249,7 @@
 }
 
 .minigame-difficulty-meter .difficulty-label {
-    font-size: 0.75rem;
+    font-size: 0.82rem;
     font-weight: 600;
     color: var(--color-text-secondary);
 }
@@ -10080,7 +10259,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.75rem;
+    font-size: 0.82rem;
     color: var(--color-text-secondary);
     margin-top: 4px;
 }
@@ -10399,12 +10578,13 @@
     position: absolute;
     top: 2px;
     right: 2px;
-    font-size: 0.65rem;
-    background: rgba(0,0,0,0.5);
+    font-size: 0.74rem;
+    background: rgba(0,0,0,0.62);
     color: #fff;
-    padding: 1px 4px;
+    padding: 2px 5px;
     border-radius: 3px;
     font-family: monospace;
+    font-weight: 700;
     z-index: 2;
     pointer-events: none;
 }
@@ -10412,6 +10592,24 @@
 @media (hover: hover) and (pointer: fine) {
     .kbd-hint {
         display: block;
+    }
+}
+
+@media (max-width: 480px) {
+    .skip-link,
+    .room-btn-label,
+    .wellness-bar-label,
+    .wellness-bar-value,
+    .wellness-bar-pct,
+    .favorites-label,
+    .minigame-card-best,
+    .minigame-card-history,
+    .minigame-card-difficulty,
+    .minigame-card-desc,
+    .settings-hint-row,
+    .settings-hint-row kbd,
+    .minigame-menu-keyboard-note {
+        font-size: max(var(--text-size-floor), 0.78rem);
     }
 }
 
@@ -11308,9 +11506,15 @@
 .favorites-bar {
     display: flex;
     justify-content: center;
-    gap: 8px;
-    padding: 6px 0 2px;
-    margin-bottom: 4px;
+    gap: 10px;
+    padding: 8px 0 6px;
+    margin-bottom: 8px;
+}
+
+.favorite-slot-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
 }
 
 .favorite-slot {
@@ -11326,12 +11530,13 @@
     transition: all 0.2s;
     font-size: 1.1rem;
     position: relative;
+    font-family: inherit;
 }
 
 .favorite-slot.filled {
     border-style: solid;
-    border-color: var(--color-primary);
-    background: rgba(255, 123, 123, 0.1);
+    border-color: #C35353;
+    background: rgba(195, 83, 83, 0.12);
 }
 
 .favorite-slot:hover {
@@ -11339,11 +11544,33 @@
     border-color: var(--color-primary);
 }
 
+.favorite-slot:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 3px;
+}
+
 .favorite-slot:active {
     transform: scale(0.95);
 }
 
-.favorite-slot .fav-remove {
+.favorite-slot.favorite-slot-empty {
+    border-color: #D7DDE2;
+    background: rgba(255, 255, 255, 0.45);
+    color: #86929C;
+}
+
+.favorite-slot.favorite-slot-empty:hover,
+.favorite-slot.favorite-slot-empty:focus-visible {
+    border-color: #BAC8D3;
+    color: #5F6C76;
+}
+
+.favorite-slot-plus {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.fav-remove {
     position: absolute;
     top: -4px;
     right: -4px;
@@ -11362,20 +11589,29 @@
     transition: opacity 0.2s;
     line-height: 1;
     padding: 0;
+    font-family: inherit;
+    pointer-events: none;
 }
 
-.favorite-slot:hover .fav-remove {
+.fav-remove:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.favorite-slot-wrap:hover .fav-remove,
+.favorite-slot-wrap:focus-within .fav-remove {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .favorites-label {
-    font-size: 0.6rem;
-    color: var(--color-text-tertiary);
+    font-size: 0.78rem;
+    color: #495860;
     text-align: center;
-    margin-bottom: 2px;
-    font-weight: 600;
+    margin: 6px 0 4px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
 }
 
 [data-theme="dark"] .favorite-slot {
@@ -11620,16 +11856,18 @@
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    font-size: 0.72rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: #FF6D00;
     background: rgba(255, 109, 0, 0.08);
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: 12px;
     cursor: pointer;
     transition: transform 0.2s, background 0.2s;
     vertical-align: middle;
     position: relative;
+    border: 1px solid rgba(255, 109, 0, 0.24);
+    font-family: inherit;
 }
 
 .streak-hud:hover {
@@ -11639,11 +11877,11 @@
 
 .streak-hud .streak-flame-icon {
     font-size: 0.85rem;
-    animation: streakFlameFlicker 1.5s ease-in-out infinite alternate;
+    animation: none;
 }
 
 .streak-hud.has-bonus .streak-flame-icon {
-    animation: streakFlameFlickerActive 0.8s ease-in-out infinite alternate;
+    animation: streakFlameFlicker 1.8s ease-in-out infinite alternate;
 }
 
 @keyframes streakFlameFlicker {

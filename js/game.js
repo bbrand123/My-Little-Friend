@@ -911,7 +911,10 @@
             val.style.color = w >= 60 ? '#66BB6A' : w >= 35 ? '#FFA726' : '#EF5350';
             // Keep aria-valuenow in sync so screen readers report current wellness
             const bar = fill.parentElement;
-            if (bar) bar.setAttribute('aria-valuenow', w);
+            if (bar) {
+                bar.setAttribute('aria-valuenow', w);
+                bar.setAttribute('aria-valuetext', `Overall wellness ${w} percent, ${getWellnessLabel(pet)}`);
+            }
             // Update numeric percentage (Item 20)
             const pctEl = document.getElementById('wellness-pct');
             if (pctEl) {

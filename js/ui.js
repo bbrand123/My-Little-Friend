@@ -116,7 +116,8 @@
         function spawnEmojiBurst(container, action) {
             if (!container) return;
             const emojis = EMOJI_BURST_MAP[action] || ['❤️', '⭐', '✨'];
-            const count = 8;
+            const visualLoad = document.querySelectorAll('.toast, .onboarding-tooltip').length;
+            const count = visualLoad > 0 ? 5 : 7;
             const rect = container.getBoundingClientRect();
             for (let i = 0; i < count; i++) {
                 const el = document.createElement('span');
@@ -143,11 +144,11 @@
             const streak = gameState.streak;
             if (!streak || streak.current <= 0) return '';
             const hasBonus = !streak.todayBonusClaimed;
-            return `<span class="streak-hud ${hasBonus ? 'has-bonus' : ''}" id="streak-hud" title="${streak.current}-day streak${hasBonus ? ' (bonus available!)' : ''}" role="button" tabindex="0" aria-label="${streak.current} day streak${hasBonus ? ', bonus available' : ''}">
+            return `<button class="streak-hud ${hasBonus ? 'has-bonus' : ''}" id="streak-hud" type="button" title="${streak.current}-day streak${hasBonus ? ' (bonus available!)' : ''}" aria-label="${streak.current} day streak${hasBonus ? ', bonus available' : ''}">
                 <span class="streak-flame-icon" aria-hidden="true">🔥</span>
                 <span>${streak.current}</span>
                 ${hasBonus ? '<span class="streak-bonus-dot" aria-hidden="true"></span>' : ''}
-            </span>`;
+            </button>`;
         }
 
         // ==================== PET AGE HUD (Feature 3) ====================
@@ -199,13 +200,17 @@
                 const action = favs[i];
                 const data = action ? FAVORITE_ACTIONS[action] : null;
                 if (data) {
-                    html += `<div class="favorite-slot filled" data-fav-idx="${i}" data-fav-action="${action}" title="${data.label}" aria-label="Quick ${data.label}" role="button" tabindex="0">
-                        <span aria-hidden="true">${data.icon}</span>
-                        <span class="fav-remove" data-fav-remove="${i}" title="Remove" aria-label="Remove ${data.label} from favorites" role="button" tabindex="0">&times;</span>
+                    html += `<div class="favorite-slot-wrap filled">
+                        <button class="favorite-slot filled" type="button" data-fav-idx="${i}" data-fav-action="${action}" title="${data.label}" aria-label="Quick ${data.label}">
+                            <span aria-hidden="true">${data.icon}</span>
+                        </button>
+                        <button class="fav-remove" type="button" data-fav-remove="${i}" title="Remove" aria-label="Remove ${data.label} from favorites">&times;</button>
                     </div>`;
                 } else {
-                    html += `<div class="favorite-slot" data-fav-idx="${i}" title="Add a favorite action" aria-label="Empty favorite slot ${i + 1}, click to assign" role="button" tabindex="0">
-                        <span aria-hidden="true" style="opacity:0.4">+</span>
+                    html += `<div class="favorite-slot-wrap empty">
+                        <button class="favorite-slot favorite-slot-empty" type="button" data-fav-idx="${i}" title="Add a favorite action" aria-label="Empty favorite slot ${i + 1}, choose a quick action">
+                            <span class="favorite-slot-plus" aria-hidden="true">+</span>
+                        </button>
                     </div>`;
                 }
             }
@@ -213,7 +218,7 @@
             return html;
         }
 
-        function showFavoritesPicker(slotIdx) {
+        function showFavoritesPicker(slotIdx, triggerEl) {
             const favs = getFavorites();
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
@@ -239,6 +244,9 @@
             function closePicker() {
                 popModalEscape(closePicker);
                 overlay.remove();
+                const fallback = document.querySelector(`.favorite-slot[data-fav-idx="${slotIdx}"]`);
+                const returnTarget = (triggerEl && document.contains(triggerEl)) ? triggerEl : fallback;
+                if (returnTarget && typeof returnTarget.focus === 'function') returnTarget.focus();
             }
 
             overlay.querySelector('.modal-close-btn').addEventListener('click', closePicker);
@@ -277,7 +285,7 @@
                     if (action && typeof careAction === 'function') {
                         careAction(action);
                     } else {
-                        showFavoritesPicker(parseInt(slot.dataset.favIdx));
+                        showFavoritesPicker(parseInt(slot.dataset.favIdx), slot);
                     }
                 });
             });
@@ -617,13 +625,6 @@
             // Maintain focus for keyboard users / VoiceOver
             if (maintainFocus) {
                 eggButton.focus();
-            } else {
-                // Help VoiceOver re-discover DOM after innerHTML replacement
-                const gameContent = document.getElementById('game-content');
-                if (gameContent) {
-                    gameContent.setAttribute('tabindex', '-1');
-                    gameContent.focus({ preventScroll: true });
-                }
             }
         }
 
@@ -1263,6 +1264,14 @@
                 return '';
             }
 
+            function needStatusText(val) {
+                if (val <= 15) return 'critical';
+                if (val <= 25) return 'very low';
+                if (val <= 45) return 'low';
+                if (val <= 70) return 'fair';
+                return 'good';
+            }
+
             const petDisplayName = escapeHTML(pet.name || petData.name);
             const explorationAlerts = typeof getExplorationAlertCount === 'function' ? getExplorationAlertCount() : 0;
             const treasureActionLabel = typeof getTreasureActionLabel === 'function'
@@ -1272,44 +1281,59 @@
 
             content.innerHTML = `
                 <div class="top-action-bar" role="toolbar" aria-label="Game actions">
-                    <div class="top-action-buttons" role="group" aria-label="Top actions">
-                        <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" title="Codex" aria-label="Codex">
-                            <span class="top-action-btn-icon" aria-hidden="true">📖</span>
-                        </button>
-                        <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" title="Stats" aria-label="Stats">
-                            <span class="top-action-btn-icon" aria-hidden="true">📊</span>
-                        </button>
-                        <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements: ${getAchievementCount()} of ${Object.keys(ACHIEVEMENTS).length} unlocked">
-                            <span class="top-action-btn-icon" aria-hidden="true">🏆</span>
-                            ${getAchievementCount() > 0 ? `<span class="achievement-count-badge" aria-hidden="true">${getAchievementCount()}</span>` : ''}
-                        </button>
-                        <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks${isDailyComplete() ? ' (all complete)' : ''}">
-                            <span class="top-action-btn-icon" aria-hidden="true">📋</span>
-                            ${isDailyComplete() ? '<span class="daily-complete-badge" aria-hidden="true">✓</span>' : ''}
-                        </button>
-                        <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards: ${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? ', unclaimed streak bonus' : ''}">
-                            <span class="top-action-btn-icon" aria-hidden="true">🎁</span>
-                            ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge" aria-hidden="true">!</span>' : ''}
-                        </button>
-                        <button class="top-action-btn" id="explore-btn" type="button" aria-haspopup="dialog" title="Exploration" aria-label="Exploration map${explorationAlerts > 0 ? ` (${explorationAlerts} updates)` : ''}">
-                            <span class="top-action-btn-icon" aria-hidden="true">🗺️</span>
-                            ${explorationAlerts > 0 ? `<span class="explore-alert-badge" aria-hidden="true">${Math.min(9, explorationAlerts)}</span>` : ''}
-                        </button>
-                        <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
-                            <span class="top-action-btn-icon" aria-hidden="true">🛋️</span>
-                        </button>
-                        <button class="top-action-btn" id="journal-btn" type="button" aria-haspopup="dialog" title="Pet Journal" aria-label="Pet Journal">
-                            <span class="top-action-btn-icon" aria-hidden="true">📔</span>
-                        </button>
-                        <button class="top-action-btn" id="memorial-btn" type="button" aria-haspopup="dialog" title="Hall of Fame" aria-label="Hall of Fame${(gameState.memorials && gameState.memorials.length > 0) ? ` (${gameState.memorials.length} memorials)` : ''}">
-                            <span class="top-action-btn-icon" aria-hidden="true">🏛️</span>
-                        </button>
-                        <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
-                            <span class="top-action-btn-icon" aria-hidden="true">🔔</span>
-                        </button>
-                        <button class="top-action-btn" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">
-                            <span class="top-action-btn-icon" aria-hidden="true">⚙️</span>
-                        </button>
+                    <div class="top-action-buttons">
+                        <div class="top-action-group" role="group" aria-label="Pet data and progress">
+                            <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" title="Codex" aria-label="Codex">
+                                <span class="top-action-btn-icon" aria-hidden="true">📖</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Codex</span>
+                            </button>
+                            <button class="top-action-btn" id="stats-btn" type="button" aria-haspopup="dialog" title="Stats" aria-label="Stats">
+                                <span class="top-action-btn-icon" aria-hidden="true">📊</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Stats</span>
+                            </button>
+                            <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements: ${getAchievementCount()} of ${Object.keys(ACHIEVEMENTS).length} unlocked">
+                                <span class="top-action-btn-icon" aria-hidden="true">🏆</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Awards</span>
+                                ${getAchievementCount() > 0 ? `<span class="achievement-count-badge" aria-hidden="true">${getAchievementCount()}</span>` : ''}
+                            </button>
+                            <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks${isDailyComplete() ? ' (all complete)' : ''}">
+                                <span class="top-action-btn-icon" aria-hidden="true">📋</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Daily</span>
+                                ${isDailyComplete() ? '<span class="daily-complete-badge" aria-hidden="true">✓</span>' : ''}
+                            </button>
+                            <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards: ${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? ', unclaimed streak bonus' : ''}">
+                                <span class="top-action-btn-icon" aria-hidden="true">🎁</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Rewards</span>
+                                ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge" aria-hidden="true">!</span>' : ''}
+                            </button>
+                        </div>
+                        <div class="top-action-group top-action-group-secondary" role="group" aria-label="World and utility actions">
+                            <button class="top-action-btn" id="explore-btn" type="button" aria-haspopup="dialog" title="Exploration" aria-label="Exploration map${explorationAlerts > 0 ? ` (${explorationAlerts} updates)` : ''}">
+                                <span class="top-action-btn-icon" aria-hidden="true">🗺️</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Explore</span>
+                                ${explorationAlerts > 0 ? `<span class="explore-alert-badge" aria-hidden="true">${Math.min(9, explorationAlerts)}</span>` : ''}
+                            </button>
+                            <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
+                                <span class="top-action-btn-icon" aria-hidden="true">🛋️</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Decor</span>
+                            </button>
+                            <button class="top-action-btn" id="journal-btn" type="button" aria-haspopup="dialog" title="Pet Journal" aria-label="Pet Journal">
+                                <span class="top-action-btn-icon" aria-hidden="true">📔</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Journal</span>
+                            </button>
+                            <button class="top-action-btn" id="memorial-btn" type="button" aria-haspopup="dialog" title="Hall of Fame" aria-label="Hall of Fame${(gameState.memorials && gameState.memorials.length > 0) ? ` (${gameState.memorials.length} memorials)` : ''}">
+                                <span class="top-action-btn-icon" aria-hidden="true">🏛️</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Hall</span>
+                            </button>
+                            <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
+                                <span class="top-action-btn-icon" aria-hidden="true">🔔</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Alerts</span>
+                            </button>
+                            <button class="top-action-btn" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">
+                                <span class="top-action-btn-icon" aria-hidden="true">⚙️</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Settings</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 ${generatePetSwitcherHTML()}
@@ -1319,11 +1343,11 @@
                     ${generateAmbientLayerHTML(currentRoom, timeOfDay, weather, isOutdoor)}
                     ${generateWeatherParticlesHTML(weather, isOutdoor)}
                     <div class="sparkles" id="sparkles"></div>
-                    <div class="pet-container" id="pet-container">
+                    <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Give ${petDisplayName} cuddles">
                         ${generateThoughtBubble(pet)}
                         ${generatePetSVG(pet, mood)}
                         ${generateNeedsAttentionDot(pet)}
-                    </div>
+                    </button>
                     <div class="pet-info">
                         <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span> ${generatePetAgeHudHTML(pet)} ${generateStreakHudHTML()}</p>
                         ${pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && PERSONALITY_TRAITS[pet.personality] ? `<p class="personality-badge" title="${PERSONALITY_TRAITS[pet.personality].description}">${PERSONALITY_TRAITS[pet.personality].emoji} ${PERSONALITY_TRAITS[pet.personality].label}${pet.growthStage === 'elder' ? ' · 🏛️ Elder' : ''}</p>` : ''}
@@ -1395,7 +1419,7 @@
                 <section class="needs-section" aria-label="Pet needs" aria-live="polite" aria-atomic="false">
                     <div class="needs-row">
                         <div class="need-bubble ${needClass(pet.hunger)}" id="hunger-bubble"
-                             role="progressbar" aria-label="Hunger level" aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100"
+                             role="progressbar" aria-label="Hunger level" aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Hunger ${pet.hunger} percent, ${needStatusText(pet.hunger)}"
                              style="--progress: ${pet.hunger}; --ring-color: ${getNeedColor(pet.hunger)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🍎</span>
@@ -1403,7 +1427,7 @@
                             ${getNeedStatusIcon(pet.hunger) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.hunger)}</span>` : ''}
                         </div>
                         <div class="need-bubble ${needClass(pet.cleanliness)}" id="clean-bubble"
-                             role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100"
+                             role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Cleanliness ${pet.cleanliness} percent, ${needStatusText(pet.cleanliness)}"
                              style="--progress: ${pet.cleanliness}; --ring-color: ${getNeedColor(pet.cleanliness)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">🛁</span>
@@ -1411,7 +1435,7 @@
                             ${getNeedStatusIcon(pet.cleanliness) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.cleanliness)}</span>` : ''}
                         </div>
                         <div class="need-bubble ${needClass(pet.happiness)}" id="happy-bubble"
-                             role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100"
+                             role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Happiness ${pet.happiness} percent, ${needStatusText(pet.happiness)}"
                              style="--progress: ${pet.happiness}; --ring-color: ${getNeedColor(pet.happiness)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">💖</span>
@@ -1419,7 +1443,7 @@
                             ${getNeedStatusIcon(pet.happiness) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.happiness)}</span>` : ''}
                         </div>
                         <div class="need-bubble ${needClass(pet.energy)}" id="energy-bubble"
-                             role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100"
+                             role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Energy ${pet.energy} percent, ${needStatusText(pet.energy)}"
                              style="--progress: ${pet.energy}; --ring-color: ${getNeedColor(pet.energy)};">
                             <div class="need-bubble-ring"></div>
                             <span class="need-bubble-icon" aria-hidden="true">😴</span>
@@ -1435,7 +1459,7 @@
                         <span class="wellness-bar-value" id="wellness-value">${getWellnessLabel(pet)}</span>
                         <span class="wellness-bar-pct" id="wellness-pct">${getWellnessPercent(pet)}%</span>
                     </div>
-                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness: ${getWellnessPercent(pet)} percent" aria-valuenow="${getWellnessPercent(pet)}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness: ${getWellnessPercent(pet)} percent" aria-valuenow="${getWellnessPercent(pet)}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Overall wellness ${getWellnessPercent(pet)} percent, ${getWellnessLabel(pet)}">
                         <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${getWellnessPercent(pet)}%;"></div>
                     </div>
                 </div>
@@ -1682,7 +1706,7 @@
                 if (!result || !result.ok) {
                     if (result && result.reason === 'cooldown') {
                         const sec = Math.max(1, Math.ceil((result.remainingMs || 0) / 1000));
-                        showToast(`🕒 ${sec}s until you can ${typeof getTreasureActionLabel === 'function' ? getTreasureActionLabel(roomId).toLowerCase() : 'search'} again.`, '#FFA726');
+                        showCooldownToast('treasure-hunt', `🕒 ${sec}s until you can ${typeof getTreasureActionLabel === 'function' ? getTreasureActionLabel(roomId).toLowerCase() : 'search'} again.`);
                     } else {
                         showToast('No hidden treasures right now.', '#FFA726');
                     }
@@ -1815,12 +1839,6 @@
                 streakHud.addEventListener('click', () => {
                     if (typeof showRewardsHub === 'function') showRewardsHub();
                 });
-                streakHud.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        if (typeof showRewardsHub === 'function') showRewardsHub();
-                    }
-                });
             }
 
             // Render garden UI if in garden room
@@ -1835,16 +1853,8 @@
             const petContainer = document.getElementById('pet-container');
             if (petContainer) {
                 petContainer.classList.add('pettable');
-                petContainer.setAttribute('role', 'button');
-                petContainer.setAttribute('tabindex', '0');
-                petContainer.setAttribute('aria-label', 'Click or tap your pet to give it cuddles!');
+                petContainer.setAttribute('aria-label', `Give ${petDisplayName} cuddles`);
                 petContainer.addEventListener('click', () => careAction('cuddle'));
-                petContainer.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        careAction('cuddle');
-                    }
-                });
             }
 
             // Only restart timers, earcons, and idle animations when they aren't
@@ -1869,15 +1879,6 @@
                 }
             }
             _petPhaseLastRoom = currentRoom;
-
-            // Notify VoiceOver that the screen content has changed
-            // Setting focus to the game-content container helps VoiceOver
-            // re-discover the new DOM content after innerHTML replacement
-            const gameContent = document.getElementById('game-content');
-            if (gameContent) {
-                gameContent.setAttribute('tabindex', '-1');
-                gameContent.focus({ preventScroll: true });
-            }
 
             // Show first-time onboarding hints
             showOnboardingHints(currentRoom);
@@ -1911,8 +1912,20 @@
             } catch (e) {}
         }
 
+        function isDialogOpen() {
+            if (typeof _modalEscapeStack !== 'undefined' && Array.isArray(_modalEscapeStack) && _modalEscapeStack.length > 0) {
+                return true;
+            }
+            return !!document.querySelector('[role="dialog"], [role="alertdialog"], .modal-overlay, .naming-overlay, .settings-overlay, .interaction-overlay, .feed-menu-overlay, .minigame-menu-overlay, .competition-overlay, .tutorial-overlay');
+        }
+
+        function clearOnboardingTooltips() {
+            document.querySelectorAll('.onboarding-tooltip').forEach((el) => el.remove());
+        }
+
         function showOnboardingHints(currentRoom) {
             const shown = getShownHints();
+            if (isDialogOpen() || document.querySelector('.toast')) return;
 
             for (const hint of ONBOARDING_HINTS) {
                 if (shown[hint.id] || _onboardingShownThisSession[hint.id]) continue;
@@ -1923,11 +1936,16 @@
                 if (hint.trigger === 'multi_pet' && gameState.pets && gameState.pets.length >= 2) shouldShow = true;
 
                 if (shouldShow) {
-                    _onboardingShownThisSession[hint.id] = true;
-                    markHintShown(hint.id);
+                    _onboardingShownThisSession[hint.id] = 'pending';
                     // Small fixed delay for hint display (avoids ever-growing stagger accumulation)
                     const delay = 0;
                     setTimeout(() => {
+                        if (isDialogOpen() || document.querySelector('.toast')) {
+                            delete _onboardingShownThisSession[hint.id];
+                            return;
+                        }
+                        _onboardingShownThisSession[hint.id] = true;
+                        markHintShown(hint.id);
                         showOnboardingTooltip(hint.message);
                     }, 1500 + delay);
                     // Only show one hint per render to avoid overwhelming
@@ -1937,9 +1955,11 @@
         }
 
         function showOnboardingTooltip(message) {
+            if (!message || isDialogOpen() || document.querySelector('.toast')) return;
+            clearOnboardingTooltips();
             const tooltip = document.createElement('div');
             tooltip.className = 'onboarding-tooltip';
-            tooltip.setAttribute('role', 'status');
+            if (!isDialogOpen()) tooltip.setAttribute('role', 'status');
             tooltip.innerHTML = `
                 <span class="onboarding-icon" aria-hidden="true">💡</span>
                 <span class="onboarding-text">${escapeHTML(message)}</span>
@@ -1948,9 +1968,25 @@
             document.body.appendChild(tooltip);
 
             const dismiss = tooltip.querySelector('.onboarding-dismiss');
-            dismiss.addEventListener('click', () => tooltip.remove());
+            let removed = false;
+            let busyWatcher = null;
+            const dismissOnInteract = (event) => {
+                if (!tooltip.contains(event.target)) removeTooltip();
+            };
+            function removeTooltip() {
+                if (removed) return;
+                removed = true;
+                document.removeEventListener('pointerdown', dismissOnInteract, true);
+                if (busyWatcher) clearInterval(busyWatcher);
+                tooltip.remove();
+            }
+            dismiss.addEventListener('click', removeTooltip);
+            document.addEventListener('pointerdown', dismissOnInteract, true);
+            busyWatcher = setInterval(() => {
+                if (isDialogOpen()) removeTooltip();
+            }, 250);
             // Auto-dismiss after 8 seconds
-            setTimeout(() => { if (tooltip.parentNode) tooltip.remove(); }, 8000);
+            setTimeout(() => { if (tooltip.parentNode) removeTooltip(); }, 8000);
         }
 
         // ==================== TOAST NOTIFICATIONS ====================
@@ -2097,7 +2133,29 @@
             }, 220);
         }
 
-        function showToast(message, color = '#66BB6A') {
+        const TOAST_ANNOUNCE_PATTERNS = [
+            /achievement/i,
+            /badge/i,
+            /trophy/i,
+            /daily task/i,
+            /warning/i,
+            /critical/i,
+            /error/i,
+            /failed/i,
+            /can(?:not|n't)/i,
+            /ready/i,
+            /bonus/i,
+            /joined your family/i
+        ];
+        const _toastAnnounceLastByText = new Map();
+
+        function shouldAnnounceToast(plainText, options) {
+            if (options && options.announce === true) return true;
+            if (options && options.announce === false) return false;
+            return TOAST_ANNOUNCE_PATTERNS.some((pattern) => pattern.test(plainText));
+        }
+
+        function showToast(message, color = '#66BB6A', options = {}) {
             const plainText = sanitizeToastText(message);
             const safeMessage = escapeHTML(plainText);
             addToNotificationHistory(plainText);
@@ -2128,8 +2186,16 @@
             toast.innerHTML = wrapEmojiForAria(safeMessage);
             container.appendChild(toast);
 
-            if (plainText && typeof announce === 'function') {
-                announce(plainText);
+            clearOnboardingTooltips();
+
+            if (plainText && typeof announce === 'function' && shouldAnnounceToast(plainText, options)) {
+                const key = plainText.trim().toLowerCase();
+                const now = Date.now();
+                const last = _toastAnnounceLastByText.get(key) || 0;
+                if (now - last > 1800) {
+                    _toastAnnounceLastByText.set(key, now);
+                    announce(plainText, !!options.assertive);
+                }
             }
 
             // Remove after animation completes
@@ -2156,11 +2222,29 @@
         let actionCooldown = false;
         let actionCooldownTimer = null;
         const ACTION_COOLDOWN_MS = 600;
+        let _lastCooldownAnnouncement = 0;
+        const _cooldownToastByKey = {};
+
+        function announceCooldownOnce() {
+            const now = Date.now();
+            if (now - _lastCooldownAnnouncement < 1600) return;
+            _lastCooldownAnnouncement = now;
+            if (typeof announce === 'function') announce('Actions are cooling down. Please wait a moment.');
+        }
+
+        function showCooldownToast(key, message) {
+            const now = Date.now();
+            const last = _cooldownToastByKey[key] || 0;
+            if (now - last < 1800) return;
+            _cooldownToastByKey[key] = now;
+            showToast(message, '#FFA726', { announce: false });
+        }
 
         // Spawn themed particles above the pet on care actions
         function spawnCareParticles(container, emojis, count) {
             if (!container) return;
-            count = count || 5;
+            const visualLoad = document.querySelectorAll('.toast, .onboarding-tooltip').length;
+            count = count || (visualLoad > 0 ? 3 : 4);
             for (let i = 0; i < count; i++) {
                 const p = document.createElement('span');
                 p.className = 'care-particle';
@@ -2243,7 +2327,7 @@
         function careAction(action) {
             // Prevent rapid clicking
             if (actionCooldown) {
-                announce('Action cooling down');
+                announceCooldownOnce();
                 return;
             }
 
@@ -2270,7 +2354,6 @@
                 actionCooldownTimer = null;
                 // Re-query current buttons in case renderPetPhase() rebuilt the DOM.
                 restoreActionButtonsFromCooldown();
-                announce('Actions ready');
             }, ACTION_COOLDOWN_MS);
 
             const pet = gameState.pet;
@@ -2601,6 +2684,19 @@
         function updateNeedDisplays(silent) {
             const pet = gameState.pet;
             if (!pet) return;
+            const labels = {
+                hunger: 'Hunger',
+                cleanliness: 'Cleanliness',
+                happiness: 'Happiness',
+                energy: 'Energy'
+            };
+            const statusForA11y = (value) => {
+                if (value <= 15) return 'critical';
+                if (value <= 25) return 'very low';
+                if (value <= 45) return 'low';
+                if (value <= 70) return 'fair';
+                return 'good';
+            };
 
             // Helper to update a bubble indicator with enhanced warning classes
             // When silent=true (passive decay), skip aria-valuenow updates to avoid
@@ -2620,6 +2716,9 @@
                 }
                 if (!silent) {
                     bubble.setAttribute('aria-valuenow', value);
+                    if (labels[statKey]) {
+                        bubble.setAttribute('aria-valuetext', `${labels[statKey]} ${value} percent, ${statusForA11y(value)}`);
+                    }
                 }
                 // Update status icon for colorblind accessibility
                 const statusIcon = getNeedStatusIcon(value);
@@ -3383,6 +3482,9 @@
         function showBirthdayCelebration(growthStage, pet) {
             const rewardData = BIRTHDAY_REWARDS[growthStage];
             if (!rewardData) return;
+            const returnFocusEl = (document.activeElement && typeof document.activeElement.focus === 'function')
+                ? document.activeElement
+                : null;
 
             // Enhanced celebration: flash + confetti + fireworks + size-up animation
             createCelebrationFlash();
@@ -3461,11 +3563,11 @@
                     document.querySelectorAll('.confetti-container').forEach(c => c.remove());
                     const confettiStyleEl = document.getElementById('confetti-style');
                     if (confettiStyleEl) confettiStyleEl.remove();
-                    // Return focus to the game content area
-                    const gameContent = document.getElementById('game-content');
-                    if (gameContent) {
-                        gameContent.setAttribute('tabindex', '-1');
-                        gameContent.focus({ preventScroll: true });
+                    if (returnFocusEl && document.contains(returnFocusEl) && typeof returnFocusEl.focus === 'function') {
+                        returnFocusEl.focus();
+                    } else {
+                        const fallback = document.getElementById('pet-btn') || document.getElementById('feed-btn');
+                        if (fallback) fallback.focus();
                     }
                 });
             }
@@ -3481,6 +3583,9 @@
 
         function showEvolutionCelebration(pet, evolutionData) {
             if (!pet) return;
+            const returnFocusEl = (document.activeElement && typeof document.activeElement.focus === 'function')
+                ? document.activeElement
+                : null;
             // Enhanced celebration: flash + double confetti + fireworks
             createCelebrationFlash();
             createConfetti();
@@ -3542,6 +3647,12 @@
                     // Re-render to show evolved appearance
                     if (typeof renderPetPhase === 'function') {
                         renderPetPhase();
+                    }
+                    if (returnFocusEl && document.contains(returnFocusEl) && typeof returnFocusEl.focus === 'function') {
+                        returnFocusEl.focus();
+                    } else {
+                        const fallback = document.getElementById('pet-btn') || document.getElementById('feed-btn');
+                        if (fallback) fallback.focus();
                     }
                 });
             }
@@ -5216,7 +5327,7 @@
 
                 if (!result.success) {
                     if (result.reason === 'cooldown') {
-                        showToast('These pets need a short break before interacting again!', '#FFA726');
+                        showCooldownToast('pet-interaction', 'Pets need a short break before interacting again.');
                     }
                     return;
                 }
@@ -5257,6 +5368,8 @@
             function closeInteraction() {
                 popModalEscape(closeInteraction);
                 overlay.remove();
+                const trigger = document.getElementById('interact-btn');
+                if (trigger) trigger.focus();
             }
 
             document.getElementById('interaction-close').addEventListener('click', closeInteraction);
@@ -6222,7 +6335,7 @@
                         const res = befriendNpc(npcId);
                         if (!res || !res.ok) {
                             if (res && res.reason === 'cooldown') {
-                                showToast(`🤝 Try again in ${formatCountdown(res.remainingMs || 0)}.`, '#FFA726');
+                                showCooldownToast('npc-befriend', `🤝 Try again in ${formatCountdown(res.remainingMs || 0)}.`);
                             } else {
                                 showToast('Could not befriend this NPC right now.', '#FFA726');
                             }
