@@ -1305,14 +1305,49 @@ function getRelationshipProgress(points) {
 // ==================== MODAL ESCAPE KEY STACK ====================
 // Ensures only the topmost modal/overlay responds to the Escape key.
 const _modalEscapeStack = [];
+let _modalLastReturnAnnounceAt = 0;
+
+function updateBackgroundInertState() {
+    if (typeof document === 'undefined') return;
+    const appRoot = document.querySelector('main.game-container');
+    if (!appRoot) return;
+    const hasModal = _modalEscapeStack.length > 0;
+    if (hasModal) {
+        appRoot.setAttribute('aria-hidden', 'true');
+        appRoot.setAttribute('inert', '');
+        document.body.classList.add('modal-open');
+    } else {
+        appRoot.removeAttribute('aria-hidden');
+        appRoot.removeAttribute('inert');
+        document.body.classList.remove('modal-open');
+    }
+    if (typeof window !== 'undefined' && typeof window.setUiBusyState === 'function') {
+        window.setUiBusyState();
+    }
+}
 
 function pushModalEscape(closeFn) {
     _modalEscapeStack.push(closeFn);
+    updateBackgroundInertState();
 }
 
 function popModalEscape(closeFn) {
     const idx = _modalEscapeStack.lastIndexOf(closeFn);
     if (idx !== -1) _modalEscapeStack.splice(idx, 1);
+    updateBackgroundInertState();
+    if (_modalEscapeStack.length === 0) {
+        setTimeout(() => {
+            const active = document.activeElement;
+            if (!active || typeof announce !== 'function') return;
+            const label = active.getAttribute('aria-label') || active.textContent || '';
+            const compact = String(label).trim().replace(/\s+/g, ' ').slice(0, 48);
+            if (!compact) return;
+            const now = Date.now();
+            if (now - _modalLastReturnAnnounceAt < 1200) return;
+            _modalLastReturnAnnounceAt = now;
+            announce(`Returned to ${compact}.`);
+        }, 60);
+    }
 }
 
 if (typeof document !== 'undefined' && !window.__modalEscapeListenerRegistered) {

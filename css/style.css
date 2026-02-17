@@ -12713,3 +12713,188 @@ body.has-core-care-dock .toast-container {
 [data-theme="dark"] .room-art-layer {
     opacity: 0.18;
 }
+
+/* ===== QoL Accessibility Polish ===== */
+.skip-link-secondary {
+    left: 150px;
+}
+
+.region-heading {
+    font-size: 0.86rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 900;
+    text-align: left;
+    margin: 8px 4px 4px;
+    color: #244552;
+}
+
+.needs-section {
+    border: 1px solid rgba(44, 98, 120, 0.2);
+    border-radius: 12px;
+}
+
+.actions-section {
+    border-top: 2px solid rgba(44, 98, 120, 0.22);
+    padding-top: 8px;
+}
+
+.top-action-btn-icon,
+.action-btn .btn-icon,
+.core-care-icon,
+.room-btn-icon {
+    width: 1.25em;
+    min-width: 1.25em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.top-action-btn-label,
+.kbd-hint,
+.action-btn-tooltip,
+.favorites-label,
+.need-bubble-value,
+.care-quality-hint,
+.name-char-count {
+    color: #24363c;
+}
+
+.achievement-count-badge,
+.daily-complete-badge,
+.explore-alert-badge,
+.garden-ready-badge {
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    font-weight: 800;
+}
+
+.room-btn.active {
+    box-shadow: 0 0 0 3px #0f7a9d inset, 0 0 0 2px #ffffff;
+    background: linear-gradient(180deg, #e9f9ff, #c9f0ff);
+    transform: translateY(-1px);
+}
+
+.room-btn.active .room-btn-label {
+    font-weight: 900;
+    color: #0d5f7b;
+}
+
+.tools-menu-modal {
+    max-width: 320px;
+}
+
+.tools-menu-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 10px 0 12px;
+}
+
+.tools-menu-btn,
+.tools-menu-close,
+.settings-preset-btn,
+.settings-choice {
+    border: 1px solid #b6c8d3;
+    border-radius: 10px;
+    padding: 9px 10px;
+    background: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.settings-choice.active {
+    background: #e2f6ff;
+    border-color: #60a8c7;
+}
+
+.settings-toggle-state {
+    min-width: 28px;
+    font-size: 0.83rem;
+    font-weight: 800;
+    color: #294451;
+}
+
+.favorite-slot-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.favorite-slot-hint {
+    font-size: 0.63rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: #345564;
+}
+
+.shortcut-strip {
+    margin: 2px 2px 8px;
+    text-align: left;
+    font-size: 0.73rem;
+    color: #2a4956;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.shortcut-strip kbd {
+    font-size: 0.68rem;
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid #9db6c3;
+    background: #f6fbff;
+    margin-right: 2px;
+}
+
+.duplicate-core-action {
+    opacity: 0.72;
+}
+
+.action-btn-tooltip {
+    max-width: 130px;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.coach-checklist {
+    right: 50%;
+    transform: translateX(50%);
+}
+
+body.ui-busy .ambient-element,
+body.ui-busy .weather-particle,
+body.ui-busy .speech-bubble,
+body.ui-busy .onboarding-tooltip {
+    animation-play-state: paused !important;
+}
+
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+}
+
+@media (max-width: 480px) {
+    .game-container {
+        padding: 14px;
+    }
+    .top-action-buttons {
+        gap: 6px;
+    }
+    .top-action-btn {
+        min-width: 62px;
+        padding: 6px 4px;
+    }
+    .needs-section {
+        margin-top: 4px;
+    }
+    .wellness-bar-wrap {
+        margin-top: 6px;
+    }
+    .actions-section {
+        margin-top: 6px;
+    }
+}
