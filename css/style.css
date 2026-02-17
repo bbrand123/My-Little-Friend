@@ -12084,6 +12084,25 @@
     gap: 8px;
 }
 
+.economy-overlay {
+    z-index: var(--z-modal, 1200);
+}
+
+.economy-card {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 9px;
+    background: rgba(255, 255, 255, 0.75);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+[data-theme="dark"] .economy-card {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.2);
+}
+
 .explore-biome-card.locked {
     opacity: 0.76;
     filter: grayscale(0.15);

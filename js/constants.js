@@ -833,6 +833,314 @@ const GARDEN_CROPS = {
     }
 };
 
+// ==================== ECONOMY & TRADING ====================
+
+const ECONOMY_BALANCE = {
+    // Price side
+    shopPriceMultiplier: 0.92,
+    rareMarketPriceMultiplier: 0.9,
+    mysteryEggPriceMultiplier: 0.85,
+    sellPriceMultiplier: 0.88,
+    // Reward side
+    minigameRewardMultiplier: 0.88,
+    harvestRewardMultiplier: 1.12,
+    dailyCompletionReward: 70,
+    minigameRewardCap: 74
+};
+
+const ECONOMY_SHOP_ITEMS = {
+    food: {
+        kibbleBag: {
+            id: 'kibbleBag',
+            name: 'Kibble Bag',
+            emoji: '🥣',
+            basePrice: 26,
+            effects: { hunger: 18, happiness: 2 },
+            description: 'Reliable daily pet food.'
+        },
+        veggieMix: {
+            id: 'veggieMix',
+            name: 'Veggie Mix',
+            emoji: '🥗',
+            basePrice: 32,
+            effects: { hunger: 16, happiness: 6, energy: 3 },
+            description: 'Fresh veggies for extra pep.'
+        },
+        deluxePlatter: {
+            id: 'deluxePlatter',
+            name: 'Deluxe Platter',
+            emoji: '🍱',
+            basePrice: 58,
+            effects: { hunger: 28, happiness: 10, energy: 5 },
+            description: 'Premium meal with strong stat boosts.',
+            rarity: 'rare'
+        }
+    },
+    toys: {
+        squeakyBall: {
+            id: 'squeakyBall',
+            name: 'Squeaky Ball',
+            emoji: '🟠',
+            basePrice: 34,
+            effects: { happiness: 18, energy: -3 },
+            description: 'Classic toy for quick play.'
+        },
+        puzzleCube: {
+            id: 'puzzleCube',
+            name: 'Puzzle Cube',
+            emoji: '🧩',
+            basePrice: 48,
+            effects: { happiness: 14, energy: -1, hunger: -2 },
+            description: 'Brain game toy that keeps pets engaged.'
+        },
+        cometFrisbee: {
+            id: 'cometFrisbee',
+            name: 'Comet Frisbee',
+            emoji: '🥏',
+            basePrice: 64,
+            effects: { happiness: 22, energy: -6, hunger: -3 },
+            description: 'High-energy play gear.',
+            rarity: 'rare'
+        }
+    },
+    medicine: {
+        herbalDrops: {
+            id: 'herbalDrops',
+            name: 'Herbal Drops',
+            emoji: '🧪',
+            basePrice: 42,
+            effects: { hunger: 6, cleanliness: 8, happiness: 10, energy: 8 },
+            description: 'Gentle daily care medicine.'
+        },
+        medKit: {
+            id: 'medKit',
+            name: 'Pet Med Kit',
+            emoji: '🩹',
+            basePrice: 76,
+            effects: { hunger: 12, cleanliness: 14, happiness: 15, energy: 14 },
+            description: 'Strong all-stat recovery.',
+            rarity: 'rare'
+        }
+    },
+    accessories: {
+        ribbonBow: {
+            id: 'ribbonBow',
+            name: 'Ribbon Bow',
+            emoji: '🎀',
+            basePrice: 52,
+            accessoryId: 'ribbonBow',
+            description: 'A bright show-time bow.'
+        },
+        sunglasses: {
+            id: 'sunglasses',
+            name: 'Sunglasses',
+            emoji: '🕶️',
+            basePrice: 72,
+            accessoryId: 'sunglasses',
+            description: 'Stylish cool-weather shades.'
+        },
+        wizardHat: {
+            id: 'wizardHat',
+            name: 'Wizard Hat',
+            emoji: '🧙',
+            basePrice: 110,
+            accessoryId: 'wizard',
+            description: 'Rare magical headwear.',
+            rarity: 'rare'
+        }
+    },
+    seeds: {
+        carrotSeeds: {
+            id: 'carrotSeeds',
+            name: 'Carrot Seeds',
+            emoji: '🥕',
+            basePrice: 14,
+            cropId: 'carrot',
+            quantity: 3,
+            description: 'Fast-growing starter seeds.'
+        },
+        tomatoSeeds: {
+            id: 'tomatoSeeds',
+            name: 'Tomato Seeds',
+            emoji: '🍅',
+            basePrice: 18,
+            cropId: 'tomato',
+            quantity: 3,
+            description: 'Balanced growth and rewards.'
+        },
+        strawberrySeeds: {
+            id: 'strawberrySeeds',
+            name: 'Strawberry Seeds',
+            emoji: '🍓',
+            basePrice: 24,
+            cropId: 'strawberry',
+            quantity: 2,
+            description: 'Sweet crop with strong happiness boost.'
+        },
+        pumpkinSeeds: {
+            id: 'pumpkinSeeds',
+            name: 'Pumpkin Seeds',
+            emoji: '🎃',
+            basePrice: 28,
+            cropId: 'pumpkin',
+            quantity: 2,
+            description: 'Hearty seasonal harvest seeds.'
+        },
+        sunflowerSeeds: {
+            id: 'sunflowerSeeds',
+            name: 'Sunflower Seeds',
+            emoji: '🌻',
+            basePrice: 19,
+            cropId: 'sunflower',
+            quantity: 3,
+            description: 'Mood-boosting flower seeds.'
+        },
+        appleSeeds: {
+            id: 'appleSeeds',
+            name: 'Apple Seeds',
+            emoji: '🍎',
+            basePrice: 32,
+            cropId: 'apple',
+            quantity: 2,
+            description: 'Slow but high-value tree seeds.'
+        }
+    },
+    decorations: {
+        plantDecor: {
+            id: 'plantDecor',
+            name: 'Plant Decor Kit',
+            emoji: '🪴',
+            basePrice: 48,
+            decorationId: 'plants',
+            description: 'Natural room accents.'
+        },
+        balloonDecor: {
+            id: 'balloonDecor',
+            name: 'Balloon Decor Kit',
+            emoji: '🎈',
+            basePrice: 54,
+            decorationId: 'balloons',
+            description: 'Party-ready room style.'
+        },
+        lightDecor: {
+            id: 'lightDecor',
+            name: 'Fairy Light Kit',
+            emoji: '✨',
+            basePrice: 62,
+            decorationId: 'lights',
+            description: 'Soft glowing ambient lights.'
+        },
+        toyDecor: {
+            id: 'toyDecor',
+            name: 'Toy Box Decor',
+            emoji: '🧸',
+            basePrice: 58,
+            decorationId: 'toys',
+            description: 'Playful room atmosphere.'
+        }
+    }
+};
+
+const ECONOMY_RARE_MARKET_POOL = [
+    { id: 'rare_stardust', kind: 'loot', itemId: 'stardust', quantity: 1, basePrice: 168, rarity: 'rare' },
+    { id: 'rare_rune', kind: 'loot', itemId: 'runeFragment', quantity: 1, basePrice: 154, rarity: 'rare' },
+    { id: 'rare_pearl', kind: 'loot', itemId: 'tidePearl', quantity: 1, basePrice: 132, rarity: 'rare' },
+    { id: 'rare_map', kind: 'loot', itemId: 'mysteryMap', quantity: 1, basePrice: 145, rarity: 'rare' },
+    { id: 'rare_hat', kind: 'accessory', itemId: 'wizardHat', quantity: 1, basePrice: 190, rarity: 'rare' },
+    { id: 'rare_food', kind: 'food', itemId: 'deluxePlatter', quantity: 2, basePrice: 118, rarity: 'rare' },
+    { id: 'rare_med', kind: 'medicine', itemId: 'medKit', quantity: 1, basePrice: 145, rarity: 'rare' },
+    { id: 'rare_seed_bundle', kind: 'seed', itemId: 'appleSeeds', quantity: 4, basePrice: 98, rarity: 'rare' },
+    { id: 'rare_decor', kind: 'decoration', itemId: 'lightDecor', quantity: 1, basePrice: 136, rarity: 'rare' }
+];
+
+const CRAFTED_ITEMS = {
+    heartyStew: {
+        id: 'heartyStew',
+        name: 'Hearty Stew',
+        emoji: '🥘',
+        category: 'food',
+        effects: { hunger: 30, happiness: 8, energy: 6 },
+        description: 'Crafted warm meal from fresh crops.'
+    },
+    glowTonic: {
+        id: 'glowTonic',
+        name: 'Glow Tonic',
+        emoji: '🧴',
+        category: 'medicine',
+        effects: { hunger: 10, cleanliness: 16, happiness: 14, energy: 12 },
+        description: 'Handmade medicine infused with exploration finds.'
+    },
+    adventureToy: {
+        id: 'adventureToy',
+        name: 'Adventure Toy',
+        emoji: '🧸',
+        category: 'toys',
+        effects: { happiness: 26, energy: -5, hunger: -3 },
+        description: 'Crafted toy from treasure scraps and farm goods.'
+    }
+};
+
+const CRAFTING_RECIPES = {
+    heartyStewRecipe: {
+        id: 'heartyStewRecipe',
+        name: 'Hearty Stew',
+        emoji: '🥘',
+        outputType: 'crafted',
+        outputId: 'heartyStew',
+        outputCount: 1,
+        craftCost: 12,
+        ingredients: [
+            { source: 'crop', id: 'carrot', count: 1 },
+            { source: 'crop', id: 'tomato', count: 1 },
+            { source: 'crop', id: 'pumpkin', count: 1 }
+        ]
+    },
+    glowTonicRecipe: {
+        id: 'glowTonicRecipe',
+        name: 'Glow Tonic',
+        emoji: '🧴',
+        outputType: 'crafted',
+        outputId: 'glowTonic',
+        outputCount: 1,
+        craftCost: 16,
+        ingredients: [
+            { source: 'crop', id: 'strawberry', count: 1 },
+            { source: 'loot', id: 'glowMushroom', count: 1 },
+            { source: 'loot', id: 'ancientCoin', count: 1 }
+        ]
+    },
+    adventureToyRecipe: {
+        id: 'adventureToyRecipe',
+        name: 'Adventure Toy',
+        emoji: '🧸',
+        outputType: 'crafted',
+        outputId: 'adventureToy',
+        outputCount: 1,
+        craftCost: 20,
+        ingredients: [
+            { source: 'loot', id: 'forestCharm', count: 1 },
+            { source: 'loot', id: 'cloudRibbon', count: 1 },
+            { source: 'crop', id: 'sunflower', count: 1 }
+        ]
+    },
+    ribbonAccessoryRecipe: {
+        id: 'ribbonAccessoryRecipe',
+        name: 'Ribbon Bow Accessory',
+        emoji: '🎀',
+        outputType: 'accessory',
+        outputId: 'ribbonBow',
+        outputCount: 1,
+        craftCost: 22,
+        ingredients: [
+            { source: 'loot', id: 'stardust', count: 1 },
+            { source: 'loot', id: 'forestCharm', count: 1 },
+            { source: 'crop', id: 'apple', count: 1 }
+        ]
+    }
+};
+
+const ECONOMY_AUCTION_SLOTS = ['slotA', 'slotB', 'slotC'];
+
 const MAX_GARDEN_PLOTS = 6;
 
 // Progressive plot unlocking thresholds (harvests needed for each plot)
