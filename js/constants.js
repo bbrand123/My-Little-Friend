@@ -1313,6 +1313,10 @@ function updateBackgroundInertState() {
     if (!appRoot) return;
     const hasModal = _modalEscapeStack.length > 0;
     if (hasModal) {
+        const active = document.activeElement;
+        if (active && appRoot.contains(active) && typeof active.blur === 'function') {
+            active.blur();
+        }
         appRoot.setAttribute('aria-hidden', 'true');
         appRoot.setAttribute('inert', '');
         document.body.classList.add('modal-open');
