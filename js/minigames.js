@@ -519,6 +519,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(fetchState.score * 2, 10), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger - Math.min(fetchState.score, 5), 0, 100);
+                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('fetch', fetchState.score) : 0;
 
                 const isNewBest = updateMinigameHighScore('fetch', fetchState.score);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -529,7 +530,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}!${bestMsg}`);
+                announce(`Fetch game over! ${fetchState.score} catches! Happiness +${bonus}! Coins +${coinReward}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Fetch: ${fetchState.score}!`, '#FFD700');
                     showMinigameConfetti();
@@ -537,6 +538,7 @@
                 } else if (fetchState.score > 0) {
                     showMinigameConfetti();
                 }
+                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Fetch!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -936,6 +938,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger + Math.min(hideSeekState.treatsFound * 2, 10), 0, 100);
+                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('hideseek', hideSeekState.treatsFound) : 0;
 
                 const isNewBest = updateMinigameHighScore('hideseek', hideSeekState.treatsFound);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -945,7 +948,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}!${bestMsg}`);
+                announce(`Hide and Seek over! ${hideSeekState.treatsFound} treats found! Happiness +${bonus}! Coins +${coinReward}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Hide & Seek: ${hideSeekState.treatsFound}!`, '#FFD700');
                     showMinigameConfetti();
@@ -953,6 +956,7 @@
                 } else if (hideSeekState.treatsFound > 0) {
                     showMinigameConfetti();
                 }
+                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Hide & Seek!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -1353,6 +1357,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.cleanliness = clamp(gameState.pet.cleanliness + cleanlinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(bubblePopState.score, 10), 0, 100);
+                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('bubblepop', bubblePopState.score) : 0;
 
                 const isNewBest = updateMinigameHighScore('bubblepop', bubblePopState.score);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -1362,7 +1367,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Bubble Pop over! ${bubblePopState.score} bubbles popped! Happiness +${happinessBonus}! Cleanliness +${cleanlinessBonus}!${bestMsg}`);
+                announce(`Bubble Pop over! ${bubblePopState.score} bubbles popped! Happiness +${happinessBonus}! Cleanliness +${cleanlinessBonus}! Coins +${coinReward}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Bubble Pop: ${bubblePopState.score}!`, '#FFD700');
                     showMinigameConfetti();
@@ -1370,6 +1375,7 @@
                 } else if (bubblePopState.score > 0) {
                     showMinigameConfetti();
                 }
+                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Bubble Pop!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -1701,6 +1707,8 @@
                 const matchScore = matchingState.matchesFound === matchingState.totalPairs
                     ? Math.max(1, Math.round(matchingState.totalPairs * 100 / matchingState.moves))
                     : 0;
+                const coinBasis = Math.max(matchingState.matchesFound * 8, Math.round(matchScore / 5));
+                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('matching', coinBasis) : 0;
                 const isNewBest = matchScore > 0 && updateMinigameHighScore('matching', matchScore);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -1709,7 +1717,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}!${bestMsg}`);
+                announce(`Matching Game over! ${matchingState.matchesFound} pairs found in ${matchingState.moves} moves! Happiness +${happinessBonus}! Coins +${coinReward}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Matching: ${matchScore}!`, '#FFD700');
                     showMinigameConfetti();
@@ -1717,6 +1725,7 @@
                 } else if (matchingState.matchesFound > 0) {
                     showMinigameConfetti();
                 }
+                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Matching!`, '#FFD700');
             }
 
             restorePostMiniGameState();
@@ -2079,6 +2088,7 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
+                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('simonsays', roundsCompleted * 10) : 0;
 
                 const isNewBest = updateMinigameHighScore('simonsays', roundsCompleted);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -2088,7 +2098,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Simon Says over! Reached round ${roundsCompleted}! Happiness +${happinessBonus}!${bestMsg}`);
+                announce(`Simon Says over! Reached round ${roundsCompleted}! Happiness +${happinessBonus}! Coins +${coinReward}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Simon Says: Round ${roundsCompleted}!`, '#FFD700');
                     showMinigameConfetti();
@@ -2096,6 +2106,7 @@
                 } else if (simonState.score > 0) {
                     showMinigameConfetti();
                 }
+                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Simon Says!`, '#FFD700');
             }
 
             // Audio context is shared via SoundManager — no cleanup needed here
@@ -2527,6 +2538,7 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
+                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('coloring', Math.round(ratio * 100)) : 0;
 
                 const isNewBest = updateMinigameHighScore('coloring', colored);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -2536,7 +2548,7 @@
                 updateWellnessBar();
                 saveGame();
 
-                announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}!${bestMsg}`);
+                announce(`Coloring done! You colored ${colored} parts! Happiness +${happinessBonus}! Coins +${coinReward}!${bestMsg}`);
                 if (isNewBest) {
                     showToast(`New high score in Coloring: ${colored} parts!`, '#FFD700');
                     showMinigameConfetti();
@@ -2544,6 +2556,7 @@
                 } else if (colored > 0) {
                     showMinigameConfetti();
                 }
+                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Coloring!`, '#FFD700');
             }
 
             restorePostMiniGameState();
