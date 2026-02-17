@@ -6556,6 +6556,14 @@
 
         // ==================== ECONOMY & TRADING MODAL ====================
 
+        function syncEconomyHudDisplay() {
+            const balance = (typeof getCoinBalance === 'function') ? getCoinBalance() : 0;
+            const economyBadge = document.querySelector('#economy-btn .explore-alert-badge');
+            if (economyBadge) economyBadge.textContent = String(Math.min(999, balance));
+            const economyMeta = document.getElementById('top-meta-economy');
+            if (economyMeta) economyMeta.textContent = `${typeof formatCoins === 'function' ? formatCoins(balance) : balance} coins available.`;
+        }
+
         function showEconomyModal() {
             const existing = document.querySelector('.economy-overlay');
             if (existing) {
@@ -6688,6 +6696,7 @@
             function renderEconomyModal() {
                 if (typeof ensureEconomyState === 'function') ensureEconomyState();
                 const balance = (typeof getCoinBalance === 'function') ? getCoinBalance() : 0;
+                syncEconomyHudDisplay();
                 const priceContext = (typeof getEconomyPriceContext === 'function') ? getEconomyPriceContext() : '';
                 const marketOffers = (typeof getRareMarketplaceStock === 'function') ? getRareMarketplaceStock() : [];
                 const crafting = (typeof getCraftingRecipeStates === 'function') ? getCraftingRecipeStates() : [];
@@ -7083,6 +7092,7 @@
             function closeEconomyModal() {
                 popModalEscape(closeEconomyModal);
                 overlay.remove();
+                syncEconomyHudDisplay();
                 const trigger = document.getElementById('economy-btn');
                 if (trigger) trigger.focus();
             }
@@ -7706,7 +7716,8 @@
                 if (trigger) trigger.focus();
             }
 
-            document.getElementById('settings-close').focus();
+            const initialSettingsFocus = document.getElementById('setting-sound') || document.getElementById('settings-close');
+            if (initialSettingsFocus) initialSettingsFocus.focus();
             document.getElementById('settings-close').addEventListener('click', closeSettings);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSettings(); });
             pushModalEscape(closeSettings);

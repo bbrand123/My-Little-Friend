@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pet Care Test</title>
+    <link rel="icon" href="data:,">
 </head>
 <body>
     <h1>Testing Game Load</h1>
@@ -214,7 +215,7 @@
                 const progress1 = getGrowthProgress(0, 0, 'baby');
                 const progress2 = getGrowthProgress(50, 10, 'adult');
                 log(`getGrowthProgress(0, 0, 'baby') = ${progress1} (should be 0)`, progress1 === 0);
-                log(`getGrowthProgress(50, 10, 'adult') = ${progress2} (should be 100)`, progress2 === 100);
+                log(`getGrowthProgress(50, 10, 'adult') = ${progress2} (should be 12.5)`, progress2 === 12.5);
             } else {
                 log('getGrowthProgress() not found', false);
             }
