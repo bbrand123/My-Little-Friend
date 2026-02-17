@@ -317,7 +317,7 @@
             }
 
             // Backyard / Park: Nature sounds - birdsong chirps + gentle wind
-            function createOutdoorEarcon(ctx) {
+            function createOutdoorEarcon(ctx, variant = 'backyard') {
                 const gainNode = ctx.createGain();
                 gainNode.gain.value = 0;
                 gainNode.connect(masterGain);
@@ -351,12 +351,14 @@
                     const chirpGain = ctx.createGain();
 
                     osc.type = 'sine';
-                    const baseFreq = 1200 + Math.random() * 800;
+                    const baseFreq = variant === 'park'
+                        ? (900 + Math.random() * 520)
+                        : (1200 + Math.random() * 800);
                     osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
                     osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.3, ctx.currentTime + 0.05);
                     osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.9, ctx.currentTime + 0.12);
 
-                    chirpGain.gain.setValueAtTime(0.12, ctx.currentTime);
+                    chirpGain.gain.setValueAtTime(variant === 'park' ? 0.09 : 0.12, ctx.currentTime);
                     chirpGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
 
                     osc.connect(chirpGain);
@@ -367,7 +369,9 @@
                     osc.onended = () => { osc.disconnect(); chirpGain.disconnect(); };
 
                     if (!stopped) {
-                        chirpTimerId = setTimeout(playChirp, 1500 + Math.random() * 3000);
+                        const baseGap = variant === 'park' ? 2300 : 1500;
+                        const variance = variant === 'park' ? 3600 : 3000;
+                        chirpTimerId = setTimeout(playChirp, baseGap + Math.random() * variance);
                     }
                 }
 
@@ -393,7 +397,9 @@
                     rustleBuf.onended = () => { rustleBuf.disconnect(); rustleFilter.disconnect(); rustleGain.disconnect(); };
 
                     if (!stopped) {
-                        rustleTimerId = setTimeout(playRustle, 4000 + Math.random() * 6000);
+                        const baseGap = variant === 'park' ? 5200 : 4000;
+                        const variance = variant === 'park' ? 7000 : 6000;
+                        rustleTimerId = setTimeout(playRustle, baseGap + Math.random() * variance);
                     }
                 }
 
@@ -417,9 +423,37 @@
                 garden: createGardenEarcon,
                 kitchen: createKitchenEarcon,
                 bedroom: createBedroomEarcon,
-                backyard: createOutdoorEarcon,
-                park: createOutdoorEarcon
+                backyard: (ctx) => createOutdoorEarcon(ctx, 'backyard'),
+                park: (ctx) => createOutdoorEarcon(ctx, 'park')
             };
+
+            function playRoomStinger(ctx, roomId) {
+                const tones = {
+                    bedroom: [329.63, 392.0],
+                    kitchen: [440.0, 523.25],
+                    bathroom: [523.25, 659.25],
+                    backyard: [392.0, 493.88],
+                    park: [349.23, 440.0],
+                    garden: [493.88, 587.33]
+                };
+                const seq = tones[roomId];
+                if (!seq || !masterGain) return;
+                const t0 = ctx.currentTime;
+                seq.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const st = t0 + idx * 0.08;
+                    g.gain.setValueAtTime(0.08 * sfxVolume, st);
+                    g.gain.exponentialRampToValueAtTime(0.01, st + 0.18);
+                    osc.connect(g);
+                    g.connect(masterGain);
+                    osc.start(st);
+                    osc.stop(st + 0.2);
+                    osc.onended = () => { osc.disconnect(); g.disconnect(); };
+                });
+            }
 
             function fadeIn(gainNode, ctx) {
                 gainNode.gain.cancelScheduledValues(ctx.currentTime);
@@ -469,6 +503,7 @@
                 try {
                     currentEarcon = factory(ctx);
                     fadeIn(currentEarcon.gainNode, ctx);
+                    playRoomStinger(ctx, roomId);
                 } catch (e) {
                     // AudioContext may be closed or invalid — reset so future
                     // room changes can retry instead of being permanently silenced

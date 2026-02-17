@@ -247,6 +247,57 @@
             announce('Mini Games menu opened. Pick a game to play!');
         }
 
+        function showMiniGameSummaryCard(options = {}) {
+            const gameName = options.gameName || 'Mini-game';
+            const score = Number.isFinite(options.score) ? options.score : 0;
+            const coinReward = Number.isFinite(options.coinReward) ? options.coinReward : 0;
+            const statChanges = Array.isArray(options.statChanges) ? options.statChanges : [];
+            const onPlayAgain = typeof options.onPlayAgain === 'function' ? options.onPlayAgain : null;
+
+            const existing = document.querySelector('.minigame-summary-overlay');
+            if (existing) existing.remove();
+
+            const statsHTML = statChanges.map((item) => {
+                const val = Number(item.value) || 0;
+                const sign = val >= 0 ? '+' : '';
+                return `<div class="minigame-summary-stat">${escapeHTML(item.label)}: ${sign}${val}</div>`;
+            }).join('');
+
+            const overlay = document.createElement('div');
+            overlay.className = 'minigame-summary-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', `${gameName} summary`);
+            overlay.innerHTML = `
+                <div class="minigame-summary-card">
+                    <h3 class="minigame-summary-title">${escapeHTML(gameName)} Results</h3>
+                    <p class="minigame-summary-scoreline">Score: <strong>${score}</strong> • Coins: <strong>+${coinReward}</strong></p>
+                    <div class="minigame-summary-grid">${statsHTML}</div>
+                    <div class="minigame-summary-actions">
+                        <button class="minigame-summary-btn secondary" type="button" data-summary-close>Back</button>
+                        <button class="minigame-summary-btn primary" type="button" data-summary-replay>Play Again</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function close() {
+                popModalEscape(close);
+                if (overlay.parentNode) overlay.remove();
+                restorePostMiniGameState();
+            }
+
+            overlay.querySelector('[data-summary-close]')?.addEventListener('click', close);
+            overlay.querySelector('[data-summary-replay]')?.addEventListener('click', () => {
+                close();
+                if (onPlayAgain) onPlayAgain();
+            });
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+            pushModalEscape(close);
+            trapFocus(overlay);
+            overlay.querySelector('[data-summary-replay]')?.focus();
+        }
+
         function startMiniGame(gameId) {
             switch (gameId) {
                 case 'fetch':
@@ -556,9 +607,11 @@
             // Apply rewards based on score
             if (fetchState && fetchState.score > 0 && gameState.pet) {
                 const bonus = Math.min(fetchState.score * 5, 30);
+                const energyLoss = Math.min(fetchState.score * 2, 10);
+                const hungerLoss = Math.min(fetchState.score, 5);
                 gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
-                gameState.pet.energy = clamp(gameState.pet.energy - Math.min(fetchState.score * 2, 10), 0, 100);
-                gameState.pet.hunger = clamp(gameState.pet.hunger - Math.min(fetchState.score, 5), 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy - energyLoss, 0, 100);
+                gameState.pet.hunger = clamp(gameState.pet.hunger - hungerLoss, 0, 100);
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('fetch', fetchState.score) : 0;
 
                 const isNewBest = updateMinigameHighScore('fetch', fetchState.score);
@@ -578,10 +631,21 @@
                 } else if (fetchState.score > 0) {
                     showMinigameConfetti();
                 }
-                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Fetch!`, '#FFD700');
+                showMiniGameSummaryCard({
+                    gameName: 'Fetch',
+                    score: fetchState.score,
+                    coinReward,
+                    statChanges: [
+                        { label: 'Happiness', value: bonus },
+                        { label: 'Energy', value: -energyLoss },
+                        { label: 'Hunger', value: -hungerLoss }
+                    ],
+                    onPlayAgain: () => startFetchGame()
+                });
+            } else {
+                restorePostMiniGameState();
             }
 
-            restorePostMiniGameState();
             fetchState = null;
         }
 

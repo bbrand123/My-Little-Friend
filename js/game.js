@@ -4133,10 +4133,36 @@
             }
         }
 
+        const ROOM_PROP_ASSETS = {
+            bedroom: ['assets/props/toy-bin.svg', 'assets/props/framed-photo.svg'],
+            kitchen: ['assets/props/wall-plant.svg', 'assets/props/tea-shelf.svg'],
+            bathroom: ['assets/props/soap-stack.svg', 'assets/props/towel-rack.svg'],
+            backyard: ['assets/props/kite-rack.svg', 'assets/props/flower-pot.svg'],
+            park: ['assets/props/picnic-basket.svg', 'assets/props/bench-plaque.svg'],
+            garden: ['assets/props/watering-can.svg', 'assets/props/garden-lantern.svg']
+        };
+
+        function getRoomPropTier() {
+            const pet = gameState.pet;
+            const careActions = pet && Number.isFinite(pet.careActions) ? pet.careActions : 0;
+            if (careActions >= 90) return 2;
+            if (careActions >= 35) return 1;
+            return 0;
+        }
+
         function getRoomDecor(roomId, timeOfDay) {
             const room = ROOMS[roomId];
-            if (!room) return '🌸 🌼 🌷';
-            return timeOfDay === 'night' ? room.nightDecorEmoji : room.decorEmoji;
+            if (!room) return '<span class="room-decor-inline">🌸 🌼 🌷</span>';
+            const emojiDecor = timeOfDay === 'night' ? room.nightDecorEmoji : room.decorEmoji;
+            const tier = getRoomPropTier();
+            if (tier <= 0) return `<span class="room-decor-inline">${emojiDecor}</span>`;
+            const assets = ROOM_PROP_ASSETS[roomId] || [];
+            const maxProps = Math.min(tier, assets.length);
+            const props = [];
+            for (let i = 0; i < maxProps; i++) {
+                props.push(`<span class="room-prop room-prop-tier-${i + 1}" aria-hidden="true"><img src="${assets[i]}" alt="" loading="lazy" decoding="async"></span>`);
+            }
+            return `<span class="room-decor-inline">${emojiDecor}</span>${props.join('')}`;
         }
 
         function getReadyCropCount() {
@@ -4242,7 +4268,7 @@
                         // Update room decor
                         const decor = petArea.querySelector('.room-decor');
                         if (decor) {
-                            decor.textContent = getRoomDecor(roomId, gameState.timeOfDay);
+                            decor.innerHTML = getRoomDecor(roomId, gameState.timeOfDay);
                         }
 
                         // Update ambient layer (Feature 2)
@@ -5423,7 +5449,7 @@
             // Update room decor for time of day
             const decor = petArea.querySelector('.room-decor');
             if (decor) {
-                decor.textContent = getRoomDecor(currentRoom, timeOfDay);
+                decor.innerHTML = getRoomDecor(currentRoom, timeOfDay);
             }
 
             // Update celestial elements - remove all existing ones first

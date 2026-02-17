@@ -1451,20 +1451,50 @@
         }
 
         /* Room-specific decor */
-        .room-decor {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
+.room-decor {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
             font-size: 1rem;
             letter-spacing: 12px;
             text-align: center;
             z-index: 1;
             pointer-events: none;
-            opacity: 0.85;
-            text-shadow: var(--text-shadow-decorative);
-            transition: opacity 0.5s ease;
-        }
+    opacity: 0.85;
+    text-shadow: var(--text-shadow-decorative);
+    transition: opacity 0.5s ease;
+}
+
+.room-decor-inline {
+    letter-spacing: 12px;
+}
+
+.room-prop {
+    position: absolute;
+    bottom: 32px;
+    left: 12px;
+    width: 58px;
+    height: 58px;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.28));
+    animation: roomPropPopIn 280ms ease-out both;
+}
+
+.room-prop img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.room-prop.room-prop-tier-2 {
+    left: auto;
+    right: 12px;
+}
+
+@keyframes roomPropPopIn {
+    from { transform: translateY(8px) scale(0.9); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
 
         /* Room label */
         .room-label {
@@ -2675,11 +2705,87 @@
             transition: all 0.2s ease;
         }
 
-        .minigame-close-btn:hover,
-        .minigame-close-btn:focus {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
-        }
+.minigame-close-btn:hover,
+.minigame-close-btn:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.minigame-summary-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: var(--z-overlay-alert);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.minigame-summary-card {
+    width: min(360px, 96vw);
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-overlay);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+}
+
+.minigame-summary-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 900;
+    color: #27404d;
+}
+
+.minigame-summary-scoreline {
+    margin: 0;
+    font-size: 0.92rem;
+    color: #33434d;
+}
+
+.minigame-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.minigame-summary-stat {
+    background: #f4f9ff;
+    border: 1px solid rgba(78, 137, 168, 0.2);
+    border-radius: 10px;
+    padding: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #2c3f48;
+}
+
+.minigame-summary-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.minigame-summary-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.minigame-summary-btn.primary {
+    background: linear-gradient(140deg, #5ab2de, #4a90d9);
+    color: #fff;
+}
+
+.minigame-summary-btn.secondary {
+    background: #eef3f6;
+    color: #29414e;
+}
 
         /* ==================== SHARED MINIGAME STYLES ==================== */
 
@@ -3966,10 +4072,10 @@
             pointer-events: none;
         }
 
-        .toast {
-            background: white;
-            padding: 10px 12px;
-            border-radius: var(--radius-md);
+.toast {
+    background: white;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
             box-shadow: var(--shadow-medium);
             font-size: 0.92rem;
             font-weight: 700;
@@ -3978,9 +4084,23 @@
             animation: toastIn 0.4s ease forwards, toastOut 0.4s ease 3s forwards;
             white-space: normal;
             overflow-wrap: anywhere;
-            border-left: 4px solid var(--toast-color, #66BB6A);
-            max-width: 100%;
-        }
+    border-left: 4px solid var(--toast-color, #66BB6A);
+    max-width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.toast-icon {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.toast-text {
+    min-width: 0;
+}
 
         @media (max-width: 480px) {
             .toast-container {
@@ -12426,6 +12546,12 @@ body.has-core-care-dock .toast-container {
     margin-bottom: 6px;
 }
 
+.coach-checklist-head-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .coach-checklist-title {
     font-size: 0.8rem;
     font-weight: 900;
@@ -12443,6 +12569,31 @@ body.has-core-care-dock .toast-container {
     font-size: 0.7rem;
     font-weight: 800;
     cursor: pointer;
+}
+
+.coach-checklist-toggle {
+    border: none;
+    background: rgba(59, 116, 146, 0.16);
+    color: #2f5872;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.coach-checklist.minimized {
+    width: auto;
+    min-width: 132px;
+    padding: 8px 10px;
+}
+
+.coach-checklist.minimized .coach-checklist-list {
+    display: none;
+}
+
+.coach-checklist.minimized .coach-checklist-skip {
+    display: none;
 }
 
 .coach-checklist-list {
@@ -12520,6 +12671,43 @@ body.has-core-care-dock .toast-container {
     flex-shrink: 0;
 }
 
+.ui-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 1.15em;
+    height: 1.15em;
+    line-height: 1;
+}
+
+.ui-icon {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
+.ui-icon + .ui-emoji-fallback {
+    display: none;
+}
+
+.ui-icon-wrap .ui-emoji-fallback {
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+
+.ui-icon-wrap img.ui-icon[src=""] {
+    display: none;
+}
+
+body.has-core-care-dock .duplicate-core-action {
+    display: none;
+}
+
 .reward-card-title {
     font-size: 0.68rem;
     font-weight: 900;
@@ -12568,6 +12756,11 @@ body.has-core-care-dock .toast-container {
     color: #d9e8f3;
 }
 
+[data-theme="dark"] .coach-checklist-toggle {
+    background: rgba(143, 205, 235, 0.22);
+    color: #d9e8f3;
+}
+
 [data-theme="dark"] .reward-card-pop {
     background: linear-gradient(130deg, #1f2535, #29243b);
 }
@@ -12593,6 +12786,11 @@ body.has-core-care-dock .toast-container {
         right: 50%;
         transform: translateX(50%);
         width: min(360px, calc(100vw - 20px));
+    }
+    .coach-checklist.minimized {
+        width: auto;
+        max-width: calc(100vw - 20px);
+        bottom: calc(88px + env(safe-area-inset-bottom));
     }
     .reward-card-pop {
         left: 50%;
@@ -12858,8 +13056,8 @@ body.has-core-care-dock .toast-container {
 }
 
 .coach-checklist {
-    right: 50%;
-    transform: translateX(50%);
+    right: max(10px, env(safe-area-inset-right));
+    transform: none;
 }
 
 body.ui-busy .ambient-element,

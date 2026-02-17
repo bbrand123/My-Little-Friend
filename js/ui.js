@@ -113,6 +113,32 @@
             cuddle: ['❤️', '💕', '💗', '🥰', '💖']
         };
 
+        const UI_ICON_ASSETS = {
+            coin: 'assets/icons/ui/coin.svg',
+            hunger: 'assets/icons/ui/hunger.svg',
+            clean: 'assets/icons/ui/clean.svg',
+            mood: 'assets/icons/ui/mood.svg',
+            energy: 'assets/icons/ui/energy.svg',
+            badge: 'assets/icons/ui/badge.svg',
+            trophy: 'assets/icons/ui/trophy.svg',
+            streak: 'assets/icons/ui/streak.svg',
+            feed: 'assets/icons/ui/feed.svg',
+            wash: 'assets/icons/ui/wash.svg',
+            play: 'assets/icons/ui/play.svg',
+            sleep: 'assets/icons/ui/sleep.svg',
+            gamepad: 'assets/icons/ui/gamepad.svg'
+        };
+
+        function renderUiIcon(assetId, fallbackEmoji, label) {
+            const src = UI_ICON_ASSETS[assetId];
+            if (!src) return `<span class="ui-emoji-fallback" aria-hidden="true">${fallbackEmoji}</span>`;
+            const safeLabel = escapeHTML(label || '');
+            return `<span class="ui-icon-wrap" aria-hidden="true">
+                <img class="ui-icon" src="${src}" alt="" decoding="async" loading="lazy" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline-flex';">
+                <span class="ui-emoji-fallback">${fallbackEmoji}</span>
+            </span>${safeLabel ? `<span class="sr-only">${safeLabel}</span>` : ''}`;
+        }
+
         function spawnEmojiBurst(container, action) {
             if (!container) return;
             const emojis = EMOJI_BURST_MAP[action] || ['❤️', '⭐', '✨'];
@@ -346,7 +372,7 @@
 
         function setUiBusyState() {
             const activeOverlays = document.querySelectorAll('[role="dialog"], [role="alertdialog"], .modal-overlay, .settings-overlay').length;
-            const busyNoise = document.querySelectorAll('.toast, .onboarding-tooltip, .reward-card-pop').length;
+            const busyNoise = document.querySelectorAll('.toast, .onboarding-tooltip, .reward-card-pop, .coach-checklist:not(.minimized)').length;
             document.body.classList.toggle('ui-busy', activeOverlays > 0 || busyNoise > 2);
         }
 
@@ -1388,6 +1414,7 @@
                 ? getTreasureActionLabel(currentRoom)
                 : (room && room.isOutdoor ? 'Dig' : 'Search');
             const simplifiedActionPanel = useSimplifiedActionPanel(pet);
+            const showInlineCoreActions = !document.body.classList.contains('has-core-care-dock');
             const secondaryQuickActionsHTML = `
                             <button class="action-btn pet-cuddle" id="pet-btn">
                                 <span class="action-btn-tooltip">+Happy</span>
@@ -1405,7 +1432,7 @@
                             </button>
                             <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
                                 <span class="action-btn-tooltip">+Happy, +XP</span>
-                                <span class="btn-icon" aria-hidden="true">🎮</span>
+                                <span class="btn-icon">${renderUiIcon('gamepad', '🎮', 'Games')}</span>
                                 <span>Games</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">7</span>
@@ -1424,19 +1451,19 @@
                 <nav class="core-care-dock-wrap" aria-label="Core care dock">
                     <div class="core-care-dock" role="group" aria-label="Core care actions">
                         <button class="core-care-btn feed" id="core-feed-btn" type="button" aria-label="Feed">
-                            <span class="core-care-icon" aria-hidden="true">🍎</span>
+                            <span class="core-care-icon">${renderUiIcon('feed', '🍎', 'Feed')}</span>
                             <span class="core-care-label">Feed</span>
                         </button>
                         <button class="core-care-btn wash" id="core-wash-btn" type="button" aria-label="Wash">
-                            <span class="core-care-icon" aria-hidden="true">🛁</span>
+                            <span class="core-care-icon">${renderUiIcon('wash', '🛁', 'Wash')}</span>
                             <span class="core-care-label">Wash</span>
                         </button>
                         <button class="core-care-btn play" id="core-play-btn" type="button" aria-label="Play">
-                            <span class="core-care-icon" aria-hidden="true">⚽</span>
+                            <span class="core-care-icon">${renderUiIcon('play', '⚽', 'Play')}</span>
                             <span class="core-care-label">Play</span>
                         </button>
                         <button class="core-care-btn sleep" id="core-sleep-btn" type="button" aria-label="Sleep">
-                            <span class="core-care-icon" aria-hidden="true">🛏️</span>
+                            <span class="core-care-icon">${renderUiIcon('sleep', '🛏️', 'Sleep')}</span>
                             <span class="core-care-label">Sleep</span>
                         </button>
                     </div>
@@ -1587,7 +1614,7 @@
                              role="progressbar" aria-label="Hunger level" aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Hunger ${pet.hunger} percent, ${needStatusText(pet.hunger)}"
                              style="--progress: ${pet.hunger}; --ring-color: ${getNeedColor(pet.hunger)};">
                             <div class="need-bubble-ring"></div>
-                            <span class="need-bubble-icon" aria-hidden="true">🍎</span>
+                            <span class="need-bubble-icon">${renderUiIcon('hunger', '🍎', 'Hunger')}</span>
                             <span class="need-bubble-value" id="hunger-value">${pet.hunger}%</span>
                             ${getNeedStatusIcon(pet.hunger) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.hunger)}</span>` : ''}
                         </div>
@@ -1595,7 +1622,7 @@
                              role="progressbar" aria-label="Cleanliness level" aria-valuenow="${pet.cleanliness}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Cleanliness ${pet.cleanliness} percent, ${needStatusText(pet.cleanliness)}"
                              style="--progress: ${pet.cleanliness}; --ring-color: ${getNeedColor(pet.cleanliness)};">
                             <div class="need-bubble-ring"></div>
-                            <span class="need-bubble-icon" aria-hidden="true">🛁</span>
+                            <span class="need-bubble-icon">${renderUiIcon('clean', '🛁', 'Cleanliness')}</span>
                             <span class="need-bubble-value" id="clean-value">${pet.cleanliness}%</span>
                             ${getNeedStatusIcon(pet.cleanliness) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.cleanliness)}</span>` : ''}
                         </div>
@@ -1603,7 +1630,7 @@
                              role="progressbar" aria-label="Happiness level" aria-valuenow="${pet.happiness}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Happiness ${pet.happiness} percent, ${needStatusText(pet.happiness)}"
                              style="--progress: ${pet.happiness}; --ring-color: ${getNeedColor(pet.happiness)};">
                             <div class="need-bubble-ring"></div>
-                            <span class="need-bubble-icon" aria-hidden="true">💖</span>
+                            <span class="need-bubble-icon">${renderUiIcon('mood', '💖', 'Happiness')}</span>
                             <span class="need-bubble-value" id="happy-value">${pet.happiness}%</span>
                             ${getNeedStatusIcon(pet.happiness) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.happiness)}</span>` : ''}
                         </div>
@@ -1611,7 +1638,7 @@
                              role="progressbar" aria-label="Energy level" aria-valuenow="${pet.energy}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Energy ${pet.energy} percent, ${needStatusText(pet.energy)}"
                              style="--progress: ${pet.energy}; --ring-color: ${getNeedColor(pet.energy)};">
                             <div class="need-bubble-ring"></div>
-                            <span class="need-bubble-icon" aria-hidden="true">😴</span>
+                            <span class="need-bubble-icon">${renderUiIcon('energy', '😴', 'Energy')}</span>
                             <span class="need-bubble-value" id="energy-value">${pet.energy}%</span>
                             ${getNeedStatusIcon(pet.energy) ? `<span class="need-status-icon" aria-hidden="true">${getNeedStatusIcon(pet.energy)}</span>` : ''}
                         </div>
@@ -1708,7 +1735,7 @@
                     </p>
                     <div class="action-group">
                         <div class="action-group-buttons" role="group" aria-label="Basic care buttons">
-                            ${(() => {
+                            ${showInlineCoreActions ? (() => {
                                 const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
                                 const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
                                 const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
@@ -1720,8 +1747,7 @@
                                 ${getRoomBonusBadge('feed', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">1</span>
-                            </button>`;
-                            })()}
+                            </button>
                             <button class="action-btn wash duplicate-core-action ${getRoomBonusBadge('wash', currentRoom) ? 'has-room-bonus' : ''}" id="wash-btn" tabindex="-1" aria-hidden="true">
                                 <span class="action-btn-tooltip">+Clean</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
@@ -1745,7 +1771,8 @@
                                 ${getRoomBonusBadge('play', currentRoom)}
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">5</span>
-                            </button>
+                            </button>`;
+                            })() : ''}
                             ${simplifiedActionPanel ? '' : secondaryQuickActionsHTML}
                         </div>
                     </div>
@@ -2374,6 +2401,55 @@
         const _toastAnnounceLastByText = new Map();
         const _toastQueue = [];
         let _toastQueueTimer = null;
+        const COACH_CHECKLIST_MINIMIZED_KEY = 'petCareBuddy_coachChecklistMinimized';
+
+        function isNarrowViewport() {
+            return window.matchMedia('(max-width: 720px)').matches;
+        }
+
+        function getCoachChecklistMinimizedPref() {
+            try {
+                const raw = localStorage.getItem(COACH_CHECKLIST_MINIMIZED_KEY);
+                if (raw === 'true') return true;
+                if (raw === 'false') return false;
+            } catch (e) {}
+            return isNarrowViewport();
+        }
+
+        function setCoachChecklistMinimizedPref(minimized) {
+            try {
+                localStorage.setItem(COACH_CHECKLIST_MINIMIZED_KEY, minimized ? 'true' : 'false');
+            } catch (e) {}
+        }
+
+        function setCoachChecklistMinimized(minimized, source = 'manual') {
+            const panel = document.querySelector('.coach-checklist');
+            if (!panel) return;
+            panel.classList.toggle('minimized', !!minimized);
+            panel.classList.toggle('traffic-minimized', !!minimized && source === 'traffic');
+            panel.classList.toggle('user-minimized', !!minimized && source !== 'traffic');
+            panel.setAttribute('data-minimized', minimized ? 'true' : 'false');
+            const toggleBtn = panel.querySelector('[data-coach-toggle]');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-pressed', minimized ? 'true' : 'false');
+                toggleBtn.textContent = minimized ? 'Show' : 'Hide';
+            }
+            if (source !== 'traffic') {
+                setCoachChecklistMinimizedPref(!!minimized);
+            }
+            setUiBusyState();
+        }
+
+        function isCoachChecklistExpanded() {
+            const panel = document.querySelector('.coach-checklist');
+            return !!(panel && !panel.classList.contains('minimized'));
+        }
+
+        function trafficMinimizeCoachChecklist() {
+            if (isCoachChecklistExpanded()) {
+                setCoachChecklistMinimized(true, 'traffic');
+            }
+        }
 
         function renderToastNow(safeMessage, color) {
             let container = document.getElementById('toast-container');
@@ -2393,7 +2469,7 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
-            toast.innerHTML = wrapEmojiForAria(safeMessage);
+            toast.innerHTML = `<span class="toast-icon">${renderUiIcon('state', '🔔', '')}</span><span class="toast-text">${wrapEmojiForAria(safeMessage)}</span>`;
             container.appendChild(toast);
             setTimeout(() => {
                 toast.remove();
@@ -2409,6 +2485,7 @@
                 _toastQueueTimer = setTimeout(flushToastQueue, 600);
                 return;
             }
+            trafficMinimizeCoachChecklist();
             const next = _toastQueue.shift();
             renderToastNow(next.safeMessage, next.color);
             if (_toastQueue.length > 0) _toastQueueTimer = setTimeout(flushToastQueue, 420);
@@ -2470,6 +2547,11 @@
                 return;
             }
             _rewardCardActive = true;
+            if (document.querySelector('.toast')) {
+                _rewardCardTimer = setTimeout(showNextRewardCard, 380);
+                return;
+            }
+            trafficMinimizeCoachChecklist();
             const cardData = _rewardCardQueue.shift();
             const existing = document.querySelector('.reward-card-pop');
             if (existing) existing.remove();
@@ -2478,7 +2560,7 @@
             card.className = 'reward-card-pop';
             card.setAttribute('aria-live', 'polite');
             card.innerHTML = `
-                <div class="reward-card-icon" aria-hidden="true">${escapeHTML(cardData.icon)}</div>
+                <div class="reward-card-icon">${renderUiIcon(cardData.type === 'streak' ? 'streak' : (cardData.type === 'trophy' ? 'trophy' : 'badge'), cardData.icon, cardData.title)}</div>
                 <div class="reward-card-copy">
                     <div class="reward-card-title">${escapeHTML(cardData.title)}</div>
                     <div class="reward-card-name">${escapeHTML(cardData.name)}</div>
@@ -7775,7 +7857,10 @@
 
         function removeCoachChecklist() {
             const existing = document.querySelector('.coach-checklist');
-            if (existing) existing.remove();
+            if (existing) {
+                existing.remove();
+                setUiBusyState();
+            }
         }
 
         function markCoachChecklistProgress(stepOrAction) {
@@ -7805,6 +7890,9 @@
                 removeCoachChecklist();
                 showToast('✅ Coach checklist complete!', '#66BB6A', { announce: false });
                 return;
+            }
+            if (isNarrowViewport()) {
+                setCoachChecklistMinimizedPref(true);
             }
             renderCoachChecklist(true);
         }
@@ -7848,11 +7936,21 @@
             panel.innerHTML = `
                 <div class="coach-checklist-head">
                     <div class="coach-checklist-title">Quick Start</div>
-                    <button class="coach-checklist-skip" type="button" data-coach-skip>Skip</button>
+                    <div class="coach-checklist-head-actions">
+                        <button class="coach-checklist-toggle" type="button" data-coach-toggle aria-pressed="false">Hide</button>
+                        <button class="coach-checklist-skip" type="button" data-coach-skip>Skip</button>
+                    </div>
                 </div>
                 <ul class="coach-checklist-list">${itemsHTML}</ul>
             `;
 
+            const toggleBtn = panel.querySelector('[data-coach-toggle]');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const nextMinimized = !panel.classList.contains('minimized');
+                    setCoachChecklistMinimized(nextMinimized, 'manual');
+                });
+            }
             const skipBtn = panel.querySelector('[data-coach-skip]');
             if (skipBtn) {
                 skipBtn.addEventListener('click', () => {
@@ -7860,6 +7958,7 @@
                     removeCoachChecklist();
                 });
             }
+            setCoachChecklistMinimized(getCoachChecklistMinimizedPref(), 'manual');
         }
 
         function showTutorial() {
