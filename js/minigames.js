@@ -22,6 +22,7 @@
 
         // Spawn confetti particles for minigame wins
         function showMinigameConfetti() {
+            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
             const container = document.createElement('div');
             container.className = 'minigame-celebration';
             container.setAttribute('aria-hidden', 'true');
@@ -46,6 +47,7 @@
 
         // Show "New High Score!" banner
         function showHighScoreBanner(gameName, score) {
+            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
             const banner = document.createElement('div');
             banner.className = 'new-highscore-banner';
             banner.setAttribute('aria-hidden', 'true');
@@ -81,8 +83,21 @@
         }
 
         // Confirm exit when the player has made progress to prevent accidental loss
-        function requestMiniGameExit(score, onConfirm) {
-            if (score <= 0) {
+        function requestMiniGameExit(score, onConfirm, options = {}) {
+            if (options && typeof options.canExit === 'function' && !options.canExit()) {
+                if (typeof showToast === 'function') {
+                    showToast(options.busyMessage || 'Please wait for the current action to finish.', '#FFA726', { announce: false });
+                }
+                return;
+            }
+            let latestScore = score;
+            if (options && typeof options.resolveScore === 'function') {
+                try {
+                    const resolved = options.resolveScore();
+                    if (typeof resolved === 'number' && Number.isFinite(resolved)) latestScore = resolved;
+                } catch (e) {}
+            }
+            if (latestScore <= 0) {
                 dismissMiniGameExitDialog();
                 onConfirm();
                 return;
@@ -97,7 +112,7 @@
             overlay.innerHTML = `
                 <div class="modal-content" style="max-width:280px;text-align:center;">
                     <p style="margin-bottom:16px;font-weight:600;">Quit this game?</p>
-                    <p style="margin-bottom:16px;font-size:0.9rem;color:var(--color-text-secondary);">Your current score of ${score} will be kept.</p>
+                    <p style="margin-bottom:16px;font-size:0.9rem;color:var(--color-text-secondary);">Your current score of ${latestScore} will be kept.</p>
                     <div style="display:flex;gap:10px;justify-content:center;">
                         <button id="exit-cancel" style="padding:var(--btn-pad-md);border:1px solid #ccc;border-radius:var(--radius-sm);background:white;cursor:pointer;font-weight:600;">Keep Playing</button>
                         <button id="exit-confirm" style="padding:var(--btn-pad-md);border:none;border-radius:var(--radius-sm);background:var(--color-primary);color:white;cursor:pointer;font-weight:600;">Quit</button>
@@ -324,6 +339,12 @@
             const field = overlay.querySelector('#fetch-field');
             const throwBtn = overlay.querySelector('#fetch-throw-btn');
             const doneBtn = overlay.querySelector('#fetch-done-btn');
+            const updateFetchExitButtons = () => {
+                if (!fetchState || !doneBtn) return;
+                const busy = fetchState.phase !== 'ready';
+                doneBtn.disabled = busy;
+                doneBtn.setAttribute('aria-disabled', busy ? 'true' : 'false');
+            };
 
             field.addEventListener('click', (e) => handleFetchThrow(e));
             field.addEventListener('keydown', (e) => {
@@ -336,25 +357,42 @@
             throwBtn.addEventListener('click', (e) => handleFetchThrow(e));
 
             doneBtn.addEventListener('click', () => {
-                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
+                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame(), {
+                    canExit: () => !!fetchState && fetchState.phase === 'ready',
+                    busyMessage: 'Finish the current throw before quitting.',
+                    resolveScore: () => {
+                        const txt = document.getElementById('fetch-score')?.textContent || '';
+                        const m = txt.match(/(\d+)/);
+                        const shown = m ? parseInt(m[1], 10) : 0;
+                        return Math.max(fetchState ? fetchState.score : 0, shown);
+                    }
+                });
             });
 
             // Close on overlay click
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
-                    requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
+                    requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame(), {
+                        canExit: () => !!fetchState && fetchState.phase === 'ready',
+                        busyMessage: 'Finish the current throw before quitting.'
+                    });
                 }
             });
 
             // Escape to exit
             function fetchEscapeHandler() {
-                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame());
+                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame(), {
+                    canExit: () => !!fetchState && fetchState.phase === 'ready',
+                    busyMessage: 'Finish the current throw before quitting.'
+                });
             }
             pushModalEscape(fetchEscapeHandler);
             fetchState._escapeHandler = fetchEscapeHandler;
             trapFocus(overlay);
 
             throwBtn.focus();
+            updateFetchExitButtons();
+            fetchState._updateExitButtons = updateFetchExitButtons;
         }
 
         function handleFetchThrow(e) {
@@ -370,6 +408,7 @@
             const throwBtn = document.getElementById('fetch-throw-btn');
 
             if (throwBtn) throwBtn.disabled = true;
+            if (fetchState._updateExitButtons) fetchState._updateExitButtons();
 
             // Calculate where the ball lands (random position on the right side)
             const targetX = 60 + Math.random() * 25;
@@ -483,6 +522,7 @@
                 instruction.className = 'fetch-instruction highlight';
 
                 if (throwBtn) throwBtn.disabled = false;
+                if (fetchState._updateExitButtons) fetchState._updateExitButtons();
 
                 announce(`Great fetch! Score: ${fetchState.score}. Throw again!`);
             }, 3400 * fetchSpeed));

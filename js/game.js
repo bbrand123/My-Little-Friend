@@ -1996,14 +1996,32 @@
 
         let _announceQueue = [];
         let _announceTimer = null;
+        let _assertiveClearTimer = null;
+
+        function getAnnouncementVerbosity() {
+            try {
+                return localStorage.getItem('petCareBuddy_srVerbosity') === 'detailed' ? 'detailed' : 'brief';
+            } catch (e) {
+                return 'brief';
+            }
+        }
+
+        function isRoutineAnnouncement(message) {
+            const txt = String(message || '').toLowerCase();
+            return /score:|growth progress|now feeling|cooling down|throw again|running to get it|got it|bringing it back/.test(txt);
+        }
 
         function announce(message, assertive = false) {
+            const verbosity = getAnnouncementVerbosity();
+            if (!assertive && verbosity === 'brief' && isRoutineAnnouncement(message)) return;
             if (assertive) {
                 // Assertive messages bypass the queue — they're critical
                 const announcer = document.getElementById('live-announcer-assertive');
                 if (!announcer) return;
                 announcer.textContent = '';
                 setTimeout(() => { announcer.textContent = message; }, 100);
+                if (_assertiveClearTimer) clearTimeout(_assertiveClearTimer);
+                _assertiveClearTimer = setTimeout(() => { announcer.textContent = ''; }, 1800);
                 return;
             }
 
@@ -4136,8 +4154,8 @@
                 const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
                 const bonusHint = room.bonus ? ` (Bonus: ${room.bonus.label})` : '';
                 html += `<button class="room-btn${isActive ? ' active' : ''}" type="button" data-room="${id}"
-                    aria-label="Go to ${room.name}${bonusHint}${id === 'garden' && readyCrops > 0 ? ` (${readyCrops} crops ready!)` : ''}" aria-pressed="${isActive}"
-                    ${isActive ? 'aria-current="true"' : ''} tabindex="0" style="position:relative;"
+                    aria-label="Go to ${room.name}" aria-pressed="${isActive}"
+                    ${isActive ? 'aria-current="page"' : ''} tabindex="0" style="position:relative;"
                     title="${room.name}${bonusHint}">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
                     <span class="room-btn-label">${room.name}</span>
@@ -4269,7 +4287,7 @@
                 btn.classList.toggle('active', isActive);
                 btn.setAttribute('aria-pressed', isActive);
                 if (isActive) {
-                    btn.setAttribute('aria-current', 'true');
+                    btn.setAttribute('aria-current', 'page');
                 } else {
                     btn.removeAttribute('aria-current');
                 }

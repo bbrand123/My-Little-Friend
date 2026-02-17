@@ -210,6 +210,7 @@
                     html += `<div class="favorite-slot-wrap empty">
                         <button class="favorite-slot favorite-slot-empty" type="button" data-fav-idx="${i}" title="Add a favorite action" aria-label="Empty favorite slot ${i + 1}, choose a quick action">
                             <span class="favorite-slot-plus" aria-hidden="true">+</span>
+                            <span class="favorite-slot-hint">Add action</span>
                         </button>
                     </div>`;
                 }
@@ -299,6 +300,58 @@
                     updateFavoritesBar();
                 });
             });
+        }
+
+        const MORE_ACTIONS_PREF_KEY = 'petCareBuddy_moreActionsExpanded';
+
+        function getMoreActionsExpandedPref() {
+            try {
+                return localStorage.getItem(MORE_ACTIONS_PREF_KEY) === 'true';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setMoreActionsExpandedPref(expanded) {
+            try {
+                localStorage.setItem(MORE_ACTIONS_PREF_KEY, expanded ? 'true' : 'false');
+            } catch (e) {}
+        }
+
+        function setupRovingTabindex(container, itemSelector) {
+            if (!container) return;
+            const items = Array.from(container.querySelectorAll(itemSelector))
+                .filter((el) => !el.disabled && el.getAttribute('aria-hidden') !== 'true');
+            if (items.length === 0) return;
+            let activeIdx = Math.max(0, items.findIndex((el) => el === document.activeElement));
+            if (activeIdx < 0) activeIdx = 0;
+            items.forEach((el, idx) => el.setAttribute('tabindex', idx === activeIdx ? '0' : '-1'));
+
+            container.addEventListener('keydown', (e) => {
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+                const enabledItems = Array.from(container.querySelectorAll(itemSelector))
+                    .filter((el) => !el.disabled && el.getAttribute('aria-hidden') !== 'true');
+                if (enabledItems.length === 0) return;
+                const current = enabledItems.indexOf(document.activeElement);
+                let next = current >= 0 ? current : 0;
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (next - 1 + enabledItems.length) % enabledItems.length;
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (next + 1) % enabledItems.length;
+                if (e.key === 'Home') next = 0;
+                if (e.key === 'End') next = enabledItems.length - 1;
+                e.preventDefault();
+                enabledItems.forEach((el, idx) => el.setAttribute('tabindex', idx === next ? '0' : '-1'));
+                enabledItems[next].focus();
+            });
+        }
+
+        function setUiBusyState() {
+            const activeOverlays = document.querySelectorAll('[role="dialog"], [role="alertdialog"], .modal-overlay, .settings-overlay').length;
+            const busyNoise = document.querySelectorAll('.toast, .onboarding-tooltip, .reward-card-pop').length;
+            document.body.classList.toggle('ui-busy', activeOverlays > 0 || busyNoise > 2);
+        }
+
+        if (typeof window !== 'undefined') {
+            window.setUiBusyState = setUiBusyState;
         }
 
         // ==================== WELCOME BACK SUMMARY SCREEN (Feature 7) ====================
@@ -496,6 +549,13 @@
                 if (economyBtn) {
                     if (event.type === 'touchend') event.preventDefault();
                     safeInvoke(economyBtn, typeof showEconomyModal === 'function' ? showEconomyModal : null, event);
+                    return;
+                }
+
+                const toolsBtn = target.closest('#tools-btn');
+                if (toolsBtn) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(toolsBtn, typeof showToolsMenu === 'function' ? () => showToolsMenu(toolsBtn) : null, event);
                     return;
                 }
 
@@ -1396,7 +1456,7 @@
                                 <span class="top-action-btn-icon" aria-hidden="true">📊</span>
                                 <span class="top-action-btn-label" aria-hidden="true">Stats</span>
                             </button>
-                            <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements: ${getAchievementCount()} of ${Object.keys(ACHIEVEMENTS).length} unlocked">
+                            <button class="top-action-btn" id="achievements-btn" type="button" aria-haspopup="dialog" title="Achievements" aria-label="Achievements" aria-describedby="top-meta-achievements">
                                 <span class="top-action-btn-icon" aria-hidden="true">🏆</span>
                                 <span class="top-action-btn-label" aria-hidden="true">Awards</span>
                                 ${getAchievementCount() > 0 ? `<span class="achievement-count-badge" aria-hidden="true">${getAchievementCount()}</span>` : ''}
@@ -1406,38 +1466,26 @@
                                 <span class="top-action-btn-label" aria-hidden="true">Daily</span>
                                 ${isDailyComplete() ? '<span class="daily-complete-badge" aria-hidden="true">✓</span>' : ''}
                             </button>
-                            <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards: ${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? ', unclaimed streak bonus' : ''}">
+                            <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards" aria-describedby="top-meta-rewards">
                                 <span class="top-action-btn-icon" aria-hidden="true">🎁</span>
                                 <span class="top-action-btn-label" aria-hidden="true">Rewards</span>
                                 ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge" aria-hidden="true">!</span>' : ''}
                             </button>
                         </div>
                         <div class="top-action-group top-action-group-secondary" role="group" aria-label="World and utility actions">
-                            <button class="top-action-btn" id="economy-btn" type="button" aria-haspopup="dialog" title="Economy & Trading" aria-label="Economy and Trading. ${typeof getCoinBalance === 'function' ? formatCoins(getCoinBalance()) : 0} coins available">
+                            <button class="top-action-btn" id="economy-btn" type="button" aria-haspopup="dialog" title="Economy & Trading" aria-label="Economy and trading" aria-describedby="top-meta-economy">
                                 <span class="top-action-btn-icon" aria-hidden="true">🪙</span>
                                 <span class="top-action-btn-label" aria-hidden="true">Economy</span>
                                 <span class="explore-alert-badge" aria-hidden="true" style="background:#FFD700;color:#5D4037;">${typeof getCoinBalance === 'function' ? Math.min(999, getCoinBalance()) : 0}</span>
                             </button>
-                            <button class="top-action-btn" id="explore-btn" type="button" aria-haspopup="dialog" title="Exploration" aria-label="Exploration map${explorationAlerts > 0 ? ` (${explorationAlerts} updates)` : ''}">
+                            <button class="top-action-btn" id="explore-btn" type="button" aria-haspopup="dialog" title="Exploration" aria-label="Exploration map" aria-describedby="top-meta-explore">
                                 <span class="top-action-btn-icon" aria-hidden="true">🗺️</span>
                                 <span class="top-action-btn-label" aria-hidden="true">Explore</span>
                                 ${explorationAlerts > 0 ? `<span class="explore-alert-badge" aria-hidden="true">${Math.min(9, explorationAlerts)}</span>` : ''}
                             </button>
-                            <button class="top-action-btn" id="furniture-btn" type="button" aria-haspopup="dialog" title="Decor" aria-label="Decor">
-                                <span class="top-action-btn-icon" aria-hidden="true">🛋️</span>
-                                <span class="top-action-btn-label" aria-hidden="true">Decor</span>
-                            </button>
-                            <button class="top-action-btn" id="journal-btn" type="button" aria-haspopup="dialog" title="Pet Journal" aria-label="Pet Journal">
-                                <span class="top-action-btn-icon" aria-hidden="true">📔</span>
-                                <span class="top-action-btn-label" aria-hidden="true">Journal</span>
-                            </button>
-                            <button class="top-action-btn" id="memorial-btn" type="button" aria-haspopup="dialog" title="Hall of Fame" aria-label="Hall of Fame${(gameState.memorials && gameState.memorials.length > 0) ? ` (${gameState.memorials.length} memorials)` : ''}">
-                                <span class="top-action-btn-icon" aria-hidden="true">🏛️</span>
-                                <span class="top-action-btn-label" aria-hidden="true">Hall</span>
-                            </button>
-                            <button class="top-action-btn" id="notif-history-btn" type="button" aria-haspopup="dialog" title="Notification History" aria-label="Notification History">
-                                <span class="top-action-btn-icon" aria-hidden="true">🔔</span>
-                                <span class="top-action-btn-label" aria-hidden="true">Alerts</span>
+                            <button class="top-action-btn" id="tools-btn" type="button" aria-haspopup="dialog" title="More tools" aria-label="More tools">
+                                <span class="top-action-btn-icon" aria-hidden="true">🧰</span>
+                                <span class="top-action-btn-label" aria-hidden="true">Tools</span>
                             </button>
                             <button class="top-action-btn" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">
                                 <span class="top-action-btn-icon" aria-hidden="true">⚙️</span>
@@ -1446,6 +1494,10 @@
                         </div>
                     </div>
                 </div>
+                <div class="sr-only" id="top-meta-achievements">${getAchievementCount()} of ${Object.keys(ACHIEVEMENTS).length} unlocked.</div>
+                <div class="sr-only" id="top-meta-rewards">${getBadgeCount()} badges, ${getStickerCount()} stickers, ${getTrophyCount()} trophies${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? ', plus an unclaimed streak bonus' : ''}.</div>
+                <div class="sr-only" id="top-meta-economy">${typeof getCoinBalance === 'function' ? formatCoins(getCoinBalance()) : 0} coins available.</div>
+                <div class="sr-only" id="top-meta-explore">${explorationAlerts > 0 ? `${Math.min(9, explorationAlerts)} exploration updates available.` : 'No new exploration updates.'}</div>
                 ${generatePetSwitcherHTML()}
                 ${generateRoomNavHTML(currentRoom)}
                 <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
@@ -1528,7 +1580,8 @@
                     <div class="seasonal-decor" aria-hidden="true"></div>
                 </div>
 
-                <section class="needs-section" aria-label="Pet needs" aria-live="polite" aria-atomic="false">
+                <h2 class="region-heading">Status</h2>
+                <section class="needs-section" aria-label="Pet needs" aria-atomic="false">
                     <div class="needs-row">
                         <div class="need-bubble ${needClass(pet.hunger)}" id="hunger-bubble"
                              role="progressbar" aria-label="Hunger level" aria-valuenow="${pet.hunger}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Hunger ${pet.hunger} percent, ${needStatusText(pet.hunger)}"
@@ -1648,14 +1701,18 @@
 
                 ${generateFavoritesBarHTML()}
 
-                <section class="actions-section" aria-label="Care actions">
+                <h2 class="region-heading" id="care-actions-heading">Care Actions</h2>
+                <section class="actions-section" id="care-actions" aria-label="Care actions">
+                    <p class="shortcut-strip" aria-label="Keyboard hints: 1 Feed, 2 Wash, 3 Sleep, 4 Pet, 5 Play, 7 Games">
+                        <kbd>1</kbd> Feed <kbd>2</kbd> Wash <kbd>3</kbd> Sleep <kbd>4</kbd> Pet <kbd>5</kbd> Play <kbd>7</kbd> Games
+                    </p>
                     <div class="action-group">
                         <div class="action-group-buttons" role="group" aria-label="Basic care buttons">
                             ${(() => {
                                 const gardenInv = gameState.garden && gameState.garden.inventory ? gameState.garden.inventory : {};
                                 const totalCrops = Object.values(gardenInv).reduce((sum, c) => sum + c, 0);
                                 const cropBadge = totalCrops > 0 ? `<span class="feed-crop-badge" aria-label="${totalCrops} crops available">${totalCrops}</span>` : '';
-                                return `<button class="action-btn feed ${getRoomBonusBadge('feed', currentRoom) ? 'has-room-bonus' : ''}" id="feed-btn">
+                                return `<button class="action-btn feed duplicate-core-action ${getRoomBonusBadge('feed', currentRoom) ? 'has-room-bonus' : ''}" id="feed-btn" tabindex="-1" aria-hidden="true">
                                 <span class="action-btn-tooltip">+Food</span>
                                 <span class="btn-icon" aria-hidden="true">🍎</span>
                                 <span>Feed</span>
@@ -1665,7 +1722,7 @@
                                 <span class="kbd-hint" aria-hidden="true">1</span>
                             </button>`;
                             })()}
-                            <button class="action-btn wash ${getRoomBonusBadge('wash', currentRoom) ? 'has-room-bonus' : ''}" id="wash-btn">
+                            <button class="action-btn wash duplicate-core-action ${getRoomBonusBadge('wash', currentRoom) ? 'has-room-bonus' : ''}" id="wash-btn" tabindex="-1" aria-hidden="true">
                                 <span class="action-btn-tooltip">+Clean</span>
                                 <span class="btn-icon" aria-hidden="true">🛁</span>
                                 <span>Wash</span>
@@ -1673,7 +1730,7 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">2</span>
                             </button>
-                            <button class="action-btn sleep ${getRoomBonusBadge('sleep', currentRoom) ? 'has-room-bonus' : ''}" id="sleep-btn">
+                            <button class="action-btn sleep duplicate-core-action ${getRoomBonusBadge('sleep', currentRoom) ? 'has-room-bonus' : ''}" id="sleep-btn" tabindex="-1" aria-hidden="true">
                                 <span class="action-btn-tooltip">+Energy</span>
                                 <span class="btn-icon" aria-hidden="true">🛏️</span>
                                 <span>Sleep</span>
@@ -1681,7 +1738,7 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">3</span>
                             </button>
-                            <button class="action-btn play ${getRoomBonusBadge('play', currentRoom) ? 'has-room-bonus' : ''}" id="play-btn">
+                            <button class="action-btn play duplicate-core-action ${getRoomBonusBadge('play', currentRoom) ? 'has-room-bonus' : ''}" id="play-btn" tabindex="-1" aria-hidden="true">
                                 <span class="action-btn-tooltip">+Happy</span>
                                 <span class="btn-icon" aria-hidden="true">⚽</span>
                                 <span>Play</span>
@@ -1873,6 +1930,14 @@
             // More actions toggle
             const moreToggle = document.getElementById('more-actions-toggle');
             if (moreToggle) {
+                const panel = document.getElementById('more-actions-panel');
+                const prefExpanded = getMoreActionsExpandedPref();
+                if (panel) {
+                    panel.hidden = !prefExpanded;
+                    moreToggle.setAttribute('aria-expanded', String(prefExpanded));
+                    const icon = moreToggle.querySelector('.more-actions-toggle-icon');
+                    if (icon) icon.textContent = prefExpanded ? '▾' : '▸';
+                }
                 moreToggle.addEventListener('click', () => {
                     const panel = document.getElementById('more-actions-panel');
                     if (!panel) return;
@@ -1880,6 +1945,7 @@
                     moreToggle.setAttribute('aria-expanded', String(!expanded));
                     panel.hidden = expanded;
                     moreToggle.querySelector('.more-actions-toggle-icon').textContent = expanded ? '▸' : '▾';
+                    setMoreActionsExpandedPref(!expanded);
                 });
             }
 
@@ -1943,6 +2009,14 @@
 
             // Room navigation event listeners
             // Global delegates handle room navigation buttons
+
+            setupRovingTabindex(document.querySelector('.top-action-buttons'), '.top-action-btn');
+            setupRovingTabindex(document.querySelector('.room-nav'), '.room-btn');
+            setupRovingTabindex(document.querySelector('.core-care-dock'), '.core-care-btn');
+            document.querySelectorAll('.action-group-buttons').forEach((group) => {
+                setupRovingTabindex(group, '.action-btn:not(.duplicate-core-action)');
+            });
+            setUiBusyState();
 
             // Make pet directly pettable by clicking/touching the pet SVG
             const petContainer = document.getElementById('pet-container');
@@ -2161,6 +2235,60 @@
             overlay.querySelector('#notif-history-close').focus();
         }
 
+        function showToolsMenu(triggerEl) {
+            const existing = document.querySelector('.tools-menu-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'tools-menu-overlay modal-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'More tools');
+            overlay.innerHTML = `
+                <div class="modal-content tools-menu-modal">
+                    <h2 class="tools-menu-title">More tools</h2>
+                    <div class="tools-menu-list" role="group" aria-label="More tools">
+                        <button class="tools-menu-btn" data-tool-action="furniture">🛋️ Decor</button>
+                        <button class="tools-menu-btn" data-tool-action="journal">📔 Journal</button>
+                        <button class="tools-menu-btn" data-tool-action="memorial">🏛️ Hall</button>
+                        <button class="tools-menu-btn" data-tool-action="alerts">🔔 Alerts</button>
+                    </div>
+                    <button class="tools-menu-close" id="tools-menu-close">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            const runAction = (action) => {
+                if (action === 'furniture' && typeof showFurnitureModal === 'function') showFurnitureModal();
+                if (action === 'journal' && typeof showJournalModal === 'function') showJournalModal();
+                if (action === 'memorial' && typeof showMemorialHall === 'function') showMemorialHall();
+                if (action === 'alerts' && typeof showNotificationHistory === 'function') showNotificationHistory();
+            };
+
+            function closeToolsMenu() {
+                popModalEscape(closeToolsMenu);
+                overlay.remove();
+                if (triggerEl && typeof triggerEl.focus === 'function') triggerEl.focus();
+            }
+
+            overlay.querySelectorAll('.tools-menu-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const action = btn.getAttribute('data-tool-action');
+                    closeToolsMenu();
+                    runAction(action);
+                });
+            });
+            overlay.querySelector('#tools-menu-close').addEventListener('click', closeToolsMenu);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeToolsMenu(); });
+            pushModalEscape(closeToolsMenu);
+            overlay._closeOverlay = closeToolsMenu;
+            trapFocus(overlay);
+            overlay.querySelector('.tools-menu-btn')?.focus();
+        }
+
         // Batch rapid care-action toasts into a single notification
         const CARE_TOAST_BATCH_MS = 800;
         let _careToastTimer = null;
@@ -2244,6 +2372,47 @@
             /joined your family/i
         ];
         const _toastAnnounceLastByText = new Map();
+        const _toastQueue = [];
+        let _toastQueueTimer = null;
+
+        function renderToastNow(safeMessage, color) {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                document.body.appendChild(container);
+            }
+            if (!container.classList.contains('toast-container')) {
+                container.classList.add('toast-container');
+            }
+            const existingToasts = container.querySelectorAll('.toast');
+            if (existingToasts.length >= MAX_VISIBLE_TOASTS) {
+                const toRemove = existingToasts.length - MAX_VISIBLE_TOASTS + 1;
+                for (let i = 0; i < toRemove; i++) existingToasts[i].remove();
+            }
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.setProperty('--toast-color', color);
+            toast.innerHTML = wrapEmojiForAria(safeMessage);
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+                setUiBusyState();
+            }, 3500);
+            setUiBusyState();
+        }
+
+        function flushToastQueue() {
+            _toastQueueTimer = null;
+            if (_toastQueue.length === 0) return;
+            if (document.querySelector('.onboarding-tooltip') || document.querySelector('.reward-card-pop.show')) {
+                _toastQueueTimer = setTimeout(flushToastQueue, 600);
+                return;
+            }
+            const next = _toastQueue.shift();
+            renderToastNow(next.safeMessage, next.color);
+            if (_toastQueue.length > 0) _toastQueueTimer = setTimeout(flushToastQueue, 420);
+        }
 
         function shouldAnnounceToast(plainText, options) {
             if (options && options.announce === true) return true;
@@ -2255,32 +2424,8 @@
             const plainText = sanitizeToastText(message);
             const safeMessage = escapeHTML(plainText);
             addToNotificationHistory(plainText);
-            let container = document.getElementById('toast-container');
-
-            // Create container if it doesn't exist
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'toast-container';
-                document.body.appendChild(container);
-            }
-            if (!container.classList.contains('toast-container')) {
-                container.classList.add('toast-container');
-            }
-
-            // Limit visible toasts — remove oldest when at max
-            const existingToasts = container.querySelectorAll('.toast');
-            if (existingToasts.length >= MAX_VISIBLE_TOASTS) {
-                const toRemove = existingToasts.length - MAX_VISIBLE_TOASTS + 1;
-                for (let i = 0; i < toRemove; i++) {
-                    existingToasts[i].remove();
-                }
-            }
-
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.setProperty('--toast-color', color);
-            toast.innerHTML = wrapEmojiForAria(safeMessage);
-            container.appendChild(toast);
+            _toastQueue.push({ safeMessage, color });
+            if (!_toastQueueTimer) _toastQueueTimer = setTimeout(flushToastQueue, 60);
 
             clearOnboardingTooltips();
 
@@ -2293,9 +2438,6 @@
                     announce(plainText, !!options.assertive);
                 }
             }
-
-            // Remove after animation completes
-            setTimeout(() => toast.remove(), 3500);
         }
 
         const REWARD_CARD_META = {
@@ -3918,6 +4060,7 @@
         }
 
         function createCelebrationFlash() {
+            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
             const flash = document.createElement('div');
             flash.className = 'celebration-flash';
             flash.setAttribute('aria-hidden', 'true');
@@ -3938,6 +4081,7 @@
         }
 
         function createConfetti() {
+            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
             const container = document.createElement('div');
             container.className = 'confetti-container';
             container.style.cssText = `
@@ -4014,6 +4158,7 @@
 
         // ==================== MILESTONE FIREWORKS ====================
         function createMilestoneFireworks() {
+            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
             const container = document.createElement('div');
             container.className = 'fireworks-container';
             container.setAttribute('aria-hidden', 'true');
@@ -7264,6 +7409,8 @@
                 (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
             const hapticEnabled = !(localStorage.getItem('petCareBuddy_hapticOff') === 'true');
             const ttsEnabled = !(localStorage.getItem('petCareBuddy_ttsOff') === 'true');
+            const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
+            const srVerbosityDetailed = (localStorage.getItem('petCareBuddy_srVerbosity') === 'detailed');
 
             const overlay = document.createElement('div');
             overlay.className = 'settings-overlay';
@@ -7279,42 +7426,65 @@
                             <button class="settings-toggle ${soundEnabled ? 'on' : ''}" id="setting-sound" role="switch" aria-checked="${soundEnabled}" aria-label="Sound">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-sound">${soundEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🎵 Music</span>
                             <button class="settings-toggle ${typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled() ? 'on' : ''}" id="setting-music" role="switch" aria-checked="${typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled()}" aria-label="Background Music">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-music">${(typeof SoundManager !== 'undefined' && SoundManager.getMusicEnabled()) ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🎧 Sample Audio Pack</span>
                             <button class="settings-toggle ${samplePackEnabled ? 'on' : ''}" id="setting-sample-pack" role="switch" aria-checked="${samplePackEnabled}" aria-label="Sample Audio Pack">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-sample-pack">${samplePackEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">${isDark ? '🌙' : '☀️'} Dark Mode</span>
                             <button class="settings-toggle ${isDark ? 'on' : ''}" id="setting-darkmode" role="switch" aria-checked="${isDark}" aria-label="Dark Mode">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-darkmode">${isDark ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">📳 Haptic Feedback</span>
                             <button class="settings-toggle ${hapticEnabled ? 'on' : ''}" id="setting-haptic" role="switch" aria-checked="${hapticEnabled}" aria-label="Haptic Feedback">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-haptic">${hapticEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🗣️ Text-to-Speech</span>
                             <button class="settings-toggle ${ttsEnabled ? 'on' : ''}" id="setting-tts" role="switch" aria-checked="${ttsEnabled}" aria-label="Text-to-Speech">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-tts">${ttsEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🔤 Large Text</span>
                             <button class="settings-toggle ${document.documentElement.getAttribute('data-text-size') === 'large' ? 'on' : ''}" id="setting-textsize" role="switch" aria-checked="${document.documentElement.getAttribute('data-text-size') === 'large'}" aria-label="Large Text">
                                 <span class="settings-toggle-knob"></span>
                             </button>
+                            <span class="settings-toggle-state" id="state-setting-textsize">${document.documentElement.getAttribute('data-text-size') === 'large' ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🌀 Reduced Motion</span>
+                            <button class="settings-toggle ${reducedMotionEnabled ? 'on' : ''}" id="setting-reduced-motion" role="switch" aria-checked="${reducedMotionEnabled}" aria-label="Reduced Motion">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-reduced-motion">${reducedMotionEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
+                            <button class="settings-choice ${srVerbosityDetailed ? '' : 'active'}" id="setting-sr-brief" type="button">Brief</button>
+                            <button class="settings-choice ${srVerbosityDetailed ? 'active' : ''}" id="setting-sr-detailed" type="button">Detailed</button>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🌿 Low Stimulation</span>
+                            <button class="settings-preset-btn" id="setting-low-stim">Apply Preset</button>
                         </div>
                     </div>
                     <div class="settings-keyboard-hints">
@@ -7329,12 +7499,18 @@
             `;
             document.body.appendChild(overlay);
 
+            function setSwitchStateText(id, isOn) {
+                const stateEl = document.getElementById(`state-${id}`);
+                if (stateEl) stateEl.textContent = isOn ? 'On' : 'Off';
+            }
+
             // Sound toggle
             document.getElementById('setting-sound').addEventListener('click', function() {
                 if (typeof SoundManager !== 'undefined') {
                     const enabled = SoundManager.toggle();
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
+                    setSwitchStateText('setting-sound', enabled);
                     if (enabled && gameState.currentRoom) SoundManager.enterRoom(gameState.currentRoom);
                 }
             });
@@ -7345,6 +7521,7 @@
                     const enabled = SoundManager.toggleMusic();
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
+                    setSwitchStateText('setting-music', enabled);
                 }
             });
 
@@ -7354,6 +7531,7 @@
                     const enabled = SoundManager.toggleSamplePack();
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
+                    setSwitchStateText('setting-sample-pack', enabled);
                     showToast(enabled ? '🎧 Sample audio pack enabled' : '🎛️ Sample audio pack disabled', '#A8D8EA');
                 }
             });
@@ -7368,6 +7546,7 @@
                 try { localStorage.setItem('petCareBuddy_theme', newTheme); } catch (e) {}
                 this.classList.toggle('on', newTheme === 'dark');
                 this.setAttribute('aria-checked', String(newTheme === 'dark'));
+                setSwitchStateText('setting-darkmode', newTheme === 'dark');
                 const label = this.parentElement.querySelector('.settings-row-label');
                 if (label) label.textContent = (newTheme === 'dark' ? '🌙' : '☀️') + ' Dark Mode';
                 const meta = document.querySelector('meta[name="theme-color"]');
@@ -7378,6 +7557,7 @@
             document.getElementById('setting-haptic').addEventListener('click', function() {
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
+                setSwitchStateText('setting-haptic', isOn);
                 try { localStorage.setItem('petCareBuddy_hapticOff', isOn ? 'false' : 'true'); } catch (e) {}
                 if (!isOn && navigator.vibrate) navigator.vibrate(0);
             });
@@ -7386,6 +7566,7 @@
             document.getElementById('setting-tts').addEventListener('click', function() {
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
+                setSwitchStateText('setting-tts', isOn);
                 try { localStorage.setItem('petCareBuddy_ttsOff', isOn ? 'false' : 'true'); } catch (e) {}
                 if (!isOn && 'speechSynthesis' in window) window.speechSynthesis.cancel();
             });
@@ -7394,9 +7575,47 @@
             document.getElementById('setting-textsize').addEventListener('click', function() {
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
+                setSwitchStateText('setting-textsize', isOn);
                 document.documentElement.setAttribute('data-text-size', isOn ? 'large' : 'normal');
                 try { localStorage.setItem('petCareBuddy_textSize', isOn ? 'large' : 'normal'); } catch (e) {}
             });
+
+            document.getElementById('setting-reduced-motion').addEventListener('click', function() {
+                const isOn = this.classList.toggle('on');
+                this.setAttribute('aria-checked', String(isOn));
+                setSwitchStateText('setting-reduced-motion', isOn);
+                document.documentElement.setAttribute('data-reduced-motion', isOn ? 'true' : 'false');
+                try { localStorage.setItem('petCareBuddy_reducedMotion', isOn ? 'true' : 'false'); } catch (e) {}
+            });
+
+            const srBrief = document.getElementById('setting-sr-brief');
+            const srDetailed = document.getElementById('setting-sr-detailed');
+            if (srBrief && srDetailed) {
+                const setSrVerbosity = (mode) => {
+                    srBrief.classList.toggle('active', mode === 'brief');
+                    srDetailed.classList.toggle('active', mode === 'detailed');
+                    try { localStorage.setItem('petCareBuddy_srVerbosity', mode); } catch (e) {}
+                };
+                srBrief.addEventListener('click', () => setSrVerbosity('brief'));
+                srDetailed.addEventListener('click', () => setSrVerbosity('detailed'));
+            }
+
+            const lowStim = document.getElementById('setting-low-stim');
+            if (lowStim) {
+                lowStim.addEventListener('click', () => {
+                    document.documentElement.setAttribute('data-reduced-motion', 'true');
+                    try { localStorage.setItem('petCareBuddy_reducedMotion', 'true'); } catch (e) {}
+                    try { localStorage.setItem('petCareBuddy_srVerbosity', 'brief'); } catch (e) {}
+                    const ttsBtn = document.getElementById('setting-tts');
+                    if (ttsBtn && ttsBtn.classList.contains('on')) ttsBtn.click();
+                    const soundBtn = document.getElementById('setting-sound');
+                    if (soundBtn && soundBtn.classList.contains('on')) soundBtn.click();
+                    const reducedBtn = document.getElementById('setting-reduced-motion');
+                    if (reducedBtn && !reducedBtn.classList.contains('on')) reducedBtn.click();
+                    if (srBrief) srBrief.click();
+                    showToast('Low stimulation preset applied.', '#66BB6A');
+                });
+            }
 
             function closeSettings() {
                 popModalEscape(closeSettings);
@@ -7459,15 +7678,15 @@
         document.addEventListener('keydown', (e) => {
             // Don't trigger shortcuts when typing in an input or when a modal is open
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-            if (document.querySelector('.modal-overlay, [role="dialog"]')) return;
+            if (document.querySelector('.modal-overlay, [role="dialog"], [role="alertdialog"]')) return;
             if (gameState.phase !== 'pet') return;
 
             const shortcuts = {
-                '1': 'feed-btn',
-                '2': 'wash-btn',
-                '3': 'sleep-btn',
+                '1': 'core-feed-btn',
+                '2': 'core-wash-btn',
+                '3': 'core-sleep-btn',
                 '4': 'pet-btn',
-                '5': 'play-btn',
+                '5': 'core-play-btn',
                 '6': 'treat-btn',
                 '7': 'minigames-btn',
                 '8': 'competition-btn',
@@ -7500,6 +7719,8 @@
             try {
                 const size = localStorage.getItem('petCareBuddy_textSize');
                 if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
+                const reducedMotion = localStorage.getItem('petCareBuddy_reducedMotion');
+                if (reducedMotion === 'true') document.documentElement.setAttribute('data-reduced-motion', 'true');
             } catch (e) {}
         })();
 
