@@ -279,6 +279,84 @@
             return Math.max(min, Math.min(max, value));
         }
 
+        function isFiniteNumber(value) {
+            return typeof value === 'number' && Number.isFinite(value);
+        }
+
+        function isValidPetType(type) {
+            return !!(type && (PET_TYPES[type] || (typeof HYBRID_PET_TYPES !== 'undefined' && HYBRID_PET_TYPES[type])));
+        }
+
+        function normalizePetNeedValue(value, fallback) {
+            if (!isFiniteNumber(value)) return fallback;
+            return clamp(Math.round(value), 0, 100);
+        }
+
+        function hasValidPetCoreData(pet) {
+            const energyOk = pet && (typeof pet.energy === 'undefined' || isFiniteNumber(pet.energy));
+            return !!(pet &&
+                typeof pet === 'object' &&
+                isFiniteNumber(pet.hunger) &&
+                isFiniteNumber(pet.cleanliness) &&
+                isFiniteNumber(pet.happiness) &&
+                energyOk &&
+                isValidPetType(pet.type));
+        }
+
+        function normalizePetDataForSave(pet, markDirty) {
+            if (!pet || typeof pet !== 'object') return;
+
+            pet.hunger = normalizePetNeedValue(pet.hunger, 70);
+            pet.cleanliness = normalizePetNeedValue(pet.cleanliness, 70);
+            pet.happiness = normalizePetNeedValue(pet.happiness, 70);
+            pet.energy = normalizePetNeedValue(pet.energy, 70);
+            if (typeof pet.careActions !== 'number' || !Number.isFinite(pet.careActions)) pet.careActions = 0;
+            if (!pet.birthdate || !Number.isFinite(pet.birthdate)) {
+                const estimatedAgeMs = Math.max(
+                    pet.careActions * 5 * 60 * 1000,
+                    2 * 60 * 60 * 1000
+                );
+                pet.birthdate = Date.now() - estimatedAgeMs;
+            }
+            const ageInHours = (Date.now() - pet.birthdate) / (1000 * 60 * 60);
+            if (!pet.growthStage) pet.growthStage = getGrowthStage(pet.careActions, ageInHours);
+            if (!pet.careHistory) pet.careHistory = [];
+            if (typeof pet.neglectCount !== 'number' || !Number.isFinite(pet.neglectCount)) pet.neglectCount = 0;
+            if (!pet.careQuality) pet.careQuality = 'average';
+            if (!pet.careVariant) pet.careVariant = 'normal';
+            if (!pet.evolutionStage) pet.evolutionStage = 'base';
+            if (!pet.lastGrowthStage) pet.lastGrowthStage = pet.growthStage || 'baby';
+            if (!pet.unlockedAccessories) pet.unlockedAccessories = [];
+            if (!pet.personality) {
+                pet.personality = getRandomPersonality();
+                if (typeof markDirty === 'function') markDirty();
+            }
+            if (!pet.personalityWarmth) pet.personalityWarmth = {};
+        }
+
+        function repairPetIdsAndNextId(state) {
+            if (!state || !Array.isArray(state.pets)) return;
+            let maxId = 0;
+            const usedIds = {};
+            state.pets.forEach((p) => {
+                if (!p) return;
+                const id = p.id;
+                if (Number.isInteger(id) && id > 0 && !usedIds[id]) {
+                    usedIds[id] = true;
+                    if (id > maxId) maxId = id;
+                    return;
+                }
+                do {
+                    maxId++;
+                } while (usedIds[maxId]);
+                p.id = maxId;
+                usedIds[maxId] = true;
+            });
+
+            const candidateNext = Number.isInteger(state.nextPetId) && state.nextPetId > 0 ? state.nextPetId : 1;
+            state.nextPetId = Math.max(candidateNext, maxId + 1);
+        }
+
         const _escapeDiv = document.createElement('div');
         function escapeHTML(str) {
             _escapeDiv.textContent = str;
@@ -1904,6 +1982,7 @@
             // Keep aria-valuenow in sync so screen readers report current wellness
             const bar = fill.parentElement;
             if (bar) {
+                bar.setAttribute('aria-label', 'Overall wellness');
                 bar.setAttribute('aria-valuenow', w);
                 bar.setAttribute('aria-valuetext', `Overall wellness ${w} percent, ${getWellnessLabel(pet)}`);
             }
@@ -2427,9 +2506,13 @@
                 gameState.lastUpdate = Date.now();
                 // Strip transient data that shouldn't persist
                 const offlineChanges = gameState._offlineChanges;
-                delete gameState._offlineChanges;
-                localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
-                if (offlineChanges) gameState._offlineChanges = offlineChanges;
+                const hadOfflineChanges = Object.prototype.hasOwnProperty.call(gameState, '_offlineChanges');
+                if (hadOfflineChanges) delete gameState._offlineChanges;
+                try {
+                    localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
+                } finally {
+                    if (hadOfflineChanges) gameState._offlineChanges = offlineChanges;
+                }
                 // Show save indicator (Item 22)
                 showSaveIndicator();
             } catch (e) {
@@ -2483,70 +2566,26 @@
 
                     // Validate pet data if in pet phase
                     if (parsed.phase === 'pet') {
-                        if (!parsed.pet ||
-                            typeof parsed.pet.hunger !== 'number' ||
-                            typeof parsed.pet.cleanliness !== 'number' ||
-                            typeof parsed.pet.happiness !== 'number' ||
-                            !parsed.pet.type ||
-                            !(PET_TYPES[parsed.pet.type] || (typeof HYBRID_PET_TYPES !== 'undefined' && HYBRID_PET_TYPES[parsed.pet.type]))) {
-                            // Corrupted pet data, start fresh
+                        const hasPetObject = parsed.pet && typeof parsed.pet === 'object';
+                        const hasPetArray = Array.isArray(parsed.pets) && parsed.pets.some((p) => p && typeof p === 'object');
+                        if (!hasPetObject && !hasPetArray) {
                             return null;
                         }
-                        // Add energy stat if missing (for existing saves)
-                        if (typeof parsed.pet.energy !== 'number') {
-                            parsed.pet.energy = 70;
+                        if (!Array.isArray(parsed.pets)) {
+                            parsed.pets = hasPetObject ? [parsed.pet] : [];
+                        } else if (!hasPetObject) {
+                            const idx = Number.isInteger(parsed.activePetIndex) ? parsed.activePetIndex : 0;
+                            parsed.pet = parsed.pets[idx] || parsed.pets.find((p) => p && typeof p === 'object') || null;
                         }
-                        // Add growth stage fields if missing (for existing saves)
-                        if (typeof parsed.pet.careActions !== 'number') {
-                            parsed.pet.careActions = 0;
+                        if (!hasValidPetCoreData(parsed.pet)) {
+                            const fallbackPet = (parsed.pets || []).find((p) => hasValidPetCoreData(p));
+                            if (!fallbackPet) {
+                                return null;
+                            }
+                            parsed.pet = fallbackPet;
                         }
-                        // Add birthdate if missing (estimate based on care actions)
-                        if (!parsed.pet.birthdate) {
-                            // Estimate age from care actions. Care actions happen roughly
-                            // every few minutes, so use ~5 minutes per action as a more
-                            // realistic estimate instead of 1 hour per action.
-                            const estimatedAgeMs = Math.max(
-                                parsed.pet.careActions * 5 * 60 * 1000,
-                                2 * 60 * 60 * 1000 // minimum 2 hours old
-                            );
-                            parsed.pet.birthdate = Date.now() - estimatedAgeMs;
-                        }
-                        // Calculate age for growth stage
-                        const ageInHours = (Date.now() - parsed.pet.birthdate) / (1000 * 60 * 60);
-                        if (!parsed.pet.growthStage) {
-                            parsed.pet.growthStage = getGrowthStage(parsed.pet.careActions, ageInHours);
-                        }
-                        // Add care quality fields if missing
-                        if (!parsed.pet.careHistory) {
-                            parsed.pet.careHistory = [];
-                        }
-                        if (typeof parsed.pet.neglectCount !== 'number') {
-                            parsed.pet.neglectCount = 0;
-                        }
-                        if (!parsed.pet.careQuality) {
-                            parsed.pet.careQuality = 'average';
-                        }
-                        if (!parsed.pet.careVariant) {
-                            parsed.pet.careVariant = 'normal';
-                        }
-                        if (!parsed.pet.evolutionStage) {
-                            parsed.pet.evolutionStage = 'base';
-                        }
-                        if (!parsed.pet.lastGrowthStage) {
-                            parsed.pet.lastGrowthStage = parsed.pet.growthStage || 'baby';
-                        }
-                        if (!parsed.pet.unlockedAccessories) {
-                            parsed.pet.unlockedAccessories = [];
-                        }
-                        // Add personality if missing (for existing saves)
-                        // Save immediately so the same personality persists across sessions
-                        if (!parsed.pet.personality) {
-                            parsed.pet.personality = getRandomPersonality();
-                            _needsSaveAfterLoad = true;
-                        }
-                        if (!parsed.pet.personalityWarmth) {
-                            parsed.pet.personalityWarmth = {};
-                        }
+
+                        normalizePetDataForSave(parsed.pet, () => { _needsSaveAfterLoad = true; });
                         // Re-check growth stage to detect elder
                         const currentAge = (Date.now() - parsed.pet.birthdate) / (1000 * 60 * 60);
                         const detectedStage = getGrowthStage(parsed.pet.careActions, currentAge);
@@ -2630,26 +2669,18 @@
                     if (!Array.isArray(parsed.pets)) {
                         parsed.pets = parsed.pet ? [parsed.pet] : [];
                     }
-                    if (typeof parsed.activePetIndex !== 'number') {
+                    if (!Number.isInteger(parsed.activePetIndex) || parsed.activePetIndex < 0) {
                         parsed.activePetIndex = 0;
                     }
                     if (!parsed.relationships || typeof parsed.relationships !== 'object') {
                         parsed.relationships = {};
                     }
-                    if (typeof parsed.nextPetId !== 'number') {
-                        // Assign IDs to any existing pets that don't have them
-                        let maxId = 0;
-                        parsed.pets.forEach(p => {
-                            if (p && typeof p.id === 'number' && p.id > maxId) maxId = p.id;
-                        });
-                        parsed.pets.forEach(p => {
-                            if (p && typeof p.id !== 'number') {
-                                maxId++;
-                                p.id = maxId;
-                            }
-                        });
-                        parsed.nextPetId = maxId + 1;
+                    parsed.pets = parsed.pets.filter((p) => p && typeof p === 'object' && isValidPetType(p.type));
+                    if (parsed.phase === 'pet' && parsed.pet && parsed.pets.length === 0) {
+                        parsed.pets = [parsed.pet];
                     }
+                    parsed.pets.forEach((p) => normalizePetDataForSave(p, () => { _needsSaveAfterLoad = true; }));
+                    repairPetIdsAndNextId(parsed);
                     // Add achievement/daily systems if missing (for existing saves)
                     if (!parsed.achievements || typeof parsed.achievements !== 'object') parsed.achievements = {};
                     if (!parsed.roomsVisited || typeof parsed.roomsVisited !== 'object') parsed.roomsVisited = {};
@@ -2695,8 +2726,7 @@
                     parsed.pets.forEach(p => {
                         if (p) {
                             delete p._neglectTickCounter;
-                            if (!p.personality) p.personality = getRandomPersonality();
-                            if (!p.personalityWarmth) p.personalityWarmth = {};
+                            normalizePetDataForSave(p, () => { _needsSaveAfterLoad = true; });
                         }
                     });
 
@@ -2905,12 +2935,25 @@
 
         function importSaveData() {
             function isValidImport(data) {
+                function isFiniteNum(value) {
+                    return typeof value === 'number' && Number.isFinite(value);
+                }
+                function hasValidCorePet(pet) {
+                    const energyOk = pet && (typeof pet.energy === 'undefined' || isFiniteNum(pet.energy));
+                    return !!(pet &&
+                        typeof pet === 'object' &&
+                        isFiniteNum(pet.hunger) &&
+                        isFiniteNum(pet.cleanliness) &&
+                        isFiniteNum(pet.happiness) &&
+                        energyOk &&
+                        isValidPetType(pet.type));
+                }
                 if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
                 if (!['egg', 'hatching', 'pet'].includes(data.phase)) return false;
                 if (data.phase === 'pet') {
-                    const hasPetObject = data.pet && typeof data.pet === 'object';
-                    const hasPetArray = Array.isArray(data.pets) && data.pets.length > 0;
-                    if (!hasPetObject && !hasPetArray) return false;
+                    const hasValidPetObject = hasValidCorePet(data.pet);
+                    const hasValidPetArray = Array.isArray(data.pets) && data.pets.some((p) => hasValidCorePet(p));
+                    if (!hasValidPetObject && !hasValidPetArray) return false;
                 }
                 if (data.pet && typeof data.pet !== 'object') return false;
                 if (data.pets && !Array.isArray(data.pets)) return false;
@@ -3714,6 +3757,10 @@
 
         function updateCareHistory(pet) {
             if (!pet) return null;
+            pet.hunger = normalizePetNeedValue(pet.hunger, 70);
+            pet.cleanliness = normalizePetNeedValue(pet.cleanliness, 70);
+            pet.happiness = normalizePetNeedValue(pet.happiness, 70);
+            pet.energy = normalizePetNeedValue(pet.energy, 70);
 
             // Initialize care history if missing
             if (!pet.careHistory) pet.careHistory = [];
@@ -3734,7 +3781,18 @@
             // Check for neglect (any stat below 20)
             // Only update neglectCount every 5 minutes (10 ticks at 30s) to prevent
             // rapid inflation from the 30-second update cycle
-            const petId = pet.id;
+            let petId = pet.id;
+            if (!Number.isInteger(petId) || petId <= 0) {
+                if (!pet._runtimeNeglectKey) {
+                    Object.defineProperty(pet, '_runtimeNeglectKey', {
+                        value: `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                        writable: false,
+                        configurable: true,
+                        enumerable: false
+                    });
+                }
+                petId = pet._runtimeNeglectKey;
+            }
             if (!_neglectTickCounters[petId]) _neglectTickCounters[petId] = 0;
             _neglectTickCounters[petId]++;
             const isNeglected = pet.hunger < 20 || pet.cleanliness < 20 || pet.happiness < 20 || pet.energy < 20;
@@ -5042,8 +5100,9 @@
                     ensureExplorationState();
                     updateExplorationUnlocks(true);
                     const expeditionResult = resolveExpeditionIfReady(false, false);
-                    if (expeditionResult && expeditionResult.ok && typeof updateNeedDisplays === 'function') {
-                        updateNeedDisplays();
+                    if (expeditionResult && expeditionResult.ok) {
+                        if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                        if (typeof updateWellnessBar === 'function') updateWellnessBar();
                     }
 
                     const pet = gameState.pet;
@@ -5087,7 +5146,13 @@
                     pet.hunger = Math.round(clamp(pet.hunger - 1 * hungerMult * elderReduction, 0, 100));
                     pet.cleanliness = Math.round(clamp(pet.cleanliness - 1 * cleanMult * elderReduction, 0, 100));
                     pet.happiness = Math.round(clamp(pet.happiness - 1 * happyMult * elderReduction, 0, 100));
-                    pet.energy = Math.round(clamp(pet.energy - (1 + energyDecayBonus - energyRegenBonus) * energyMult * elderReduction, 0, 100));
+                    const baseEnergyDelta = (1 + energyDecayBonus - energyRegenBonus);
+                    if (baseEnergyDelta >= 0) {
+                        pet.energy = Math.round(clamp(pet.energy - baseEnergyDelta * energyMult * elderReduction, 0, 100));
+                    } else {
+                        const energyRecoveryMult = energyMult > 0 ? (1 / energyMult) : 1;
+                        pet.energy = Math.round(clamp(pet.energy - baseEnergyDelta * energyRecoveryMult, 0, 100));
+                    }
 
                     // Extra weather-based decay when outdoors
                     if (isOutdoor) {
@@ -5128,6 +5193,10 @@
                         };
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
+                            p.hunger = normalizePetNeedValue(p.hunger, 70);
+                            p.cleanliness = normalizePetNeedValue(p.cleanliness, 70);
+                            p.happiness = normalizePetNeedValue(p.happiness, 70);
+                            p.energy = normalizePetNeedValue(p.energy, 70);
                             p.hunger = applyProbabilisticDecay(p.hunger, 0.5);
                             p.cleanliness = applyProbabilisticDecay(p.cleanliness, 0.5);
                             // Net happiness: -0.5 decay + companion bonus (dynamically calculated)
@@ -5643,25 +5712,13 @@
             if (!Array.isArray(gameState.pets)) {
                 gameState.pets = gameState.pet ? [gameState.pet] : [];
             }
-            if (typeof gameState.activePetIndex !== 'number') {
+            if (!Number.isInteger(gameState.activePetIndex) || gameState.activePetIndex < 0) {
                 gameState.activePetIndex = 0;
             }
             if (!gameState.relationships) {
                 gameState.relationships = {};
             }
-            if (typeof gameState.nextPetId !== 'number') {
-                let maxId = 0;
-                gameState.pets.forEach(p => {
-                    if (p && typeof p.id === 'number' && p.id > maxId) maxId = p.id;
-                });
-                gameState.pets.forEach(p => {
-                    if (p && typeof p.id !== 'number') {
-                        maxId++;
-                        p.id = maxId;
-                    }
-                });
-                gameState.nextPetId = maxId + 1;
-            }
+            repairPetIdsAndNextId(gameState);
 
             if (gameState.phase === 'pet' && gameState.pet) {
                 renderPetPhase();

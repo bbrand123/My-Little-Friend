@@ -367,6 +367,8 @@
                 }
                 saveGame();
                 if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+                if (typeof updateWellnessBar === 'function') updateWellnessBar();
+                if (typeof updatePetMood === 'function') updatePetMood();
 
                 // Show result overlay
                 setTimeout(() => {

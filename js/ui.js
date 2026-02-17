@@ -1571,7 +1571,7 @@
                         <span class="wellness-bar-value" id="wellness-value">${getWellnessLabel(pet)}</span>
                         <span class="wellness-bar-pct" id="wellness-pct">${getWellnessPercent(pet)}%</span>
                     </div>
-                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness: ${getWellnessPercent(pet)} percent" aria-valuenow="${getWellnessPercent(pet)}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Overall wellness ${getWellnessPercent(pet)} percent, ${getWellnessLabel(pet)}">
+                    <div class="wellness-bar" role="progressbar" aria-label="Overall wellness" aria-valuenow="${getWellnessPercent(pet)}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Overall wellness ${getWellnessPercent(pet)} percent, ${getWellnessLabel(pet)}">
                         <div class="wellness-bar-fill ${getWellnessClass(pet)}" id="wellness-fill" style="width: ${getWellnessPercent(pet)}%;"></div>
                     </div>
                 </div>
@@ -2940,9 +2940,7 @@
                 return 'good';
             };
 
-            // Helper to update a bubble indicator with enhanced warning classes
-            // When silent=true (passive decay), skip aria-valuenow updates to avoid
-            // screen readers announcing all 4 stat changes every 30s.
+            // Helper to update a bubble indicator with enhanced warning classes.
             function updateBubble(id, value, statKey) {
                 const bubble = document.getElementById(id);
                 if (!bubble) return;
@@ -2956,11 +2954,9 @@
                 } else if (value <= 45) {
                     bubble.classList.add('warning');
                 }
-                if (!silent) {
-                    bubble.setAttribute('aria-valuenow', value);
-                    if (labels[statKey]) {
-                        bubble.setAttribute('aria-valuetext', `${labels[statKey]} ${value} percent, ${statusForA11y(value)}`);
-                    }
+                bubble.setAttribute('aria-valuenow', value);
+                if (labels[statKey]) {
+                    bubble.setAttribute('aria-valuetext', `${labels[statKey]} ${value} percent, ${statusForA11y(value)}`);
                 }
                 // Update status icon for colorblind accessibility
                 const statusIcon = getNeedStatusIcon(value);
