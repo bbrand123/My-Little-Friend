@@ -7557,6 +7557,14 @@
                 shopCategories.forEach((category) => {
                     const entries = Object.values(ECONOMY_SHOP_ITEMS[category.key] || {});
                     const cards = entries.map((item) => {
+                        // Rec 10: Seasonal availability check
+                        const available = (typeof isShopItemAvailable === 'function') ? isShopItemAvailable(item.id) : true;
+                        if (!available) return `
+                            <div class="economy-card" style="opacity:0.5;">
+                                <div><strong>${item.emoji} ${item.name}</strong></div>
+                                <div class="explore-subtext" style="color:#FFA726;">Out of season</div>
+                            </div>
+                        `;
                         const price = (typeof getShopItemPrice === 'function') ? getShopItemPrice(category.key, item.id) : (item.basePrice || 0);
                         const ownedId = category.key === 'seeds' ? item.cropId
                             : category.key === 'accessories' ? item.accessoryId
@@ -7571,11 +7579,25 @@
                             ownedId
                         ) : 0;
                         const useable = ['food', 'toys', 'medicine'].includes(category.key) || category.key === 'decorations' || category.key === 'accessories';
+                        // Rec 5: Durability display for toys
+                        let durabilityHTML = '';
+                        if (category.key === 'toys' && typeof getItemDurability === 'function') {
+                            const dur = getItemDurability('toys', ownedId);
+                            if (dur) {
+                                const pct = Math.round((dur.current / dur.max) * 100);
+                                const color = pct > 50 ? '#66BB6A' : pct > 20 ? '#FFD54F' : '#EF5350';
+                                durabilityHTML = `<div class="explore-subtext" style="color:${color};">Durability: ${dur.current}/${dur.max}${dur.current <= 0 ? ' (Broken!)' : ''}</div>`;
+                                if (dur.current < dur.max) {
+                                    durabilityHTML += `<button class="modal-btn" data-repair-item="toys:${ownedId}" style="font-size:0.75rem;">Repair</button>`;
+                                }
+                            }
+                        }
                         return `
                             <div class="economy-card">
                                 <div><strong>${item.emoji} ${item.name}</strong></div>
                                 <div class="explore-subtext">${item.description || ''}</div>
                                 <div class="explore-subtext">Owned: ${ownedCount}</div>
+                                ${durabilityHTML}
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                                     <button class="modal-btn confirm" data-shop-buy="${category.key}:${item.id}">Buy (${price}🪙)</button>
                                     ${useable ? `<button class="modal-btn" data-shop-use="${category.key}:${useActionId}">Use</button>` : ''}
@@ -7610,6 +7632,29 @@
                         <div class="explore-biome-grid">${craftedUseCards || '<p class="explore-subtext">No crafted items yet. Use recipes below.</p>'}</div>
                     </section>
                 `;
+
+                // Rec 6: Prestige shop section
+                let prestigeHTML = '';
+                if (typeof PRESTIGE_PURCHASES !== 'undefined') {
+                    const prestigeCards = Object.values(PRESTIGE_PURCHASES).map((item) => {
+                        const owned = (typeof hasPrestigePurchase === 'function') ? hasPrestigePurchase(item.id) : false;
+                        return `
+                            <div class="economy-card" ${owned ? 'style="opacity:0.6;"' : ''}>
+                                <div><strong>${item.emoji} ${item.name}</strong></div>
+                                <div class="explore-subtext">${item.description || ''}</div>
+                                ${owned ? '<div class="explore-subtext" style="color:#66BB6A;">Owned</div>'
+                                    : `<button class="modal-btn confirm" data-prestige-buy="${item.id}">Buy (${item.cost}🪙)</button>`}
+                            </div>
+                        `;
+                    }).join('');
+                    shopSections += `
+                        <section class="explore-section">
+                            <h3>🏆 Prestige Shop</h3>
+                            <p class="explore-subtext">High-value upgrades for veteran players.</p>
+                            <div class="explore-biome-grid">${prestigeCards}</div>
+                        </section>
+                    `;
+                }
 
                 const marketHTML = marketOffers.length > 0
                     ? marketOffers.map((offer) => {
@@ -7675,6 +7720,12 @@
                         `;
                     }).join('') || '<p class="explore-subtext">No exploration loot to sell yet.</p>';
 
+                // Rec 3/4: Calculate tax and fee rates for display
+                const taxRate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.auctionTransactionTaxRate === 'number')
+                    ? Math.round(ECONOMY_BALANCE.auctionTransactionTaxRate * 100) : 8;
+                const feeRate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.auctionListingFeeRate === 'number')
+                    ? Math.round(ECONOMY_BALANCE.auctionListingFeeRate * 100) : 3;
+
                 const auctionListingHTML = (auction.listings || []).slice(0, 16).map((listing) => {
                     const mine = listing.sellerSlot === auction.slotId;
                     return `
@@ -7686,13 +7737,17 @@
                 }).join('') || '<li>No active listings.</li>';
 
                 const auctionPostHTML = postables.length > 0
-                    ? postables.map((item) => `
-                        <div class="economy-card">
-                            <div><strong>${item.emoji} ${escapeHTML(item.name)}</strong></div>
-                            <div class="explore-subtext">Owned: ${item.count}</div>
-                            <button class="modal-btn" data-auction-post="${item.type}:${item.id}:${item.suggestedPrice}">Post (1 for ${item.suggestedPrice}🪙)</button>
-                        </div>
-                    `).join('')
+                    ? postables.map((item) => {
+                        const listFee = Math.max(1, Math.floor(item.suggestedPrice * (feeRate / 100)));
+                        return `
+                            <div class="economy-card">
+                                <div><strong>${item.emoji} ${escapeHTML(item.name)}</strong></div>
+                                <div class="explore-subtext">Owned: ${item.count}</div>
+                                <div class="explore-subtext" style="font-size:0.7rem;color:#90A4AE;">Listing fee: ${listFee}🪙 | Buyer pays ${taxRate}% tax</div>
+                                <button class="modal-btn" data-auction-post="${item.type}:${item.id}:${item.suggestedPrice}">Post (1 for ${item.suggestedPrice}🪙)</button>
+                            </div>
+                        `;
+                    }).join('')
                     : '<p class="explore-subtext">No items available to list.</p>';
 
                 overlay.innerHTML = `
@@ -7737,6 +7792,7 @@
 
                         <section class="explore-section">
                             <h3>🏦 Auction House (Local Save Slots)</h3>
+                            <p class="explore-subtext" style="font-size:0.75rem;color:#90A4AE;">Listing fee: ${feeRate}% | Transaction tax: ${taxRate}% on sales | Max ${typeof ECONOMY_BALANCE !== 'undefined' ? ECONOMY_BALANCE.auctionPerSlotListingCap : 12} listings/slot</p>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
                                 <label for="auction-slot-select">Active Slot</label>
                                 <select id="auction-slot-select" class="explore-duration-select">
@@ -7802,6 +7858,38 @@
                         } else {
                             renderEconomyModal();
                         }
+                    });
+                });
+
+                // Rec 6: Prestige shop buy handlers
+                overlay.querySelectorAll('[data-prestige-buy]').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        if (typeof buyPrestigePurchase !== 'function') return;
+                        const purchaseId = btn.getAttribute('data-prestige-buy');
+                        const result = buyPrestigePurchase(purchaseId);
+                        if (!result.ok) {
+                            if (result.reason === 'already-owned') showToast('You already own this upgrade!', '#90A4AE');
+                            else showToast('Not enough coins for this prestige purchase.', '#FFA726');
+                            return;
+                        }
+                        showToast(`🏆 Unlocked ${result.item.emoji} ${result.item.name}!`, '#FFD700');
+                        renderEconomyModal();
+                    });
+                });
+
+                // Rec 5: Repair item handlers
+                overlay.querySelectorAll('[data-repair-item]').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        if (typeof repairItem !== 'function') return;
+                        const [category, itemId] = String(btn.getAttribute('data-repair-item') || '').split(':');
+                        const result = repairItem(category, itemId);
+                        if (!result.ok) {
+                            if (result.reason === 'insufficient-funds') showToast(`Not enough coins to repair (${result.needed}🪙 needed).`, '#FFA726');
+                            else showToast('Item is already in perfect condition!', '#90A4AE');
+                            return;
+                        }
+                        showToast(`🔧 Repaired for ${result.cost}🪙! Durability: ${result.durability.current}/${result.durability.max}`, '#66BB6A');
+                        renderEconomyModal();
                     });
                 });
 

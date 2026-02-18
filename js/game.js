@@ -4,10 +4,16 @@
         if (typeof _petPhaseTimersRunning === 'undefined') var _petPhaseTimersRunning = false;
         if (typeof _petPhaseLastRoom === 'undefined') var _petPhaseLastRoom = null;
 
+        function generatePlayerId() {
+            return 'pid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+        }
+
         function createDefaultEconomyState() {
             return {
                 coins: 240,
                 starterSeedGranted: true,
+                // Rec 2: Persistent player ID for cross-slot self-trade prevention
+                playerId: generatePlayerId(),
                 inventory: {
                     food: {},
                     toys: {},
@@ -1363,6 +1369,8 @@
             if (typeof eco.totalEarned !== 'number') eco.totalEarned = 0;
             if (typeof eco.totalSpent !== 'number') eco.totalSpent = 0;
             if (typeof eco.mysteryEggsOpened !== 'number') eco.mysteryEggsOpened = 0;
+            // Rec 2: Ensure persistent playerId exists for auction self-trade prevention
+            if (!eco.playerId || typeof eco.playerId !== 'string') eco.playerId = generatePlayerId();
             if (eco.starterSeedGranted !== true) {
                 eco.inventory.seeds.carrot = (eco.inventory.seeds.carrot || 0) + 4;
                 eco.inventory.seeds.tomato = (eco.inventory.seeds.tomato || 0) + 3;
@@ -1441,7 +1449,12 @@
                 ? getTodayString()
                 : `${new Date().getFullYear()}-${new Date().getMonth() + 1}-${new Date().getDate()}`;
             const hash = hashStringToUint(`${day}:${season}:${weather}:${itemKey || ''}`);
-            return 0.86 + ((hash % 33) / 100);
+            // Rec 7: Narrowed volatility window from 86%-119% to 92%-108%
+            const volMin = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.volatilityMin === 'number')
+                ? ECONOMY_BALANCE.volatilityMin : 0.92;
+            const volRange = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.volatilityRange === 'number')
+                ? ECONOMY_BALANCE.volatilityRange : 16;
+            return volMin + ((hash % (volRange + 1)) / 100);
         }
 
         function getDynamicEconomyPrice(basePrice, category, itemKey, rarity) {
@@ -1543,6 +1556,10 @@
         function buyPetShopItem(category, itemId, amount) {
             const item = getShopItemData(category, itemId);
             if (!item) return { ok: false, reason: 'invalid-item' };
+            // Rec 10: Check seasonal availability
+            if (typeof isShopItemAvailable === 'function' && !isShopItemAvailable(itemId)) {
+                return { ok: false, reason: 'out-of-season' };
+            }
             const qty = Math.max(1, Math.floor(Number(amount) || 1));
             const unitPrice = getShopItemPrice(category, itemId);
             const totalPrice = unitPrice * qty;
@@ -1600,6 +1617,54 @@
             };
         }
 
+        // Rec 5: Item durability tracking for toys and accessories
+        function getItemDurability(category, itemId) {
+            if (!gameState._itemDurability) gameState._itemDurability = {};
+            const key = `${category}:${itemId}`;
+            return gameState._itemDurability[key] || null;
+        }
+
+        function initItemDurability(category, itemId) {
+            if (!gameState._itemDurability) gameState._itemDurability = {};
+            const key = `${category}:${itemId}`;
+            if (gameState._itemDurability[key] && gameState._itemDurability[key].current > 0) return gameState._itemDurability[key];
+            let maxDur = 0;
+            if (category === 'toys') {
+                maxDur = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.toyDurabilityMax === 'number')
+                    ? ECONOMY_BALANCE.toyDurabilityMax : 10;
+            } else if (category === 'accessories') {
+                maxDur = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.accessoryDurabilityMax === 'number')
+                    ? ECONOMY_BALANCE.accessoryDurabilityMax : 15;
+            }
+            if (maxDur <= 0) return null;
+            gameState._itemDurability[key] = { current: maxDur, max: maxDur };
+            return gameState._itemDurability[key];
+        }
+
+        function degradeItemDurability(category, itemId) {
+            const dur = getItemDurability(category, itemId);
+            if (!dur) return null;
+            dur.current = Math.max(0, dur.current - 1);
+            return dur;
+        }
+
+        function repairItem(category, itemId) {
+            if (!gameState._itemDurability) return { ok: false, reason: 'no-durability-data' };
+            const key = `${category}:${itemId}`;
+            const dur = gameState._itemDurability[key];
+            if (!dur) return { ok: false, reason: 'no-durability-data' };
+            if (dur.current >= dur.max) return { ok: false, reason: 'already-full' };
+            const baseCost = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.durabilityRepairCostBase === 'number')
+                ? ECONOMY_BALANCE.durabilityRepairCostBase : 8;
+            const missing = dur.max - dur.current;
+            const cost = Math.max(1, Math.floor(baseCost * missing * 0.6));
+            const spend = spendCoins(cost, 'Repair', true);
+            if (!spend.ok) return { ok: false, reason: 'insufficient-funds', needed: cost, balance: spend.balance };
+            dur.current = dur.max;
+            saveGame();
+            return { ok: true, cost, durability: dur };
+        }
+
         function useOwnedEconomyItem(category, itemId) {
             if (!gameState.pet) return { ok: false, reason: 'no-pet' };
             const isCrafted = category === 'crafted';
@@ -1611,6 +1676,16 @@
                 : category === 'accessories'
                     ? def.accessoryId
                     : itemId;
+
+            // Rec 5: Durability system for toys and accessories
+            const hasDurability = (category === 'toys' || (isCrafted && def.category === 'toys'));
+            if (hasDurability) {
+                const dur = initItemDurability(category === 'toys' ? 'toys' : 'crafted', sourceId);
+                if (dur && dur.current <= 0) {
+                    return { ok: false, reason: 'broken', durability: dur };
+                }
+            }
+
             if (!consumeEconomyInventoryItem(sourceCategory, sourceId, 1)) {
                 return { ok: false, reason: 'not-owned' };
             }
@@ -1629,12 +1704,83 @@
                 gameState.pet.careActions++;
             } else if (category === 'accessories') {
                 grantAccessoryToActivePet(def.accessoryId || itemId);
+                // Init durability for newly equipped accessories
+                initItemDurability('accessories', def.accessoryId || itemId);
             } else if (category === 'decorations') {
                 applyDecorationToCurrentRoom(def.decorationId || itemId);
             }
 
+            // Rec 5: Degrade durability on use for toys
+            if (hasDurability) {
+                const dur = degradeItemDurability(category === 'toys' ? 'toys' : 'crafted', sourceId);
+                if (dur && dur.current <= 0 && typeof showToast === 'function') {
+                    showToast(`${def.emoji || '🧸'} ${def.name} is worn out! Repair it to use again.`, '#FFA726');
+                }
+                // Re-add item to inventory since toys with durability aren't single-use
+                addEconomyInventoryItem(sourceCategory, sourceId, 1);
+            }
+
             saveGame();
             return { ok: true, def, deltas };
+        }
+
+        // Rec 6: Prestige purchase system — high-value late-game sinks
+        function getPrestigePurchases() {
+            if (typeof PRESTIGE_PURCHASES === 'undefined') return {};
+            return PRESTIGE_PURCHASES;
+        }
+
+        function getOwnedPrestige() {
+            if (!gameState._prestigeOwned) gameState._prestigeOwned = {};
+            return gameState._prestigeOwned;
+        }
+
+        function hasPrestigePurchase(purchaseId) {
+            const owned = getOwnedPrestige();
+            return !!owned[purchaseId];
+        }
+
+        function buyPrestigePurchase(purchaseId) {
+            const purchases = getPrestigePurchases();
+            const item = purchases[purchaseId];
+            if (!item) return { ok: false, reason: 'invalid-prestige' };
+            const owned = getOwnedPrestige();
+            if (owned[purchaseId] && (owned[purchaseId] >= (item.maxOwned || 1))) {
+                return { ok: false, reason: 'already-owned' };
+            }
+            const spend = spendCoins(item.cost, 'Prestige', true);
+            if (!spend.ok) return { ok: false, reason: spend.reason, needed: item.cost, balance: spend.balance };
+            owned[purchaseId] = (owned[purchaseId] || 0) + 1;
+            gameState._prestigeOwned = owned;
+            saveGame();
+            return { ok: true, item, balance: getCoinBalance() };
+        }
+
+        // Rec 11: Coin decay system — daily tax on hoarded coins above threshold
+        function applyCoinDecay() {
+            const eco = ensureEconomyState();
+            const threshold = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.coinDecayThreshold === 'number')
+                ? ECONOMY_BALANCE.coinDecayThreshold : 1000;
+            const rate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.coinDecayRate === 'number')
+                ? ECONOMY_BALANCE.coinDecayRate : 0.005;
+            if (eco.coins <= threshold) return 0;
+            const excess = eco.coins - threshold;
+            const tax = Math.max(1, Math.floor(excess * rate));
+            eco.coins -= tax;
+            eco.totalSpent = (eco.totalSpent || 0) + tax;
+            if (typeof showToast === 'function') {
+                showToast(`🏦 Coin maintenance: -${tax} coins (balance over ${threshold})`, '#90A4AE');
+            }
+            return tax;
+        }
+
+        // Rec 10: Check if a shop item is available in the current season
+        function isShopItemAvailable(itemId) {
+            if (typeof SEASONAL_SHOP_AVAILABILITY === 'undefined') return true;
+            const seasons = SEASONAL_SHOP_AVAILABILITY[itemId];
+            if (!seasons) return true; // Not in the rotation table = always available
+            const currentSeason = gameState.season || (typeof getCurrentSeason === 'function' ? getCurrentSeason() : 'spring');
+            return seasons.includes(currentSeason);
         }
 
         function getLootSellBasePrice(lootId) {
@@ -1939,7 +2085,7 @@
             const petStrength = getPetMiniGameStrength(gameState.pet);
             const petStatRewardMult = Math.max(0.96, Math.min(1.04, 1 + ((petStrength - 0.5) * 0.08)));
 
-            // Recommendation #2: Escalating mini-game session multiplier
+            // Escalating mini-game session multiplier
             // 1st game = 1.0x, 2nd = 1.05x, 3rd = 1.1x, cap at 1.15x. Resets on session end.
             if (typeof gameState._sessionMinigameCount !== 'number') gameState._sessionMinigameCount = 0;
             gameState._sessionMinigameCount++;
@@ -1948,7 +2094,24 @@
             const cap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardCap === 'number')
                 ? ECONOMY_BALANCE.minigameRewardCap
                 : 9999;
-            const tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult * sessionMult)));
+            let tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult * sessionMult)));
+
+            // Rec 1: Enforce daily minigame earnings cap
+            const dailyCap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyMinigameEarningsCap === 'number')
+                ? ECONOMY_BALANCE.dailyMinigameEarningsCap : 350;
+            const today = typeof getTodayString === 'function' ? getTodayString() : '';
+            if (!gameState._dailyMinigameEarnings || gameState._dailyMinigameEarningsDay !== today) {
+                gameState._dailyMinigameEarnings = 0;
+                gameState._dailyMinigameEarningsDay = today;
+            }
+            const remaining = Math.max(0, dailyCap - gameState._dailyMinigameEarnings);
+            if (remaining <= 0) {
+                if (typeof showToast === 'function') showToast('Daily minigame coin cap reached! Play for fun or try again tomorrow.', '#90A4AE');
+                return 0;
+            }
+            tuned = Math.min(tuned, remaining);
+            gameState._dailyMinigameEarnings += tuned;
+
             addCoins(tuned, 'Mini-game', true);
             return tuned;
         }
@@ -1974,7 +2137,8 @@
             const roll = Math.random();
             let reward = null;
             if (roll < 0.2) {
-                const coinReward = 40 + Math.floor(Math.random() * 41);
+                // Rec 12: Reduced coin range from 40-80 to 20-50 for slightly negative EV
+                const coinReward = 20 + Math.floor(Math.random() * 31);
                 addCoins(coinReward, 'Mystery Egg Bonus', true);
                 reward = { type: 'coins', amount: coinReward, label: `${coinReward} coins`, emoji: '🪙' };
             } else if (roll < 0.45) {
@@ -2148,7 +2312,25 @@
             const owned = getAuctionOwnedCount(itemType, itemId);
             if (owned < qty) return { ok: false, reason: 'not-enough-items', owned };
 
+            // Rec 8: Enforce per-slot listing cap
+            const perSlotCap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.auctionPerSlotListingCap === 'number')
+                ? ECONOMY_BALANCE.auctionPerSlotListingCap : 12;
+            const existingData = loadAuctionHouseData();
+            const mySlotListings = (existingData.listings || []).filter(l => l.sellerSlot === eco.auction.slotId);
+            if (mySlotListings.length >= perSlotCap) {
+                return { ok: false, reason: 'slot-listing-cap', cap: perSlotCap };
+            }
+
+            // Rec 4: Charge non-refundable listing fee upfront
+            const feeRate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.auctionListingFeeRate === 'number')
+                ? ECONOMY_BALANCE.auctionListingFeeRate : 0.03;
+            const listingFee = Math.max(1, Math.floor(ask * feeRate));
+            const feeSpend = spendCoins(listingFee, 'Listing Fee', true);
+            if (!feeSpend.ok) return { ok: false, reason: 'insufficient-funds-fee', needed: listingFee, balance: feeSpend.balance };
+
             if (!consumeAuctionItem(itemType, itemId, qty)) {
+                // Refund listing fee if consume fails
+                addCoins(listingFee, 'Listing Fee Refund', true);
                 return { ok: false, reason: 'consume-failed' };
             }
 
@@ -2156,10 +2338,13 @@
             const listing = {
                 id: `auc_${Date.now()}_${Math.floor(Math.random() * 99999)}`,
                 sellerSlot: eco.auction.slotId,
+                // Rec 2: Embed persistent playerId for cross-slot self-trade prevention
+                sellerPlayerId: eco.playerId || '',
                 itemType,
                 itemId,
                 quantity: qty,
                 price: ask,
+                listingFee: listingFee,
                 createdAt: Date.now()
             };
             data.listings.unshift(listing);
@@ -2167,7 +2352,7 @@
             saveAuctionHouseData(data);
             eco.auction.postedCount = (eco.auction.postedCount || 0) + 1;
             saveGame();
-            return { ok: true, listing: Object.assign({}, listing, getAuctionItemLabel(itemType, itemId)) };
+            return { ok: true, listing: Object.assign({}, listing, getAuctionItemLabel(itemType, itemId)), listingFee };
         }
 
         function cancelAuctionListing(listingId) {
@@ -2190,18 +2375,26 @@
             const idx = data.listings.findIndex((l) => l && l.id === listingId);
             if (idx === -1) return { ok: false, reason: 'listing-not-found' };
             const listing = data.listings[idx];
+            // Rec 2: Block self-purchase by playerId (cross-slot exploit fix) + legacy slotId check
             if (listing.sellerSlot === eco.auction.slotId) return { ok: false, reason: 'own-listing' };
+            if (listing.sellerPlayerId && listing.sellerPlayerId === eco.playerId) return { ok: false, reason: 'own-listing' };
 
             const spend = spendCoins(listing.price, 'Auction Buy', true);
             if (!spend.ok) return { ok: false, reason: spend.reason, needed: listing.price, balance: spend.balance };
 
             addAuctionItem(listing.itemType, listing.itemId, listing.quantity);
-            data.wallets[listing.sellerSlot] = Math.max(0, Math.floor((data.wallets[listing.sellerSlot] || 0))) + listing.price;
+
+            // Rec 3: Apply transaction tax — seller receives price minus tax
+            const taxRate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.auctionTransactionTaxRate === 'number')
+                ? ECONOMY_BALANCE.auctionTransactionTaxRate : 0.08;
+            const taxAmount = Math.max(0, Math.floor(listing.price * taxRate));
+            const sellerProceeds = listing.price - taxAmount;
+            data.wallets[listing.sellerSlot] = Math.max(0, Math.floor((data.wallets[listing.sellerSlot] || 0))) + sellerProceeds;
             data.listings.splice(idx, 1);
             saveAuctionHouseData(data);
             eco.auction.boughtCount = (eco.auction.boughtCount || 0) + 1;
             saveGame();
-            return { ok: true, listing: Object.assign({}, listing, getAuctionItemLabel(listing.itemType, listing.itemId)), balance: eco.coins };
+            return { ok: true, listing: Object.assign({}, listing, getAuctionItemLabel(listing.itemType, listing.itemId)), balance: eco.coins, taxAmount };
         }
 
         function claimAuctionEarnings() {
@@ -2722,6 +2915,14 @@
         function initDailyChecklist() {
             const today = getTodayString();
             if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
+                // Rec 11: Apply coin decay on new day (before daily tasks reset)
+                if (gameState.dailyChecklist && gameState.dailyChecklist.date) {
+                    if (typeof applyCoinDecay === 'function') applyCoinDecay();
+                }
+                // Rec 1: Reset daily minigame earnings counter
+                gameState._dailyMinigameEarnings = 0;
+                gameState._dailyMinigameEarningsDay = today;
+
                 const stage = (gameState.pet && GROWTH_STAGES[gameState.pet.growthStage]) ? gameState.pet.growthStage : 'baby';
                 const fixedTasks = (Array.isArray(DAILY_FIXED_TASKS) ? DAILY_FIXED_TASKS : []).slice(0, 2);
                 const modeTasks = pickDailyModeTasks(today);
