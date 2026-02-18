@@ -29,8 +29,8 @@ const GROWTH_STAGES = {
         label: 'Elder',
         emoji: '🏛️',
         scale: 0.95,
-        actionsNeeded: 120,
-        hoursNeeded: 24, // 24 hours total
+        actionsNeeded: 90,
+        hoursNeeded: 18, // 18 hours total
         sizeLabel: 'Wise'
     }
 };
@@ -55,25 +55,25 @@ const STAGE_BALANCE = {
         neglectGainMultiplier: 1.15,
         neglectRecoveryMultiplier: 0.95,
         focusedCareBonus: 0.18,
-        dailyTaskMultiplier: 1.18,
+        dailyTaskMultiplier: 1.1,
         growthCareWeight: 1.0
     },
     adult: {
-        needDecayMultiplier: 1.22,
+        needDecayMultiplier: 1.18,
         neglectThreshold: 24,
-        neglectGainMultiplier: 1.35,
-        neglectRecoveryMultiplier: 0.82,
+        neglectGainMultiplier: 1.28,
+        neglectRecoveryMultiplier: 0.88,
         focusedCareBonus: 0.24,
-        dailyTaskMultiplier: 1.45,
+        dailyTaskMultiplier: 1.22,
         growthCareWeight: 1.1
     },
     elder: {
-        needDecayMultiplier: 1.33,
-        neglectThreshold: 26,
-        neglectGainMultiplier: 1.55,
-        neglectRecoveryMultiplier: 0.7,
+        needDecayMultiplier: 1.22,
+        neglectThreshold: 25,
+        neglectGainMultiplier: 1.35,
+        neglectRecoveryMultiplier: 0.82,
         focusedCareBonus: 0.3,
-        dailyTaskMultiplier: 1.72,
+        dailyTaskMultiplier: 1.35,
         growthCareWeight: 1.18
     }
 };
@@ -870,9 +870,9 @@ const ROOM_TREASURE_POOLS = {
 };
 
 const EXPEDITION_DURATIONS = [
-    { id: 'scout', name: 'Scout Run', label: '45s Scout Run', ms: 45000, lootMultiplier: 1.0 },
-    { id: 'journey', name: 'Journey', label: '2m Journey', ms: 120000, lootMultiplier: 1.35 },
-    { id: 'odyssey', name: 'Grand Odyssey', label: '5m Grand Odyssey', ms: 300000, lootMultiplier: 1.8 }
+    { id: 'scout', name: 'Scout Run', label: '45s Scout Run', ms: 45000, lootMultiplier: 0.9 },
+    { id: 'journey', name: 'Journey', label: '2m Journey', ms: 120000, lootMultiplier: 2.8 },
+    { id: 'odyssey', name: 'Grand Odyssey', label: '5m Grand Odyssey', ms: 300000, lootMultiplier: 7.5 }
 ];
 
 const DUNGEON_ROOM_TYPES = [
@@ -1047,7 +1047,7 @@ const ECONOMY_BALANCE = {
     sellPriceMultiplier: 0.88,
     // Reward side
     minigameRewardMultiplier: 0.88,
-    harvestRewardMultiplier: 1.12,
+    harvestRewardMultiplier: 0.82,
     dailyCompletionReward: 70,
     minigameRewardCap: 74
 };
@@ -1348,8 +1348,8 @@ const ECONOMY_AUCTION_SLOTS = ['slotA', 'slotB', 'slotC'];
 const MAX_GARDEN_PLOTS = 6;
 
 // Progressive plot unlocking thresholds (harvests needed for each plot)
-// Plots 1-2 are free, then unlock at 2, 5, 10, 18 total harvests
-const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 0, 2, 5, 10, 18];
+// Plot 1 is free, then unlock at 2, 5, 10, 16, 24 total harvests
+const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 2, 5, 10, 16, 24];
 
 // ==================== MULTI-PET SYSTEM ====================
 
@@ -1703,7 +1703,7 @@ const REWARD_MODIFIERS = {
 };
 
 const REWARD_BUNDLES = {
-    dailyFinish: { id: 'dailyFinish', coins: 90, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
+    dailyFinish: { id: 'dailyFinish', coins: 100, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
     streakDay1: { id: 'streakDay1', coins: 40, modifierId: 'happyHour', collectible: { type: 'sticker', id: 'starSticker' } },
     streakDay3: { id: 'streakDay3', coins: 55, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
     streakDay5: { id: 'streakDay5', coins: 75, modifierId: 'careRush', collectible: { type: 'accessory', id: 'bandana' } },
