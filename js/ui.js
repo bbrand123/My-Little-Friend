@@ -455,6 +455,16 @@
             const mins = offlineChanges.minutes % 60;
             const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
 
+            // Lead with the pet's emotional state (personality-aware)
+            let emotionalMessage = '';
+            if (typeof getWelcomeBackMessage === 'function') {
+                emotionalMessage = getWelcomeBackMessage(pet, offlineChanges.minutes);
+            }
+            const safeEmotionalMessage = escapeHTML(emotionalMessage);
+
+            // Generate pet SVG for display
+            const petSVGHTML = pet ? (typeof generatePetSVG === 'function' ? generatePetSVG(pet, offlineChanges.minutes >= 720 ? 'sad' : offlineChanges.minutes >= 240 ? 'idle' : 'happy') : '') : '';
+
             function statLine(icon, label, change) {
                 const cls = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
                 const prefix = change > 0 ? '+' : '';
@@ -485,7 +495,8 @@
             overlay.setAttribute('aria-label', 'Welcome back summary');
             overlay.innerHTML = `
                 <div class="welcome-back-modal">
-                    <div class="welcome-back-pet-emoji" aria-hidden="true">${petData.emoji}</div>
+                    ${petSVGHTML ? `<div class="welcome-back-pet-svg" aria-hidden="true" style="width:80px;height:80px;margin:0 auto 8px;">${petSVGHTML}</div>` : `<div class="welcome-back-pet-emoji" aria-hidden="true">${petData.emoji}</div>`}
+                    ${safeEmotionalMessage ? `<p class="welcome-back-emotional" style="font-style:italic;color:#5D4037;margin-bottom:10px;font-size:0.92rem;line-height:1.4;">${safeEmotionalMessage}</p>` : ''}
                     <h2 class="welcome-back-title">Welcome Back!</h2>
                     <p class="welcome-back-subtitle">You were away for ${timeStr}</p>
                     <div class="welcome-back-stats">
@@ -1419,13 +1430,35 @@
                     }
                 }
             }
-            // Elder wisdom messages
-            if (pet.growthStage === 'elder' && Math.random() < 0.3) {
-                pools.push('Wisdom comes with age...');
-                pools.push('I remember when I was young...');
-                pools.push('Let me share my wisdom...');
-                pools.push('These old bones still got it!');
-                pools.push('Back in my day...');
+            // Elder wisdom messages (personality-specific)
+            if (pet.growthStage === 'elder' && Math.random() < 0.35) {
+                const personality = pet.personality || 'playful';
+                if (typeof ELDER_WISDOM_SPEECHES !== 'undefined' && ELDER_WISDOM_SPEECHES[personality]) {
+                    pools.push(...ELDER_WISDOM_SPEECHES[personality]);
+                } else {
+                    pools.push('Wisdom comes with age...');
+                    pools.push('I remember when I was young...');
+                    pools.push('Let me share my wisdom...');
+                    pools.push('These old bones still got it!');
+                    pools.push('Back in my day...');
+                }
+            }
+            // Caretaker title references in pet speech
+            if (typeof CARETAKER_PET_SPEECHES !== 'undefined' && Math.random() < 0.15) {
+                const title = (gameState.caretakerTitle) || 'newcomer';
+                const titleSpeech = CARETAKER_PET_SPEECHES[title];
+                if (titleSpeech && titleSpeech.length > 0) {
+                    pools.push(...titleSpeech);
+                }
+            }
+            // Mentor reference speech for mentored pets
+            if (pet._mentorId && gameState.pets && Math.random() < 0.2) {
+                const mentor = gameState.pets.find(p => p && p.id === pet._mentorId);
+                if (mentor) {
+                    const mentorName = mentor.name || 'Elder';
+                    pools.push(`${mentorName} taught me something new today!`);
+                    pools.push(`I want to be wise like ${mentorName} someday.`);
+                }
             }
             // Time of day messages (lower chance)
             const tod = gameState.timeOfDay || 'day';
@@ -1714,6 +1747,12 @@
                     ${generateWeatherParticlesHTML(weather, isOutdoor)}
                     <div class="room-art-layer room-art-back" aria-hidden="true"></div>
                     <div class="room-art-layer room-art-front" aria-hidden="true"></div>
+                    ${(() => {
+                        if (typeof getRoomMemories !== 'function' || !pet) return '';
+                        const memories = getRoomMemories(pet, currentRoom);
+                        if (memories.length === 0) return '';
+                        return `<div class="room-memories" aria-label="Room memories" style="position:absolute;bottom:4px;left:4px;display:flex;gap:4px;z-index:1;opacity:0.85;">${memories.map(m => `<span class="room-memory-icon" title="${escapeHTML(m.description)}" style="font-size:1.1rem;cursor:help;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${m.emoji}</span>`).join('')}</div>`;
+                    })()}
                     <div class="sparkles" id="sparkles"></div>
                     <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Give ${petDisplayName} cuddles">
                         ${generateThoughtBubble(pet)}
@@ -1724,6 +1763,14 @@
                     <div class="pet-info">
                         <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span> ${generatePetAgeHudHTML(pet)} ${generateStreakHudHTML()}</p>
                         ${pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && PERSONALITY_TRAITS[pet.personality] ? `<p class="personality-badge" title="${PERSONALITY_TRAITS[pet.personality].description}">${PERSONALITY_TRAITS[pet.personality].emoji} ${PERSONALITY_TRAITS[pet.personality].label}${pet.growthStage === 'elder' ? ' · 🏛️ Elder' : ''}</p>` : ''}
+                        ${(() => {
+                            if (typeof getCaretakerTitleData !== 'function') return '';
+                            const totalActions = gameState.caretakerActionCounts ? Object.values(gameState.caretakerActionCounts).reduce((s, v) => s + v, 0) : 0;
+                            const titleData = getCaretakerTitleData(totalActions);
+                            const styleData = typeof getCaretakerStyle === 'function' ? getCaretakerStyle(gameState.caretakerActionCounts) : null;
+                            const styleStr = styleData && styleData.label !== 'The Natural' ? ` · ${styleData.emoji} ${styleData.label}` : '';
+                            return `<p class="caretaker-title-badge" style="font-size:0.72rem;color:#6D4C41;margin:2px 0 0 0;" title="${titleData.description}">${titleData.emoji} ${titleData.label}${styleStr}</p>`;
+                        })()}
                         ${(() => {
                             const stage = pet.growthStage || 'baby';
                             const stageData = GROWTH_STAGES[stage];
@@ -3308,6 +3355,7 @@
             // Track care actions for growth
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
+            if (typeof trackCareAction === 'function') trackCareAction(action);
             markCoachChecklistProgress(action);
 
             // Apply incubation bonus to breeding eggs from care actions
@@ -3413,6 +3461,9 @@
                     }, 900);
                 });
             }
+
+            // Check for memory moments at growth milestones
+            if (typeof checkAndShowMemoryMoment === 'function') checkAndShowMemoryMoment(pet);
 
             // Check for growth stage transition (uses checkGrowthMilestone which
             // handles lastGrowthStage tracking, birthday celebrations, and adultsRaised)
@@ -4333,6 +4384,21 @@
             const stageLabel = GROWTH_STAGES[growthStage]?.label || growthStage;
             const stageEmoji = GROWTH_STAGES[growthStage]?.emoji || '🎉';
 
+            // Personality-aware birthday message
+            let personalityMessage = rewardData.message;
+            if (pet && typeof getBirthdayPersonalityMessage === 'function') {
+                const pMsg = getBirthdayPersonalityMessage(pet, growthStage);
+                if (pMsg) personalityMessage = pMsg;
+            }
+            const safePersonalityMessage = escapeHTML(personalityMessage);
+
+            // Retrospective stat
+            let retrospectiveHTML = '';
+            if (pet && typeof getBirthdayRetrospective === 'function') {
+                const retro = getBirthdayRetrospective(pet);
+                if (retro) retrospectiveHTML = `<p class="celebration-retrospective" style="font-size:0.82rem;color:#8D6E63;margin-top:8px;font-style:italic;">${escapeHTML(retro)}</p>`;
+            }
+
             // Generate pet SVG for the celebration display
             const petSVGHTML = pet ? generatePetSVG(pet, 'happy') : '';
 
@@ -4345,7 +4411,8 @@
                         ${petSVGHTML}
                     </div>
                     <h2 class="modal-title" id="celebration-title"><span aria-hidden="true">${stageEmoji}</span> ${safePetName} is now a ${stageLabel}! <span aria-hidden="true">${stageEmoji}</span></h2>
-                    <p class="modal-message celebration-message">${rewardData.message}</p>
+                    <p class="modal-message celebration-message">${safePersonalityMessage}</p>
+                    ${retrospectiveHTML}
                     <div class="rewards-display">
                         <p class="reward-title"><span aria-hidden="true">🎁</span> ${rewardData.unlockMessage}</p>
                         <div class="reward-accessories">
@@ -4804,6 +4871,7 @@
                             <span class="memorial-detail">${CARE_QUALITY[m.careQuality] ? CARE_QUALITY[m.careQuality].emoji : ''} ${m.careQuality} care</span>
                             ${m.isHybrid ? '<span class="memorial-detail">🧬 Hybrid</span>' : ''}
                             ${m.hasMutation ? '<span class="memorial-detail">🌈 Mutation</span>' : ''}
+                            ${m.farewellMessage ? `<span class="memorial-detail memorial-farewell" style="font-style:italic;color:#8D6E63;display:block;margin-top:4px;">✉️ "${escapeHTML(m.farewellMessage)}"</span>` : ''}
                         </div>
                     </div>`;
                 }).join('');
@@ -4830,6 +4898,26 @@
                 retireHTML = `<p class="memorial-retire-hint">🌅 Adopt another pet first — you need at least one pet remaining!</p>`;
             }
 
+            // Mentor assignment UI (show if there's an elder and a non-elder)
+            let mentorHTML = '';
+            if (gameState.pets && gameState.pets.length > 1) {
+                const elders = gameState.pets.filter(p => p && p.growthStage === 'elder');
+                const youngPets = gameState.pets.filter(p => p && p.growthStage !== 'elder' && !p._mentorId);
+                if (elders.length > 0 && youngPets.length > 0) {
+                    mentorHTML = `<div style="margin-top:8px;padding:8px;background:#F3E5F5;border-radius:8px;">
+                        <p style="font-size:0.82rem;font-weight:600;color:#6A1B9A;margin-bottom:6px;">🎓 Elder Mentoring</p>
+                        <p style="font-size:0.75rem;color:#7B1FA2;margin-bottom:6px;">Elder pets can mentor younger pets, boosting their growth!</p>
+                        ${elders.map(elder => {
+                            const elderName = escapeHTML(elder.name || 'Elder');
+                            return youngPets.map(young => {
+                                const youngName = escapeHTML(young.name || 'Pet');
+                                return `<button class="modal-btn confirm" style="font-size:0.75rem;padding:4px 8px;margin:2px;" data-mentor-elder="${elder.id}" data-mentor-young="${young.id}">🎓 ${elderName} → ${youngName}</button>`;
+                            }).join('');
+                        }).join('')}
+                    </div>`;
+                }
+            }
+
             overlay.innerHTML = `
                 <div class="modal-content memorial-content">
                     <h2 class="memorial-title-header">🏛️ Hall of Fame</h2>
@@ -4837,6 +4925,8 @@
                     <div class="memorial-list">
                         ${memorialsHTML}
                     </div>
+                    ${memorials.length > 0 ? `<button class="modal-btn" id="memorial-garden-btn" style="margin-top:8px;background:#E8F5E9;color:#2E7D32;border:1px solid #C8E6C9;">🌿 Visit Memorial Garden</button>` : ''}
+                    ${mentorHTML}
                     ${retireHTML}
                     <button class="modal-btn cancel" id="memorial-close">Close</button>
                 </div>
@@ -4858,6 +4948,31 @@
             pushModalEscape(closeMemorial);
             overlay._closeOverlay = closeMemorial;
             trapFocus(overlay);
+
+            // Memorial Garden button
+            const gardenBtn = overlay.querySelector('#memorial-garden-btn');
+            if (gardenBtn) {
+                gardenBtn.addEventListener('click', () => {
+                    if (typeof showMemorialGarden === 'function') showMemorialGarden();
+                });
+            }
+
+            // Mentor assignment buttons
+            overlay.querySelectorAll('[data-mentor-elder]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const elderId = parseInt(btn.getAttribute('data-mentor-elder'));
+                    const youngId = parseInt(btn.getAttribute('data-mentor-young'));
+                    if (typeof assignMentor === 'function') {
+                        const success = assignMentor(elderId, youngId);
+                        if (success) {
+                            btn.textContent = '✅ Assigned!';
+                            btn.disabled = true;
+                        } else {
+                            showToast('Could not assign mentor. Check requirements.', '#FF7043');
+                        }
+                    }
+                });
+            });
 
             // Retire button handler
             const retireBtn = overlay.querySelector('#memorial-retire-btn');
@@ -4894,13 +5009,111 @@
                     trapFocus(confirmOverlay);
                     confirmRetire.addEventListener('click', () => {
                         closeConfirm();
-                        const result = typeof retirePet === 'function' ? retirePet(gameState.activePetIndex) : null;
-                        if (result && result.success) {
+                        // Multi-step retirement ceremony
+                        showRetirementCeremony(gameState.pet, gameState.activePetIndex, () => {
                             closeMemorial();
+                            renderPetPhase();
+                        });
+                    });
+                });
+            }
+        }
+
+        // ==================== RETIREMENT CEREMONY ====================
+
+        function showRetirementCeremony(pet, petIndex, onComplete) {
+            if (!pet) return;
+            const petName = escapeHTML(pet.name || 'Pet');
+            const petData = (typeof getAllPetTypeData === 'function' ? getAllPetTypeData(pet.type) : null) || PET_TYPES[pet.type] || { emoji: '🐾', name: 'Pet' };
+            const ageHours = typeof getPetAge === 'function' ? Math.round(getPetAge(pet)) : 0;
+            const careActions = pet.careActions || 0;
+            const stagesVisited = [];
+            for (const stage of ['baby', 'child', 'adult', 'elder']) {
+                if (GROWTH_ORDER.indexOf(stage) <= GROWTH_ORDER.indexOf(pet.growthStage)) {
+                    stagesVisited.push(GROWTH_STAGES[stage] ? `${GROWTH_STAGES[stage].emoji} ${GROWTH_STAGES[stage].label}` : stage);
+                }
+            }
+            const personalityLabel = pet.personality && PERSONALITY_TRAITS[pet.personality] ? `${PERSONALITY_TRAITS[pet.personality].emoji} ${PERSONALITY_TRAITS[pet.personality].label}` : '';
+            const careQualityLabel = pet.careQuality && CARE_QUALITY[pet.careQuality] ? `${CARE_QUALITY[pet.careQuality].emoji} ${CARE_QUALITY[pet.careQuality].label}` : '';
+            const petSVGHTML = typeof generatePetSVG === 'function' ? generatePetSVG(pet, 'happy') : '';
+
+            // Step 1: Life montage
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay celebration-modal';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Retirement ceremony');
+            overlay.innerHTML = `
+                <div class="modal-content celebration-content" style="max-width:380px;">
+                    <h2 class="modal-title" style="margin-bottom:12px;">🌅 A Life Well Lived</h2>
+                    <div style="width:80px;height:80px;margin:0 auto 12px;" aria-hidden="true">${petSVGHTML}</div>
+                    <p style="font-size:1.05rem;font-weight:600;margin-bottom:8px;">${petName}'s Journey</p>
+                    <div style="text-align:left;font-size:0.85rem;color:#5D4037;margin-bottom:12px;line-height:1.6;">
+                        <div>🕐 ${ageHours} hours together</div>
+                        <div>💝 ${careActions} moments of care</div>
+                        <div>📖 Stages: ${stagesVisited.join(' → ')}</div>
+                        ${personalityLabel ? `<div>🎭 ${personalityLabel}</div>` : ''}
+                        ${careQualityLabel ? `<div>⭐ ${careQualityLabel} care quality</div>` : ''}
+                    </div>
+                    <p style="font-style:italic;color:#8D6E63;font-size:0.85rem;margin-bottom:16px;">Every moment mattered. Every care action was an act of love.</p>
+                    <button class="modal-btn confirm" id="ceremony-next" style="width:100%;">Continue</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            if (typeof createConfetti === 'function') createConfetti();
+
+            overlay.querySelector('#ceremony-next').focus();
+            overlay.querySelector('#ceremony-next').addEventListener('click', () => {
+                // Step 2: Farewell message
+                overlay.querySelector('.modal-content').innerHTML = `
+                    <h2 class="modal-title" style="margin-bottom:12px;">✉️ A Farewell Message</h2>
+                    <p style="font-size:0.88rem;color:#5D4037;margin-bottom:12px;">Write a farewell message for ${petName}. It will be saved in their memorial forever.</p>
+                    <textarea id="farewell-message" rows="3" maxlength="200" placeholder="Goodbye, ${petName}... I'll always remember you."
+                        style="width:100%;border:2px solid #D7CCC8;border-radius:8px;padding:8px;font-size:0.88rem;font-family:inherit;resize:none;box-sizing:border-box;"
+                        aria-label="Farewell message for ${petName}"></textarea>
+                    <p style="font-size:0.72rem;color:#999;margin:4px 0 12px;"><span id="farewell-count">0</span>/200 characters</p>
+                    <button class="modal-btn confirm" id="ceremony-farewell" style="width:100%;">🌅 Say Goodbye</button>
+                `;
+
+                const ta = overlay.querySelector('#farewell-message');
+                const counter = overlay.querySelector('#farewell-count');
+                ta.focus();
+                ta.addEventListener('input', () => { counter.textContent = ta.value.length; });
+
+                overlay.querySelector('#ceremony-farewell').addEventListener('click', () => {
+                    const farewell = ta.value.trim();
+
+                    // Save farewell message to pet before retirement
+                    if (gameState.pet) gameState.pet._farewellMessage = farewell;
+
+                    // Perform the actual retirement
+                    const result = typeof retirePet === 'function' ? retirePet(petIndex) : null;
+                    if (result && result.success) {
+                        // Save farewell to the memorial
+                        if (farewell && gameState.memorials && gameState.memorials.length > 0) {
+                            const lastMemorial = gameState.memorials[gameState.memorials.length - 1];
+                            if (lastMemorial && lastMemorial.id === result.memorial.id) {
+                                lastMemorial.farewellMessage = farewell;
+                            }
+                        }
+
+                        // Step 3: Final farewell screen
+                        overlay.querySelector('.modal-content').innerHTML = `
+                            <h2 class="modal-title" style="margin-bottom:8px;">🌅 Farewell, ${petName}</h2>
+                            <div style="width:70px;height:70px;margin:0 auto 8px;opacity:0.7;" aria-hidden="true">${petSVGHTML}</div>
+                            <p style="font-size:0.9rem;color:#5D4037;margin-bottom:8px;">${petName} has been honored in the Hall of Fame.</p>
+                            ${farewell ? `<p style="font-style:italic;color:#8D6E63;font-size:0.85rem;margin-bottom:8px;border-left:3px solid #D7CCC8;padding-left:8px;">"${escapeHTML(farewell)}"</p>` : ''}
+                            <p style="font-size:0.82rem;color:#A1887F;">You can visit ${petName} anytime in the Memorial Garden.</p>
+                            <button class="modal-btn confirm" id="ceremony-done" style="width:100%;margin-top:12px;">🕊️ Rest well, ${petName}</button>
+                        `;
+                        if (typeof createConfetti === 'function') createConfetti();
+                        if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
+
+                        overlay.querySelector('#ceremony-done').focus();
+                        overlay.querySelector('#ceremony-done').addEventListener('click', () => {
+                            animateModalClose(overlay, () => {});
                             showToast(`🌅 ${petName} has been retired to the Hall of Fame! ${result.memorial.title}`, '#DDA0DD');
-                            // Grant memorial sticker
                             if (typeof grantSticker === 'function') grantSticker('memorialSticker');
-                            // Check achievements
                             if (typeof checkAchievements === 'function') {
                                 const newAch = checkAchievements();
                                 newAch.forEach(ach => {
@@ -4910,13 +5123,92 @@
                                     }, 500);
                                 });
                             }
-                            renderPetPhase();
-                        } else if (result) {
-                            showToast(`Cannot retire: ${result.reason}`, '#FF7043');
-                        }
-                    });
+                            if (typeof saveGame === 'function') saveGame();
+                            if (onComplete) onComplete();
+                        });
+                    } else {
+                        overlay.remove();
+                        if (result) showToast(`Cannot retire: ${result.reason}`, '#FF7043');
+                        if (onComplete) onComplete();
+                    }
                 });
+            });
+
+            pushModalEscape(() => { overlay.remove(); });
+            trapFocus(overlay);
+        }
+
+        // ==================== MEMORIAL GARDEN ====================
+
+        function showMemorialGarden() {
+            const memorials = gameState.memorials || [];
+            const existing = document.querySelector('.memorial-garden-overlay');
+            if (existing) { existing.remove(); }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay memorial-garden-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Memorial Garden');
+
+            let gardenHTML = '';
+            if (memorials.length === 0) {
+                gardenHTML = `<p style="text-align:center;color:#A1887F;font-style:italic;padding:24px;">The garden is peaceful and quiet. No memorials yet.</p>`;
+            } else {
+                gardenHTML = `<div class="memorial-garden-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px;padding:12px;">
+                    ${memorials.map(m => {
+                        const typeData = (typeof getAllPetTypeData === 'function' ? getAllPetTypeData(m.type) : null) || PET_TYPES[m.type] || { emoji: '🐾' };
+                        const personalityData = m.personality && PERSONALITY_TRAITS[m.personality] ? PERSONALITY_TRAITS[m.personality] : null;
+                        const farewellText = m.farewellMessage ? escapeHTML(m.farewellMessage) : '';
+                        return `<div class="memorial-ghost-sprite" style="text-align:center;padding:12px 8px;background:rgba(255,255,255,0.5);border-radius:12px;border:1px solid rgba(0,0,0,0.06);cursor:pointer;" title="${farewellText || 'Click to remember'}" data-memorial-id="${m.id}">
+                            <div style="font-size:2rem;opacity:0.6;filter:grayscale(30%) drop-shadow(0 0 6px rgba(186,148,222,0.5));" aria-hidden="true">${typeData.emoji}</div>
+                            <div style="font-size:0.78rem;font-weight:600;color:#5D4037;margin-top:4px;">${escapeHTML(m.name)}</div>
+                            ${personalityData ? `<div style="font-size:0.68rem;color:#8D6E63;">${personalityData.emoji} ${personalityData.label}</div>` : ''}
+                            <div style="font-size:0.65rem;color:#A1887F;margin-top:2px;">${m.title || ''}</div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
             }
+
+            overlay.innerHTML = `
+                <div class="modal-content" style="max-width:420px;">
+                    <h2 class="modal-title" style="margin-bottom:4px;">🌿 Memorial Garden</h2>
+                    <p style="font-size:0.8rem;color:#A1887F;margin-bottom:12px;">A peaceful place to remember those who came before.</p>
+                    ${gardenHTML}
+                    <button class="modal-btn cancel" id="memorial-garden-close" style="margin-top:12px;">Return</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Click on a memorial ghost to see their speech bubble
+            overlay.querySelectorAll('.memorial-ghost-sprite').forEach(sprite => {
+                sprite.addEventListener('click', () => {
+                    const mid = parseInt(sprite.getAttribute('data-memorial-id'));
+                    const memorial = memorials.find(m => m.id === mid);
+                    if (!memorial) return;
+                    const name = memorial.name || 'Pet';
+                    const farewell = memorial.farewellMessage;
+                    let speechText = farewell ? `"${farewell}"` : `${name} smiles gently at you from the garden.`;
+                    // Add personality-based ghost speech
+                    const personality = memorial.personality || 'playful';
+                    if (!farewell && typeof ELDER_WISDOM_SPEECHES !== 'undefined' && ELDER_WISDOM_SPEECHES[personality]) {
+                        const wisdomPool = ELDER_WISDOM_SPEECHES[personality];
+                        speechText = wisdomPool[Math.floor(Math.random() * wisdomPool.length)];
+                    }
+                    showToast(`🕊️ ${name}: ${speechText}`, '#CE93D8');
+                });
+            });
+
+            function closeGarden() {
+                popModalEscape(closeGarden);
+                animateModalClose(overlay, () => {});
+            }
+            overlay.querySelector('#memorial-garden-close').focus();
+            overlay.querySelector('#memorial-garden-close').addEventListener('click', closeGarden);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeGarden(); });
+            pushModalEscape(closeGarden);
+            trapFocus(overlay);
         }
 
         // ==================== FURNITURE CUSTOMIZATION ====================
