@@ -1470,6 +1470,7 @@ function updateBackgroundInertState() {
         appRoot.removeAttribute('aria-hidden');
         appRoot.removeAttribute('inert');
         document.body.classList.remove('modal-open');
+        document.body.classList.remove('minigame-menu-open');
     }
     if (typeof window !== 'undefined' && typeof window.setUiBusyState === 'function') {
         window.setUiBusyState();
