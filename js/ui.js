@@ -495,6 +495,12 @@
                 const last = Number(element.dataset.lastActivate || 0);
                 if (now - last < 200) return;
                 element.dataset.lastActivate = String(now);
+                if (typeof SoundManager !== 'undefined' && SoundManager.playSFXByName) {
+                    SoundManager.playSFXByName('button-tap', SoundManager.sfx.play);
+                    if (element.getAttribute('aria-haspopup') === 'dialog' || element.classList.contains('room-coming-toggle')) {
+                        SoundManager.playSFXByName('menu-open', SoundManager.sfx.roomTransition);
+                    }
+                }
                 handler(event);
             };
 
@@ -508,6 +514,19 @@
                     if (typeof switchRoom === 'function') {
                         safeInvoke(roomBtn, () => switchRoom(roomBtn.dataset.room), event);
                     }
+                    return;
+                }
+
+                const roomComingToggle = target.closest('#room-coming-toggle');
+                if (roomComingToggle) {
+                    if (event.type === 'touchend') event.preventDefault();
+                    safeInvoke(roomComingToggle, () => {
+                        const panel = document.getElementById('room-coming-panel');
+                        if (!panel) return;
+                        const expanded = roomComingToggle.getAttribute('aria-expanded') === 'true';
+                        roomComingToggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                        panel.hidden = expanded;
+                    }, event);
                     return;
                 }
 
@@ -1376,6 +1395,38 @@
             return getPetSessionCount() < EARLY_SESSION_LIMIT;
         }
 
+        function getRecommendedNextAction(pet, currentRoom) {
+            if (!pet) return null;
+            const stats = [
+                { key: 'energy', value: Number(pet.energy) || 0, action: 'sleep', label: 'Sleep', icon: '🛏️', hint: 'Low energy: Sleep now' },
+                { key: 'hunger', value: Number(pet.hunger) || 0, action: 'feed', label: 'Feed', icon: '🍎', hint: 'Hungry now: Feed first' },
+                { key: 'cleanliness', value: Number(pet.cleanliness) || 0, action: 'wash', label: 'Wash', icon: '🛁', hint: 'Needs cleaning: Wash now' },
+                { key: 'happiness', value: Number(pet.happiness) || 0, action: 'play', label: 'Play', icon: '⚽', hint: 'Mood low: Play now' }
+            ];
+            const critical = stats.find((s) => s.value <= 20);
+            if (critical) return { ...critical, tone: 'urgent' };
+
+            const room = ROOMS[currentRoom];
+            if (room && room.bonus && room.bonus.action) {
+                const bonusMap = {
+                    sleep: { key: 'energy', cap: 85, icon: '🛏️', hint: `${room.name} bonus: Sleep now` },
+                    feed: { key: 'hunger', cap: 85, icon: '🍎', hint: `${room.name} bonus: Feed now` },
+                    wash: { key: 'cleanliness', cap: 85, icon: '🛁', hint: `${room.name} bonus: Wash now` },
+                    play: { key: 'happiness', cap: 85, icon: '⚽', hint: `${room.name} bonus: Play now` },
+                    groom: { key: 'cleanliness', cap: 80, icon: '✂️', hint: `${room.name} bonus: Groom now` },
+                    exercise: { key: 'happiness', cap: 80, icon: '🏃', hint: `${room.name} bonus: Exercise now` }
+                };
+                const bonus = bonusMap[room.bonus.action];
+                if (bonus) {
+                    const targetVal = Number(pet[bonus.key]) || 0;
+                    if (targetVal < bonus.cap) {
+                        return { action: room.bonus.action, icon: bonus.icon, hint: bonus.hint, tone: 'bonus', label: room.bonus.label || room.bonus.action };
+                    }
+                }
+            }
+            return { action: 'play', icon: '⚽', hint: 'Great pace: Play a mini-game next', tone: 'normal', label: 'Play' };
+        }
+
         function renderPetPhase() {
             // Clear any pending deferred render to avoid redundant double re-renders
             if (pendingRenderTimer) {
@@ -1467,6 +1518,8 @@
                 ? getTreasureActionLabel(currentRoom)
                 : (room && room.isOutdoor ? 'Dig' : 'Search');
             const simplifiedActionPanel = useSimplifiedActionPanel(pet);
+            document.body.classList.toggle('beginner-ui', !!simplifiedActionPanel);
+            const recommendedNext = getRecommendedNextAction(pet, currentRoom);
             const showInlineCoreActions = !document.body.classList.contains('has-core-care-dock');
             const secondaryQuickActionsHTML = `
                             <button class="action-btn pet-cuddle" id="pet-btn">
@@ -1592,6 +1645,7 @@
                         ${generatePetSVG(pet, mood)}
                         ${generateNeedsAttentionDot(pet)}
                     </button>
+                    ${recommendedNext ? `<button class="next-action-chip ${recommendedNext.tone || 'normal'}" id="next-action-chip" type="button" aria-label="Recommended next action: ${escapeHTML(recommendedNext.hint)}">${escapeHTML(recommendedNext.icon || '💡')} ${escapeHTML(recommendedNext.hint)}</button>` : ''}
                     <div class="pet-info">
                         <p class="pet-name">${petData.emoji} ${petDisplayName} <span class="mood-face" id="mood-face" aria-label="Mood: ${mood}" title="${mood.charAt(0).toUpperCase() + mood.slice(1)}">${getMoodFaceEmoji(mood, pet)}</span> ${generatePetAgeHudHTML(pet)} ${generateStreakHudHTML()}</p>
                         ${pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && PERSONALITY_TRAITS[pet.personality] ? `<p class="personality-badge" title="${PERSONALITY_TRAITS[pet.personality].description}">${PERSONALITY_TRAITS[pet.personality].emoji} ${PERSONALITY_TRAITS[pet.personality].label}${pet.growthStage === 'elder' ? ' · 🏛️ Elder' : ''}</p>` : ''}
@@ -1925,6 +1979,10 @@
             safeAddClick('wash-btn', () => careAction('wash'));
             safeAddClick('play-btn', () => careAction('play'));
             safeAddClick('sleep-btn', () => careAction('sleep'));
+            safeAddClick('next-action-chip', () => {
+                if (!recommendedNext || !recommendedNext.action) return;
+                careAction(recommendedNext.action);
+            });
             safeAddClick('core-feed-btn', () => careAction('feed'));
             safeAddClick('core-wash-btn', () => careAction('wash'));
             safeAddClick('core-play-btn', () => careAction('play'));
@@ -2465,6 +2523,18 @@
         const _toastAnnounceLastByText = new Map();
         const _toastQueue = [];
         let _toastQueueTimer = null;
+        const _deferredToastBatch = [];
+        let _deferredToastTimer = null;
+        const DEFERRED_TOAST_FLUSH_MS = 3200;
+        const CRITICAL_TOAST_PATTERNS = [
+            /warning/i,
+            /critical/i,
+            /error/i,
+            /failed/i,
+            /can(?:not|n't)/i,
+            /unavailable/i,
+            /need/i
+        ];
         const COACH_CHECKLIST_MINIMIZED_KEY = 'petCareBuddy_coachChecklistMinimized';
 
         function isNarrowViewport() {
@@ -2542,17 +2612,77 @@
             setUiBusyState();
         }
 
+        function isMiniGameActive() {
+            return !!document.querySelector('.fetch-game-overlay, .hideseek-game-overlay, .bubblepop-game-overlay, .matching-game-overlay, .simonsays-game-overlay, .coloring-game-overlay');
+        }
+
+        function isGameplayTrafficHigh() {
+            return isMiniGameActive() || !!actionCooldown;
+        }
+
+        function isCriticalToast(plainText, options = {}) {
+            if (options.priority === 'critical') return true;
+            if (options.assertive) return true;
+            const text = String(plainText || '');
+            return CRITICAL_TOAST_PATTERNS.some((pattern) => pattern.test(text));
+        }
+
+        function queueDeferredToast(entry) {
+            if (!entry) return;
+            _deferredToastBatch.push(entry);
+            if (_deferredToastTimer) return;
+            _deferredToastTimer = setTimeout(() => flushDeferredToasts(), DEFERRED_TOAST_FLUSH_MS);
+        }
+
+        function flushDeferredToasts(force = false) {
+            if (_deferredToastTimer) {
+                clearTimeout(_deferredToastTimer);
+                _deferredToastTimer = null;
+            }
+            if (_deferredToastBatch.length === 0) return;
+            if (!force && (isGameplayTrafficHigh() || document.querySelector('.onboarding-tooltip') || document.querySelector('.reward-card-pop.show'))) {
+                _deferredToastTimer = setTimeout(() => flushDeferredToasts(), 1200);
+                return;
+            }
+            const batch = _deferredToastBatch.splice(0);
+            const first = batch.slice(0, 2).map((item) => item.plainText).filter(Boolean);
+            const remainder = Math.max(0, batch.length - first.length);
+            const summary = remainder > 0
+                ? `Updates: ${first.join(' • ')} (+${remainder} more)`
+                : first.join(' • ');
+            trafficMinimizeCoachChecklist();
+            renderToastNow(escapeHTML(summary || 'New updates available.'), '#90A4AE');
+        }
+
         function flushToastQueue() {
             _toastQueueTimer = null;
-            if (_toastQueue.length === 0) return;
+            if (_toastQueue.length === 0) {
+                flushDeferredToasts();
+                return;
+            }
             if (document.querySelector('.onboarding-tooltip') || document.querySelector('.reward-card-pop.show')) {
                 _toastQueueTimer = setTimeout(flushToastQueue, 600);
                 return;
             }
+            if (isGameplayTrafficHigh()) {
+                let moved = 0;
+                for (let i = _toastQueue.length - 1; i >= 0; i--) {
+                    if (_toastQueue[i].priority !== 'critical') {
+                        queueDeferredToast(_toastQueue[i]);
+                        _toastQueue.splice(i, 1);
+                        moved++;
+                    }
+                }
+                if (moved > 0 && _toastQueue.length === 0) {
+                    _toastQueueTimer = setTimeout(flushToastQueue, 900);
+                    return;
+                }
+            }
             trafficMinimizeCoachChecklist();
             const next = _toastQueue.shift();
             renderToastNow(next.safeMessage, next.color);
-            if (_toastQueue.length > 0) _toastQueueTimer = setTimeout(flushToastQueue, 480);
+            if (_toastQueue.length > 0) _toastQueueTimer = setTimeout(flushToastQueue, 520);
+            else flushDeferredToasts();
         }
 
         function shouldAnnounceToast(plainText, options) {
@@ -2564,13 +2694,19 @@
         function showToast(message, color = '#66BB6A', options = {}) {
             const plainText = sanitizeToastText(message);
             const safeMessage = escapeHTML(plainText);
+            const priority = isCriticalToast(plainText, options) ? 'critical' : 'normal';
             addToNotificationHistory(plainText);
-            _toastQueue.push({ safeMessage, color });
-            if (!_toastQueueTimer) _toastQueueTimer = setTimeout(flushToastQueue, 60);
+            const item = { safeMessage, color, plainText, priority };
+            if (isGameplayTrafficHigh() && priority !== 'critical') {
+                queueDeferredToast(item);
+            } else {
+                _toastQueue.push(item);
+                if (!_toastQueueTimer) _toastQueueTimer = setTimeout(flushToastQueue, 60);
+            }
 
             clearOnboardingTooltips();
 
-            if (plainText && typeof announce === 'function' && shouldAnnounceToast(plainText, options)) {
+            if (plainText && typeof announce === 'function' && shouldAnnounceToast(plainText, options) && !(isGameplayTrafficHigh() && priority !== 'critical')) {
                 const key = plainText.trim().toLowerCase();
                 const now = Date.now();
                 const last = _toastAnnounceLastByText.get(key) || 0;
@@ -2611,7 +2747,7 @@
                 return;
             }
             _rewardCardActive = true;
-            if (document.querySelector('.toast')) {
+            if (document.querySelector('.toast') || isGameplayTrafficHigh()) {
                 _rewardCardTimer = setTimeout(showNextRewardCard, 380);
                 return;
             }
@@ -2632,6 +2768,9 @@
             `;
             card.style.setProperty('--reward-card-accent', cardData.color);
             document.body.appendChild(card);
+            if (typeof SoundManager !== 'undefined' && SoundManager.playSFXByName) {
+                SoundManager.playSFXByName('reward-pop', SoundManager.sfx.achievement);
+            }
             requestAnimationFrame(() => card.classList.add('show'));
 
             if (_rewardCardTimer) clearTimeout(_rewardCardTimer);

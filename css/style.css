@@ -10842,6 +10842,117 @@
     }
 }
 
+/* ===== Beginner UI Density ===== */
+body.beginner-ui .top-action-group-secondary,
+body.beginner-ui #codex-btn,
+body.beginner-ui #achievements-btn,
+body.beginner-ui #daily-btn {
+    display: none !important;
+}
+
+.room-coming-wrap {
+    margin-top: 8px;
+    border: 1px solid rgba(33, 63, 86, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.75);
+    padding: 8px;
+}
+
+.room-coming-toggle {
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-weight: 800;
+    background: #edf5ff;
+    color: #224459;
+    cursor: pointer;
+}
+
+.room-coming-panel {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+}
+
+.room-coming-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.82);
+    color: #4d5961;
+}
+
+.room-coming-icon {
+    font-size: 1.05rem;
+}
+
+.room-coming-copy {
+    display: grid;
+    line-height: 1.1;
+}
+
+.room-coming-copy span {
+    font-size: 0.72rem;
+    opacity: 0.84;
+}
+
+/* ===== Recommended Action Chip ===== */
+.next-action-chip {
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+    z-index: 6;
+    border: none;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #17394c;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.next-action-chip.urgent {
+    background: #ffe9e9;
+    color: #8c2b2b;
+}
+
+.next-action-chip.bonus {
+    background: #e7fff1;
+    color: #1f6e4c;
+}
+
+/* ===== Mini-game Medal + PB ===== */
+.minigame-medal-badge {
+    justify-self: start;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    font-weight: 900;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.minigame-medal-badge.bronze { background: #f2dcc4; color: #71492d; }
+.minigame-medal-badge.silver { background: #e9edf4; color: #455a73; }
+.minigame-medal-badge.gold { background: #fff2c6; color: #7c5b11; }
+
+.minigame-pb-card {
+    border: 1px solid rgba(255, 196, 0, 0.46);
+    border-radius: 10px;
+    padding: 7px 10px;
+    background: linear-gradient(180deg, #fffde7, #fff8ca);
+    color: #5f4a12;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
 /* Empty state messaging */
 .empty-state {
     display: flex;
@@ -12988,6 +13099,9 @@ body.has-core-care-dock .duplicate-core-action {
     pointer-events: none;
     z-index: 0;
     opacity: 0.28;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
 }
 
 .room-art-layer.room-art-front {
@@ -12997,18 +13111,21 @@ body.has-core-care-dock .duplicate-core-action {
 
 .pet-area.room-bedroom .room-art-back {
     background:
+        url('../assets/props/room-art/bedroom-back.svg'),
         radial-gradient(35px 25px at 18% 24%, rgba(255,255,255,0.55), transparent 72%),
         radial-gradient(30px 22px at 82% 18%, rgba(255,240,220,0.5), transparent 70%);
 }
 
 .pet-area.room-kitchen .room-art-back {
     background:
+        url('../assets/props/room-art/kitchen-back.svg'),
         repeating-linear-gradient(90deg, rgba(255,255,255,0.3) 0 10px, rgba(0,0,0,0.04) 10px 20px),
         linear-gradient(180deg, transparent, rgba(255,255,255,0.2));
 }
 
 .pet-area.room-bathroom .room-art-back {
     background:
+        url('../assets/props/room-art/bathroom-back.svg'),
         radial-gradient(14px 14px at 20% 74%, rgba(255,255,255,0.45), transparent 72%),
         radial-gradient(12px 12px at 72% 66%, rgba(255,255,255,0.42), transparent 70%),
         radial-gradient(20px 20px at 48% 78%, rgba(255,255,255,0.35), transparent 74%);
@@ -13017,6 +13134,16 @@ body.has-core-care-dock .duplicate-core-action {
 .pet-area.room-backyard .room-art-back,
 .pet-area.room-garden .room-art-back {
     background:
+        url('../assets/props/room-art/backyard-back.svg'),
+        radial-gradient(10px 8px at 14% 84%, rgba(255,220,130,0.36), transparent 70%),
+        radial-gradient(12px 9px at 39% 82%, rgba(255,150,160,0.28), transparent 70%),
+        radial-gradient(10px 8px at 66% 86%, rgba(170,220,150,0.3), transparent 70%),
+        radial-gradient(12px 9px at 84% 81%, rgba(255,190,120,0.3), transparent 70%);
+}
+
+.pet-area.room-garden .room-art-back {
+    background:
+        url('../assets/props/room-art/garden-back.svg'),
         radial-gradient(10px 8px at 14% 84%, rgba(255,220,130,0.36), transparent 70%),
         radial-gradient(12px 9px at 39% 82%, rgba(255,150,160,0.28), transparent 70%),
         radial-gradient(10px 8px at 66% 86%, rgba(170,220,150,0.3), transparent 70%),
@@ -13025,6 +13152,7 @@ body.has-core-care-dock .duplicate-core-action {
 
 .pet-area.room-park .room-art-back {
     background:
+        url('../assets/props/room-art/park-back.svg'),
         radial-gradient(34px 22px at 20% 20%, rgba(255,255,255,0.45), transparent 72%),
         radial-gradient(38px 26px at 72% 16%, rgba(255,255,255,0.4), transparent 72%),
         linear-gradient(180deg, transparent 52%, rgba(255,255,255,0.2));
@@ -13032,18 +13160,21 @@ body.has-core-care-dock .duplicate-core-action {
 
 .pet-area.room-library .room-art-back {
     background:
+        url('../assets/props/room-art/library-back.svg'),
         repeating-linear-gradient(90deg, rgba(120, 86, 58, 0.18) 0 10px, rgba(72, 48, 33, 0.14) 10px 20px),
         linear-gradient(180deg, rgba(255,255,255,0.14), transparent 48%);
 }
 
 .pet-area.room-arcade .room-art-back {
     background:
+        url('../assets/props/room-art/arcade-back.svg'),
         repeating-linear-gradient(90deg, rgba(255, 64, 129, 0.11) 0 8px, rgba(124, 77, 255, 0.11) 8px 16px),
         linear-gradient(180deg, rgba(255,255,255,0.12), transparent 42%);
 }
 
 .pet-area.room-spa .room-art-back {
     background:
+        url('../assets/props/room-art/spa-back.svg'),
         radial-gradient(18px 18px at 16% 74%, rgba(255,255,255,0.28), transparent 70%),
         radial-gradient(20px 20px at 74% 76%, rgba(255,255,255,0.24), transparent 70%),
         linear-gradient(180deg, rgba(255,255,255,0.1), transparent 46%);
@@ -13051,6 +13182,7 @@ body.has-core-care-dock .duplicate-core-action {
 
 .pet-area.room-observatory .room-art-back {
     background:
+        url('../assets/props/room-art/observatory-back.svg'),
         radial-gradient(2px 2px at 22% 10%, rgba(255,255,255,0.5), transparent 4px),
         radial-gradient(2px 2px at 56% 16%, rgba(255,255,255,0.45), transparent 4px),
         radial-gradient(2px 2px at 80% 12%, rgba(255,255,255,0.5), transparent 4px),
@@ -13059,12 +13191,14 @@ body.has-core-care-dock .duplicate-core-action {
 
 .pet-area.room-workshop .room-art-back {
     background:
+        url('../assets/props/room-art/workshop-back.svg'),
         repeating-linear-gradient(45deg, rgba(110, 90, 78, 0.2) 0 10px, rgba(74, 58, 48, 0.16) 10px 20px),
         linear-gradient(180deg, rgba(255,255,255,0.1), transparent 45%);
 }
 
 .pet-area[class*="room-"] .room-art-front {
     background:
+        url('../assets/props/room-art/shared-front.svg'),
         var(--room-wallpaper-overlay),
         linear-gradient(180deg, rgba(255,255,255,0.18), transparent 46%),
         repeating-linear-gradient(120deg, transparent 0 12px, rgba(255,255,255,0.09) 12px 22px);

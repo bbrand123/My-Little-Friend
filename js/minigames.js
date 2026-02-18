@@ -252,7 +252,9 @@
             const score = Number.isFinite(options.score) ? options.score : 0;
             const coinReward = Number.isFinite(options.coinReward) ? options.coinReward : 0;
             const statChanges = Array.isArray(options.statChanges) ? options.statChanges : [];
-            const onPlayAgain = typeof options.onPlayAgain === 'function' ? options.onPlayAgain : null;
+            const isNewBest = !!options.isNewBest;
+            const personalBest = Number.isFinite(options.personalBest) ? options.personalBest : null;
+            const medal = options.medal && options.medal.tier ? options.medal : null;
 
             const existing = document.querySelector('.minigame-summary-overlay');
             if (existing) existing.remove();
@@ -268,18 +270,31 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', `${gameName} summary`);
+            const medalHTML = medal
+                ? `<div class="minigame-medal-badge ${escapeHTML(medal.tier)}" aria-label="${escapeHTML(medal.label)} medal">${escapeHTML(medal.icon)} ${escapeHTML(medal.label)}</div>`
+                : '';
+            const personalBestHTML = isNewBest
+                ? `<div class="minigame-pb-card" aria-live="polite">⭐ New personal best${personalBest !== null ? `: <strong>${personalBest}</strong>` : ''}</div>`
+                : '';
             overlay.innerHTML = `
                 <div class="minigame-summary-card">
                     <h3 class="minigame-summary-title">${escapeHTML(gameName)} Results</h3>
+                    ${medalHTML}
+                    ${personalBestHTML}
                     <p class="minigame-summary-scoreline">Score: <strong>${score}</strong> • Coins: <strong>+${coinReward}</strong></p>
                     <div class="minigame-summary-grid">${statsHTML}</div>
                     <div class="minigame-summary-actions">
-                        <button class="minigame-summary-btn secondary" type="button" data-summary-close>Back</button>
-                        <button class="minigame-summary-btn primary" type="button" data-summary-replay>Play Again</button>
+                        <button class="minigame-summary-btn primary" type="button" data-summary-close>Back to Game</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(overlay);
+            if (typeof SoundManager !== 'undefined' && SoundManager.playSFXByName) {
+                SoundManager.playSFXByName('reward-pop', SoundManager.sfx.achievement);
+                if (coinReward > 0) {
+                    SoundManager.playSFXByName('coin-jingle', SoundManager.sfx.celebration);
+                }
+            }
 
             function close() {
                 popModalEscape(close);
@@ -288,14 +303,19 @@
             }
 
             overlay.querySelector('[data-summary-close]')?.addEventListener('click', close);
-            overlay.querySelector('[data-summary-replay]')?.addEventListener('click', () => {
-                close();
-                if (onPlayAgain) onPlayAgain();
-            });
             overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
             pushModalEscape(close);
             trapFocus(overlay);
-            overlay.querySelector('[data-summary-replay]')?.focus();
+            overlay.querySelector('[data-summary-close]')?.focus();
+        }
+
+        function getMiniGameMedal(score, thresholds) {
+            const safeScore = Number(score) || 0;
+            if (!thresholds || safeScore <= 0) return null;
+            if (safeScore >= (Number(thresholds.gold) || Infinity)) return { tier: 'gold', label: 'Gold', icon: '🥇' };
+            if (safeScore >= (Number(thresholds.silver) || Infinity)) return { tier: 'silver', label: 'Silver', icon: '🥈' };
+            if (safeScore >= (Number(thresholds.bronze) || Infinity)) return { tier: 'bronze', label: 'Bronze', icon: '🥉' };
+            return null;
         }
 
         function startMiniGame(gameId) {
@@ -413,16 +433,13 @@
             throwBtn.addEventListener('click', (e) => handleFetchThrow(e));
 
             doneBtn.addEventListener('click', () => {
-                requestMiniGameExit(fetchState ? fetchState.score : 0, () => endFetchGame(), {
-                    canExit: () => !!fetchState && fetchState.phase === 'ready',
-                    busyMessage: 'Finish the current throw before quitting.',
-                    resolveScore: () => {
-                        const txt = document.getElementById('fetch-score')?.textContent || '';
-                        const m = txt.match(/(\d+)/);
-                        const shown = m ? parseInt(m[1], 10) : 0;
-                        return Math.max(fetchState ? fetchState.score : 0, shown);
+                if (!fetchState || fetchState.phase !== 'ready') {
+                    if (typeof showToast === 'function') {
+                        showToast('Finish the current throw before ending.', '#FFA726', { announce: false, priority: 'critical' });
                     }
-                });
+                    return;
+                }
+                endFetchGame();
             });
 
             // Close on overlay click
@@ -627,7 +644,7 @@
                 gameState.pet.energy = clamp(gameState.pet.energy - energyLoss, 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger - hungerLoss, 0, 100);
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('fetch', fetchState.score) : 0;
-
+                const previousBest = Number((gameState.minigameHighScores || {}).fetch || 0);
                 const isNewBest = updateMinigameHighScore('fetch', fetchState.score);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -654,7 +671,9 @@
                         { label: 'Energy', value: -energyLoss },
                         { label: 'Hunger', value: -hungerLoss }
                     ],
-                    onPlayAgain: () => startFetchGame()
+                    isNewBest,
+                    personalBest: isNewBest ? Math.max(fetchState.score, previousBest) : null,
+                    medal: getMiniGameMedal(fetchState.score, { bronze: 3, silver: 5, gold: 8 })
                 });
             } else {
                 restorePostMiniGameState();
@@ -827,7 +846,7 @@
 
             const doneBtn = overlay.querySelector('#hideseek-done-btn');
             doneBtn.addEventListener('click', () => {
-                requestMiniGameExit(hideSeekState ? hideSeekState.treatsFound : 0, () => endHideSeekGame());
+                endHideSeekGame();
             });
 
             // Close on overlay click
@@ -1059,7 +1078,7 @@
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger + Math.min(hideSeekState.treatsFound * 2, 10), 0, 100);
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('hideseek', hideSeekState.treatsFound) : 0;
-
+                const previousBest = Number((gameState.minigameHighScores || {}).hideseek || 0);
                 const isNewBest = updateMinigameHighScore('hideseek', hideSeekState.treatsFound);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -1076,10 +1095,22 @@
                 } else if (hideSeekState.treatsFound > 0) {
                     showMinigameConfetti();
                 }
-                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Hide & Seek!`, '#FFD700');
+                showMiniGameSummaryCard({
+                    gameName: 'Hide & Seek',
+                    score: hideSeekState.treatsFound,
+                    coinReward,
+                    statChanges: [
+                        { label: 'Happiness', value: bonus },
+                        { label: 'Energy', value: -Math.min(hideSeekState.treatsFound * 2, 8) },
+                        { label: 'Hunger', value: Math.min(hideSeekState.treatsFound * 2, 10) }
+                    ],
+                    isNewBest,
+                    personalBest: isNewBest ? Math.max(hideSeekState.treatsFound, previousBest) : null,
+                    medal: getMiniGameMedal(hideSeekState.treatsFound, { bronze: 2, silver: 4, gold: 6 })
+                });
+            } else {
+                restorePostMiniGameState();
             }
-
-            restorePostMiniGameState();
             hideSeekState = null;
         }
 
@@ -1184,7 +1215,7 @@
 
             // Done button
             overlay.querySelector('#bubblepop-done').addEventListener('click', () => {
-                requestMiniGameExit(bubblePopState ? bubblePopState.score : 0, () => endBubblePopGame());
+                endBubblePopGame();
             });
 
             // Close on overlay click
@@ -1480,7 +1511,7 @@
                 gameState.pet.cleanliness = clamp(gameState.pet.cleanliness + cleanlinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(bubblePopState.score, 10), 0, 100);
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('bubblepop', bubblePopState.score) : 0;
-
+                const previousBest = Number((gameState.minigameHighScores || {}).bubblepop || 0);
                 const isNewBest = updateMinigameHighScore('bubblepop', bubblePopState.score);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -1497,10 +1528,22 @@
                 } else if (bubblePopState.score > 0) {
                     showMinigameConfetti();
                 }
-                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Bubble Pop!`, '#FFD700');
+                showMiniGameSummaryCard({
+                    gameName: 'Bubble Pop',
+                    score: bubblePopState.score,
+                    coinReward,
+                    statChanges: [
+                        { label: 'Happiness', value: happinessBonus },
+                        { label: 'Cleanliness', value: cleanlinessBonus },
+                        { label: 'Energy', value: -Math.min(bubblePopState.score, 10) }
+                    ],
+                    isNewBest,
+                    personalBest: isNewBest ? Math.max(bubblePopState.score, previousBest) : null,
+                    medal: getMiniGameMedal(bubblePopState.score, { bronze: 10, silver: 20, gold: 35 })
+                });
+            } else {
+                restorePostMiniGameState();
             }
-
-            restorePostMiniGameState();
             bubblePopState = null;
         }
 
@@ -1630,7 +1673,7 @@
 
             // Done button
             overlay.querySelector('#matching-done').addEventListener('click', () => {
-                requestMiniGameExit(matchingState ? matchingState.matchesFound : 0, () => endMatchingGame());
+                endMatchingGame();
             });
 
             // Close on overlay click
@@ -1833,6 +1876,7 @@
                     incrementMinigamePlayCount('matching');
                 }
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('matching', coinBasis) : 0;
+                const previousBest = Number((gameState.minigameHighScores || {}).matching || 0);
                 const isNewBest = matchScore > 0 && updateMinigameHighScore('matching', matchScore);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -1849,10 +1893,23 @@
                 } else if (matchingState.matchesFound > 0) {
                     showMinigameConfetti();
                 }
-                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Matching!`, '#FFD700');
+                showMiniGameSummaryCard({
+                    gameName: 'Matching',
+                    score: matchScore,
+                    coinReward,
+                    statChanges: [
+                        { label: 'Pairs', value: matchingState.matchesFound },
+                        { label: 'Moves', value: -matchingState.moves },
+                        { label: 'Happiness', value: happinessBonus },
+                        { label: 'Energy', value: -energyCost }
+                    ],
+                    isNewBest,
+                    personalBest: isNewBest ? Math.max(matchScore, previousBest) : null,
+                    medal: getMiniGameMedal(matchScore, { bronze: 40, silver: 65, gold: 90 })
+                });
+            } else {
+                restorePostMiniGameState();
             }
-
-            restorePostMiniGameState();
             matchingState = null;
         }
 
@@ -1994,8 +2051,7 @@
 
             // Done button
             overlay.querySelector('#simon-done').addEventListener('click', () => {
-                const rounds = simonState ? (simonState.highestRound || 0) : 0;
-                requestMiniGameExit(rounds, () => endSimonSaysGame());
+                endSimonSaysGame();
             });
 
             // Close on overlay click
@@ -2215,7 +2271,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('simonsays', roundsCompleted * 10) : 0;
-
+                const previousBest = Number((gameState.minigameHighScores || {}).simonsays || 0);
                 const isNewBest = updateMinigameHighScore('simonsays', roundsCompleted);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -2232,12 +2288,24 @@
                 } else if (simonState.score > 0) {
                     showMinigameConfetti();
                 }
-                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Simon Says!`, '#FFD700');
+                showMiniGameSummaryCard({
+                    gameName: 'Simon Says',
+                    score: roundsCompleted,
+                    coinReward,
+                    statChanges: [
+                        { label: 'Happiness', value: happinessBonus },
+                        { label: 'Energy', value: -energyCost }
+                    ],
+                    isNewBest,
+                    personalBest: isNewBest ? Math.max(roundsCompleted, previousBest) : null,
+                    medal: getMiniGameMedal(roundsCompleted, { bronze: 3, silver: 5, gold: 8 })
+                });
+            } else {
+                restorePostMiniGameState();
             }
 
             // Audio context is shared via SoundManager — no cleanup needed here
 
-            restorePostMiniGameState();
             simonState = null;
         }
 
@@ -2414,8 +2482,7 @@
 
             // Done button
             overlay.querySelector('#coloring-done').addEventListener('click', () => {
-                const colored = coloringState ? coloringState.regionsColored.size : 0;
-                requestMiniGameExit(colored, () => endColoringGame());
+                endColoringGame();
             });
 
             // Close on overlay click
@@ -2665,7 +2732,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('coloring', Math.round(ratio * 100)) : 0;
-
+                const previousBest = Number((gameState.minigameHighScores || {}).coloring || 0);
                 const isNewBest = updateMinigameHighScore('coloring', colored);
                 const bestMsg = isNewBest ? ' New best!' : '';
 
@@ -2682,9 +2749,21 @@
                 } else if (colored > 0) {
                     showMinigameConfetti();
                 }
-                if (coinReward > 0) showToast(`🪙 Earned ${coinReward} coins from Coloring!`, '#FFD700');
+                showMiniGameSummaryCard({
+                    gameName: 'Coloring',
+                    score: colored,
+                    coinReward,
+                    statChanges: [
+                        { label: 'Coverage', value: Math.round(ratio * 100) },
+                        { label: 'Happiness', value: happinessBonus },
+                        { label: 'Energy', value: -energyCost }
+                    ],
+                    isNewBest,
+                    personalBest: isNewBest ? Math.max(colored, previousBest) : null,
+                    medal: getMiniGameMedal(Math.round(ratio * 100), { bronze: 35, silver: 60, gold: 90 })
+                });
+            } else {
+                restorePostMiniGameState();
             }
-
-            restorePostMiniGameState();
             coloringState = null;
         }
