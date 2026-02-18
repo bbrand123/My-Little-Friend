@@ -366,7 +366,7 @@
             function endBattle(won) {
                 const comp = initCompetitionState();
                 const battleDifficulty = Math.max(0.8, oppMaxHP / Math.max(1, playerMaxHP));
-                const rewardMult = getCompetitionRewardMultiplier(pet, battleDifficulty);
+                const rewardMult = getCompetitionRewardMultiplier(pet, battleDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 if (won) {
                     comp.battlesWon++;
                     const happyGain = Math.max(8, Math.round(11 * rewardMult));
@@ -390,6 +390,12 @@
                         announce(`Defeat. Good fight though! Plus ${happyGain} happiness for trying.`, true);
                     }, 500);
                 }
+                if (typeof incrementDailyProgress === 'function') {
+                    incrementDailyProgress('battleCount', 1);
+                    incrementDailyProgress('masteryPoints', won ? 2 : 1);
+                }
+                if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
+                if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
                 saveGame();
                 if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
                 if (typeof updateWellnessBar === 'function') updateWellnessBar();
@@ -688,7 +694,7 @@
                         ? allPets.reduce((sum, p) => sum + (Number(calculateBattleStat(p)) || 0), 0) / allPets.length
                         : (Number(calculateBattleStat(gameState.pet)) || 60);
                     const bossDifficulty = Math.max(1, boss.maxHP / Math.max(40, avgTeamPower));
-                    const rewardMult = getCompetitionRewardMultiplier(gameState.pet || allPets[0], bossDifficulty);
+                    const rewardMult = getCompetitionRewardMultiplier(gameState.pet || allPets[0], bossDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                     if (won) {
                         comp.bossesDefeated[bossId] = { defeated: true, defeatedAt: Date.now() };
                         // Apply rewards only to alive pets (skip fainted ones)
@@ -726,6 +732,12 @@
                             announce('Defeat. The boss was too strong. Try again when your pets are stronger.', true);
                         }, 500);
                     }
+                    if (typeof incrementDailyProgress === 'function') {
+                        incrementDailyProgress('battleCount', 1);
+                        incrementDailyProgress('masteryPoints', won ? 3 : 1);
+                    }
+                    if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
+                    if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
                     saveGame();
 
                     setTimeout(() => {
@@ -866,7 +878,7 @@
                 }
                 // Reward pet for participating
                 const showDifficulty = 0.95 + (result.totalScore / 120);
-                const showRewardMult = getCompetitionRewardMultiplier(pet, showDifficulty);
+                const showRewardMult = getCompetitionRewardMultiplier(pet, showDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 const showGain = Math.max(6, Math.round(8 * showRewardMult));
                 pet.happiness = clamp(pet.happiness + showGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
@@ -874,6 +886,12 @@
             } else {
                 showToast(`Pet Show rewards are on cooldown for ${cooldownRemainingMinutes} more minute${cooldownRemainingMinutes === 1 ? '' : 's'}.`, '#FFA726');
             }
+            if (typeof incrementDailyProgress === 'function') {
+                incrementDailyProgress('battleCount', 1);
+                incrementDailyProgress('masteryPoints', 2);
+            }
+            if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
+            if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
             saveGame();
 
             // Generate NPC competitors for flavor
@@ -1078,10 +1096,16 @@
                 const maxPossible = OBSTACLE_COURSE_STAGES.reduce((s, st) => s + st.points, 0);
                 const pct = Math.round((totalScore / maxPossible) * 100);
                 const obstacleDifficulty = 0.9 + (pct / 100);
-                const obstacleRewardMult = getCompetitionRewardMultiplier(pet, obstacleDifficulty);
+                const obstacleRewardMult = getCompetitionRewardMultiplier(pet, obstacleDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 const obstacleGain = Math.max(6, Math.round(9 * obstacleRewardMult));
                 pet.happiness = clamp(pet.happiness + obstacleGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
+                if (typeof incrementDailyProgress === 'function') {
+                    incrementDailyProgress('battleCount', 1);
+                    incrementDailyProgress('masteryPoints', 2);
+                }
+                if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
+                if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
                 saveGame();
 
                 let grade = 'D';
@@ -1352,7 +1376,7 @@
                 function endRivalFight(rivalIdx, won) {
                     const comp = initCompetitionState();
                     const rivalDifficulty = 1 + (trainer.difficulty * 0.14);
-                    const rewardMult = getCompetitionRewardMultiplier(pet, rivalDifficulty);
+                    const rewardMult = getCompetitionRewardMultiplier(pet, rivalDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                     if (won) {
                         comp.rivalBattlesWon++;
                         const isFirstDefeat = !comp.rivalsDefeated.includes(rivalIdx);
@@ -1378,6 +1402,12 @@
                             announce(`Defeat. Keep training! ${trainer.name} is tough.`, true);
                         }, 500);
                     }
+                    if (typeof incrementDailyProgress === 'function') {
+                        incrementDailyProgress('battleCount', 1);
+                        incrementDailyProgress('masteryPoints', won ? 3 : 1);
+                    }
+                    if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
+                    if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
                     saveGame();
 
                     setTimeout(() => {
@@ -1446,12 +1476,14 @@
             const seasonData = SEASONS[season];
             const bossCount = Object.keys(comp.bossesDefeated).length;
             const totalBosses = Object.keys(BOSS_ENCOUNTERS).length;
+            const mastery = typeof refreshMasteryTracks === 'function' ? refreshMasteryTracks() : (gameState.mastery || null);
+            const compMastery = mastery && mastery.competitionSeason ? mastery.competitionSeason : { rank: 1, title: 'Bronze Circuit' };
 
             overlay.innerHTML = `
                 <div class="modal-content competition-modal hub-modal">
                     <button class="competition-close-btn" id="hub-close" aria-label="Close">&times;</button>
                     <h2 class="competition-title"><span aria-hidden="true">🏟️</span> Competition Hub</h2>
-                    <p class="competition-subtitle">${seasonData.icon} ${seasonData.name} Season</p>
+                    <p class="competition-subtitle">${seasonData.icon} ${seasonData.name} Season · Rank ${compMastery.rank} ${compMastery.title}</p>
                     <div class="hub-menu">
                         <button class="hub-option" id="hub-battle">
                             <span class="hub-option-emoji">⚔️</span>

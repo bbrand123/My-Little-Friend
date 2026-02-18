@@ -43,6 +43,22 @@
             };
         }
 
+        function createDefaultReminderState() {
+            return {
+                enabled: false,
+                permission: 'default',
+                lastSent: {}
+            };
+        }
+
+        function createDefaultMasteryState() {
+            return {
+                competitionSeason: { points: 0, rank: 1, title: 'Bronze Circuit' },
+                biomeRanks: {},
+                familyLegacy: { points: 0, tier: 1, title: 'Founding Family' }
+            };
+        }
+
         let gameState = {
             phase: 'egg', // 'egg', 'hatching', 'pet'
             pet: null,
@@ -107,10 +123,28 @@
             badges: {}, // { badgeId: { unlocked: true, unlockedAt: timestamp } }
             stickers: {}, // { stickerId: { collected: true, collectedAt: timestamp } }
             trophies: {}, // { trophyId: { earned: true, earnedAt: timestamp } }
-            streak: { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] },
+            streak: {
+                current: 0,
+                longest: 0,
+                lastPlayDate: null,
+                todayBonusClaimed: false,
+                claimedMilestones: [],
+                prestige: {
+                    cycleMonth: '',
+                    cycleBest: 0,
+                    lifetimeTier: 0,
+                    completedCycles: 0,
+                    claimedMonthlyReward: ''
+                }
+            },
             totalMedicineUses: 0,
             totalGroomCount: 0,
             totalDailyCompletions: 0,
+            weeklyArc: null,
+            reminders: createDefaultReminderState(),
+            rewardModifiers: [],
+            mastery: createDefaultMasteryState(),
+            goalLadder: null,
             // Competition system
             competition: {
                 battlesWon: 0, battlesLost: 0, bossesDefeated: {},
@@ -210,9 +244,50 @@
             return state.minigameExpansion;
         }
 
+        function ensureReminderState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            const defaults = createDefaultReminderState();
+            if (!state.reminders || typeof state.reminders !== 'object' || Array.isArray(state.reminders)) {
+                state.reminders = defaults;
+                return state.reminders;
+            }
+            if (typeof state.reminders.enabled !== 'boolean') state.reminders.enabled = defaults.enabled;
+            if (typeof state.reminders.permission !== 'string') state.reminders.permission = defaults.permission;
+            if (!state.reminders.lastSent || typeof state.reminders.lastSent !== 'object' || Array.isArray(state.reminders.lastSent)) {
+                state.reminders.lastSent = {};
+            }
+            return state.reminders;
+        }
+
+        function ensureMasteryState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            const defaults = createDefaultMasteryState();
+            if (!state.mastery || typeof state.mastery !== 'object' || Array.isArray(state.mastery)) {
+                state.mastery = defaults;
+                return state.mastery;
+            }
+            if (!state.mastery.competitionSeason || typeof state.mastery.competitionSeason !== 'object') {
+                state.mastery.competitionSeason = defaults.competitionSeason;
+            }
+            if (typeof state.mastery.competitionSeason.points !== 'number' || !Number.isFinite(state.mastery.competitionSeason.points)) state.mastery.competitionSeason.points = 0;
+            if (typeof state.mastery.competitionSeason.rank !== 'number' || !Number.isFinite(state.mastery.competitionSeason.rank)) state.mastery.competitionSeason.rank = 1;
+            if (typeof state.mastery.competitionSeason.title !== 'string') state.mastery.competitionSeason.title = defaults.competitionSeason.title;
+            if (!state.mastery.biomeRanks || typeof state.mastery.biomeRanks !== 'object' || Array.isArray(state.mastery.biomeRanks)) {
+                state.mastery.biomeRanks = {};
+            }
+            if (!state.mastery.familyLegacy || typeof state.mastery.familyLegacy !== 'object') {
+                state.mastery.familyLegacy = defaults.familyLegacy;
+            }
+            if (typeof state.mastery.familyLegacy.points !== 'number' || !Number.isFinite(state.mastery.familyLegacy.points)) state.mastery.familyLegacy.points = 0;
+            if (typeof state.mastery.familyLegacy.tier !== 'number' || !Number.isFinite(state.mastery.familyLegacy.tier)) state.mastery.familyLegacy.tier = 1;
+            if (typeof state.mastery.familyLegacy.title !== 'string') state.mastery.familyLegacy.title = defaults.familyLegacy.title;
+            return state.mastery;
+        }
+
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
         // via startGardenGrowTimer(), and stopped during cleanup/reset.
         let gardenGrowInterval = null;
+        let localReminderInterval = null;
 
         // Track room bonus toast per session — only show bonus detail the first few times
         const roomBonusToastCount = {};
@@ -807,7 +882,8 @@
             const biome = EXPLORATION_BIOMES[expedition.biomeId] || EXPLORATION_BIOMES.forest;
             const duration = EXPEDITION_DURATIONS.find((d) => d.id === expedition.durationId) || EXPEDITION_DURATIONS[0];
             const baseRolls = 2 + Math.floor(Math.random() * 2);
-            const totalRolls = Math.max(2, Math.round(baseRolls * (expedition.lootMultiplier || duration.lootMultiplier || 1)));
+            const bonusRolls = typeof consumeExpeditionRewardBonusRolls === 'function' ? consumeExpeditionRewardBonusRolls() : 0;
+            const totalRolls = Math.max(2, Math.round(baseRolls * (expedition.lootMultiplier || duration.lootMultiplier || 1)) + Math.max(0, bonusRolls));
             const rewards = generateLootBundle(getBiomeLootPool(expedition.biomeId), totalRolls);
             ex.discoveredBiomes[expedition.biomeId] = true;
             ex.stats.expeditionsCompleted++;
@@ -836,7 +912,14 @@
             if (ex.expeditionHistory.length > 15) ex.expeditionHistory = ex.expeditionHistory.slice(0, 15);
             ex.expedition = null;
 
+            if (typeof incrementDailyProgress === 'function') {
+                incrementDailyProgress('expeditionCount');
+                incrementDailyProgress('discoveryEvents');
+                incrementDailyProgress('masteryPoints', 2);
+            }
+
             const newlyUnlocked = updateExplorationUnlocks(true);
+            refreshMasteryTracks();
             saveGame();
 
             if (!silent) {
@@ -2260,27 +2343,277 @@
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
+        function getCurrentMonthKey() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getWeekKey() {
+            const d = new Date();
+            const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            const day = utc.getUTCDay() || 7;
+            utc.setUTCDate(utc.getUTCDate() + 4 - day);
+            const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+            return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+        }
+
+        function getStageRank(stage) {
+            const order = ['baby', 'child', 'adult', 'elder'];
+            const idx = order.indexOf(stage);
+            return idx === -1 ? 0 : idx;
+        }
+
+        function canUseWildcardTask(task, stage) {
+            if (!task || !task.minStage) return true;
+            return getStageRank(stage) >= getStageRank(task.minStage);
+        }
+
+        function hashDailySeed(seed) {
+            if (typeof hashStringToUint === 'function') return hashStringToUint(seed);
+            let h = 2166136261 >>> 0;
+            const s = String(seed || '');
+            for (let i = 0; i < s.length; i++) {
+                h ^= s.charCodeAt(i);
+                h = Math.imul(h, 16777619);
+            }
+            return h >>> 0;
+        }
+
+        function pickDailyModeTasks(dateKey) {
+            const pool = Array.isArray(DAILY_MODE_TASKS) ? [...DAILY_MODE_TASKS] : [];
+            if (pool.length <= 2) return pool;
+            const selected = [];
+            let seed = hashDailySeed(`mode:${dateKey}`);
+            while (pool.length > 0 && selected.length < 2) {
+                const idx = seed % pool.length;
+                selected.push(pool.splice(idx, 1)[0]);
+                seed = Math.imul(seed ^ 0x9E3779B9, 1664525) >>> 0;
+            }
+            return selected;
+        }
+
+        function pickDailyWildcardTask(stage, dateKey) {
+            const pool = (Array.isArray(DAILY_WILDCARD_TASKS) ? DAILY_WILDCARD_TASKS : []).filter((task) => canUseWildcardTask(task, stage));
+            if (pool.length === 0) return null;
+            const idx = hashDailySeed(`wild:${dateKey}:${stage}`) % pool.length;
+            return pool[idx];
+        }
+
+        function buildDailyTaskEntry(task, stage) {
+            const source = task || {};
+            const target = typeof getDailyTaskTarget === 'function' ? getDailyTaskTarget(source, stage) : (source.target || 1);
+            return {
+                id: source.id || `task_${Date.now()}`,
+                icon: source.icon || '📌',
+                lane: source.lane || 'mode',
+                trackKey: source.trackKey || 'totalCareActions',
+                target,
+                done: false,
+                name: typeof getDailyTaskName === 'function' ? getDailyTaskName(source, target) : (source.name || 'Daily task')
+            };
+        }
+
+        function addGameplayModifier(modifierId, source) {
+            if (!modifierId || !REWARD_MODIFIERS || !REWARD_MODIFIERS[modifierId]) return null;
+            if (!Array.isArray(gameState.rewardModifiers)) gameState.rewardModifiers = [];
+            const now = Date.now();
+            gameState.rewardModifiers = gameState.rewardModifiers.filter((m) => !m.expiresAt || m.expiresAt > now);
+            const def = REWARD_MODIFIERS[modifierId];
+            const effect = def.effect || {};
+            const modifier = {
+                id: `${modifierId}:${now}`,
+                typeId: modifierId,
+                name: def.name,
+                emoji: def.emoji,
+                source: source || 'Reward',
+                createdAt: now,
+                expiresAt: effect.durationMs ? (now + effect.durationMs) : null,
+                remainingActions: Number.isFinite(effect.remainingActions) ? Math.max(0, effect.remainingActions) : null,
+                remainingMatches: Number.isFinite(effect.remainingMatches) ? Math.max(0, effect.remainingMatches) : null,
+                nextExpeditionBonusRolls: Number.isFinite(effect.rolls) ? Math.max(0, effect.rolls) : 0
+            };
+            gameState.rewardModifiers.push(modifier);
+            return modifier;
+        }
+
+        function cleanupRewardModifiers() {
+            if (!Array.isArray(gameState.rewardModifiers)) {
+                gameState.rewardModifiers = [];
+                return [];
+            }
+            const now = Date.now();
+            gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => !modifier.expiresAt || modifier.expiresAt > now);
+            return gameState.rewardModifiers;
+        }
+
+        function getModifierEffect(modifier) {
+            if (!modifier || !modifier.typeId || !REWARD_MODIFIERS || !REWARD_MODIFIERS[modifier.typeId]) return null;
+            return REWARD_MODIFIERS[modifier.typeId].effect || null;
+        }
+
+        function getRewardCareGainMultiplier() {
+            let mult = 1;
+            cleanupRewardModifiers().forEach((modifier) => {
+                const effect = getModifierEffect(modifier);
+                if (!effect || effect.type !== 'careGainMultiplier') return;
+                mult *= Math.max(1, Number(effect.multiplier) || 1);
+            });
+            return mult;
+        }
+
+        function getRewardHappinessFlatBonus() {
+            let total = 0;
+            cleanupRewardModifiers().forEach((modifier) => {
+                const effect = getModifierEffect(modifier);
+                if (!effect || effect.type !== 'happinessFlatBonus') return;
+                total += Math.max(0, Number(effect.value) || 0);
+            });
+            return total;
+        }
+
+        function consumeCareActionRewardModifiers() {
+            cleanupRewardModifiers().forEach((modifier) => {
+                if (typeof modifier.remainingActions !== 'number') return;
+                modifier.remainingActions = Math.max(0, modifier.remainingActions - 1);
+            });
+            gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => modifier.remainingActions === null || modifier.remainingActions > 0);
+        }
+
+        function consumeExpeditionRewardBonusRolls() {
+            let rolls = 0;
+            cleanupRewardModifiers().forEach((modifier) => {
+                if (typeof modifier.nextExpeditionBonusRolls !== 'number' || modifier.nextExpeditionBonusRolls <= 0) return;
+                rolls += modifier.nextExpeditionBonusRolls;
+                modifier.nextExpeditionBonusRolls = 0;
+            });
+            gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => !(typeof modifier.nextExpeditionBonusRolls === 'number' && modifier.nextExpeditionBonusRolls <= 0 && !modifier.expiresAt && modifier.remainingActions === null && modifier.remainingMatches === null));
+            return rolls;
+        }
+
+        function getRewardCompetitionMultiplier() {
+            let mult = 1;
+            cleanupRewardModifiers().forEach((modifier) => {
+                const effect = getModifierEffect(modifier);
+                if (!effect || effect.type !== 'competitionRewardMultiplier') return;
+                mult *= Math.max(1, Number(effect.multiplier) || 1);
+            });
+            return mult;
+        }
+
+        function consumeCompetitionRewardModifiers() {
+            cleanupRewardModifiers().forEach((modifier) => {
+                if (typeof modifier.remainingMatches !== 'number') return;
+                modifier.remainingMatches = Math.max(0, modifier.remainingMatches - 1);
+            });
+            gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => modifier.remainingMatches === null || modifier.remainingMatches > 0);
+        }
+
+        function getRewardRelationshipMultiplier() {
+            let mult = 1;
+            cleanupRewardModifiers().forEach((modifier) => {
+                const effect = getModifierEffect(modifier);
+                if (!effect || effect.type !== 'relationshipMultiplier') return;
+                mult *= Math.max(1, Number(effect.multiplier) || 1);
+            });
+            return mult;
+        }
+
+        function grantBundleCollectible(collectible) {
+            if (!collectible || typeof collectible !== 'object') return false;
+            if (collectible.type === 'sticker') return grantSticker(collectible.id);
+            if (collectible.type === 'accessory' && gameState.pet) {
+                if (!Array.isArray(gameState.pet.unlockedAccessories)) gameState.pet.unlockedAccessories = [];
+                if (!gameState.pet.unlockedAccessories.includes(collectible.id)) {
+                    gameState.pet.unlockedAccessories.push(collectible.id);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function applyRewardBundle(bundleId, sourceLabel) {
+            if (!bundleId || !REWARD_BUNDLES || !REWARD_BUNDLES[bundleId]) return null;
+            const bundle = REWARD_BUNDLES[bundleId];
+            const source = sourceLabel || 'Bundle Reward';
+            const earnedCoins = Number(bundle.coins) > 0 ? addCoins(bundle.coins, source, true) : 0;
+            const modifier = bundle.modifierId ? addGameplayModifier(bundle.modifierId, source) : null;
+            const collectibleGranted = bundle.collectible ? grantBundleCollectible(bundle.collectible) : false;
+            return { bundle, earnedCoins, modifier, collectibleGranted };
+        }
+
+        function getDailyTaskTemplateMap() {
+            const map = {};
+            (Array.isArray(DAILY_TASKS) ? DAILY_TASKS : []).forEach((task) => { if (task && task.id) map[task.id] = task; });
+            return map;
+        }
+
+        function initWeeklyArc() {
+            const weekKey = getWeekKey();
+            if (!gameState.weeklyArc || gameState.weeklyArc.weekKey !== weekKey) {
+                const arcs = Array.isArray(WEEKLY_THEMED_ARCS) ? WEEKLY_THEMED_ARCS : [];
+                if (arcs.length === 0) return null;
+                const arc = arcs[hashDailySeed(`arc:${weekKey}`) % arcs.length];
+                gameState.weeklyArc = {
+                    weekKey,
+                    arcId: arc.id,
+                    theme: arc.theme,
+                    icon: arc.icon,
+                    tasks: (arc.tasks || []).map((task) => ({ ...task, done: false })),
+                    progress: {},
+                    completed: false,
+                    rewardClaimed: false,
+                    reward: arc.finaleReward || null
+                };
+            }
+            return gameState.weeklyArc;
+        }
+
+        function incrementWeeklyArcProgress(key, amount) {
+            const arc = initWeeklyArc();
+            if (!arc || !key) return [];
+            if (!arc.progress || typeof arc.progress !== 'object') arc.progress = {};
+            arc.progress[key] = (arc.progress[key] || 0) + (amount ?? 1);
+            const completed = [];
+            (arc.tasks || []).forEach((task) => {
+                if (!task || task.done || task.trackKey !== key) return;
+                const target = Math.max(1, Number(task.target) || 1);
+                if ((arc.progress[key] || 0) >= target) {
+                    task.done = true;
+                    completed.push(task);
+                }
+            });
+            if (!arc.completed && (arc.tasks || []).length > 0 && arc.tasks.every((task) => task.done)) {
+                arc.completed = true;
+                if (!arc.rewardClaimed) {
+                    arc.rewardClaimed = true;
+                    if (arc.reward && arc.reward.bundleId) applyRewardBundle(arc.reward.bundleId, `${arc.icon || '🏅'} ${arc.theme || 'Weekly Arc'}`);
+                    if (arc.reward && arc.reward.collectible) grantBundleCollectible(arc.reward.collectible);
+                    addJournalEntry('🏅', `${arc.theme || 'Weekly arc'} completed! Exclusive finale reward unlocked.`);
+                }
+            }
+            return completed;
+        }
+
         function initDailyChecklist() {
             const today = getTodayString();
             if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
                 const stage = (gameState.pet && GROWTH_STAGES[gameState.pet.growthStage]) ? gameState.pet.growthStage : 'baby';
+                const fixedTasks = (Array.isArray(DAILY_FIXED_TASKS) ? DAILY_FIXED_TASKS : []).slice(0, 2);
+                const modeTasks = pickDailyModeTasks(today);
+                const wildcard = pickDailyWildcardTask(stage, today);
+                const taskList = [...fixedTasks, ...modeTasks];
+                if (wildcard) taskList.push(wildcard);
                 gameState.dailyChecklist = {
                     date: today,
                     stage,
-                    progress: { feedCount: 0, minigameCount: 0, harvestCount: 0, parkVisits: 0, totalCareActions: 0 },
-                    tasks: DAILY_TASKS.map(t => {
-                        const target = typeof getDailyTaskTarget === 'function' ? getDailyTaskTarget(t, stage) : t.target;
-                        return {
-                            id: t.id,
-                            done: false,
-                            target,
-                            name: typeof getDailyTaskName === 'function' ? getDailyTaskName(t, target) : t.name
-                        };
-                    }),
+                    progress: { feedCount: 0, minigameCount: 0, harvestCount: 0, parkVisits: 0, totalCareActions: 0, expeditionCount: 0, battleCount: 0, hatchCount: 0, masteryPoints: 0, bondEvents: 0, discoveryEvents: 0 },
+                    tasks: taskList.map((t) => buildDailyTaskEntry(t, stage)),
                     _completionCounted: false,
                     _rewardGranted: false
                 };
             }
+            initWeeklyArc();
             return gameState.dailyChecklist;
         }
 
@@ -2289,18 +2622,22 @@
             if (!cl.progress[key]) cl.progress[key] = 0;
             cl.progress[key] += (amount ?? 1);
             // Check completions
-            let newlyCompleted = [];
-            DAILY_TASKS.forEach((task, idx) => {
-                if (!cl.tasks[idx]) return;
-                const scaledTarget = Number(cl.tasks[idx].target || task.target || 1);
-                if (!cl.tasks[idx].done && cl.progress[task.trackKey] >= scaledTarget) {
-                    cl.tasks[idx].done = true;
-                    newlyCompleted.push(Object.assign({}, task, {
+            const templates = getDailyTaskTemplateMap();
+            const newlyCompleted = [];
+            cl.tasks.forEach((task) => {
+                if (!task || task.done || task.trackKey !== key) return;
+                const scaledTarget = Number(task.target || 1);
+                if ((cl.progress[key] || 0) >= scaledTarget) {
+                    task.done = true;
+                    newlyCompleted.push({
+                        ...(templates[task.id] || task),
+                        icon: task.icon || (templates[task.id] && templates[task.id].icon) || '✅',
                         target: scaledTarget,
-                        name: cl.tasks[idx].name || (typeof getDailyTaskName === 'function' ? getDailyTaskName(task, scaledTarget) : task.name)
-                    }));
+                        name: task.name
+                    });
                 }
             });
+            incrementWeeklyArcProgress(key, amount);
             // Track daily completion count for trophies
             if (typeof trackDailyCompletion === 'function') trackDailyCompletion();
             return newlyCompleted;
@@ -2322,12 +2659,18 @@
                     gameState.totalDailyCompletions++;
                     if (!cl._rewardGranted) {
                         cl._rewardGranted = true;
-                        const dailyReward = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
-                            ? ECONOMY_BALANCE.dailyCompletionReward
-                            : 85;
-                        const payout = addCoins(dailyReward, 'Daily Tasks', true);
-                        if (payout > 0 && typeof showToast === 'function') {
-                            showToast(`📋 Daily tasks complete! Earned ${payout} coins.`, '#FFD700');
+                        const bundled = applyRewardBundle('dailyFinish', 'Daily Tasks');
+                        if (bundled && typeof showToast === 'function') {
+                            const modifierText = bundled.modifier ? ` + ${bundled.modifier.emoji} ${bundled.modifier.name}` : '';
+                            showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${modifierText}`, '#FFD700');
+                        } else {
+                            const dailyReward = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
+                                ? ECONOMY_BALANCE.dailyCompletionReward
+                                : 85;
+                            const payout = addCoins(dailyReward, 'Daily Tasks', true);
+                            if (payout > 0 && typeof showToast === 'function') {
+                                showToast(`📋 Daily tasks complete! Earned ${payout} coins.`, '#FFD700');
+                            }
                         }
                     }
                 }
@@ -2344,6 +2687,173 @@
         function trackWeather() {
             if (!gameState.weatherSeen) gameState.weatherSeen = {};
             gameState.weatherSeen[gameState.weather] = true;
+        }
+
+        // ==================== POST-CAP MASTERY ====================
+
+        function getCompetitionSeasonTitle(rank) {
+            if (rank >= 10) return 'Mythic League';
+            if (rank >= 7) return 'Diamond Circuit';
+            if (rank >= 5) return 'Gold Circuit';
+            if (rank >= 3) return 'Silver Circuit';
+            return 'Bronze Circuit';
+        }
+
+        function getBiomeRankTitle(rank) {
+            if (rank >= 10) return 'Biome Sovereign';
+            if (rank >= 7) return 'Master Ranger';
+            if (rank >= 5) return 'Senior Scout';
+            if (rank >= 3) return 'Trail Keeper';
+            return 'Field Explorer';
+        }
+
+        function getLegacyTitle(tier) {
+            if (tier >= 8) return 'Eternal Lineage';
+            if (tier >= 6) return 'Heritage Dynasty';
+            if (tier >= 4) return 'Ancestral House';
+            if (tier >= 2) return 'Growing Legacy';
+            return 'Founding Family';
+        }
+
+        function refreshMasteryTracks() {
+            const mastery = ensureMasteryState();
+            const comp = normalizeCompetitionState(gameState.competition);
+            const compPoints = (comp.battlesWon || 0) + ((comp.showsEntered || 0) * 2) + ((comp.obstacleCompletions || 0) * 2) + ((comp.rivalsDefeated || []).length * 4);
+            mastery.competitionSeason.points = compPoints;
+            mastery.competitionSeason.rank = Math.max(1, Math.floor(compPoints / 12) + 1);
+            mastery.competitionSeason.title = getCompetitionSeasonTitle(mastery.competitionSeason.rank);
+
+            const history = (((gameState.exploration || {}).expeditionHistory) || []);
+            const biomeCounts = {};
+            history.forEach((entry) => {
+                if (!entry || !entry.biomeId) return;
+                biomeCounts[entry.biomeId] = (biomeCounts[entry.biomeId] || 0) + 1;
+            });
+            Object.entries(biomeCounts).forEach(([biomeId, count]) => {
+                const rank = Math.max(1, Math.floor(count / 3) + 1);
+                mastery.biomeRanks[biomeId] = {
+                    points: count,
+                    rank,
+                    title: getBiomeRankTitle(rank)
+                };
+            });
+
+            const legacyPoints = ((gameState.memorials || []).length * 8) + ((gameState.eldersRaised || 0) * 5) + ((gameState.totalBreedingHatches || 0) * 2);
+            mastery.familyLegacy.points = legacyPoints;
+            mastery.familyLegacy.tier = Math.max(1, Math.floor(legacyPoints / 20) + 1);
+            mastery.familyLegacy.title = getLegacyTitle(mastery.familyLegacy.tier);
+            return mastery;
+        }
+
+        // ==================== GOAL LADDER ====================
+
+        function getGoalLadder() {
+            const cl = initDailyChecklist();
+            const arc = initWeeklyArc();
+            const mastery = refreshMasteryTracks();
+            const nowTask = (cl.tasks || []).find((task) => !task.done) || null;
+            const nowProgress = nowTask ? `${Math.min(cl.progress[nowTask.trackKey] || 0, nowTask.target)}/${nowTask.target}` : 'Done';
+            const modeTasks = (cl.tasks || []).filter((task) => task.lane === 'mode');
+            const pendingMode = modeTasks.find((task) => !task.done);
+            const nextTask = pendingMode || nowTask;
+            const nextProgress = nextTask ? `${Math.min(cl.progress[nextTask.trackKey] || 0, nextTask.target)}/${nextTask.target}` : 'Done';
+            const longTerm = arc && !arc.completed
+                ? `${arc.icon || '🏅'} ${arc.theme}: ${((arc.tasks || []).filter((t) => t.done).length)}/${(arc.tasks || []).length}`
+                : `🏛️ Legacy Tier ${mastery.familyLegacy.tier}: ${mastery.familyLegacy.title}`;
+
+            gameState.goalLadder = {
+                generatedAt: Date.now(),
+                now: nowTask ? { label: nowTask.name, progress: nowProgress, window: '5 min' } : { label: 'Claim your streak bonus', progress: 'Ready', window: '5 min' },
+                next: nextTask ? { label: nextTask.name, progress: nextProgress, window: '20 min' } : { label: 'Run one expedition', progress: '0/1', window: '20 min' },
+                longTerm: { label: longTerm, progress: '', window: 'Milestone' }
+            };
+            return gameState.goalLadder;
+        }
+
+        // ==================== MEMORY HOOKS ====================
+
+        function runLoginMemoryHooks() {
+            if (!gameState.pet) return;
+            const pet = gameState.pet;
+            const today = getTodayString();
+            const monthDay = today.slice(5);
+            if (!gameState.memoryHooks || typeof gameState.memoryHooks !== 'object') gameState.memoryHooks = {};
+            if (!gameState.memoryHooks.anniversaries || typeof gameState.memoryHooks.anniversaries !== 'object') gameState.memoryHooks.anniversaries = {};
+
+            if (pet.birthdate) {
+                const b = new Date(pet.birthdate);
+                const petMonthDay = `${String(b.getMonth() + 1).padStart(2, '0')}-${String(b.getDate()).padStart(2, '0')}`;
+                const key = `${pet.id}:${today}`;
+                if (petMonthDay === monthDay && !gameState.memoryHooks.anniversaries[key]) {
+                    const ageDays = Math.max(1, Math.floor((Date.now() - pet.birthdate) / 86400000));
+                    addJournalEntry('🎂', `${pet.name || 'Pet'} anniversary day! ${ageDays} days together.`);
+                    gameState.memoryHooks.anniversaries[key] = true;
+                }
+            }
+
+            const journal = Array.isArray(gameState.journal) ? gameState.journal : [];
+            if (journal.length > 4) {
+                const callback = journal[Math.max(0, journal.length - 1 - (hashDailySeed(today) % Math.min(10, journal.length)))];
+                if (callback && callback.text) {
+                    gameState.goalLadderMemory = `Remember: ${callback.text}`;
+                }
+            }
+        }
+
+        // ==================== LOCAL REMINDERS ====================
+
+        function requestLocalReminderPermission() {
+            ensureReminderState();
+            if (typeof Notification === 'undefined') return Promise.resolve('unsupported');
+            if (Notification.permission === 'granted') {
+                gameState.reminders.permission = 'granted';
+                return Promise.resolve('granted');
+            }
+            return Notification.requestPermission().then((permission) => {
+                gameState.reminders.permission = permission;
+                saveGame();
+                return permission;
+            }).catch(() => 'denied');
+        }
+
+        function maybeSendLocalReminder(key, title, body) {
+            const reminders = ensureReminderState();
+            if (!reminders.enabled) return false;
+            const today = getTodayString();
+            if (reminders.lastSent && reminders.lastSent[key] === today) return false;
+            reminders.lastSent[key] = today;
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                try { new Notification(title, { body, icon: 'icon-192.png' }); } catch (e) {}
+            } else if (typeof showToast === 'function') {
+                showToast(`${title} ${body}`, '#FFA726');
+            }
+            return true;
+        }
+
+        function checkReminderSignals() {
+            const reminders = ensureReminderState();
+            if (!reminders.enabled) return;
+            const streak = gameState.streak || {};
+            const lastPlay = streak.lastPlayDate;
+            const today = getTodayString();
+            if (lastPlay && lastPlay !== today) {
+                maybeSendLocalReminder('streakRisk', '🔥 Streak risk!', 'Log in to protect your streak.');
+            }
+            const expedition = ((gameState.exploration || {}).expedition) || null;
+            if (expedition && Date.now() >= (expedition.endAt || 0)) {
+                maybeSendLocalReminder('expeditionReady', '🧭 Expedition ready', 'Collect your expedition rewards.');
+            }
+            const hatched = Array.isArray(gameState.hatchedBreedingEggs) ? gameState.hatchedBreedingEggs.length : 0;
+            if (hatched > 0) {
+                maybeSendLocalReminder('hatchReady', '🥚 Hatch ready', 'A new family member is ready to hatch.');
+            }
+        }
+
+        function startReminderMonitor() {
+            if (localReminderInterval) clearInterval(localReminderInterval);
+            localReminderInterval = setInterval(() => {
+                try { checkReminderSignals(); } catch (e) {}
+            }, 60 * 1000);
         }
 
         // ==================== BADGES ====================
@@ -2521,7 +3031,23 @@
                 gameState.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
             }
             const streak = gameState.streak;
+            if (!streak.prestige || typeof streak.prestige !== 'object') {
+                streak.prestige = { cycleMonth: '', cycleBest: 0, lifetimeTier: 0, completedCycles: 0, claimedMonthlyReward: '' };
+            }
             const today = getTodayString();
+            const monthKey = getCurrentMonthKey();
+
+            // Monthly prestige loop after day 30: reset cycle progress while preserving tier.
+            if (streak.prestige.cycleMonth && streak.prestige.cycleMonth !== monthKey && (streak.current || 0) >= 30) {
+                streak.prestige.completedCycles = (streak.prestige.completedCycles || 0) + 1;
+                streak.prestige.lifetimeTier = Math.max(streak.prestige.lifetimeTier || 0, Math.floor((streak.prestige.completedCycles || 0) / 2));
+                streak.current = 0;
+                streak.claimedMilestones = [];
+                streak.todayBonusClaimed = false;
+                streak.prestige.claimedMonthlyReward = '';
+            }
+            if (!streak.prestige.cycleMonth) streak.prestige.cycleMonth = monthKey;
+            if (streak.prestige.cycleMonth !== monthKey) streak.prestige.cycleMonth = monthKey;
 
             if (streak.lastPlayDate === today) {
                 // Already updated today
@@ -2549,6 +3075,7 @@
             if (streak.current > streak.longest) {
                 streak.longest = streak.current;
             }
+            streak.prestige.cycleBest = Math.max(streak.prestige.cycleBest || 0, streak.current || 0);
         }
 
         function claimStreakBonus() {
@@ -2572,21 +3099,38 @@
             for (const milestone of STREAK_MILESTONES) {
                 if (streak.current >= milestone.days && !streak.claimedMilestones.includes(milestone.days)) {
                     streak.claimedMilestones.push(milestone.days);
-                    unclaimedMilestones.push(milestone);
-                    // Grant milestone reward
-                    if (milestone.reward === 'sticker') {
-                        grantSticker(milestone.rewardId);
-                    } else if (milestone.reward === 'accessory' && pet) {
-                        if (!pet.unlockedAccessories) pet.unlockedAccessories = [];
-                        if (!pet.unlockedAccessories.includes(milestone.rewardId)) {
-                            pet.unlockedAccessories.push(milestone.rewardId);
-                        }
+                    const bundle = milestone.bundleId ? applyRewardBundle(milestone.bundleId, `Streak ${milestone.days}`) : null;
+                    unclaimedMilestones.push({
+                        ...milestone,
+                        bundle
+                    });
+                }
+            }
+
+            let prestigeReward = null;
+            if (streak.current >= 30) {
+                if (!streak.prestige || typeof streak.prestige !== 'object') {
+                    streak.prestige = { cycleMonth: getCurrentMonthKey(), cycleBest: streak.current, lifetimeTier: 0, completedCycles: 0, claimedMonthlyReward: '' };
+                }
+                const monthKey = getCurrentMonthKey();
+                const rewards = Array.isArray(STREAK_PRESTIGE_REWARDS) ? STREAK_PRESTIGE_REWARDS : [];
+                if (rewards.length > 0 && streak.prestige.claimedMonthlyReward !== monthKey) {
+                    const idx = hashDailySeed(`prestige:${monthKey}`) % rewards.length;
+                    prestigeReward = rewards[idx];
+                    if (prestigeReward.coins) addCoins(prestigeReward.coins, `${prestigeReward.icon} Prestige`, true);
+                    if (prestigeReward.modifierId) addGameplayModifier(prestigeReward.modifierId, `${prestigeReward.icon} Prestige`);
+                    if (prestigeReward.collectible) grantBundleCollectible(prestigeReward.collectible);
+                    streak.prestige.claimedMonthlyReward = monthKey;
+                    streak.prestige.completedCycles = Math.max(1, streak.prestige.completedCycles || 0);
+                    streak.prestige.lifetimeTier = Math.max(streak.prestige.lifetimeTier || 0, Math.floor((streak.prestige.completedCycles || 0) / 2));
+                    if (typeof addJournalEntry === 'function') {
+                        addJournalEntry('🌠', `Prestige reward unlocked: ${prestigeReward.icon} ${prestigeReward.label}.`);
                     }
                 }
             }
 
             saveGame();
-            return { bonus, milestones: unclaimedMilestones };
+            return { bonus, milestones: unclaimedMilestones, prestigeReward };
         }
 
         // ==================== PET MEMORIAL SYSTEM ====================
@@ -2648,6 +3192,7 @@
             }
 
             addJournalEntry('🌅', `${pet.name || 'Pet'} retired to the Hall of Fame. ${getMemorialTitle(pet)}`);
+            refreshMasteryTracks();
             saveGame();
 
             announce(`${pet.name || 'Pet'} has been retired to the Hall of Fame. Thank you for the memories!`, true);
@@ -3528,7 +4073,13 @@
             rel.interactionCount = (rel.interactionCount || 0) + 1;
 
             // Add relationship points
-            const relChange = addRelationshipPoints(pet1.id, pet2.id, interaction.relationshipGain);
+            const relationshipRewardMult = typeof getRewardRelationshipMultiplier === 'function' ? getRewardRelationshipMultiplier() : 1;
+            const relGain = Math.max(1, Math.round(interaction.relationshipGain * relationshipRewardMult));
+            const relChange = addRelationshipPoints(pet1.id, pet2.id, relGain);
+            if (typeof incrementDailyProgress === 'function') {
+                incrementDailyProgress('bondEvents', 1);
+                incrementDailyProgress('masteryPoints', 2);
+            }
 
             // Sync active pet — the active pet could be either participant
             gameState.pet = gameState.pets[gameState.activePetIndex];
@@ -3537,6 +4088,10 @@
             const message = randomFromArray(interaction.messages);
             const pet1Name = pet1.name || (getAllPetTypeData(pet1.type) || {}).name || 'Pet';
             const pet2Name = pet2.name || (getAllPetTypeData(pet2.type) || {}).name || 'Pet';
+            if (relChange && relChange.changed && relChange.improved) {
+                const levelData = RELATIONSHIP_LEVELS[relChange.to];
+                if (levelData) addJournalEntry('💞', `${pet1Name} and ${pet2Name} reached ${levelData.label} relationship.`);
+            }
 
             saveGame();
 
@@ -5095,7 +5650,8 @@
             const feedPersonalityMod = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(gameState.pet, 'feed') : 1.0;
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(gameState.pet) : 0;
             const focusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('feed', gameState.pet, focusSnapshot) : 1.0;
-            const feedTotalMod = feedMultiplier * feedPrefMod * feedPersonalityMod * focusMult;
+            const rewardCareMult = typeof getRewardCareGainMultiplier === 'function' ? getRewardCareGainMultiplier() : 1;
+            const feedTotalMod = feedMultiplier * feedPrefMod * feedPersonalityMod * focusMult * rewardCareMult;
             const flatTuning = 0.92;
 
             // Track favorite food feeds
@@ -5110,6 +5666,10 @@
             }
             if (crop.energyValue) {
                 gameState.pet.energy = clamp(gameState.pet.energy + Math.round(crop.energyValue * flatTuning * feedTotalMod), 0, 100);
+            }
+            if (typeof getRewardHappinessFlatBonus === 'function') {
+                const happyFlat = Math.max(0, Number(getRewardHappinessFlatBonus()) || 0);
+                if (happyFlat > 0) gameState.pet.happiness = clamp(gameState.pet.happiness + happyFlat, 0, 100);
             }
 
             // Track care actions for growth
@@ -5141,8 +5701,10 @@
                 const dailyCompleted = [];
                 dailyCompleted.push(...incrementDailyProgress('feedCount'));
                 dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                dailyCompleted.push(...incrementDailyProgress('masteryPoints', 1));
                 dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
             }
+            if (typeof consumeCareActionRewardModifiers === 'function') consumeCareActionRewardModifiers();
 
             // Check achievements
             if (typeof checkAchievements === 'function') {
@@ -6139,6 +6701,10 @@
             // Stop any existing timers
             stopDecayTimer();
             stopGardenGrowTimer();
+            if (localReminderInterval) {
+                clearInterval(localReminderInterval);
+                localReminderInterval = null;
+            }
             _petPhaseTimersRunning = false;
             _petPhaseLastRoom = null;
 
@@ -6183,6 +6749,8 @@
             ensureExplorationState();
             ensureEconomyState();
             ensureMiniGameExpansionState();
+            ensureReminderState();
+            ensureMasteryState();
             updateExplorationUnlocks(true);
             resolveExpeditionIfReady(false, true);
 
@@ -6193,6 +6761,7 @@
             trackWeather();
             trackRoomVisit(gameState.currentRoom || 'bedroom');
             initDailyChecklist();
+            initWeeklyArc();
 
             // Initialize rewards systems
             if (!gameState.badges) gameState.badges = {};
@@ -6208,6 +6777,11 @@
 
             // Update daily streak
             updateStreak();
+            refreshMasteryTracks();
+            getGoalLadder();
+            runLoginMemoryHooks();
+            checkReminderSignals();
+            startReminderMonitor();
             // Run initial unlock checks and surface newly-qualified items.
             const startupAchievements = checkAchievements() || [];
             const startupBadges = checkBadges() || [];
@@ -6263,6 +6837,11 @@
                                          'is glad you\'re back!';
                     announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
                 }
+                if (gameState.goalLadder && gameState.goalLadder.now && gameState.goalLadder.next) {
+                    setTimeout(() => {
+                        showToast(`🧭 Now: ${gameState.goalLadder.now.label} · Next: ${gameState.goalLadder.next.label}`, '#42A5F5');
+                    }, 900);
+                }
                 // Show welcome-back summary modal if pet was away for a while (Feature 7)
                 if (gameState._offlineChanges) {
                     const oc = gameState._offlineChanges;
@@ -6300,6 +6879,7 @@
                     }, 1500);
                 }
                 delete gameState._hadOfflineChangesOnLoad;
+                checkReminderSignals();
             } else {
                 // Reset to egg phase if not in pet phase
                 gameState.phase = 'egg';

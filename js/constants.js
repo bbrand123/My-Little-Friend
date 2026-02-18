@@ -1655,13 +1655,27 @@ const ACHIEVEMENTS = {
 
 // ==================== DAILY CHECKLIST ====================
 
-const DAILY_TASKS = [
-    { id: 'feed3', nameTemplate: 'Feed your pet {target} times', icon: '🍎', target: 3, trackKey: 'feedCount', maxTarget: 6 },
-    { id: 'playMinigame', nameTemplate: 'Play {target} mini-game{plural}', icon: '🎮', target: 1, trackKey: 'minigameCount', maxTarget: 3 },
-    { id: 'harvestCrop', nameTemplate: 'Harvest {target} crop{plural}', icon: '🌱', target: 1, trackKey: 'harvestCount', maxTarget: 2 },
-    { id: 'visitPark', nameTemplate: 'Visit the Park {target} time{plural}', icon: '🌳', target: 1, trackKey: 'parkVisits', maxTarget: 2 },
-    { id: 'careAction5', nameTemplate: 'Do {target} care actions', icon: '💝', target: 5, trackKey: 'totalCareActions', maxTarget: 10 }
+const DAILY_FIXED_TASKS = [
+    { id: 'feedDaily', nameTemplate: 'Feed your pet {target} times', icon: '🍎', target: 3, trackKey: 'feedCount', maxTarget: 6, lane: 'fixed' },
+    { id: 'careDaily', nameTemplate: 'Do {target} care actions', icon: '💝', target: 5, trackKey: 'totalCareActions', maxTarget: 10, lane: 'fixed' }
 ];
+
+const DAILY_MODE_TASKS = [
+    { id: 'playMinigame', nameTemplate: 'Play {target} mini-game{plural}', icon: '🎮', target: 1, trackKey: 'minigameCount', maxTarget: 3, lane: 'mode' },
+    { id: 'harvestCrop', nameTemplate: 'Harvest {target} crop{plural}', icon: '🌱', target: 1, trackKey: 'harvestCount', maxTarget: 3, lane: 'mode' },
+    { id: 'visitPark', nameTemplate: 'Visit the Park {target} time{plural}', icon: '🌳', target: 1, trackKey: 'parkVisits', maxTarget: 2, lane: 'mode' },
+    { id: 'expeditionRun', nameTemplate: 'Complete {target} expedition{plural}', icon: '🧭', target: 1, trackKey: 'expeditionCount', maxTarget: 2, lane: 'mode' },
+    { id: 'arenaBattle', nameTemplate: 'Finish {target} arena battle{plural}', icon: '🏟️', target: 1, trackKey: 'battleCount', maxTarget: 3, lane: 'mode' }
+];
+
+const DAILY_WILDCARD_TASKS = [
+    { id: 'wildBond', nameTemplate: 'Build bond points {target} time{plural}', icon: '💞', target: 1, trackKey: 'bondEvents', maxTarget: 2, lane: 'wildcard', minStage: 'child' },
+    { id: 'wildHatch', nameTemplate: 'Hatch {target} new family member{plural}', icon: '🥚', target: 1, trackKey: 'hatchCount', maxTarget: 2, lane: 'wildcard', minStage: 'adult' },
+    { id: 'wildMastery', nameTemplate: 'Gain {target} mastery point{plural}', icon: '🎯', target: 2, trackKey: 'masteryPoints', maxTarget: 6, lane: 'wildcard', minStage: 'adult' },
+    { id: 'wildExplorer', nameTemplate: 'Discover {target} world event{plural}', icon: '🗺️', target: 1, trackKey: 'discoveryEvents', maxTarget: 3, lane: 'wildcard', minStage: 'baby' }
+];
+
+const DAILY_TASKS = [...DAILY_FIXED_TASKS, ...DAILY_MODE_TASKS, ...DAILY_WILDCARD_TASKS];
 
 function getDailyTaskTarget(task, growthStage) {
     const t = task || {};
@@ -1679,6 +1693,27 @@ function getDailyTaskName(task, target) {
     const plural = safeTarget === 1 ? '' : 's';
     return tmpl.replace('{target}', safeTarget).replace('{plural}', plural);
 }
+
+const REWARD_MODIFIERS = {
+    careRush: { id: 'careRush', name: 'Care Rush', emoji: '⚡', description: '+15% care gains for the next 20 care actions', effect: { type: 'careGainMultiplier', multiplier: 1.15, remainingActions: 20 } },
+    happyHour: { id: 'happyHour', name: 'Happy Hour', emoji: '🎈', description: 'Extra happiness on actions for 30 minutes', effect: { type: 'happinessFlatBonus', value: 4, durationMs: 30 * 60 * 1000 } },
+    luckyPaws: { id: 'luckyPaws', name: 'Lucky Paws', emoji: '🍀', description: '+1 loot roll on the next expedition', effect: { type: 'nextExpeditionBonusRolls', rolls: 1 } },
+    focusedTraining: { id: 'focusedTraining', name: 'Focused Training', emoji: '🎯', description: '+20% competition rewards for the next 2 matches', effect: { type: 'competitionRewardMultiplier', multiplier: 1.2, remainingMatches: 2 } },
+    familyAura: { id: 'familyAura', name: 'Family Aura', emoji: '👨‍👩‍👧‍👦', description: 'Relationship gain boost for 24h', effect: { type: 'relationshipMultiplier', multiplier: 1.2, durationMs: 24 * 60 * 60 * 1000 } }
+};
+
+const REWARD_BUNDLES = {
+    dailyFinish: { id: 'dailyFinish', coins: 90, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
+    streakDay1: { id: 'streakDay1', coins: 40, modifierId: 'happyHour', collectible: { type: 'sticker', id: 'starSticker' } },
+    streakDay3: { id: 'streakDay3', coins: 55, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
+    streakDay5: { id: 'streakDay5', coins: 75, modifierId: 'careRush', collectible: { type: 'accessory', id: 'bandana' } },
+    streakDay7: { id: 'streakDay7', coins: 90, modifierId: 'happyHour', collectible: { type: 'sticker', id: 'streakFlame' } },
+    streakDay10: { id: 'streakDay10', coins: 110, modifierId: 'focusedTraining', collectible: { type: 'accessory', id: 'sunglasses' } },
+    streakDay14: { id: 'streakDay14', coins: 135, modifierId: 'familyAura', collectible: { type: 'sticker', id: 'heartSticker' } },
+    streakDay21: { id: 'streakDay21', coins: 180, modifierId: 'luckyPaws', collectible: { type: 'accessory', id: 'crown' } },
+    streakDay30: { id: 'streakDay30', coins: 240, modifierId: 'focusedTraining', collectible: { type: 'sticker', id: 'crownSticker' } },
+    weeklyArcFinale: { id: 'weeklyArcFinale', coins: 320, modifierId: 'familyAura', collectible: { type: 'sticker', id: 'legendRibbon' } }
+};
 
 // ==================== BADGES ====================
 
@@ -1783,7 +1818,12 @@ const STICKERS = {
     // Elder & Memorial stickers
     elderSticker: { id: 'elderSticker', name: 'Wise Elder', emoji: '🏛️', category: 'special', rarity: 'rare', source: 'Raise a pet to Elder stage' },
     memorialSticker: { id: 'memorialSticker', name: 'Memorial Rose', emoji: '🌹', category: 'special', rarity: 'rare', source: 'Retire a pet to the Hall of Fame' },
-    wisdomSticker: { id: 'wisdomSticker', name: 'Book of Wisdom', emoji: '📖', category: 'special', rarity: 'legendary', source: 'Have 5 memorials' }
+    wisdomSticker: { id: 'wisdomSticker', name: 'Book of Wisdom', emoji: '📖', category: 'special', rarity: 'legendary', source: 'Have 5 memorials' },
+    legendRibbon: { id: 'legendRibbon', name: 'Legend Ribbon', emoji: '🎗️', category: 'special', rarity: 'legendary', source: 'Weekly objective arc finale reward' },
+    moonCrest: { id: 'moonCrest', name: 'Moon Crest', emoji: '🌙', category: 'special', rarity: 'legendary', source: 'Streak prestige reward rotation' },
+    sunCrest: { id: 'sunCrest', name: 'Sun Crest', emoji: '☀️', category: 'special', rarity: 'legendary', source: 'Streak prestige reward rotation' },
+    tideCrest: { id: 'tideCrest', name: 'Tide Crest', emoji: '🌊', category: 'special', rarity: 'legendary', source: 'Streak prestige reward rotation' },
+    bloomCrest: { id: 'bloomCrest', name: 'Bloom Crest', emoji: '🌸', category: 'special', rarity: 'legendary', source: 'Streak prestige reward rotation' }
 };
 
 const STICKER_RARITIES = {
@@ -1848,14 +1888,46 @@ const TROPHY_SHELVES = {
 // ==================== DAILY STREAKS ====================
 
 const STREAK_MILESTONES = [
-    { days: 1, reward: 'sticker', rewardId: 'starSticker', label: 'Day 1', description: 'Welcome back!' },
-    { days: 3, reward: 'sticker', rewardId: 'partySticker', label: '3-Day Streak', description: 'On a roll!' },
-    { days: 5, reward: 'accessory', rewardId: 'bandana', label: '5-Day Streak', description: 'Dedicated caretaker!' },
-    { days: 7, reward: 'sticker', rewardId: 'streakFlame', label: 'Week Streak', description: 'A whole week!' },
-    { days: 10, reward: 'accessory', rewardId: 'sunglasses', label: '10-Day Streak', description: 'Super dedicated!' },
-    { days: 14, reward: 'sticker', rewardId: 'heartSticker', label: '2-Week Streak', description: 'True devotion!' },
-    { days: 21, reward: 'accessory', rewardId: 'crown', label: '3-Week Streak', description: 'Incredible commitment!' },
-    { days: 30, reward: 'sticker', rewardId: 'crownSticker', label: 'Monthly Streak', description: 'Legendary caretaker!' }
+    { days: 1, bundleId: 'streakDay1', label: 'Day 1', description: 'Welcome back! Functional + cosmetic bundle.' },
+    { days: 3, bundleId: 'streakDay3', label: '3-Day Streak', description: 'On a roll!' },
+    { days: 5, bundleId: 'streakDay5', label: '5-Day Streak', description: 'Dedicated caretaker!' },
+    { days: 7, bundleId: 'streakDay7', label: 'Week Streak', description: 'A whole week!' },
+    { days: 10, bundleId: 'streakDay10', label: '10-Day Streak', description: 'Super dedicated!' },
+    { days: 14, bundleId: 'streakDay14', label: '2-Week Streak', description: 'True devotion!' },
+    { days: 21, bundleId: 'streakDay21', label: '3-Week Streak', description: 'Incredible commitment!' },
+    { days: 30, bundleId: 'streakDay30', label: 'Monthly Streak', description: 'Legendary caretaker!' }
+];
+
+const STREAK_PRESTIGE_REWARDS = [
+    { id: 'auroraLoop', label: 'Aurora Loop', icon: '🌌', collectible: { type: 'sticker', id: 'moonCrest' }, coins: 280, modifierId: 'luckyPaws' },
+    { id: 'solarRelay', label: 'Solar Relay', icon: '🌞', collectible: { type: 'sticker', id: 'sunCrest' }, coins: 280, modifierId: 'careRush' },
+    { id: 'tideRelay', label: 'Tide Relay', icon: '🌊', collectible: { type: 'sticker', id: 'tideCrest' }, coins: 280, modifierId: 'happyHour' },
+    { id: 'springRelay', label: 'Spring Relay', icon: '🌸', collectible: { type: 'sticker', id: 'bloomCrest' }, coins: 280, modifierId: 'familyAura' }
+];
+
+const WEEKLY_THEMED_ARCS = [
+    {
+        id: 'carecraft',
+        theme: 'Carecraft Week',
+        icon: '🛠️',
+        tasks: [
+            { id: 'arc-care', icon: '💝', trackKey: 'totalCareActions', target: 18, nameTemplate: 'Do {target} care actions' },
+            { id: 'arc-feed', icon: '🍎', trackKey: 'feedCount', target: 8, nameTemplate: 'Feed {target} times' },
+            { id: 'arc-explore', icon: '🧭', trackKey: 'expeditionCount', target: 2, nameTemplate: 'Complete {target} expeditions' }
+        ],
+        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+    },
+    {
+        id: 'wildfrontier',
+        theme: 'Wild Frontier Week',
+        icon: '🗺️',
+        tasks: [
+            { id: 'arc-park', icon: '🌳', trackKey: 'parkVisits', target: 4, nameTemplate: 'Visit the park {target} times' },
+            { id: 'arc-discovery', icon: '✨', trackKey: 'discoveryEvents', target: 5, nameTemplate: 'Find {target} discovery events' },
+            { id: 'arc-bond', icon: '💞', trackKey: 'bondEvents', target: 3, nameTemplate: 'Trigger {target} bond moments' }
+        ],
+        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+    }
 ];
 
 // Stat boosts applied each day based on current streak length
