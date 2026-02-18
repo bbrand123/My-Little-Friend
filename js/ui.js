@@ -7074,6 +7074,26 @@
                 pagesHTML += '</div>';
             }
 
+            // Recommendation #3: Sticker progress pips
+            let progressPipsHTML = '';
+            if (typeof getStickerProgress === 'function') {
+                const progressItems = getStickerProgress();
+                if (progressItems.length > 0) {
+                    progressPipsHTML = '<div class="sticker-page-header">📊 In Progress</div><div class="sticker-progress-grid">';
+                    progressItems.forEach(p => {
+                        const pct = p.target > 0 ? Math.min(100, Math.round((p.current / p.target) * 100)) : 0;
+                        progressPipsHTML += `
+                            <div class="sticker-progress-pip" aria-label="${p.label}: ${p.current}/${p.target} ${p.unit}">
+                                <span class="sticker-progress-emoji">${p.emoji}</span>
+                                <span class="sticker-progress-label">${p.label}</span>
+                                <div class="sticker-progress-bar-mini"><div class="sticker-progress-fill-mini" style="width:${pct}%"></div></div>
+                                <span class="sticker-progress-text">${p.current}/${p.target}</span>
+                            </div>`;
+                    });
+                    progressPipsHTML += '</div>';
+                }
+            }
+
             const overlay = document.createElement('div');
             overlay.className = 'sticker-book-overlay';
             overlay.setAttribute('role', 'dialog');
@@ -7086,7 +7106,7 @@
                     <div class="sticker-book-progress-bar">
                         <div class="sticker-book-progress-fill" style="width: ${total > 0 ? (collectedCount / total) * 100 : 0}%;"></div>
                     </div>
-                    <div class="sticker-book-pages">${pagesHTML}</div>
+                    <div class="sticker-book-pages">${pagesHTML}${progressPipsHTML}</div>
                     <button class="sticker-book-close" id="sticker-book-close">Close</button>
                 </div>
             `;
@@ -7267,6 +7287,10 @@
                     const result = claimStreakBonus();
                     if (result) {
                         showToast(`🔥 Streak bonus: ${result.bonus.label}`, '#FF6D00');
+                        // Recommendation #4: Show streak drip coins
+                        if (result.streakDripCoins > 0) {
+                            setTimeout(() => showToast(`🪙 Streak drip: +${result.streakDripCoins} coins`, '#FFD700'), 300);
+                        }
                         result.milestones.forEach((m, idx) => {
                             const rewardCoins = m.bundle && m.bundle.earnedCoins ? ` +${m.bundle.earnedCoins} coins` : '';
                             setTimeout(() => showToast(`🎁 Streak reward: ${m.label}${rewardCoins}`, '#E040FB'), 500 + (idx * 180));

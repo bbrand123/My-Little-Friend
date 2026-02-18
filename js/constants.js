@@ -1850,7 +1850,12 @@ const REWARD_BUNDLES = {
     streakDay14: { id: 'streakDay14', coins: 135, modifierId: 'familyAura', collectible: { type: 'sticker', id: 'heartSticker' } },
     streakDay21: { id: 'streakDay21', coins: 180, modifierId: 'luckyPaws', collectible: { type: 'accessory', id: 'crown' } },
     streakDay30: { id: 'streakDay30', coins: 240, modifierId: 'focusedTraining', collectible: { type: 'sticker', id: 'crownSticker' } },
-    weeklyArcFinale: { id: 'weeklyArcFinale', coins: 320, modifierId: 'familyAura', collectible: { type: 'sticker', id: 'legendRibbon' } }
+    weeklyArcFinale: { id: 'weeklyArcFinale', coins: 320, modifierId: 'familyAura', collectible: { type: 'sticker', id: 'legendRibbon' } },
+    // Recommendation #9: Sticker set completion bonuses
+    stickerSetAnimals: { id: 'stickerSetAnimals', coins: 150, modifierId: 'luckyPaws' },
+    stickerSetNature: { id: 'stickerSetNature', coins: 100, modifierId: 'careRush' },
+    stickerSetFun: { id: 'stickerSetFun', coins: 120, modifierId: 'happyHour' },
+    stickerSetSpecial: { id: 'stickerSetSpecial', coins: 200, modifierId: 'focusedTraining' }
 };
 
 // ==================== BADGES ====================
@@ -2063,6 +2068,40 @@ const WEEKLY_THEMED_ARCS = [
             { id: 'arc-park', icon: '🌳', trackKey: 'parkVisits', target: 4, nameTemplate: 'Visit the park {target} times' },
             { id: 'arc-discovery', icon: '✨', trackKey: 'discoveryEvents', target: 5, nameTemplate: 'Find {target} discovery events' },
             { id: 'arc-bond', icon: '💞', trackKey: 'bondEvents', target: 3, nameTemplate: 'Trigger {target} bond moments' }
+        ],
+        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+    },
+    // Recommendation #5: New weekly arc variants
+    {
+        id: 'gardenbloom',
+        theme: 'Garden Bloom Week',
+        icon: '🌻',
+        tasks: [
+            { id: 'arc-harvest', icon: '🌱', trackKey: 'harvestCount', target: 6, nameTemplate: 'Harvest {target} crops' },
+            { id: 'arc-feed-bloom', icon: '🍎', trackKey: 'feedCount', target: 6, nameTemplate: 'Feed {target} times' },
+            { id: 'arc-care-bloom', icon: '💝', trackKey: 'totalCareActions', target: 12, nameTemplate: 'Do {target} care actions' }
+        ],
+        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+    },
+    {
+        id: 'arenaglory',
+        theme: 'Arena Glory Week',
+        icon: '🏟️',
+        tasks: [
+            { id: 'arc-battle', icon: '🏟️', trackKey: 'battleCount', target: 4, nameTemplate: 'Finish {target} arena battles' },
+            { id: 'arc-minigame', icon: '🎮', trackKey: 'minigameCount', target: 5, nameTemplate: 'Play {target} mini-games' },
+            { id: 'arc-expedition-glory', icon: '🧭', trackKey: 'expeditionCount', target: 2, nameTemplate: 'Complete {target} expeditions' }
+        ],
+        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+    },
+    {
+        id: 'familybonds',
+        theme: 'Family Bonds Week',
+        icon: '👨‍👩‍👧‍👦',
+        tasks: [
+            { id: 'arc-bond-family', icon: '💞', trackKey: 'bondEvents', target: 5, nameTemplate: 'Trigger {target} bond moments' },
+            { id: 'arc-care-family', icon: '💝', trackKey: 'totalCareActions', target: 15, nameTemplate: 'Do {target} care actions' },
+            { id: 'arc-hatch-family', icon: '🥚', trackKey: 'hatchCount', target: 1, nameTemplate: 'Hatch {target} new family member' }
         ],
         finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
     }

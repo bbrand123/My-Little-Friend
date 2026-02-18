@@ -8106,6 +8106,66 @@
     background: #3a3a5a;
 }
 
+/* Recommendation #3: Sticker progress pips */
+.sticker-progress-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.sticker-progress-pip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.6);
+    font-size: 0.78rem;
+}
+
+.sticker-progress-emoji {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.sticker-progress-label {
+    font-weight: 600;
+    min-width: 80px;
+    color: var(--color-text);
+}
+
+.sticker-progress-bar-mini {
+    flex: 1;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 60px;
+}
+
+.sticker-progress-fill-mini {
+    height: 100%;
+    background: linear-gradient(90deg, #E040FB, #FF4081);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+.sticker-progress-text {
+    font-size: 0.72rem;
+    color: #888;
+    min-width: 40px;
+    text-align: right;
+}
+
+[data-theme="dark"] .sticker-progress-pip {
+    background: rgba(42, 42, 74, 0.5);
+}
+
+[data-theme="dark"] .sticker-progress-bar-mini {
+    background: #3a3a5a;
+}
+
 /* ==================== TROPHY ROOM MODAL ==================== */
 
 .trophy-room-overlay {

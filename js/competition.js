@@ -369,7 +369,9 @@
                 const rewardMult = getCompetitionRewardMultiplier(pet, battleDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 if (won) {
                     comp.battlesWon++;
-                    const happyGain = Math.max(8, Math.round(11 * rewardMult));
+                    // Recommendation #7: Mastery competition rank 3+ gives +2% battle happiness gain
+                    const masteryBattleBonus = typeof getMasteryBattleHappinessBonus === 'function' ? getMasteryBattleHappinessBonus() : 0;
+                    const happyGain = Math.max(8, Math.round(11 * rewardMult * (1 + masteryBattleBonus)));
                     pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                     pet.careActions = (pet.careActions || 0) + 1;
                     if (typeof addJournalEntry === 'function') {
