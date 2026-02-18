@@ -15,7 +15,16 @@
             { id: 'bubblepop', name: 'Bubble Pop', icon: '🫧', description: 'Pop bubbles during bath time! Use pointer or Tab to navigate bubbles.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab to bubbles, Enter to pop' },
             { id: 'matching', name: 'Matching', icon: '🃏', description: 'Match food & accessory pairs! Use keyboard or click.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
             { id: 'simonsays', name: 'Simon Says', icon: '🎵', description: 'Follow the pattern of colors & sounds! Use keyboard or click.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
-            { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Use pointer or keyboard.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab to regions, Enter to color' }
+            { id: 'coloring', name: 'Coloring', icon: '🎨', description: 'Color your pet or backgrounds! Use pointer or keyboard.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab to regions, Enter to color' },
+            { id: 'racing', name: 'Lane Racing', icon: '🏁', description: 'Switch lanes and dodge obstacles on the race track.', a11y: 'keyboard', a11yNote: 'Keyboard: Left/Right arrows to switch lanes' },
+            { id: 'cooking', name: 'Cooking Lab', icon: '🍲', description: 'Combine ingredients to cook special pet food.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab ingredients, Enter to add and cook' },
+            { id: 'fishing', name: 'Pond Fishing', icon: '🎣', description: 'Cast and catch fish in the park pond timing zone.', a11y: 'keyboard', a11yNote: 'Keyboard: Space to cast and reel in' },
+            { id: 'rhythm', name: 'Rhythm Beats', icon: '🥁', description: 'Match procedural beats and keep your combo alive.', a11y: 'keyboard', a11yNote: 'Keyboard: Space on beat to score' },
+            { id: 'slider', name: 'Slider Puzzle', icon: '🧩', description: 'Solve a sliding portrait puzzle of your pet.', a11y: 'keyboard', a11yNote: 'Keyboard: Arrow keys move the blank tile' },
+            { id: 'trivia', name: 'Animal Trivia', icon: '🦉', description: 'Answer real animal fact questions for rewards.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab choices, Enter to answer' },
+            { id: 'runner', name: 'Endless Runner', icon: '🏃', description: 'Jump over endless obstacles and chase distance.', a11y: 'keyboard', a11yNote: 'Keyboard: Space to jump' },
+            { id: 'tournament', name: 'Tournament Cup', icon: '🏆', description: 'Play bracket rounds, climb leaderboard, win the cup.', a11y: 'keyboard', a11yNote: 'Keyboard: Tab actions, Enter to advance round' },
+            { id: 'coop', name: 'Co-op Relay', icon: '🤝', description: 'Control two pets at once in cooperative challenges.', a11y: 'keyboard', a11yNote: 'Keyboard: Alternate A and L for each pet' }
         ];
 
         // ==================== CELEBRATION EFFECTS ====================
@@ -158,7 +167,16 @@
                 bubblepop: 'pops',
                 matching: 'score',
                 simonsays: 'rounds',
-                coloring: 'points'
+                coloring: 'points',
+                racing: 'dodges',
+                cooking: 'recipes',
+                fishing: 'catches',
+                rhythm: 'beats',
+                slider: 'tiles',
+                trivia: 'facts',
+                runner: 'meters',
+                tournament: 'wins',
+                coop: 'relay'
             };
 
             const playCounts = gameState.minigamePlayCounts || {};
@@ -337,6 +355,33 @@
                     break;
                 case 'coloring':
                     startColoringGame();
+                    break;
+                case 'racing':
+                    startRacingGame();
+                    break;
+                case 'cooking':
+                    startCookingGame();
+                    break;
+                case 'fishing':
+                    startFishingGame();
+                    break;
+                case 'rhythm':
+                    startRhythmGame();
+                    break;
+                case 'slider':
+                    startSliderPuzzleGame();
+                    break;
+                case 'trivia':
+                    startTriviaGame();
+                    break;
+                case 'runner':
+                    startRunnerGame();
+                    break;
+                case 'tournament':
+                    startTournamentGame();
+                    break;
+                case 'coop':
+                    startCoopRelayGame();
                     break;
             }
         }
@@ -2763,4 +2808,1822 @@
                 restorePostMiniGameState();
             }
             coloringState = null;
+        }
+
+        // ==================== MINI-GAME EXPANSION HELPERS ====================
+
+        function ensureMiniGameExpansionMeta() {
+            if (typeof ensureMiniGameExpansionState === 'function') {
+                return ensureMiniGameExpansionState();
+            }
+            if (!gameState.minigameExpansion || typeof gameState.minigameExpansion !== 'object') {
+                gameState.minigameExpansion = {
+                    specialFoodStock: 0,
+                    tournament: { season: 1, round: 0, wins: 0, championships: 0, lastBracket: [], leaderboard: [] },
+                    coop: { sessions: 0, bestScore: 0 }
+                };
+            }
+            return gameState.minigameExpansion;
+        }
+
+        function getStatLabel(statKey) {
+            const labels = {
+                hunger: 'Hunger',
+                cleanliness: 'Cleanliness',
+                happiness: 'Happiness',
+                energy: 'Energy'
+            };
+            return labels[statKey] || statKey;
+        }
+
+        function applyMiniGameStatChangesToPets(pets, statDelta) {
+            const petList = Array.isArray(pets) ? pets.filter(Boolean) : [];
+            const aggregate = {};
+            petList.forEach((pet, index) => {
+                const delta = (typeof statDelta === 'function') ? (statDelta(pet, index) || {}) : (statDelta || {});
+                Object.entries(delta).forEach(([statKey, change]) => {
+                    const amount = Math.round(Number(change) || 0);
+                    if (!amount || typeof pet[statKey] !== 'number') return;
+                    pet[statKey] = clamp(pet[statKey] + amount, 0, 100);
+                    aggregate[statKey] = (aggregate[statKey] || 0) + amount;
+                });
+            });
+            return aggregate;
+        }
+
+        function finalizeExpandedMiniGame(config) {
+            if (!config || !config.gameId) return null;
+            const gameId = config.gameId;
+            const gameName = config.gameName || gameId;
+            const score = Math.max(0, Math.round(Number(config.score) || 0));
+            const coinScore = Number.isFinite(config.coinScore) ? Number(config.coinScore) : score;
+            const pets = Array.isArray(config.pets) && config.pets.length > 0
+                ? config.pets.filter(Boolean)
+                : (gameState.pet ? [gameState.pet] : []);
+
+            if (!config.skipPlayCount) incrementMinigamePlayCount(gameId);
+            const statAggregate = applyMiniGameStatChangesToPets(pets, config.statDelta);
+            const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins(gameId, coinScore) : 0;
+            const previousBest = Number((gameState.minigameHighScores || {})[gameId] || 0);
+            const isNewBest = updateMinigameHighScore(gameId, score);
+
+            updateNeedDisplays();
+            updatePetMood();
+            updateWellnessBar();
+            saveGame();
+
+            if (typeof config.onAfterRewards === 'function') {
+                config.onAfterRewards({ score, coinReward, isNewBest, previousBest });
+            }
+
+            if (isNewBest) {
+                showToast(`New high score in ${gameName}: ${score}!`, '#FFD700');
+                showMinigameConfetti();
+                showHighScoreBanner(gameName, score);
+            } else if (score > 0) {
+                showMinigameConfetti();
+            }
+
+            const statChanges = Array.isArray(config.summaryStats) && config.summaryStats.length > 0
+                ? config.summaryStats
+                : Object.entries(statAggregate).map(([statKey, value]) => ({
+                    label: `${getStatLabel(statKey)}${pets.length > 1 ? ' (Team)' : ''}`,
+                    value
+                }));
+            showMiniGameSummaryCard({
+                gameName,
+                score,
+                coinReward,
+                statChanges,
+                isNewBest,
+                personalBest: isNewBest ? Math.max(score, previousBest) : null,
+                medal: getMiniGameMedal(score, config.medalThresholds || null)
+            });
+            return { score, coinReward, isNewBest };
+        }
+
+        function grantSpecialPetFood(amount) {
+            const add = Math.max(0, Math.floor(Number(amount) || 0));
+            if (add <= 0) return 0;
+            const expansion = ensureMiniGameExpansionMeta();
+            expansion.specialFoodStock = Math.max(0, Math.floor(expansion.specialFoodStock || 0)) + add;
+            return add;
+        }
+
+        function getCoopPetPair() {
+            const pets = (Array.isArray(gameState.pets) ? gameState.pets : []).filter(Boolean);
+            if (pets.length >= 2) {
+                const left = pets[gameState.activePetIndex] || pets[0];
+                const right = pets.find((p) => p && left && p.id !== left.id) || pets[1];
+                return [left, right].filter(Boolean);
+            }
+            return [];
+        }
+
+        // ==================== LANE RACING MINI-GAME ====================
+
+        let racingState = null;
+
+        function startRacingGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet to race.', '#FFA726');
+                return;
+            }
+            const difficulty = getMinigameDifficulty('racing');
+            racingState = {
+                lane: 1,
+                score: 0,
+                lives: 3,
+                elapsedMs: 0,
+                durationMs: 32000,
+                obstacles: [],
+                spawnEvery: Math.max(8, Math.round(18 / Math.max(0.7, difficulty))),
+                speed: 2.7 * difficulty,
+                tick: 0,
+                obstacleId: 1,
+                timerId: null
+            };
+            renderRacingGame();
+            announce('Lane racing started. Use left and right arrows to dodge obstacles.');
+        }
+
+        function renderRacingGame() {
+            const existing = document.querySelector('.racing-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'racing-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Lane racing mini game');
+            overlay.innerHTML = `
+                <div class="racing-game-shell">
+                    <h2 class="exp-game-title">🏁 Lane Racing</h2>
+                    <div class="exp-game-hud">
+                        <span id="racing-score">Dodges: 0</span>
+                        <span id="racing-lives">Lives: 3</span>
+                        <span id="racing-time">Time: 32s</span>
+                    </div>
+                    <div class="racing-track" id="racing-track" tabindex="0" aria-label="Race track. Use left and right arrows to switch lanes.">
+                        <div class="racing-lane lane-0"></div>
+                        <div class="racing-lane lane-1"></div>
+                        <div class="racing-lane lane-2"></div>
+                        <div class="racing-obstacles" id="racing-obstacles"></div>
+                        <div class="racing-player lane-1" id="racing-player">🐾</div>
+                    </div>
+                    <p class="exp-game-note" id="racing-note">Switch lanes to dodge incoming obstacles.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="racing-left">⬅ Left</button>
+                        <button type="button" id="racing-right">Right ➡</button>
+                        <button type="button" id="racing-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            const track = overlay.querySelector('#racing-track');
+            overlay.querySelector('#racing-left').addEventListener('click', () => moveRacingLane(-1));
+            overlay.querySelector('#racing-right').addEventListener('click', () => moveRacingLane(1));
+            overlay.querySelector('#racing-done').addEventListener('click', () => endRacingGame(false));
+            track.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    moveRacingLane(-1);
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    moveRacingLane(1);
+                }
+            });
+            function racingEscapeHandler() {
+                requestMiniGameExit(racingState ? racingState.score : 0, () => endRacingGame(false));
+            }
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(racingState ? racingState.score : 0, () => endRacingGame(false));
+            });
+            pushModalEscape(racingEscapeHandler);
+            racingState._escapeHandler = racingEscapeHandler;
+            trapFocus(overlay);
+            track.focus();
+
+            racingState.timerId = setInterval(stepRacingGame, 90);
+            updateRacingUI();
+        }
+
+        function moveRacingLane(delta) {
+            if (!racingState) return;
+            racingState.lane = Math.max(0, Math.min(2, racingState.lane + delta));
+            const player = document.getElementById('racing-player');
+            if (player) {
+                player.classList.remove('lane-0', 'lane-1', 'lane-2');
+                player.classList.add(`lane-${racingState.lane}`);
+            }
+        }
+
+        function stepRacingGame() {
+            if (!racingState) return;
+            racingState.tick += 1;
+            racingState.elapsedMs += 90;
+            if (racingState.tick % racingState.spawnEvery === 0) {
+                racingState.obstacles.push({
+                    id: racingState.obstacleId++,
+                    lane: Math.floor(Math.random() * 3),
+                    y: -14
+                });
+            }
+            const next = [];
+            racingState.obstacles.forEach((obs) => {
+                obs.y += racingState.speed;
+                const collided = obs.lane === racingState.lane && obs.y > 74 && obs.y < 92;
+                if (collided) {
+                    racingState.lives -= 1;
+                    if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.hit);
+                    return;
+                }
+                if (obs.y > 108) {
+                    racingState.score += 1;
+                    return;
+                }
+                next.push(obs);
+            });
+            racingState.obstacles = next;
+            updateRacingUI();
+
+            const finished = racingState.lives <= 0 || racingState.elapsedMs >= racingState.durationMs;
+            if (finished) endRacingGame(true);
+        }
+
+        function updateRacingUI() {
+            if (!racingState) return;
+            const obstacles = document.getElementById('racing-obstacles');
+            if (obstacles) {
+                obstacles.innerHTML = racingState.obstacles.map((obs) => (
+                    `<div class="racing-obstacle lane-${obs.lane}" style="top:${obs.y}%;">🚧</div>`
+                )).join('');
+            }
+            const scoreEl = document.getElementById('racing-score');
+            const livesEl = document.getElementById('racing-lives');
+            const timeEl = document.getElementById('racing-time');
+            if (scoreEl) scoreEl.textContent = `Dodges: ${racingState.score}`;
+            if (livesEl) livesEl.textContent = `Lives: ${Math.max(0, racingState.lives)}`;
+            if (timeEl) timeEl.textContent = `Time: ${Math.max(0, Math.ceil((racingState.durationMs - racingState.elapsedMs) / 1000))}s`;
+        }
+
+        function endRacingGame(fromTimeout) {
+            dismissMiniGameExitDialog();
+            if (!racingState) return;
+            if (racingState.timerId) clearInterval(racingState.timerId);
+            if (racingState._escapeHandler) popModalEscape(racingState._escapeHandler);
+            const overlay = document.querySelector('.racing-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const score = racingState.score;
+            if (score > 0 || fromTimeout) {
+                finalizeExpandedMiniGame({
+                    gameId: 'racing',
+                    gameName: 'Lane Racing',
+                    score,
+                    coinScore: score * 6,
+                    statDelta: {
+                        happiness: Math.min(24, Math.round(score * 1.7)),
+                        energy: -Math.min(14, Math.round(score * 1.2)),
+                        hunger: -Math.min(7, Math.round(score * 0.55))
+                    },
+                    summaryStats: [
+                        { label: 'Dodges', value: score },
+                        { label: 'Happiness', value: Math.min(24, Math.round(score * 1.7)) },
+                        { label: 'Energy', value: -Math.min(14, Math.round(score * 1.2)) }
+                    ],
+                    medalThresholds: { bronze: 6, silver: 13, gold: 22 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            racingState = null;
+        }
+
+        // ==================== COOKING MINI-GAME ====================
+
+        const COOKING_INGREDIENTS = [
+            { id: 'carrot', icon: '🥕', name: 'Carrot' },
+            { id: 'fish', icon: '🐟', name: 'Fish Flakes' },
+            { id: 'pumpkin', icon: '🎃', name: 'Pumpkin' },
+            { id: 'apple', icon: '🍎', name: 'Apple Bits' },
+            { id: 'mint', icon: '🌿', name: 'Mint Leaf' },
+            { id: 'oats', icon: '🌾', name: 'Oats' },
+            { id: 'berry', icon: '🫐', name: 'Berry Puree' },
+            { id: 'egg', icon: '🥚', name: 'Egg Crumble' }
+        ];
+
+        let cookingState = null;
+
+        function startCookingGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet before cooking.', '#FFA726');
+                return;
+            }
+            cookingState = {
+                round: 1,
+                maxRounds: 5,
+                successes: 0,
+                failures: 0,
+                selected: [],
+                recipe: []
+            };
+            cookingState.recipe = generateCookingRecipe();
+            renderCookingGame();
+            announce('Cooking mini game started. Match ingredients to craft special pet food.');
+        }
+
+        function generateCookingRecipe() {
+            const picks = shuffleArray([...COOKING_INGREDIENTS]).slice(0, 3);
+            return picks.map((item) => item.id);
+        }
+
+        function renderCookingGame() {
+            const existing = document.querySelector('.cooking-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'cooking-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Cooking mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🍲 Cooking Lab</h2>
+                    <div class="exp-game-hud">
+                        <span id="cooking-round">Round 1/5</span>
+                        <span id="cooking-success">Recipes: 0</span>
+                        <span id="cooking-stock">Special Food: ${Math.floor((ensureMiniGameExpansionMeta().specialFoodStock || 0))}</span>
+                    </div>
+                    <div class="cooking-recipe" id="cooking-recipe"></div>
+                    <div class="cooking-selected" id="cooking-selected" aria-live="polite"></div>
+                    <div class="cooking-grid" id="cooking-grid"></div>
+                    <p class="exp-game-note" id="cooking-note">Select exactly 3 ingredients, then cook.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="cook-btn">Cook Recipe</button>
+                        <button type="button" id="cook-clear">Clear</button>
+                        <button type="button" id="cook-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            const grid = overlay.querySelector('#cooking-grid');
+            grid.innerHTML = COOKING_INGREDIENTS.map((item) => (
+                `<button type="button" class="cooking-item" data-ing="${item.id}">${item.icon} ${escapeHTML(item.name)}</button>`
+            )).join('');
+
+            grid.querySelectorAll('.cooking-item').forEach((btn) => {
+                btn.addEventListener('click', () => toggleCookingIngredient(btn.getAttribute('data-ing')));
+            });
+            overlay.querySelector('#cook-btn').addEventListener('click', () => submitCookingRecipe());
+            overlay.querySelector('#cook-clear').addEventListener('click', () => {
+                if (!cookingState) return;
+                cookingState.selected = [];
+                updateCookingUI();
+            });
+            overlay.querySelector('#cook-done').addEventListener('click', () => endCookingGame(false));
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(cookingState ? cookingState.successes : 0, () => endCookingGame(false));
+            });
+            function cookingEscapeHandler() {
+                requestMiniGameExit(cookingState ? cookingState.successes : 0, () => endCookingGame(false));
+            }
+            pushModalEscape(cookingEscapeHandler);
+            cookingState._escapeHandler = cookingEscapeHandler;
+            trapFocus(overlay);
+            overlay.querySelector('#cook-btn').focus();
+            updateCookingUI();
+        }
+
+        function toggleCookingIngredient(ingredientId) {
+            if (!cookingState) return;
+            const selected = cookingState.selected;
+            const idx = selected.indexOf(ingredientId);
+            if (idx >= 0) {
+                selected.splice(idx, 1);
+            } else if (selected.length < 3) {
+                selected.push(ingredientId);
+            } else {
+                showToast('Only 3 ingredients per recipe.', '#FFA726', { announce: false });
+            }
+            updateCookingUI();
+        }
+
+        function updateCookingUI() {
+            if (!cookingState) return;
+            const recipeEl = document.getElementById('cooking-recipe');
+            const selectedEl = document.getElementById('cooking-selected');
+            const roundEl = document.getElementById('cooking-round');
+            const successEl = document.getElementById('cooking-success');
+            const stockEl = document.getElementById('cooking-stock');
+            const noteEl = document.getElementById('cooking-note');
+            if (roundEl) roundEl.textContent = `Round ${Math.min(cookingState.round, cookingState.maxRounds)}/${cookingState.maxRounds}`;
+            if (successEl) successEl.textContent = `Recipes: ${cookingState.successes}`;
+            if (stockEl) stockEl.textContent = `Special Food: ${Math.floor((ensureMiniGameExpansionMeta().specialFoodStock || 0))}`;
+            const recipeDetails = cookingState.recipe.map((id) => COOKING_INGREDIENTS.find((i) => i.id === id)).filter(Boolean);
+            if (recipeEl) recipeEl.innerHTML = `<strong>Target Recipe:</strong> ${recipeDetails.map((i) => `${i.icon} ${escapeHTML(i.name)}`).join(' + ')}`;
+            if (selectedEl) {
+                selectedEl.innerHTML = cookingState.selected.length > 0
+                    ? `<strong>Selected:</strong> ${cookingState.selected.map((id) => {
+                        const item = COOKING_INGREDIENTS.find((i) => i.id === id);
+                        return item ? `${item.icon} ${escapeHTML(item.name)}` : id;
+                    }).join(' + ')}`
+                    : '<strong>Selected:</strong> (none)';
+            }
+            document.querySelectorAll('.cooking-item').forEach((btn) => {
+                const id = btn.getAttribute('data-ing');
+                const isSelected = cookingState.selected.includes(id);
+                btn.classList.toggle('selected', isSelected);
+                btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+            });
+            if (noteEl && cookingState.failures > 0) {
+                noteEl.textContent = `Mistakes: ${cookingState.failures}/3. Match all 3 ingredients exactly.`;
+            }
+        }
+
+        function submitCookingRecipe() {
+            if (!cookingState) return;
+            if (cookingState.selected.length !== 3) {
+                showToast('Pick 3 ingredients before cooking.', '#FFA726');
+                return;
+            }
+            const pick = [...cookingState.selected].sort().join('|');
+            const target = [...cookingState.recipe].sort().join('|');
+            const noteEl = document.getElementById('cooking-note');
+            if (pick === target) {
+                cookingState.successes += 1;
+                grantSpecialPetFood(1);
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.celebration);
+                if (noteEl) noteEl.textContent = 'Perfect mix! Special pet food crafted.';
+            } else {
+                cookingState.failures += 1;
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
+                if (noteEl) noteEl.textContent = 'Recipe mismatch. Try the next order.';
+            }
+            cookingState.round += 1;
+            cookingState.selected = [];
+
+            const reachedEnd = cookingState.round > cookingState.maxRounds || cookingState.failures >= 3;
+            if (reachedEnd) {
+                endCookingGame(true);
+                return;
+            }
+            cookingState.recipe = generateCookingRecipe();
+            updateCookingUI();
+        }
+
+        function endCookingGame(completed) {
+            dismissMiniGameExitDialog();
+            if (!cookingState) return;
+            if (cookingState._escapeHandler) popModalEscape(cookingState._escapeHandler);
+            const overlay = document.querySelector('.cooking-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const recipes = cookingState.successes;
+            if (recipes > 0 || completed) {
+                const foodsCrafted = recipes;
+                finalizeExpandedMiniGame({
+                    gameId: 'cooking',
+                    gameName: 'Cooking Lab',
+                    score: recipes,
+                    coinScore: recipes * 10,
+                    statDelta: {
+                        hunger: Math.min(24, recipes * 5),
+                        happiness: Math.min(20, recipes * 4),
+                        energy: -Math.min(10, Math.max(2, cookingState.failures + 2))
+                    },
+                    summaryStats: [
+                        { label: 'Recipes', value: recipes },
+                        { label: 'Special Food Crafted', value: foodsCrafted },
+                        { label: 'Hunger', value: Math.min(24, recipes * 5) },
+                        { label: 'Happiness', value: Math.min(20, recipes * 4) }
+                    ],
+                    medalThresholds: { bronze: 1, silver: 3, gold: 5 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            cookingState = null;
+        }
+
+        // ==================== FISHING MINI-GAME ====================
+
+        let fishingState = null;
+
+        function startFishingGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet for pond fishing.', '#FFA726');
+                return;
+            }
+            const difficulty = getMinigameDifficulty('fishing');
+            fishingState = {
+                roundsLeft: 10,
+                catches: 0,
+                misses: 0,
+                marker: 0,
+                velocity: 1.8 + difficulty * 0.9,
+                zoneStart: 35,
+                zoneSize: Math.max(20, Math.round(38 / Math.max(difficulty, 0.75))),
+                timerId: null
+            };
+            randomizeFishingZone();
+            renderFishingGame();
+            announce('Fishing started. Reel in when the bobber enters the fish zone.');
+        }
+
+        function randomizeFishingZone() {
+            if (!fishingState) return;
+            fishingState.zoneSize = Math.max(18, fishingState.zoneSize + (Math.random() * 7 - 3.5));
+            fishingState.zoneStart = Math.max(4, Math.min(100 - fishingState.zoneSize - 4, Math.random() * (100 - fishingState.zoneSize - 8)));
+        }
+
+        function renderFishingGame() {
+            const existing = document.querySelector('.fishing-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'fishing-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Pond fishing mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🎣 Pond Fishing</h2>
+                    <div class="exp-game-hud">
+                        <span id="fishing-rounds">Casts Left: 10</span>
+                        <span id="fishing-catches">Catches: 0</span>
+                        <span id="fishing-misses">Misses: 0</span>
+                    </div>
+                    <div class="fishing-meter" id="fishing-meter" tabindex="0" aria-label="Fishing meter. Press Space to reel in.">
+                        <div class="fishing-zone" id="fishing-zone"></div>
+                        <div class="fishing-marker" id="fishing-marker"></div>
+                    </div>
+                    <p class="exp-game-note" id="fishing-note">Press Catch when the marker is inside the fish zone.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="fishing-catch">Catch</button>
+                        <button type="button" id="fishing-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function catchAction() { attemptFishingCatch(); }
+            overlay.querySelector('#fishing-catch').addEventListener('click', catchAction);
+            overlay.querySelector('#fishing-done').addEventListener('click', () => endFishingGame(false));
+            overlay.querySelector('#fishing-meter').addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    catchAction();
+                }
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(fishingState ? fishingState.catches : 0, () => endFishingGame(false));
+            });
+            function fishingEscapeHandler() {
+                requestMiniGameExit(fishingState ? fishingState.catches : 0, () => endFishingGame(false));
+            }
+            pushModalEscape(fishingEscapeHandler);
+            fishingState._escapeHandler = fishingEscapeHandler;
+            trapFocus(overlay);
+            overlay.querySelector('#fishing-meter').focus();
+
+            fishingState.timerId = setInterval(stepFishingMeter, 45);
+            updateFishingUI();
+        }
+
+        function stepFishingMeter() {
+            if (!fishingState) return;
+            fishingState.marker += fishingState.velocity;
+            if (fishingState.marker >= 100) {
+                fishingState.marker = 100;
+                fishingState.velocity *= -1;
+            } else if (fishingState.marker <= 0) {
+                fishingState.marker = 0;
+                fishingState.velocity *= -1;
+            }
+            const marker = document.getElementById('fishing-marker');
+            if (marker) marker.style.left = `${fishingState.marker}%`;
+        }
+
+        function updateFishingUI() {
+            if (!fishingState) return;
+            const zone = document.getElementById('fishing-zone');
+            const rounds = document.getElementById('fishing-rounds');
+            const catches = document.getElementById('fishing-catches');
+            const misses = document.getElementById('fishing-misses');
+            if (zone) {
+                zone.style.left = `${fishingState.zoneStart}%`;
+                zone.style.width = `${fishingState.zoneSize}%`;
+            }
+            if (rounds) rounds.textContent = `Casts Left: ${fishingState.roundsLeft}`;
+            if (catches) catches.textContent = `Catches: ${fishingState.catches}`;
+            if (misses) misses.textContent = `Misses: ${fishingState.misses}`;
+        }
+
+        function attemptFishingCatch() {
+            if (!fishingState || fishingState.roundsLeft <= 0) return;
+            const inZone = fishingState.marker >= fishingState.zoneStart && fishingState.marker <= (fishingState.zoneStart + fishingState.zoneSize);
+            const note = document.getElementById('fishing-note');
+            fishingState.roundsLeft -= 1;
+            if (inZone) {
+                fishingState.catches += 1;
+                if (note) note.textContent = 'Nice catch! Cast again.';
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.catch);
+            } else {
+                fishingState.misses += 1;
+                if (note) note.textContent = 'Missed it! Try timing the next cast.';
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
+            }
+            if (fishingState.roundsLeft <= 0) {
+                endFishingGame(true);
+                return;
+            }
+            randomizeFishingZone();
+            updateFishingUI();
+        }
+
+        function endFishingGame(completed) {
+            dismissMiniGameExitDialog();
+            if (!fishingState) return;
+            if (fishingState.timerId) clearInterval(fishingState.timerId);
+            if (fishingState._escapeHandler) popModalEscape(fishingState._escapeHandler);
+            const overlay = document.querySelector('.fishing-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const catches = fishingState.catches;
+            if (catches > 0 || completed) {
+                const attempts = catches + fishingState.misses;
+                const accuracy = attempts > 0 ? Math.round((catches / attempts) * 100) : 0;
+                finalizeExpandedMiniGame({
+                    gameId: 'fishing',
+                    gameName: 'Pond Fishing',
+                    score: catches,
+                    coinScore: catches * 8,
+                    statDelta: {
+                        happiness: Math.min(22, catches * 4),
+                        energy: -Math.min(10, Math.max(2, fishingState.misses + 2)),
+                        hunger: -Math.min(6, Math.round(attempts / 3))
+                    },
+                    summaryStats: [
+                        { label: 'Catches', value: catches },
+                        { label: 'Accuracy', value: accuracy },
+                        { label: 'Happiness', value: Math.min(22, catches * 4) }
+                    ],
+                    medalThresholds: { bronze: 3, silver: 6, gold: 8 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            fishingState = null;
+        }
+
+        // ==================== RHYTHM MINI-GAME ====================
+
+        let rhythmState = null;
+        let _rhythmAudioCtx = null;
+
+        function getRhythmAudioContext() {
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return null;
+                if (!_rhythmAudioCtx) _rhythmAudioCtx = new Ctx();
+                return _rhythmAudioCtx;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function playProceduralBeat(accent) {
+            const ctx = getRhythmAudioContext();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = accent ? 'square' : 'triangle';
+            osc.frequency.value = accent ? 220 : 160;
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.14, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.13);
+        }
+
+        function startRhythmGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet to jam.', '#FFA726');
+                return;
+            }
+            const difficulty = getMinigameDifficulty('rhythm');
+            rhythmState = {
+                beat: 0,
+                totalBeats: 24,
+                score: 0,
+                combo: 0,
+                bestCombo: 0,
+                expectedAt: performance.now(),
+                lastRegisteredBeat: -1,
+                intervalMs: Math.max(440, Math.round(720 / Math.max(0.75, difficulty))),
+                timerId: null
+            };
+            renderRhythmGame();
+            announce('Rhythm game started. Press Space on the beat.');
+        }
+
+        function renderRhythmGame() {
+            const existing = document.querySelector('.rhythm-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'rhythm-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Rhythm mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🥁 Rhythm Beats</h2>
+                    <div class="exp-game-hud">
+                        <span id="rhythm-beat">Beat: 0/24</span>
+                        <span id="rhythm-score">Score: 0</span>
+                        <span id="rhythm-combo">Combo: 0</span>
+                    </div>
+                    <div class="rhythm-lights" id="rhythm-lights" tabindex="0" aria-label="Rhythm target. Press Space to hit beats.">
+                        <div class="rhythm-light" data-rhythm-light="0"></div>
+                        <div class="rhythm-light" data-rhythm-light="1"></div>
+                        <div class="rhythm-light" data-rhythm-light="2"></div>
+                        <div class="rhythm-light" data-rhythm-light="3"></div>
+                    </div>
+                    <p class="exp-game-note" id="rhythm-note">Hit Space on each beat pulse.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="rhythm-hit">Hit Beat</button>
+                        <button type="button" id="rhythm-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            const beatAction = () => registerRhythmHit();
+            overlay.querySelector('#rhythm-hit').addEventListener('click', beatAction);
+            overlay.querySelector('#rhythm-done').addEventListener('click', () => endRhythmGame(false));
+            overlay.querySelector('#rhythm-lights').addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    beatAction();
+                }
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(rhythmState ? rhythmState.score : 0, () => endRhythmGame(false));
+            });
+            function rhythmEscapeHandler() {
+                requestMiniGameExit(rhythmState ? rhythmState.score : 0, () => endRhythmGame(false));
+            }
+            pushModalEscape(rhythmEscapeHandler);
+            rhythmState._escapeHandler = rhythmEscapeHandler;
+            trapFocus(overlay);
+            overlay.querySelector('#rhythm-lights').focus();
+
+            rhythmState.timerId = setInterval(stepRhythmBeat, rhythmState.intervalMs);
+            stepRhythmBeat();
+        }
+
+        function stepRhythmBeat() {
+            if (!rhythmState) return;
+            rhythmState.beat += 1;
+            if (rhythmState.beat > rhythmState.totalBeats) {
+                endRhythmGame(true);
+                return;
+            }
+            rhythmState.expectedAt = performance.now();
+            rhythmState.lastRegisteredBeat = -1;
+            const accent = rhythmState.beat % 4 === 1;
+            playProceduralBeat(accent);
+            const lights = document.querySelectorAll('.rhythm-light');
+            const lightIndex = (rhythmState.beat - 1) % lights.length;
+            lights.forEach((light, idx) => light.classList.toggle('active', idx === lightIndex));
+            const note = document.getElementById('rhythm-note');
+            if (note) note.textContent = accent ? 'Strong beat!' : 'Keep the rhythm steady.';
+            const beatEl = document.getElementById('rhythm-beat');
+            if (beatEl) beatEl.textContent = `Beat: ${rhythmState.beat}/${rhythmState.totalBeats}`;
+        }
+
+        function registerRhythmHit() {
+            if (!rhythmState || rhythmState.beat <= 0 || rhythmState.beat > rhythmState.totalBeats) return;
+            if (rhythmState.lastRegisteredBeat === rhythmState.beat) return;
+            rhythmState.lastRegisteredBeat = rhythmState.beat;
+            const delta = Math.abs(performance.now() - rhythmState.expectedAt);
+            const note = document.getElementById('rhythm-note');
+            if (delta <= 110) {
+                rhythmState.combo += 1;
+                rhythmState.bestCombo = Math.max(rhythmState.bestCombo, rhythmState.combo);
+                rhythmState.score += 3 + Math.floor(rhythmState.combo / 4);
+                if (note) note.textContent = 'Perfect beat!';
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.match);
+            } else if (delta <= 190) {
+                rhythmState.combo = Math.max(0, rhythmState.combo - 1);
+                rhythmState.score += 1;
+                if (note) note.textContent = 'Good timing.';
+            } else {
+                rhythmState.combo = 0;
+                if (note) note.textContent = 'Missed beat. Get back in sync.';
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
+            }
+            const scoreEl = document.getElementById('rhythm-score');
+            const comboEl = document.getElementById('rhythm-combo');
+            if (scoreEl) scoreEl.textContent = `Score: ${rhythmState.score}`;
+            if (comboEl) comboEl.textContent = `Combo: ${rhythmState.combo}`;
+        }
+
+        function endRhythmGame(completed) {
+            dismissMiniGameExitDialog();
+            if (!rhythmState) return;
+            if (rhythmState.timerId) clearInterval(rhythmState.timerId);
+            if (rhythmState._escapeHandler) popModalEscape(rhythmState._escapeHandler);
+            const overlay = document.querySelector('.rhythm-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const score = rhythmState.score;
+            if (score > 0 || completed) {
+                finalizeExpandedMiniGame({
+                    gameId: 'rhythm',
+                    gameName: 'Rhythm Beats',
+                    score,
+                    coinScore: Math.round(score * 0.85),
+                    statDelta: {
+                        happiness: Math.min(28, Math.round(score / 2.2)),
+                        energy: -Math.min(12, Math.max(4, Math.round(rhythmState.totalBeats / 3)))
+                    },
+                    summaryStats: [
+                        { label: 'Beats', value: rhythmState.totalBeats },
+                        { label: 'Best Combo', value: rhythmState.bestCombo },
+                        { label: 'Happiness', value: Math.min(28, Math.round(score / 2.2)) }
+                    ],
+                    medalThresholds: { bronze: 20, silver: 42, gold: 72 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            rhythmState = null;
+        }
+
+        // ==================== SLIDER PUZZLE MINI-GAME ====================
+
+        let sliderState = null;
+
+        function getSliderPortraitUri() {
+            const pet = gameState.pet;
+            if (!pet || typeof generatePetSVG !== 'function') return '';
+            const mood = (typeof getMood === 'function') ? getMood(pet) : 'happy';
+            const svg = generatePetSVG(pet, mood);
+            return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        }
+
+        function startSliderPuzzleGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet for puzzle mode.', '#FFA726');
+                return;
+            }
+            sliderState = {
+                board: [1, 2, 3, 4, 5, 6, 7, 8, 0],
+                moves: 0,
+                startedAt: Date.now(),
+                elapsedSec: 0,
+                timerId: null,
+                portraitUri: getSliderPortraitUri()
+            };
+            shuffleSliderBoard(sliderState.board, 90);
+            renderSliderPuzzleGame();
+            announce('Slider puzzle started. Arrange your pet portrait by moving tiles.');
+        }
+
+        function shuffleSliderBoard(board, steps) {
+            let blank = board.indexOf(0);
+            for (let i = 0; i < steps; i++) {
+                const neighbors = getSliderNeighbors(blank);
+                const target = neighbors[Math.floor(Math.random() * neighbors.length)];
+                [board[blank], board[target]] = [board[target], board[blank]];
+                blank = target;
+            }
+        }
+
+        function getSliderNeighbors(blankIndex) {
+            const row = Math.floor(blankIndex / 3);
+            const col = blankIndex % 3;
+            const next = [];
+            if (row > 0) next.push(blankIndex - 3);
+            if (row < 2) next.push(blankIndex + 3);
+            if (col > 0) next.push(blankIndex - 1);
+            if (col < 2) next.push(blankIndex + 1);
+            return next;
+        }
+
+        function renderSliderPuzzleGame() {
+            const existing = document.querySelector('.slider-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'slider-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Slider puzzle mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🧩 Slider Puzzle</h2>
+                    <div class="exp-game-hud">
+                        <span id="slider-moves">Moves: 0</span>
+                        <span id="slider-time">Time: 0s</span>
+                    </div>
+                    <div class="slider-grid" id="slider-grid" tabindex="0" aria-label="Slider puzzle board. Use arrow keys to move tiles."></div>
+                    <p class="exp-game-note">Rebuild your pet portrait in order.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="slider-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.querySelector('#slider-done').addEventListener('click', () => endSliderGame(false, false));
+            const grid = overlay.querySelector('#slider-grid');
+            grid.addEventListener('keydown', handleSliderKeyDown);
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(sliderState ? sliderState.moves : 0, () => endSliderGame(false, false));
+            });
+            function sliderEscapeHandler() {
+                requestMiniGameExit(sliderState ? sliderState.moves : 0, () => endSliderGame(false, false));
+            }
+            pushModalEscape(sliderEscapeHandler);
+            sliderState._escapeHandler = sliderEscapeHandler;
+            trapFocus(overlay);
+            grid.focus();
+            sliderState.timerId = setInterval(() => {
+                if (!sliderState) return;
+                sliderState.elapsedSec = Math.floor((Date.now() - sliderState.startedAt) / 1000);
+                const timeEl = document.getElementById('slider-time');
+                if (timeEl) timeEl.textContent = `Time: ${sliderState.elapsedSec}s`;
+            }, 1000);
+            updateSliderUI();
+        }
+
+        function handleSliderKeyDown(e) {
+            if (!sliderState) return;
+            let target = -1;
+            const blank = sliderState.board.indexOf(0);
+            const row = Math.floor(blank / 3);
+            const col = blank % 3;
+            if (e.key === 'ArrowUp' && row < 2) target = blank + 3;
+            if (e.key === 'ArrowDown' && row > 0) target = blank - 3;
+            if (e.key === 'ArrowLeft' && col < 2) target = blank + 1;
+            if (e.key === 'ArrowRight' && col > 0) target = blank - 1;
+            if (target >= 0) {
+                e.preventDefault();
+                moveSliderTile(target);
+            }
+        }
+
+        function updateSliderUI() {
+            if (!sliderState) return;
+            const grid = document.getElementById('slider-grid');
+            if (!grid) return;
+            const tilesHTML = sliderState.board.map((value, idx) => {
+                if (value === 0) {
+                    return `<button type="button" class="slider-tile blank" data-idx="${idx}" aria-label="Blank tile"></button>`;
+                }
+                const piece = value - 1;
+                const row = Math.floor(piece / 3);
+                const col = piece % 3;
+                const bgPosX = col * 50;
+                const bgPosY = row * 50;
+                const style = sliderState.portraitUri
+                    ? `style="background-image:url('${sliderState.portraitUri}');background-size:300% 300%;background-position:${bgPosX}% ${bgPosY}%"`
+                    : '';
+                return `<button type="button" class="slider-tile" data-idx="${idx}" ${style} aria-label="Tile ${value}"></button>`;
+            }).join('');
+            grid.innerHTML = tilesHTML;
+            grid.querySelectorAll('.slider-tile').forEach((btn) => {
+                const idx = Number(btn.getAttribute('data-idx'));
+                btn.addEventListener('click', () => moveSliderTile(idx));
+            });
+            const movesEl = document.getElementById('slider-moves');
+            if (movesEl) movesEl.textContent = `Moves: ${sliderState.moves}`;
+        }
+
+        function moveSliderTile(tileIndex) {
+            if (!sliderState) return;
+            const blank = sliderState.board.indexOf(0);
+            const neighbors = getSliderNeighbors(blank);
+            if (!neighbors.includes(tileIndex)) return;
+            [sliderState.board[blank], sliderState.board[tileIndex]] = [sliderState.board[tileIndex], sliderState.board[blank]];
+            sliderState.moves += 1;
+            updateSliderUI();
+            if (isSliderSolved(sliderState.board)) {
+                endSliderGame(true, true);
+            }
+        }
+
+        function isSliderSolved(board) {
+            return board.join(',') === '1,2,3,4,5,6,7,8,0';
+        }
+
+        function endSliderGame(completed, solved) {
+            dismissMiniGameExitDialog();
+            if (!sliderState) return;
+            if (sliderState.timerId) clearInterval(sliderState.timerId);
+            if (sliderState._escapeHandler) popModalEscape(sliderState._escapeHandler);
+            const overlay = document.querySelector('.slider-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const moves = sliderState.moves;
+            const elapsed = Math.max(1, sliderState.elapsedSec || Math.floor((Date.now() - sliderState.startedAt) / 1000));
+            const solvedScore = solved ? Math.max(8, 140 - moves - Math.floor(elapsed / 2)) : Math.max(0, Math.round(60 - moves));
+            if (moves > 0 || completed) {
+                finalizeExpandedMiniGame({
+                    gameId: 'slider',
+                    gameName: 'Slider Puzzle',
+                    score: solvedScore,
+                    coinScore: solved ? Math.round(solvedScore * 0.8) : Math.round(solvedScore * 0.45),
+                    statDelta: {
+                        happiness: Math.min(24, Math.round(solvedScore / 5)),
+                        energy: -Math.min(10, Math.round(elapsed / 18))
+                    },
+                    summaryStats: [
+                        { label: 'Solved', value: solved ? 1 : 0 },
+                        { label: 'Moves', value: moves },
+                        { label: 'Time (s)', value: elapsed }
+                    ],
+                    medalThresholds: { bronze: 40, silver: 70, gold: 100 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            sliderState = null;
+        }
+
+        // ==================== TRIVIA MINI-GAME ====================
+
+        const TRIVIA_QUESTIONS = [
+            { q: 'What is the largest living species of penguin?', options: ['Emperor penguin', 'King penguin', 'Gentoo penguin', 'Adelie penguin'], answer: 0, fact: 'Emperor penguins can exceed 1.1 meters in height.' },
+            { q: 'Which mammal has the most powerful bite force?', options: ['Lion', 'Tiger', 'Jaguar', 'Hippopotamus'], answer: 3, fact: 'Hippos have one of the strongest measured bite forces among mammals.' },
+            { q: 'How do dolphins mainly breathe?', options: ['Through gills', 'Through skin', 'Through blowholes', 'Through mouth only'], answer: 2, fact: 'Dolphins are mammals and breathe air through blowholes.' },
+            { q: 'What is unique about axolotls?', options: ['They glow naturally', 'They can regenerate limbs', 'They hibernate for years', 'They fly short distances'], answer: 1, fact: 'Axolotls can regenerate limbs and even parts of organs.' },
+            { q: 'Which bird is known for hovering while feeding?', options: ['Sparrow', 'Hummingbird', 'Crow', 'Toucan'], answer: 1, fact: 'Hummingbirds can hover and even fly backward.' },
+            { q: 'What is the fastest land animal?', options: ['Pronghorn', 'Cheetah', 'Greyhound', 'Lion'], answer: 1, fact: 'Cheetahs can sprint up to about 60-70 mph in short bursts.' },
+            { q: 'How many hearts does an octopus have?', options: ['One', 'Two', 'Three', 'Four'], answer: 2, fact: 'Octopuses have three hearts and blue blood.' },
+            { q: 'What do pandas mostly eat?', options: ['Bamboo', 'Fish', 'Fruits', 'Insects'], answer: 0, fact: 'Giant pandas eat bamboo for most of their diet.' },
+            { q: 'Which animal can sleep while swimming?', options: ['Shark', 'Sea otter', 'Orca', 'Seal'], answer: 1, fact: 'Sea otters hold paws or kelp to avoid drifting apart.' },
+            { q: 'What is a group of frogs called?', options: ['Army', 'Knot', 'Colony', 'School'], answer: 0, fact: 'A group of frogs is often called an army.' }
+        ];
+
+        let triviaState = null;
+
+        function startTriviaGame() {
+            if (!gameState.pet) {
+                showToast('A pet is needed for trivia time.', '#FFA726');
+                return;
+            }
+            triviaState = {
+                questions: shuffleArray([...TRIVIA_QUESTIONS]).slice(0, 5),
+                index: 0,
+                correct: 0,
+                answered: false
+            };
+            renderTriviaGame();
+            announce('Animal trivia started. Choose the best answer for each fact.');
+        }
+
+        function renderTriviaGame() {
+            const existing = document.querySelector('.trivia-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'trivia-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Animal trivia mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🦉 Animal Trivia</h2>
+                    <div class="exp-game-hud">
+                        <span id="trivia-progress">Q 1/5</span>
+                        <span id="trivia-score">Correct: 0</span>
+                    </div>
+                    <div class="trivia-question" id="trivia-question"></div>
+                    <div class="trivia-options" id="trivia-options"></div>
+                    <p class="exp-game-note" id="trivia-fact">Pick an answer.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="trivia-next" disabled>Next</button>
+                        <button type="button" id="trivia-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.querySelector('#trivia-next').addEventListener('click', nextTriviaQuestion);
+            overlay.querySelector('#trivia-done').addEventListener('click', () => endTriviaGame(false));
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(triviaState ? triviaState.correct : 0, () => endTriviaGame(false));
+            });
+            function triviaEscapeHandler() {
+                requestMiniGameExit(triviaState ? triviaState.correct : 0, () => endTriviaGame(false));
+            }
+            pushModalEscape(triviaEscapeHandler);
+            triviaState._escapeHandler = triviaEscapeHandler;
+            trapFocus(overlay);
+            updateTriviaUI();
+        }
+
+        function updateTriviaUI() {
+            if (!triviaState) return;
+            const q = triviaState.questions[triviaState.index];
+            const progress = document.getElementById('trivia-progress');
+            const score = document.getElementById('trivia-score');
+            const questionEl = document.getElementById('trivia-question');
+            const optionsEl = document.getElementById('trivia-options');
+            const factEl = document.getElementById('trivia-fact');
+            const nextBtn = document.getElementById('trivia-next');
+            if (!q) return;
+            if (progress) progress.textContent = `Q ${triviaState.index + 1}/${triviaState.questions.length}`;
+            if (score) score.textContent = `Correct: ${triviaState.correct}`;
+            if (questionEl) questionEl.textContent = q.q;
+            if (factEl) factEl.textContent = triviaState.answered ? q.fact : 'Pick an answer.';
+            if (nextBtn) nextBtn.disabled = !triviaState.answered;
+            if (optionsEl) {
+                optionsEl.innerHTML = q.options.map((opt, idx) => (
+                    `<button type="button" class="trivia-option" data-opt="${idx}" ${triviaState.answered ? 'disabled' : ''}>${escapeHTML(opt)}</button>`
+                )).join('');
+                optionsEl.querySelectorAll('.trivia-option').forEach((btn) => {
+                    btn.addEventListener('click', () => answerTriviaQuestion(Number(btn.getAttribute('data-opt'))));
+                });
+                if (triviaState.answered) {
+                    optionsEl.querySelectorAll('.trivia-option').forEach((btn) => {
+                        const idx = Number(btn.getAttribute('data-opt'));
+                        btn.classList.toggle('correct', idx === q.answer);
+                        if (idx !== q.answer) btn.classList.toggle('wrong', idx !== q.answer);
+                    });
+                }
+            }
+        }
+
+        function answerTriviaQuestion(choice) {
+            if (!triviaState || triviaState.answered) return;
+            const q = triviaState.questions[triviaState.index];
+            triviaState.answered = true;
+            if (choice === q.answer) {
+                triviaState.correct += 1;
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.match);
+            } else if (typeof SoundManager !== 'undefined') {
+                SoundManager.playSFX(SoundManager.sfx.miss);
+            }
+            updateTriviaUI();
+        }
+
+        function nextTriviaQuestion() {
+            if (!triviaState || !triviaState.answered) return;
+            triviaState.index += 1;
+            triviaState.answered = false;
+            if (triviaState.index >= triviaState.questions.length) {
+                endTriviaGame(true);
+                return;
+            }
+            updateTriviaUI();
+        }
+
+        function endTriviaGame(completed) {
+            dismissMiniGameExitDialog();
+            if (!triviaState) return;
+            if (triviaState._escapeHandler) popModalEscape(triviaState._escapeHandler);
+            const overlay = document.querySelector('.trivia-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const score = triviaState.correct;
+            if (score > 0 || completed) {
+                const total = triviaState.questions.length;
+                finalizeExpandedMiniGame({
+                    gameId: 'trivia',
+                    gameName: 'Animal Trivia',
+                    score,
+                    coinScore: score * 9,
+                    statDelta: {
+                        happiness: Math.min(24, score * 5),
+                        energy: -Math.max(2, total - score)
+                    },
+                    summaryStats: [
+                        { label: 'Correct Answers', value: score },
+                        { label: 'Questions', value: total },
+                        { label: 'Accuracy', value: Math.round((score / Math.max(total, 1)) * 100) }
+                    ],
+                    medalThresholds: { bronze: 2, silver: 4, gold: 5 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            triviaState = null;
+        }
+
+        // ==================== ENDLESS RUNNER MINI-GAME ====================
+
+        let runnerState = null;
+
+        function startRunnerGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet to run.', '#FFA726');
+                return;
+            }
+            const difficulty = getMinigameDifficulty('runner');
+            runnerState = {
+                y: 0,
+                velocity: 0,
+                score: 0,
+                tick: 0,
+                obstacles: [],
+                speed: 1.9 * difficulty,
+                spawnEvery: Math.max(24, Math.round(50 / Math.max(0.75, difficulty))),
+                timerId: null
+            };
+            renderRunnerGame();
+            announce('Endless runner started. Press Space to jump.');
+        }
+
+        function renderRunnerGame() {
+            const existing = document.querySelector('.runner-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'runner-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Endless runner mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🏃 Endless Runner</h2>
+                    <div class="exp-game-hud">
+                        <span id="runner-score">Meters: 0</span>
+                        <span id="runner-speed">Speed: ${runnerState.speed.toFixed(1)}</span>
+                    </div>
+                    <div class="runner-track" id="runner-track" tabindex="0" aria-label="Runner track. Press space to jump obstacles.">
+                        <div class="runner-ground"></div>
+                        <div class="runner-player" id="runner-player">🐾</div>
+                        <div class="runner-obstacles" id="runner-obstacles"></div>
+                    </div>
+                    <p class="exp-game-note" id="runner-note">Jump over obstacles to keep running.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="runner-jump">Jump</button>
+                        <button type="button" id="runner-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            const jumpAction = () => runnerJump();
+            overlay.querySelector('#runner-jump').addEventListener('click', jumpAction);
+            overlay.querySelector('#runner-done').addEventListener('click', () => endRunnerGame(false, false));
+            overlay.querySelector('#runner-track').addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    jumpAction();
+                }
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(runnerState ? runnerState.score : 0, () => endRunnerGame(false, false));
+            });
+            function runnerEscapeHandler() {
+                requestMiniGameExit(runnerState ? runnerState.score : 0, () => endRunnerGame(false, false));
+            }
+            pushModalEscape(runnerEscapeHandler);
+            runnerState._escapeHandler = runnerEscapeHandler;
+            trapFocus(overlay);
+            overlay.querySelector('#runner-track').focus();
+            runnerState.timerId = setInterval(stepRunnerGame, 55);
+            updateRunnerUI();
+        }
+
+        function runnerJump() {
+            if (!runnerState) return;
+            if (runnerState.y === 0) {
+                runnerState.velocity = 12;
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.play);
+            }
+        }
+
+        function stepRunnerGame() {
+            if (!runnerState) return;
+            runnerState.tick += 1;
+            if (runnerState.tick % runnerState.spawnEvery === 0) {
+                runnerState.obstacles.push({ x: 112, width: 8 + Math.random() * 4 });
+            }
+
+            runnerState.y = Math.max(0, runnerState.y + runnerState.velocity * 0.22);
+            runnerState.velocity -= 1.08;
+            if (runnerState.y <= 0) {
+                runnerState.y = 0;
+                runnerState.velocity = 0;
+            }
+
+            const next = [];
+            let hit = false;
+            runnerState.obstacles.forEach((obs) => {
+                obs.x -= runnerState.speed;
+                const inHitX = obs.x < 26 && (obs.x + obs.width) > 10;
+                const lowJump = runnerState.y < 8;
+                if (inHitX && lowJump) {
+                    hit = true;
+                    return;
+                }
+                if (obs.x + obs.width > -5) next.push(obs);
+            });
+            runnerState.obstacles = next;
+            runnerState.score += Math.max(1, Math.round(runnerState.speed));
+            updateRunnerUI();
+            if (hit) {
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.hit);
+                endRunnerGame(true, true);
+            }
+        }
+
+        function updateRunnerUI() {
+            if (!runnerState) return;
+            const scoreEl = document.getElementById('runner-score');
+            const speedEl = document.getElementById('runner-speed');
+            const playerEl = document.getElementById('runner-player');
+            const obstaclesEl = document.getElementById('runner-obstacles');
+            if (scoreEl) scoreEl.textContent = `Meters: ${runnerState.score}`;
+            if (speedEl) speedEl.textContent = `Speed: ${runnerState.speed.toFixed(1)}`;
+            if (playerEl) playerEl.style.bottom = `${16 + runnerState.y}px`;
+            if (obstaclesEl) {
+                obstaclesEl.innerHTML = runnerState.obstacles
+                    .map((obs) => `<div class="runner-obstacle" style="left:${obs.x}%;width:${obs.width}%"></div>`)
+                    .join('');
+            }
+        }
+
+        function endRunnerGame(completed, crashed) {
+            dismissMiniGameExitDialog();
+            if (!runnerState) return;
+            if (runnerState.timerId) clearInterval(runnerState.timerId);
+            if (runnerState._escapeHandler) popModalEscape(runnerState._escapeHandler);
+            const overlay = document.querySelector('.runner-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const score = runnerState.score;
+            if (score > 0 || completed) {
+                finalizeExpandedMiniGame({
+                    gameId: 'runner',
+                    gameName: 'Endless Runner',
+                    score,
+                    coinScore: Math.round(score / 4),
+                    statDelta: {
+                        happiness: Math.min(28, Math.round(score / 8)),
+                        energy: -Math.min(18, Math.round(score / 10)),
+                        hunger: -Math.min(10, Math.round(score / 14))
+                    },
+                    summaryStats: [
+                        { label: 'Meters', value: score },
+                        { label: 'Crash', value: crashed ? 1 : 0 },
+                        { label: 'Happiness', value: Math.min(28, Math.round(score / 8)) }
+                    ],
+                    medalThresholds: { bronze: 120, silver: 240, gold: 360 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            runnerState = null;
+        }
+
+        // ==================== TOURNAMENT + LEADERBOARD MINI-GAME ====================
+
+        const TOURNAMENT_RIVALS = [
+            'Milo', 'Luna', 'Nova', 'Clover', 'Sprout', 'Sunny', 'Shadow', 'Poppy', 'Jasper', 'Nori'
+        ];
+
+        let tournamentState = null;
+
+        function getTournamentState() {
+            const expansion = ensureMiniGameExpansionMeta();
+            if (!expansion.tournament || typeof expansion.tournament !== 'object') {
+                expansion.tournament = { season: 1, round: 0, wins: 0, championships: 0, lastBracket: [], leaderboard: [] };
+            }
+            if (!Array.isArray(expansion.tournament.leaderboard)) expansion.tournament.leaderboard = [];
+            if (!Array.isArray(expansion.tournament.lastBracket)) expansion.tournament.lastBracket = [];
+            if (!expansion.tournament.lastBracket.length) startNewTournamentSeason(expansion.tournament);
+            return expansion.tournament;
+        }
+
+        function startNewTournamentSeason(tournament) {
+            const entrants = ['You', ...shuffleArray([...TOURNAMENT_RIVALS]).slice(0, 7)];
+            const quarter = [];
+            for (let i = 0; i < entrants.length; i += 2) {
+                quarter.push({ a: entrants[i], b: entrants[i + 1], winner: '', aScore: 0, bScore: 0 });
+            }
+            tournament.lastBracket = [
+                { name: 'Quarterfinals', matches: quarter },
+                { name: 'Semifinals', matches: [] },
+                { name: 'Final', matches: [] }
+            ];
+            tournament.round = 0;
+            tournament.wins = 0;
+            tournament.seasonComplete = false;
+            const allNames = [...new Set(entrants)];
+            allNames.forEach((name) => ensureTournamentLeaderboardEntry(tournament, name));
+        }
+
+        function ensureTournamentLeaderboardEntry(tournament, name) {
+            let entry = tournament.leaderboard.find((item) => item && item.name === name);
+            if (!entry) {
+                entry = { name, wins: 0, played: 0, points: 0 };
+                tournament.leaderboard.push(entry);
+            }
+            return entry;
+        }
+
+        function simulateTournamentMatch(match) {
+            const petStrength = typeof getPetMiniGameStrength === 'function' ? getPetMiniGameStrength(gameState.pet) : 0.5;
+            const scoreFor = (name) => {
+                const base = 52 + Math.random() * 42;
+                const playerBoost = name === 'You'
+                    ? ((petStrength - 0.45) * 36)
+                    : ((Math.random() * 8 - 4) - ((petStrength - 0.5) * 8));
+                return Math.max(18, Math.round(base + playerBoost + Math.random() * 18));
+            };
+            match.aScore = scoreFor(match.a);
+            match.bScore = scoreFor(match.b);
+            if (match.aScore === match.bScore) {
+                if (Math.random() > 0.5) match.aScore += 1;
+                else match.bScore += 1;
+            }
+            match.winner = match.aScore > match.bScore ? match.a : match.b;
+            return match.winner;
+        }
+
+        function resolveTournamentRound() {
+            const tournament = getTournamentState();
+            if (tournament.seasonComplete) {
+                tournament.season += 1;
+                startNewTournamentSeason(tournament);
+                saveGame();
+                updateTournamentUI();
+                return;
+            }
+            const roundIndex = tournament.round;
+            const round = tournament.lastBracket[roundIndex];
+            if (!round || !Array.isArray(round.matches) || round.matches.length === 0) return;
+
+            const winners = [];
+            round.matches.forEach((match) => {
+                const winner = simulateTournamentMatch(match);
+                winners.push(winner);
+                const winnerEntry = ensureTournamentLeaderboardEntry(tournament, winner);
+                winnerEntry.wins += 1;
+                winnerEntry.played += 1;
+                winnerEntry.points += 3;
+
+                const loser = winner === match.a ? match.b : match.a;
+                const loserEntry = ensureTournamentLeaderboardEntry(tournament, loser);
+                loserEntry.played += 1;
+                loserEntry.points += 1;
+
+                if (winner === 'You') tournament.wins += 1;
+            });
+
+            if (roundIndex < tournament.lastBracket.length - 1) {
+                const nextMatches = [];
+                for (let i = 0; i < winners.length; i += 2) {
+                    nextMatches.push({ a: winners[i], b: winners[i + 1], winner: '', aScore: 0, bScore: 0 });
+                }
+                tournament.lastBracket[roundIndex + 1].matches = nextMatches;
+                tournament.round += 1;
+            } else {
+                tournament.seasonComplete = true;
+                const champion = winners[0];
+                if (champion === 'You') tournament.championships = (tournament.championships || 0) + 1;
+                finalizeTournamentSeason(champion);
+                return;
+            }
+            saveGame();
+            updateTournamentUI();
+        }
+
+        function finalizeTournamentSeason(champion) {
+            const tournament = getTournamentState();
+            const wins = tournament.wins || 0;
+            const championBonus = champion === 'You' ? 2 : 0;
+            const score = wins + championBonus;
+            const overlay = document.querySelector('.tournament-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+            if (tournamentState && tournamentState._escapeHandler) popModalEscape(tournamentState._escapeHandler);
+
+            finalizeExpandedMiniGame({
+                gameId: 'tournament',
+                gameName: 'Tournament Cup',
+                score,
+                coinScore: wins * 12 + championBonus * 8,
+                statDelta: {
+                    happiness: Math.min(30, 8 + wins * 4 + championBonus * 3),
+                    energy: -Math.min(14, 6 + wins * 2),
+                    hunger: -Math.min(8, 3 + wins)
+                },
+                summaryStats: [
+                    { label: 'Season Wins', value: wins },
+                    { label: 'Champion', value: champion === 'You' ? 1 : 0 },
+                    { label: 'Championships', value: tournament.championships || 0 }
+                ],
+                medalThresholds: { bronze: 2, silver: 3, gold: 5 },
+                onAfterRewards: () => {
+                    showToast(`Tournament complete. Champion: ${champion}`, champion === 'You' ? '#66BB6A' : '#FFA726');
+                    tournament.seasonComplete = true;
+                    saveGame();
+                }
+            });
+            tournamentState = null;
+        }
+
+        function renderTournamentBracket(rounds) {
+            return rounds.map((round, rIdx) => {
+                const matchesHTML = (round.matches || []).map((match) => {
+                    const winner = match.winner || '-';
+                    return `<div class="tournament-match">
+                        <div>${escapeHTML(match.a || '?')} <span>${match.aScore || 0}</span></div>
+                        <div>${escapeHTML(match.b || '?')} <span>${match.bScore || 0}</span></div>
+                        <div class="tournament-winner">Winner: ${escapeHTML(winner)}</div>
+                    </div>`;
+                }).join('');
+                return `<div class="tournament-round ${tournamentState && tournamentState.round === rIdx ? 'active' : ''}">
+                    <h4>${escapeHTML(round.name || `Round ${rIdx + 1}`)}</h4>
+                    ${matchesHTML || '<p class="exp-game-note">Pending...</p>'}
+                </div>`;
+            }).join('');
+        }
+
+        function renderTournamentLeaderboard(leaderboard) {
+            const sorted = [...leaderboard].sort((a, b) => b.points - a.points || b.wins - a.wins);
+            return sorted.slice(0, 8).map((entry, idx) => (
+                `<tr>
+                    <td>${idx + 1}</td>
+                    <td>${escapeHTML(entry.name)}</td>
+                    <td>${entry.wins}</td>
+                    <td>${entry.points}</td>
+                </tr>`
+            )).join('');
+        }
+
+        function startTournamentGame() {
+            if (!gameState.pet) {
+                showToast('You need a pet to enter tournaments.', '#FFA726');
+                return;
+            }
+            tournamentState = getTournamentState();
+            const existing = document.querySelector('.tournament-game-overlay');
+            if (existing) existing.remove();
+            const overlay = document.createElement('div');
+            overlay.className = 'tournament-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Mini game tournament');
+            overlay.innerHTML = `
+                <div class="exp-game-shell tournament-shell">
+                    <h2 class="exp-game-title">🏆 Tournament Cup</h2>
+                    <div class="exp-game-hud">
+                        <span id="tour-season">Season ${tournamentState.season || 1}</span>
+                        <span id="tour-round">Round: ${tournamentState.round + 1}</span>
+                        <span id="tour-champs">Titles: ${tournamentState.championships || 0}</span>
+                    </div>
+                    <div class="tournament-layout">
+                        <div>
+                            <h3>Bracket</h3>
+                            <div id="tour-bracket" class="tournament-bracket"></div>
+                        </div>
+                        <div>
+                            <h3>Leaderboard</h3>
+                            <table class="tournament-leaderboard">
+                                <thead><tr><th>#</th><th>Pet</th><th>W</th><th>Pts</th></tr></thead>
+                                <tbody id="tour-leaderboard"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p class="exp-game-note" id="tour-note">Advance the bracket one round at a time.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="tour-next">Play Next Round</button>
+                        <button type="button" id="tour-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.querySelector('#tour-next').addEventListener('click', resolveTournamentRound);
+            overlay.querySelector('#tour-done').addEventListener('click', () => {
+                if (tournamentState && tournamentState._escapeHandler) popModalEscape(tournamentState._escapeHandler);
+                const root = document.querySelector('.tournament-game-overlay');
+                if (root) { root.innerHTML = ''; root.remove(); }
+                tournamentState = null;
+                restorePostMiniGameState();
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    if (tournamentState && tournamentState._escapeHandler) popModalEscape(tournamentState._escapeHandler);
+                    const root = document.querySelector('.tournament-game-overlay');
+                    if (root) { root.innerHTML = ''; root.remove(); }
+                    tournamentState = null;
+                    restorePostMiniGameState();
+                }
+            });
+            function tournamentEscapeHandler() {
+                const root = document.querySelector('.tournament-game-overlay');
+                if (root) { root.innerHTML = ''; root.remove(); }
+                tournamentState = null;
+                restorePostMiniGameState();
+            }
+            pushModalEscape(tournamentEscapeHandler);
+            tournamentState._escapeHandler = tournamentEscapeHandler;
+            trapFocus(overlay);
+            overlay.querySelector('#tour-next').focus();
+            updateTournamentUI();
+        }
+
+        function updateTournamentUI() {
+            if (!tournamentState) return;
+            const bracket = document.getElementById('tour-bracket');
+            const leaderboardBody = document.getElementById('tour-leaderboard');
+            const season = document.getElementById('tour-season');
+            const round = document.getElementById('tour-round');
+            const champs = document.getElementById('tour-champs');
+            const nextBtn = document.getElementById('tour-next');
+            const note = document.getElementById('tour-note');
+            if (season) season.textContent = `Season ${tournamentState.season || 1}`;
+            if (round) round.textContent = tournamentState.seasonComplete ? 'Round: Completed' : `Round: ${tournamentState.round + 1}`;
+            if (champs) champs.textContent = `Titles: ${tournamentState.championships || 0}`;
+            if (bracket) bracket.innerHTML = renderTournamentBracket(tournamentState.lastBracket || []);
+            if (leaderboardBody) leaderboardBody.innerHTML = renderTournamentLeaderboard(tournamentState.leaderboard || []);
+            if (nextBtn) nextBtn.textContent = tournamentState.seasonComplete ? 'Start Next Season' : 'Play Next Round';
+            if (note) note.textContent = tournamentState.seasonComplete
+                ? 'Season complete. Start the next bracket when ready.'
+                : 'Each round resolves all matches and updates leaderboard points.';
+        }
+
+        // ==================== CO-OP TWO-PET MINI-GAME ====================
+
+        let coopState = null;
+
+        function startCoopRelayGame() {
+            const pair = getCoopPetPair();
+            if (pair.length < 2) {
+                showToast('Adopt a second pet to unlock co-op mini games.', '#FFA726');
+                return;
+            }
+            coopState = {
+                pets: pair,
+                score: 0,
+                combo: 0,
+                bestCombo: 0,
+                expected: 'a',
+                leftProgress: 0,
+                rightProgress: 0,
+                timeLeftMs: 32000,
+                timerId: null
+            };
+            renderCoopRelayGame();
+            announce('Co-op relay started. Alternate A for left pet and L for right pet.');
+        }
+
+        function renderCoopRelayGame() {
+            const existing = document.querySelector('.coop-game-overlay');
+            if (existing) existing.remove();
+            const [leftPet, rightPet] = coopState.pets;
+            const leftMood = getMood(leftPet);
+            const rightMood = getMood(rightPet);
+            const overlay = document.createElement('div');
+            overlay.className = 'coop-game-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Co-op relay mini game');
+            overlay.innerHTML = `
+                <div class="exp-game-shell">
+                    <h2 class="exp-game-title">🤝 Co-op Relay</h2>
+                    <div class="exp-game-hud">
+                        <span id="coop-score">Relay: 0</span>
+                        <span id="coop-combo">Combo: 0</span>
+                        <span id="coop-time">Time: 32s</span>
+                    </div>
+                    <div class="coop-lanes" id="coop-lanes" tabindex="0" aria-label="Co-op relay. Alternate A and L keys.">
+                        <div class="coop-lane">
+                            <div class="coop-pet">${generatePetSVG(leftPet, leftMood)}</div>
+                            <div class="coop-bar"><div class="coop-bar-fill" id="coop-left-fill"></div></div>
+                            <div class="coop-key">A</div>
+                        </div>
+                        <div class="coop-lane">
+                            <div class="coop-pet">${generatePetSVG(rightPet, rightMood)}</div>
+                            <div class="coop-bar"><div class="coop-bar-fill" id="coop-right-fill"></div></div>
+                            <div class="coop-key">L</div>
+                        </div>
+                    </div>
+                    <p class="exp-game-note" id="coop-note">Press A to start, then alternate A and L.</p>
+                    <div class="exp-game-controls">
+                        <button type="button" id="coop-a">Left (A)</button>
+                        <button type="button" id="coop-l">Right (L)</button>
+                        <button type="button" id="coop-done">Done</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            overlay.querySelector('#coop-a').addEventListener('click', () => handleCoopInput('a'));
+            overlay.querySelector('#coop-l').addEventListener('click', () => handleCoopInput('l'));
+            overlay.querySelector('#coop-done').addEventListener('click', () => endCoopRelayGame(false));
+            overlay.querySelector('#coop-lanes').addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'a' || key === 'l') {
+                    e.preventDefault();
+                    handleCoopInput(key);
+                }
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) requestMiniGameExit(coopState ? coopState.score : 0, () => endCoopRelayGame(false));
+            });
+            function coopEscapeHandler() {
+                requestMiniGameExit(coopState ? coopState.score : 0, () => endCoopRelayGame(false));
+            }
+            pushModalEscape(coopEscapeHandler);
+            coopState._escapeHandler = coopEscapeHandler;
+            trapFocus(overlay);
+            overlay.querySelector('#coop-lanes').focus();
+
+            coopState.timerId = setInterval(stepCoopRelay, 150);
+            updateCoopUI();
+        }
+
+        function handleCoopInput(key) {
+            if (!coopState) return;
+            const note = document.getElementById('coop-note');
+            if (key === coopState.expected) {
+                coopState.combo += 1;
+                coopState.bestCombo = Math.max(coopState.bestCombo, coopState.combo);
+                const gain = 3 + Math.floor(coopState.combo / 5);
+                coopState.score += gain;
+                if (key === 'a') {
+                    coopState.leftProgress = Math.min(100, coopState.leftProgress + 10);
+                    coopState.expected = 'l';
+                } else {
+                    coopState.rightProgress = Math.min(100, coopState.rightProgress + 10);
+                    coopState.expected = 'a';
+                }
+                if (note) note.textContent = `Great teamwork! Next key: ${coopState.expected.toUpperCase()}`;
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.match);
+            } else {
+                coopState.combo = 0;
+                coopState.score = Math.max(0, coopState.score - 3);
+                if (note) note.textContent = `Out of sync. Press ${coopState.expected.toUpperCase()} next.`;
+                if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.miss);
+            }
+            updateCoopUI();
+        }
+
+        function stepCoopRelay() {
+            if (!coopState) return;
+            coopState.timeLeftMs -= 150;
+            coopState.leftProgress = Math.max(0, coopState.leftProgress - 1.4);
+            coopState.rightProgress = Math.max(0, coopState.rightProgress - 1.4);
+            if (coopState.timeLeftMs <= 0) {
+                endCoopRelayGame(true);
+                return;
+            }
+            updateCoopUI();
+        }
+
+        function updateCoopUI() {
+            if (!coopState) return;
+            const scoreEl = document.getElementById('coop-score');
+            const comboEl = document.getElementById('coop-combo');
+            const timeEl = document.getElementById('coop-time');
+            const leftFill = document.getElementById('coop-left-fill');
+            const rightFill = document.getElementById('coop-right-fill');
+            if (scoreEl) scoreEl.textContent = `Relay: ${coopState.score}`;
+            if (comboEl) comboEl.textContent = `Combo: ${coopState.combo}`;
+            if (timeEl) timeEl.textContent = `Time: ${Math.max(0, Math.ceil(coopState.timeLeftMs / 1000))}s`;
+            if (leftFill) leftFill.style.width = `${coopState.leftProgress}%`;
+            if (rightFill) rightFill.style.width = `${coopState.rightProgress}%`;
+        }
+
+        function endCoopRelayGame(completed) {
+            dismissMiniGameExitDialog();
+            if (!coopState) return;
+            if (coopState.timerId) clearInterval(coopState.timerId);
+            if (coopState._escapeHandler) popModalEscape(coopState._escapeHandler);
+            const overlay = document.querySelector('.coop-game-overlay');
+            if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
+
+            const score = coopState.score;
+            if (score > 0 || completed) {
+                const expansion = ensureMiniGameExpansionMeta();
+                expansion.coop.sessions = Math.max(0, Math.floor(expansion.coop.sessions || 0)) + 1;
+                expansion.coop.bestScore = Math.max(Math.floor(expansion.coop.bestScore || 0), score);
+                finalizeExpandedMiniGame({
+                    gameId: 'coop',
+                    gameName: 'Co-op Relay',
+                    score,
+                    coinScore: Math.round(score / 3),
+                    pets: coopState.pets,
+                    statDelta: () => ({
+                        happiness: Math.min(20, Math.round(score / 8)),
+                        energy: -Math.min(12, Math.round(score / 10)),
+                        hunger: -Math.min(8, Math.round(score / 14))
+                    }),
+                    summaryStats: [
+                        { label: 'Relay Score', value: score },
+                        { label: 'Best Combo', value: coopState.bestCombo },
+                        { label: 'Sessions', value: expansion.coop.sessions }
+                    ],
+                    medalThresholds: { bronze: 60, silver: 120, gold: 200 }
+                });
+            } else {
+                restorePostMiniGameState();
+            }
+            coopState = null;
         }

@@ -25,6 +25,24 @@
             };
         }
 
+        function createDefaultMiniGameExpansionState() {
+            return {
+                specialFoodStock: 0,
+                tournament: {
+                    season: 1,
+                    round: 0,
+                    wins: 0,
+                    championships: 0,
+                    lastBracket: [],
+                    leaderboard: []
+                },
+                coop: {
+                    sessions: 0,
+                    bestScore: 0
+                }
+            };
+        }
+
         let gameState = {
             phase: 'egg', // 'egg', 'hatching', 'pet'
             pet: null,
@@ -73,6 +91,7 @@
             minigamePlayCounts: {}, // { gameId: playCount } — tracks replays for difficulty scaling
             minigameHighScores: {}, // { gameId: bestScore } — persisted best scores
             minigameScoreHistory: {}, // { gameId: [score, score, score] } — last 3 scores per game
+            minigameExpansion: createDefaultMiniGameExpansionState(),
             // Multi-pet system
             pets: [], // Array of all pet objects
             activePetIndex: 0, // Index of the currently active/displayed pet
@@ -159,6 +178,38 @@
             return state;
         }
 
+        function normalizeMiniGameExpansionState(expansion) {
+            const defaults = createDefaultMiniGameExpansionState();
+            const state = (expansion && typeof expansion === 'object' && !Array.isArray(expansion))
+                ? expansion
+                : defaults;
+
+            if (typeof state.specialFoodStock !== 'number' || !Number.isFinite(state.specialFoodStock)) state.specialFoodStock = 0;
+            state.specialFoodStock = Math.max(0, Math.floor(state.specialFoodStock));
+
+            if (!state.tournament || typeof state.tournament !== 'object' || Array.isArray(state.tournament)) state.tournament = defaults.tournament;
+            if (typeof state.tournament.season !== 'number' || !Number.isFinite(state.tournament.season)) state.tournament.season = 1;
+            if (typeof state.tournament.round !== 'number' || !Number.isFinite(state.tournament.round)) state.tournament.round = 0;
+            if (typeof state.tournament.wins !== 'number' || !Number.isFinite(state.tournament.wins)) state.tournament.wins = 0;
+            if (typeof state.tournament.championships !== 'number' || !Number.isFinite(state.tournament.championships)) state.tournament.championships = 0;
+            if (!Array.isArray(state.tournament.lastBracket)) state.tournament.lastBracket = [];
+            if (!Array.isArray(state.tournament.leaderboard)) state.tournament.leaderboard = [];
+
+            if (!state.coop || typeof state.coop !== 'object' || Array.isArray(state.coop)) state.coop = defaults.coop;
+            if (typeof state.coop.sessions !== 'number' || !Number.isFinite(state.coop.sessions)) state.coop.sessions = 0;
+            if (typeof state.coop.bestScore !== 'number' || !Number.isFinite(state.coop.bestScore)) state.coop.bestScore = 0;
+            state.coop.sessions = Math.max(0, Math.floor(state.coop.sessions));
+            state.coop.bestScore = Math.max(0, Math.floor(state.coop.bestScore));
+
+            return state;
+        }
+
+        function ensureMiniGameExpansionState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            state.minigameExpansion = normalizeMiniGameExpansionState(state.minigameExpansion);
+            return state.minigameExpansion;
+        }
+
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
         // via startGardenGrowTimer(), and stopped during cleanup/reset.
         let gardenGrowInterval = null;
@@ -220,7 +271,24 @@
         // Each replay bumps difficulty by 10%, capped at 2x (10 replays)
         function getMinigameDifficulty(gameId) {
             const plays = (gameState.minigamePlayCounts && gameState.minigamePlayCounts[gameId]) || 0;
-            return 1 + Math.min(plays, 10) * 0.1;
+            // So replaying keeps challenge fresh without becoming punishingly steep.
+            const replayDifficulty = 1 + Math.min(plays, 8) * 0.08;
+            const easeMultiplier = getMiniGameEaseMultiplier(gameState.pet);
+            return Math.max(0.65, Math.min(1.85, Number((replayDifficulty * easeMultiplier).toFixed(2))));
+        }
+
+        function getPetMiniGameStrength(pet) {
+            if (!pet || typeof pet !== 'object') return 0.5;
+            const hunger = Math.max(0, Math.min(100, Number(pet.hunger) || 0));
+            const cleanliness = Math.max(0, Math.min(100, Number(pet.cleanliness) || 0));
+            const happiness = Math.max(0, Math.min(100, Number(pet.happiness) || 0));
+            const energy = Math.max(0, Math.min(100, Number(pet.energy) || 0));
+            return (hunger + cleanliness + happiness + energy) / 400;
+        }
+
+        function getMiniGameEaseMultiplier(pet) {
+            const strength = getPetMiniGameStrength(pet);
+            return Math.max(0.78, 1.12 - (strength * 0.34));
         }
 
         // Increment play count for a minigame
@@ -1623,17 +1691,28 @@
                 bubblepop: 1.0,
                 matching: 1.2,
                 simonsays: 1.35,
-                coloring: 0.95
+                coloring: 0.95,
+                racing: 1.12,
+                cooking: 1.02,
+                fishing: 1.08,
+                rhythm: 1.1,
+                slider: 1.08,
+                trivia: 1.0,
+                runner: 1.16,
+                tournament: 1.2,
+                coop: 1.08
             };
             const multiplier = gameBonus[gameId] || 1;
             const payout = Math.max(4, Math.round((6 + Math.sqrt(score) * 4) * multiplier));
             const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardMultiplier === 'number')
                 ? ECONOMY_BALANCE.minigameRewardMultiplier
                 : 1;
+            // Strong pets still earn more, but the spread is moderated for economy stability.
+            const petStatRewardMult = 0.92 + (getPetMiniGameStrength(gameState.pet) * 0.28);
             const cap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardCap === 'number')
                 ? ECONOMY_BALANCE.minigameRewardCap
                 : 9999;
-            const tuned = Math.max(4, Math.min(cap, Math.round(payout * ecoMult)));
+            const tuned = Math.max(4, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult)));
             addCoins(tuned, 'Mini-game', true);
             return tuned;
         }
@@ -2580,6 +2659,7 @@
             try {
                 ensureExplorationState();
                 ensureEconomyState();
+                ensureMiniGameExpansionState();
                 // Sync active pet to pets array before saving
                 syncActivePetToArray();
                 gameState.lastUpdate = Date.now();
@@ -2742,6 +2822,7 @@
                     if (!parsed.minigameScoreHistory || typeof parsed.minigameScoreHistory !== 'object') {
                         parsed.minigameScoreHistory = {};
                     }
+                    ensureMiniGameExpansionState(parsed);
 
                     // Add garden if missing (for existing saves)
                     if (!parsed.garden || typeof parsed.garden !== 'object') {
@@ -5986,6 +6067,7 @@
             ensureRoomSystemsState();
             ensureExplorationState();
             ensureEconomyState();
+            ensureMiniGameExpansionState();
             updateExplorationUnlocks(true);
             resolveExpeditionIfReady(false, true);
 
