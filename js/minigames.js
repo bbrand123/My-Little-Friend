@@ -218,7 +218,7 @@
             });
 
             overlay.innerHTML = `
-                <div class="minigame-menu">
+                <div class="minigame-menu" tabindex="-1">
                     <h2 class="minigame-menu-title" id="minigame-menu-title"><span aria-hidden="true">🎮</span> Mini Games</h2>
                     <p class="minigame-menu-subtitle">Pick a game to play with your pet!</p>
                     <p class="minigame-menu-keyboard-note"><span aria-hidden="true">⌨️</span> Keyboard: Use Tab to navigate, Enter or Space to play</p>
@@ -230,10 +230,12 @@
             `;
 
             document.body.appendChild(overlay);
+            document.body.classList.add('minigame-menu-open');
 
             const triggerBtn = document.getElementById('minigames-btn');
 
             function closeMenu() {
+                document.body.classList.remove('minigame-menu-open');
                 popModalEscape(closeMenu);
                 if (overlay && overlay.parentNode) { overlay.innerHTML = ''; overlay.remove(); }
                 if (triggerBtn) triggerBtn.focus();
@@ -258,9 +260,17 @@
             overlay._closeOverlay = closeMenu;
             trapFocus(overlay);
 
-            // Focus first game card
+            // Focus the first card only after ensuring it is visible inside the scrollable menu.
             const firstCard = overlay.querySelector('.minigame-card');
-            if (firstCard) firstCard.focus();
+            const menuPanel = overlay.querySelector('.minigame-menu');
+            if (firstCard) {
+                requestAnimationFrame(() => {
+                    firstCard.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    firstCard.focus({ preventScroll: true });
+                });
+            } else if (menuPanel) {
+                menuPanel.focus();
+            }
 
             announce('Mini Games menu opened. Pick a game to play!');
         }
