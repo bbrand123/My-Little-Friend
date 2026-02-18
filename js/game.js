@@ -363,11 +363,13 @@
 
         function getMiniGameEaseMultiplier(pet) {
             const strength = getPetMiniGameStrength(pet);
-            return Math.max(0.78, 1.12 - (strength * 0.34));
+            return Math.max(0.82, Math.min(1.12, 0.82 + (strength * 0.3)));
         }
 
         // Increment play count for a minigame
-        function incrementMinigamePlayCount(gameId) {
+        function incrementMinigamePlayCount(gameId, scoreValue) {
+            const score = Math.max(0, Number(scoreValue) || 0);
+            if (score <= 0) return false;
             if (!gameState.minigamePlayCounts) gameState.minigamePlayCounts = {};
             gameState.minigamePlayCounts[gameId] = (gameState.minigamePlayCounts[gameId] || 0) + 1;
             // Track daily checklist progress for minigames
@@ -401,6 +403,7 @@
                     setTimeout(() => showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700'), 900);
                 });
             }
+            return true;
         }
 
         // Update high score for a minigame, returns true if it's a new best
@@ -756,17 +759,43 @@
             ex.lootInventory[lootId] = (ex.lootInventory[lootId] || 0) + safeCount;
         }
 
+        function getLootDropWeight(lootId) {
+            const loot = EXPLORATION_LOOT[lootId];
+            const rarity = loot && loot.rarity ? loot.rarity : 'common';
+            if (rarity === 'rare') return 0.3;
+            if (rarity === 'uncommon') return 0.65;
+            return 1;
+        }
+
+        function pickWeightedLootId(pool) {
+            const candidates = (Array.isArray(pool) ? pool : [])
+                .filter((lootId) => !!EXPLORATION_LOOT[lootId]);
+            if (candidates.length === 0) return null;
+            let total = 0;
+            candidates.forEach((lootId) => {
+                total += getLootDropWeight(lootId);
+            });
+            if (total <= 0) return randomFromArray(candidates);
+            let roll = Math.random() * total;
+            for (const lootId of candidates) {
+                roll -= getLootDropWeight(lootId);
+                if (roll <= 0) return lootId;
+            }
+            return candidates[candidates.length - 1];
+        }
+
         function generateLootBundle(lootPool, rolls) {
             const pool = Array.isArray(lootPool) && lootPool.length > 0 ? lootPool : ['ancientCoin'];
             const rewardMap = {};
             const totalRolls = Math.max(1, Math.floor(rolls || 1));
             for (let i = 0; i < totalRolls; i++) {
-                const lootId = randomFromArray(pool);
+                const lootId = pickWeightedLootId(pool);
                 if (!lootId || !EXPLORATION_LOOT[lootId]) continue;
                 const rarity = EXPLORATION_LOOT[lootId].rarity || 'common';
                 let amount = 1;
-                if (rarity === 'common' && Math.random() < 0.25) amount++;
-                if (rarity === 'rare' && Math.random() < 0.15) amount++;
+                if (rarity === 'common' && Math.random() < 0.18) amount++;
+                if (rarity === 'uncommon' && Math.random() < 0.08) amount++;
+                if (rarity === 'rare' && Math.random() < 0.04) amount++;
                 rewardMap[lootId] = (rewardMap[lootId] || 0) + amount;
             }
             const rewards = Object.entries(rewardMap).map(([id, count]) => ({
@@ -785,7 +814,7 @@
 
         function getTreasureCooldownRemaining(roomId) {
             const ex = ensureExplorationState();
-            const cooldownMs = 45000;
+            const cooldownMs = 90000;
             const lastAt = ex.roomTreasureCooldowns[roomId] || 0;
             return Math.max(0, (lastAt + cooldownMs) - Date.now());
         }
@@ -844,6 +873,18 @@
             }
         }
 
+        function abandonExpedition(silent) {
+            const ex = ensureExplorationState();
+            if (!ex.expedition) return { ok: false, reason: 'no-expedition' };
+            const abandoned = ex.expedition;
+            ex.expedition = null;
+            saveGame();
+            if (!silent) {
+                showToast('🧭 Expedition ended early. No rewards were collected.', '#FFA726');
+            }
+            return { ok: true, abandoned };
+        }
+
         function startExpedition(biomeId, durationId) {
             const ex = ensureExplorationState();
             updateExplorationUnlocks(true);
@@ -875,7 +916,7 @@
             if (!ex.expedition) return { ok: false, reason: 'no-expedition' };
             const expedition = ex.expedition;
             const now = Date.now();
-            if (!forceResolve && now < expedition.endAt) {
+            if (now < expedition.endAt) {
                 return { ok: false, reason: 'in-progress', remainingMs: expedition.endAt - now };
             }
 
@@ -947,10 +988,10 @@
             if (remaining > 0) return { ok: false, reason: 'cooldown', remainingMs: remaining };
 
             ex.roomTreasureCooldowns[roomId] = Date.now();
-            const foundTreasure = Math.random() < 0.78;
+            const foundTreasure = Math.random() < 0.48;
             const action = getTreasureActionLabel(roomId);
             const lootPool = ROOM_TREASURE_POOLS[roomId] || ['ancientCoin'];
-            const rewards = foundTreasure ? generateLootBundle(lootPool, 1 + (Math.random() < 0.35 ? 1 : 0)) : [];
+            const rewards = foundTreasure ? generateLootBundle(lootPool, 1 + (Math.random() < 0.15 ? 1 : 0)) : [];
 
             if (foundTreasure) {
                 ex.stats.treasuresFound++;
@@ -1022,7 +1063,9 @@
                 currentIndex: 0,
                 log: [],
                 rewards: [],
-                startedAt: Date.now()
+                startedAt: Date.now(),
+                roomCooldownMs: 18000,
+                nextRoomAt: Date.now()
             };
             saveGame();
             return { ok: true, dungeon: ex.dungeon };
@@ -1032,6 +1075,9 @@
             const ex = ensureExplorationState();
             if (!ex.dungeon || !ex.dungeon.active) return { ok: false, reason: 'no-dungeon' };
             const dungeon = ex.dungeon;
+            const now = Date.now();
+            const remainingMs = Math.max(0, (dungeon.nextRoomAt || 0) - now);
+            if (remainingMs > 0) return { ok: false, reason: 'cooldown', remainingMs };
             const room = dungeon.rooms[dungeon.currentIndex];
             if (!room) {
                 dungeon.active = false;
@@ -1044,33 +1090,39 @@
             let message = '';
             let rewards = [];
             let npc = null;
+            const danger = Math.max(1, Number(room.danger) || 1);
+            const dangerTier = Math.max(0, danger - 1);
 
             if (pet) {
-                pet.energy = clamp(pet.energy - (2 + Math.floor(Math.random() * 3)), 0, 100);
+                if ((pet.energy || 0) < 8) {
+                    return { ok: false, reason: 'low-energy', neededEnergy: 8, currentEnergy: pet.energy || 0 };
+                }
+                const baselineCost = 3 + Math.floor(Math.random() * 3) + Math.floor(dangerTier / 2);
+                pet.energy = clamp(pet.energy - baselineCost, 0, 100);
             }
 
             switch (room.type) {
                 case 'combat': {
                     if (pet) {
-                        pet.happiness = clamp(pet.happiness + 4, 0, 100);
-                        pet.hunger = clamp(pet.hunger - 4, 0, 100);
+                        pet.happiness = clamp(pet.happiness + 3 + Math.min(3, Math.floor(dangerTier / 2)), 0, 100);
+                        pet.hunger = clamp(pet.hunger - (3 + Math.floor(dangerTier / 2)), 0, 100);
                     }
-                    if (Math.random() < 0.55) {
-                        rewards = generateLootBundle(floorLootPool, 1);
+                    if (Math.random() < Math.min(0.85, 0.42 + (dangerTier * 0.06))) {
+                        rewards = generateLootBundle(floorLootPool, 1 + (dangerTier >= 5 ? 1 : 0));
                     }
-                    message = `${room.icon} You fought through a danger room.`;
+                    message = `${room.icon} You fought through a danger ${danger} room.`;
                     break;
                 }
                 case 'treasure': {
-                    rewards = generateLootBundle(floorLootPool.concat(['runeFragment', 'mysteryMap']), 2);
+                    rewards = generateLootBundle(floorLootPool.concat(['runeFragment', 'mysteryMap']), 2 + Math.floor(dangerTier / 3));
                     if (pet) pet.happiness = clamp(pet.happiness + 8, 0, 100);
                     message = `${room.icon} You found a hidden treasure chamber!`;
                     break;
                 }
                 case 'trap': {
                     if (pet) {
-                        pet.cleanliness = clamp(pet.cleanliness - 8, 0, 100);
-                        pet.happiness = clamp(pet.happiness - 4, 0, 100);
+                        pet.cleanliness = clamp(pet.cleanliness - (6 + dangerTier), 0, 100);
+                        pet.happiness = clamp(pet.happiness - (3 + Math.floor(dangerTier / 2)), 0, 100);
                     }
                     message = `${room.icon} A trap slowed you down, but you pushed on.`;
                     break;
@@ -1105,11 +1157,16 @@
             if (dungeon.log.length > 15) dungeon.log = dungeon.log.slice(0, 15);
 
             dungeon.currentIndex++;
+            dungeon.nextRoomAt = Date.now() + Math.max(12000, dungeon.roomCooldownMs || 18000);
             let cleared = false;
             let clearRewards = [];
             if (dungeon.currentIndex >= dungeon.rooms.length) {
                 cleared = true;
-                clearRewards = generateLootBundle(getBiomeLootPool('cave').concat(['runeFragment', 'stardust', 'mysteryMap']), 3);
+                const averageDanger = dungeon.rooms.length > 0
+                    ? dungeon.rooms.reduce((sum, r) => sum + Math.max(1, Number(r.danger) || 1), 0) / dungeon.rooms.length
+                    : 1;
+                const clearRolls = 2 + Math.max(1, Math.round(averageDanger / 2));
+                clearRewards = generateLootBundle(getBiomeLootPool('cave').concat(['runeFragment', 'stardust', 'mysteryMap']), clearRolls);
                 dungeon.rewards.push(...clearRewards.map((r) => ({ id: r.id, count: r.count })));
                 ex.stats.dungeonsCleared++;
                 dungeon.active = false;
@@ -1569,9 +1626,9 @@
             const loot = EXPLORATION_LOOT[lootId];
             if (!loot) return 0;
             const rarity = loot.rarity || 'common';
-            if (rarity === 'rare') return 42;
-            if (rarity === 'uncommon') return 24;
-            return 14;
+            if (rarity === 'rare') return 34;
+            if (rarity === 'uncommon') return 18;
+            return 10;
         }
 
         function getLootSellPrice(lootId) {
@@ -1853,8 +1910,9 @@
             const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardMultiplier === 'number')
                 ? ECONOMY_BALANCE.minigameRewardMultiplier
                 : 1;
-            // Rewards still scale with pet strength, but with tighter spread.
-            const petStatRewardMult = 0.9 + (getPetMiniGameStrength(gameState.pet) * 0.18);
+            // Keep a slight stat link without heavily penalizing weaker pets.
+            const petStrength = getPetMiniGameStrength(gameState.pet);
+            const petStatRewardMult = Math.max(0.96, Math.min(1.04, 1 + ((petStrength - 0.5) * 0.08)));
             const cap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardCap === 'number')
                 ? ECONOMY_BALANCE.minigameRewardCap
                 : 9999;
@@ -1866,12 +1924,12 @@
         function awardHarvestCoins(cropId) {
             const crop = GARDEN_CROPS[cropId];
             if (!crop) return 0;
-            const base = 6 + Math.round((crop.hungerValue || 0) / 3) + Math.round((crop.happinessValue || 0) / 4) + Math.round((crop.energyValue || 0) / 4);
+            const base = 3 + Math.round((crop.hungerValue || 0) / 4) + Math.round((crop.happinessValue || 0) / 6) + Math.round((crop.energyValue || 0) / 6);
             const seasonalBoost = (crop.seasonBonus || []).includes(gameState.season || getCurrentSeason()) ? 1.2 : 1.0;
             const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.harvestRewardMultiplier === 'number')
                 ? ECONOMY_BALANCE.harvestRewardMultiplier
                 : 1;
-            const payout = Math.max(4, Math.round(base * seasonalBoost * ecoMult));
+            const payout = Math.max(2, Math.round(base * seasonalBoost * ecoMult));
             addCoins(payout, 'Harvest', true);
             return payout;
         }
@@ -2660,13 +2718,21 @@
                     if (!cl._rewardGranted) {
                         cl._rewardGranted = true;
                         const bundled = applyRewardBundle('dailyFinish', 'Daily Tasks');
+                        const stage = (cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : 'baby';
+                        const stageMult = Math.max(1, Number(getStageBalance(stage).dailyTaskMultiplier) || 1);
+                        const stageBonusCoins = Math.max(0, Math.round((stageMult - 1) * 45));
+                        if (stageBonusCoins > 0) {
+                            addCoins(stageBonusCoins, 'Daily Tasks (Stage Bonus)', true);
+                        }
                         if (bundled && typeof showToast === 'function') {
                             const modifierText = bundled.modifier ? ` + ${bundled.modifier.emoji} ${bundled.modifier.name}` : '';
-                            showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${modifierText}`, '#FFD700');
+                            const bonusText = stageBonusCoins > 0 ? ` + ${stageBonusCoins} stage bonus` : '';
+                            showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${bonusText}${modifierText}`, '#FFD700');
                         } else {
-                            const dailyReward = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
+                            const dailyRewardBase = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
                                 ? ECONOMY_BALANCE.dailyCompletionReward
                                 : 85;
+                            const dailyReward = dailyRewardBase + stageBonusCoins;
                             const payout = addCoins(dailyReward, 'Daily Tasks', true);
                             if (payout > 0 && typeof showToast === 'function') {
                                 showToast(`📋 Daily tasks complete! Earned ${payout} coins.`, '#FFD700');
@@ -3592,8 +3658,8 @@
                     if (parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
                         const minutesPassed = Math.max(0, timePassed / 60000);
-                        // Cap offline decay to prevent all stats hitting 0 after long absences
-                        const decay = Math.min(Math.floor(minutesPassed / 2), 50);
+                        // Keep offline progression meaningful so long absences cannot fully reset pressure.
+                        const decay = Math.min(Math.floor(minutesPassed / 2), 80);
                         if (decay > 0) {
                             const petsToDecay = parsed.pets && parsed.pets.length > 0 ? parsed.pets : (parsed.pet ? [parsed.pet] : []);
                             let activeOldStats = null;
@@ -3629,8 +3695,8 @@
                                 p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5 * rateMult * cleanM * elderR), 0, 100);
                                 // Happiness decays at normal rate
                                 p.happiness = clamp(p.happiness - Math.floor(decay * rateMult * happyM * elderR), 0, 100);
-                                // Energy RECOVERS while away (pet is resting)
-                                p.energy = clamp(p.energy + Math.floor(decay * 0.75 * rateMult * energyRecoveryM), 0, 100);
+                                // Energy recovers only partially while away.
+                                p.energy = clamp(p.energy + Math.floor(decay * 0.2 * rateMult * energyRecoveryM), 0, 100);
 
                                 // Pets with friends get a happiness bonus while away (scaled by relationship quality)
                                 if (parsed.pets.length > 1 && parsed.relationships) {

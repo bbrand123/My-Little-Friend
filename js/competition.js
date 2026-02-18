@@ -383,16 +383,14 @@
                     }, 500);
                 } else {
                     comp.battlesLost++;
-                    const happyGain = Math.max(3, Math.round(4 * rewardMult));
-                    pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                     setTimeout(() => {
-                        showToast(`⚔️ Good fight! +${happyGain} Happiness for trying!`, '#64B5F6');
-                        announce(`Defeat. Good fight though! Plus ${happyGain} happiness for trying.`, true);
+                        showToast('⚔️ Defeat. No rewards this time.', '#64B5F6');
+                        announce('Defeat. No rewards this time.', true);
                     }, 500);
                 }
-                if (typeof incrementDailyProgress === 'function') {
+                if (won && typeof incrementDailyProgress === 'function') {
                     incrementDailyProgress('battleCount', 1);
-                    incrementDailyProgress('masteryPoints', won ? 2 : 1);
+                    incrementDailyProgress('masteryPoints', 2);
                 }
                 if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
                 if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
@@ -883,16 +881,16 @@
                 pet.happiness = clamp(pet.happiness + showGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
                 comp.lastShowTime = now;
+                if (typeof incrementDailyProgress === 'function') {
+                    incrementDailyProgress('battleCount', 1);
+                    incrementDailyProgress('masteryPoints', 2);
+                }
+                if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
+                if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
+                saveGame();
             } else {
                 showToast(`Pet Show rewards are on cooldown for ${cooldownRemainingMinutes} more minute${cooldownRemainingMinutes === 1 ? '' : 's'}.`, '#FFA726');
             }
-            if (typeof incrementDailyProgress === 'function') {
-                incrementDailyProgress('battleCount', 1);
-                incrementDailyProgress('masteryPoints', 2);
-            }
-            if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
-            if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();
-            saveGame();
 
             // Generate NPC competitors for flavor
             const npcScores = [
@@ -1395,16 +1393,14 @@
                         }, 500);
                     } else {
                         comp.rivalBattlesLost++;
-                        const happyGain = Math.max(3, Math.round(4 * rewardMult));
-                        pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                         setTimeout(() => {
-                            showToast(`Keep training! ${trainer.name} is tough!`, '#64B5F6');
-                            announce(`Defeat. Keep training! ${trainer.name} is tough.`, true);
+                            showToast(`Defeat. ${trainer.name} offered no rewards.`, '#64B5F6');
+                            announce(`Defeat. ${trainer.name} offered no rewards.`, true);
                         }, 500);
                     }
-                    if (typeof incrementDailyProgress === 'function') {
+                    if (won && typeof incrementDailyProgress === 'function') {
                         incrementDailyProgress('battleCount', 1);
-                        incrementDailyProgress('masteryPoints', won ? 3 : 1);
+                        incrementDailyProgress('masteryPoints', 3);
                     }
                     if (typeof consumeCompetitionRewardModifiers === 'function') consumeCompetitionRewardModifiers();
                     if (typeof refreshMasteryTracks === 'function') refreshMasteryTracks();

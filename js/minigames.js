@@ -702,7 +702,7 @@
             const overlay = document.querySelector('.fetch-game-overlay');
             if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
-            incrementMinigamePlayCount('fetch');
+            incrementMinigamePlayCount('fetch', fetchState ? fetchState.score : 0);
 
             // Apply rewards based on score
             if (fetchState && fetchState.score > 0 && gameState.pet) {
@@ -1137,7 +1137,7 @@
             const overlay = document.querySelector('.hideseek-game-overlay');
             if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
-            incrementMinigamePlayCount('hideseek');
+            incrementMinigamePlayCount('hideseek', hideSeekState ? hideSeekState.treatsFound : 0);
 
             // Apply rewards based on treats found
             if (hideSeekState && hideSeekState.treatsFound > 0 && gameState.pet) {
@@ -1567,7 +1567,7 @@
             const overlay = document.querySelector('.bubblepop-game-overlay');
             if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
-            incrementMinigamePlayCount('bubblepop');
+            incrementMinigamePlayCount('bubblepop', bubblePopState ? bubblePopState.score : 0);
 
             // Apply rewards: bath-themed game boosts cleanliness and happiness
             if (bubblePopState && bubblePopState.score > 0 && gameState.pet) {
@@ -1926,7 +1926,7 @@
             const overlay = document.querySelector('.matching-game-overlay');
             if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
-            incrementMinigamePlayCount('matching');
+            incrementMinigamePlayCount('matching', matchingState ? matchingState.matchesFound : 0);
 
             // Apply rewards based on performance
             if (matchingState && matchingState.matchesFound > 0 && gameState.pet) {
@@ -2325,7 +2325,7 @@
             const overlay = document.querySelector('.simonsays-game-overlay');
             if (overlay) { overlay.innerHTML = ''; overlay.remove(); }
 
-            incrementMinigamePlayCount('simonsays');
+            incrementMinigamePlayCount('simonsays', simonState ? simonState.score : 0);
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
@@ -2786,7 +2786,7 @@
 
             // Apply rewards based on regions colored
             if (coloringState && coloringState.regionsColored.size > 0 && gameState.pet) {
-                incrementMinigamePlayCount('coloring');
+                incrementMinigamePlayCount('coloring', coloringState ? coloringState.regionsColored.size : 0);
                 const colored = coloringState.regionsColored.size;
                 const total = coloringState.totalRegions;
                 const ratio = colored / Math.max(total, 1);
@@ -2884,7 +2884,7 @@
                 ? config.pets.filter(Boolean)
                 : (gameState.pet ? [gameState.pet] : []);
 
-            if (!config.skipPlayCount) incrementMinigamePlayCount(gameId);
+            if (!config.skipPlayCount) incrementMinigamePlayCount(gameId, score);
             const statAggregate = applyMiniGameStatChangesToPets(pets, config.statDelta);
             const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins(gameId, coinScore) : 0;
             const previousBest = Number((gameState.minigameHighScores || {})[gameId] || 0);

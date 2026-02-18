@@ -7697,6 +7697,9 @@
                 const expedition = ex.expedition || null;
                 const expeditionReady = expedition && Date.now() >= expedition.endAt;
                 const dungeon = ex.dungeon || { active: false, rooms: [], currentIndex: 0, log: [] };
+                const dungeonCooldownRemaining = (dungeon && dungeon.active)
+                    ? Math.max(0, (dungeon.nextRoomAt || 0) - Date.now())
+                    : 0;
                 const lootInventory = ex.lootInventory || {};
                 const canAdopt = typeof canAdoptMore === 'function' ? canAdoptMore() : true;
 
@@ -7738,7 +7741,7 @@
                             <div class="explore-expedition-title">${biome.icon} ${biome.name}</div>
                             <div class="explore-expedition-meta">Pet: ${escapeHTML(expedition.petName || 'Pet')}</div>
                             <div class="explore-expedition-meta" id="explore-expedition-time">${expeditionReady ? 'Ready to collect rewards!' : `Time left: ${formatCountdown(remaining)}`}</div>
-                            <button class="modal-btn confirm" id="expedition-collect-btn">${expeditionReady ? 'Collect Loot' : 'Force Return & Collect'}</button>
+                            <button class="modal-btn confirm" id="expedition-collect-btn">${expeditionReady ? 'Collect Loot' : 'Force Return (No Loot)'}</button>
                         </div>
                     `;
                 }
@@ -7750,7 +7753,8 @@
                             <div class="explore-expedition-title">🏰 Dungeon Crawl Active</div>
                             <div class="explore-expedition-meta">Room ${Math.min((dungeon.currentIndex || 0) + 1, dungeon.rooms.length)} of ${dungeon.rooms.length}</div>
                             ${currentDungeonRoom ? `<div class="explore-expedition-meta">Next: ${currentDungeonRoom.icon} ${currentDungeonRoom.name}</div>` : ''}
-                            <button class="modal-btn confirm" id="dungeon-advance-btn">Advance Room</button>
+                            ${dungeonCooldownRemaining > 0 ? `<div class="explore-expedition-meta">Recovery: ${formatCountdown(dungeonCooldownRemaining)}</div>` : ''}
+                            <button class="modal-btn confirm" id="dungeon-advance-btn" ${dungeonCooldownRemaining > 0 ? 'disabled' : ''}>${dungeonCooldownRemaining > 0 ? `Recovering (${formatCountdown(dungeonCooldownRemaining)})` : 'Advance Room'}</button>
                         </div>
                     `
                     : `
@@ -7891,7 +7895,22 @@
                 if (collectBtn) {
                     collectBtn.addEventListener('click', () => {
                         if (typeof resolveExpeditionIfReady !== 'function') return;
-                        const res = resolveExpeditionIfReady(true, false);
+                        const res = resolveExpeditionIfReady(false, false);
+                        if (res && !res.ok && res.reason === 'in-progress') {
+                            if (typeof abandonExpedition !== 'function') {
+                                showToast(`Expedition still in progress (${formatCountdown(res.remainingMs || 0)}).`, '#FFA726');
+                                return;
+                            }
+                            const confirmAbandon = window.confirm('End this expedition early? You will receive no loot.');
+                            if (!confirmAbandon) return;
+                            const abandonRes = abandonExpedition(false);
+                            if (!abandonRes || !abandonRes.ok) {
+                                showToast('Could not end expedition right now.', '#FFA726');
+                                return;
+                            }
+                            renderExplorationModal();
+                            return;
+                        }
                         if (!res || !res.ok) {
                             showToast('Expedition results are not ready yet.', '#FFA726');
                             return;
@@ -7926,7 +7945,13 @@
                         if (typeof advanceDungeonCrawl !== 'function') return;
                         const res = advanceDungeonCrawl();
                         if (!res || !res.ok) {
-                            showToast('Dungeon crawl is not active.', '#FFA726');
+                            if (res && res.reason === 'cooldown') {
+                                showToast(`Dungeon room recovery: ${formatCountdown(res.remainingMs || 0)}.`, '#FFA726');
+                            } else if (res && res.reason === 'low-energy') {
+                                showToast('Your pet is too tired. Let them rest before advancing.', '#FFA726');
+                            } else {
+                                showToast('Dungeon crawl is not active.', '#FFA726');
+                            }
                             renderExplorationModal();
                             return;
                         }
@@ -7990,6 +8015,11 @@
 
                 if (expedition && !expeditionReady) {
                     scheduleExpeditionCountdown();
+                } else if (dungeon && dungeon.active && dungeonCooldownRemaining > 0) {
+                    expeditionCountdownTimer = setTimeout(() => {
+                        if (!document.body.contains(overlay)) return;
+                        renderExplorationModal();
+                    }, 1000);
                 }
 
             }
