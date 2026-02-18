@@ -43,7 +43,12 @@
                 petHappy: 'assets/audio/sfx/petHappy.wav',
                 petSad: 'assets/audio/sfx/petSad.wav',
                 petExcited: 'assets/audio/sfx/petExcited.wav',
-                achievement: 'assets/audio/sfx/achievement.wav'
+                achievement: 'assets/audio/sfx/achievement.wav',
+                'menu-open': 'assets/audio/sfx/roomTransition.wav',
+                'button-tap': 'assets/audio/sfx/play.wav',
+                'reward-pop': 'assets/audio/sfx/achievement.wav',
+                'error-soft': 'assets/audio/sfx/miss.wav',
+                'coin-jingle': 'assets/audio/sfx/celebration.wav'
             };
 
             const SAMPLE_MUSIC_TRACKS = {
@@ -1462,7 +1467,12 @@
                     petHappy: sfxPetHappy,
                     petSad: sfxPetSad,
                     petExcited: sfxPetExcited,
-                    achievement: sfxAchievement
+                    achievement: sfxAchievement,
+                    menuOpen: sfxRoomTransition,
+                    buttonTap: sfxPlay,
+                    rewardPop: sfxAchievement,
+                    errorSoft: sfxMiss,
+                    coinJingle: sfxCelebration
                 }
             };
         })();

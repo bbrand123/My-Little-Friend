@@ -604,6 +604,28 @@
                 svg = svg.replace('</svg>', `${moodOverlay}</svg>`);
             }
 
+            // Add lightweight stat overlays so state changes are visible even before mood updates settle
+            let statOverlay = '';
+            const hunger = Number(pet.hunger);
+            const energy = Number(pet.energy);
+            const cleanliness = Number(pet.cleanliness);
+            const happiness = Number(pet.happiness);
+            if (Number.isFinite(hunger) && hunger < 30) {
+                statOverlay += `<text x="16" y="24" font-size="8" opacity="0.8">🍽️</text>`;
+            }
+            if (Number.isFinite(energy) && energy < 30) {
+                statOverlay += `<text x="76" y="24" font-size="8" opacity="0.82">💤</text>`;
+            }
+            if (Number.isFinite(cleanliness) && cleanliness < 30) {
+                statOverlay += `<text x="74" y="78" font-size="8" opacity="0.7">🫧</text>`;
+            }
+            if (Number.isFinite(happiness) && happiness > 78) {
+                statOverlay += `<text x="18" y="78" font-size="8" opacity="0.75">💖</text>`;
+            }
+            if (statOverlay) {
+                svg = svg.replace('</svg>', `<g class="pet-stat-overlay">${statOverlay}</g></svg>`);
+            }
+
             // Add pattern overlay
             const pattern = pet.pattern || 'solid';
             if (pattern !== 'solid') {

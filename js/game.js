@@ -4371,15 +4371,35 @@
             return garden.plots.filter(p => p && p.stage >= 3).length;
         }
 
+        function useBeginnerRoomNav() {
+            const pet = gameState.pet;
+            if (!pet) return false;
+            const careActions = Number(pet.careActions) || 0;
+            if (careActions >= 24) return false;
+            try {
+                const raw = localStorage.getItem('petCareBuddy_petSessions');
+                const sessions = Number.parseInt(raw || '0', 10);
+                return (Number.isFinite(sessions) ? sessions : 0) < 3;
+            } catch (e) {
+                return false;
+            }
+        }
+
         function generateRoomNavHTML(currentRoom) {
             ensureRoomSystemsState();
             const readyCrops = getReadyCropCount();
+            const beginnerMode = useBeginnerRoomNav();
             let html = '<nav class="room-nav" id="room-nav" role="navigation" aria-label="Room navigation">';
+            const lockedRooms = [];
             for (const id of ROOM_IDS) {
                 const room = ROOMS[id];
                 const status = getRoomUnlockStatus(id);
                 const unlocked = !!status.unlocked;
                 const isActive = id === currentRoom;
+                if (beginnerMode && !unlocked) {
+                    lockedRooms.push({ id, room, status });
+                    continue;
+                }
                 const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
                 const bonusHint = room.bonus ? ` (Bonus: ${getRoomBonusLabel(id)})` : '';
                 const lockBadge = unlocked ? '' : '<span class="room-lock-badge" aria-hidden="true">🔒</span>';
@@ -4397,6 +4417,21 @@
                 </button>`;
             }
             html += '</nav>';
+            if (beginnerMode && lockedRooms.length > 0) {
+                const lockedHTML = lockedRooms.map(({ id, room, status }) => {
+                    const lockRequirement = status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked';
+                    return `<button class="room-btn locked room-coming-item" type="button" data-room="${id}"
+                        aria-label="Go to ${room.name}. Locked. Requirement: ${lockRequirement}." aria-disabled="true" tabindex="0"
+                        title="${room.name} ${lockRequirement}">
+                        <span class="room-coming-icon" aria-hidden="true">${room.icon}</span>
+                        <span class="room-coming-copy"><strong>${room.name}</strong><span>${lockRequirement}</span></span>
+                    </button>`;
+                }).join('');
+                html += `<section class="room-coming-wrap" aria-label="Locked rooms">
+                    <button class="room-coming-toggle" id="room-coming-toggle" type="button" aria-expanded="false" aria-controls="room-coming-panel">Coming Soon (${lockedRooms.length})</button>
+                    <div class="room-coming-panel" id="room-coming-panel" hidden role="list">${lockedHTML}</div>
+                </section>`;
+            }
             return html;
         }
 
@@ -4427,6 +4462,9 @@
             const unlockResult = unlockRoom(roomId);
             if (!unlockResult.ok) {
                 showToast(`🔒 ${unlockResult.reason}`, '#FFA726');
+                if (typeof SoundManager !== 'undefined' && SoundManager.playSFXByName) {
+                    SoundManager.playSFXByName('error-soft', SoundManager.sfx.miss);
+                }
                 return;
             }
             if (!unlockResult.already) {
