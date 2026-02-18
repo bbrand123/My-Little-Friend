@@ -80,6 +80,23 @@
             return Math.round(base + statBonus);
         }
 
+        function getStageRewardWeight(stage) {
+            if (stage === 'elder') return 1.12;
+            if (stage === 'adult') return 1.06;
+            if (stage === 'child') return 1.0;
+            return 0.92;
+        }
+
+        function getCompetitionRewardMultiplier(pet, difficultyScale) {
+            const stageWeight = getStageRewardWeight((pet && pet.growthStage) || 'baby');
+            const power = Math.max(0, Number(calculateBattleStat(pet)) || 0);
+            const powerNorm = Math.max(0.45, Math.min(1.6, power / 72));
+            const powerDamp = Math.max(0.85, 1.08 - ((powerNorm - 1) * 0.24));
+            const difficulty = Math.max(0.75, Number(difficultyScale) || 1);
+            const difficultyWeight = Math.max(0.88, Math.min(1.24, 0.92 + (difficulty - 1) * 0.22));
+            return Math.max(0.8, Math.min(1.3, stageWeight * powerDamp * difficultyWeight));
+        }
+
         function calculateMoveDamage(move, attacker, defender) {
             const stat = attacker[move.stat] ?? 50;
             const statMult = stat / 50; // 1.0 at 50, 2.0 at 100
@@ -348,9 +365,12 @@
 
             function endBattle(won) {
                 const comp = initCompetitionState();
+                const battleDifficulty = Math.max(0.8, oppMaxHP / Math.max(1, playerMaxHP));
+                const rewardMult = getCompetitionRewardMultiplier(pet, battleDifficulty);
                 if (won) {
                     comp.battlesWon++;
-                    pet.happiness = clamp(pet.happiness + 15, 0, 100);
+                    const happyGain = Math.max(8, Math.round(11 * rewardMult));
+                    pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                     pet.careActions = (pet.careActions || 0) + 1;
                     if (typeof addJournalEntry === 'function') {
                         const petName = pet.name || 'Pet';
@@ -358,15 +378,16 @@
                         else if (comp.battlesWon % 5 === 0) addJournalEntry('⚔️', `${petName} has won ${comp.battlesWon} battles!`);
                     }
                     setTimeout(() => {
-                        showToast('⚔️ Battle Won! +15 Happiness!', '#FFD700');
-                        announce('Victory! You won the battle! Plus 15 happiness!', true);
+                        showToast(`⚔️ Battle Won! +${happyGain} Happiness!`, '#FFD700');
+                        announce(`Victory! You won the battle! Plus ${happyGain} happiness!`, true);
                     }, 500);
                 } else {
                     comp.battlesLost++;
-                    pet.happiness = clamp(pet.happiness + 5, 0, 100);
+                    const happyGain = Math.max(3, Math.round(4 * rewardMult));
+                    pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                     setTimeout(() => {
-                        showToast('⚔️ Good fight! +5 Happiness for trying!', '#64B5F6');
-                        announce('Defeat. Good fight though! Plus 5 happiness for trying.', true);
+                        showToast(`⚔️ Good fight! +${happyGain} Happiness for trying!`, '#64B5F6');
+                        announce(`Defeat. Good fight though! Plus ${happyGain} happiness for trying.`, true);
                     }, 500);
                 }
                 saveGame();
@@ -663,15 +684,20 @@
 
                 function endBossFight(bossId, won) {
                     const comp = initCompetitionState();
+                    const avgTeamPower = allPets.length > 0
+                        ? allPets.reduce((sum, p) => sum + (Number(calculateBattleStat(p)) || 0), 0) / allPets.length
+                        : (Number(calculateBattleStat(gameState.pet)) || 60);
+                    const bossDifficulty = Math.max(1, boss.maxHP / Math.max(40, avgTeamPower));
+                    const rewardMult = getCompetitionRewardMultiplier(gameState.pet || allPets[0], bossDifficulty);
                     if (won) {
                         comp.bossesDefeated[bossId] = { defeated: true, defeatedAt: Date.now() };
                         // Apply rewards only to alive pets (skip fainted ones)
                         const rewards = boss.rewards;
                         allPets.forEach((p, idx) => {
                             if (!p || petHPs[idx] <= 0) return;
-                            if (rewards.happiness) p.happiness = clamp(p.happiness + rewards.happiness, 0, 100);
-                            if (rewards.energy) p.energy = clamp(p.energy + rewards.energy, 0, 100);
-                            if (rewards.hunger) p.hunger = clamp(p.hunger + rewards.hunger, 0, 100);
+                            if (rewards.happiness) p.happiness = clamp(p.happiness + Math.max(4, Math.round(rewards.happiness * 0.85 * rewardMult)), 0, 100);
+                            if (rewards.energy) p.energy = clamp(p.energy + Math.max(4, Math.round(rewards.energy * 0.85 * rewardMult)), 0, 100);
+                            if (rewards.hunger) p.hunger = clamp(p.hunger + Math.max(3, Math.round(rewards.hunger * 0.85 * rewardMult)), 0, 100);
                             p.careActions = (p.careActions || 0) + 1;
                         });
                         // Grant sticker reward if defined
@@ -687,9 +713,10 @@
                         }, 500);
                     } else {
                         // Consolation rewards apply even if all pets fainted.
+                        const consolation = Math.max(2, Math.round(4 * rewardMult));
                         allPets.forEach((p) => {
                             if (!p) return;
-                            p.happiness = clamp(p.happiness + 5, 0, 100);
+                            p.happiness = clamp(p.happiness + consolation, 0, 100);
                         });
                         if (gameState.pets && gameState.pets[gameState.activePetIndex]) {
                             gameState.pet = gameState.pets[gameState.activePetIndex];
@@ -838,7 +865,10 @@
                     if (comp.showsEntered === 1) addJournalEntry('🏅', `${petName} entered their first Pet Show! Rank: ${result.rank.name}`);
                 }
                 // Reward pet for participating
-                pet.happiness = clamp(pet.happiness + 10, 0, 100);
+                const showDifficulty = 0.95 + (result.totalScore / 120);
+                const showRewardMult = getCompetitionRewardMultiplier(pet, showDifficulty);
+                const showGain = Math.max(6, Math.round(8 * showRewardMult));
+                pet.happiness = clamp(pet.happiness + showGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
                 comp.lastShowTime = now;
             } else {
@@ -1045,12 +1075,15 @@
                     comp.obstacleBestScore = totalScore;
                 }
 
-                pet.happiness = clamp(pet.happiness + 12, 0, 100);
+                const maxPossible = OBSTACLE_COURSE_STAGES.reduce((s, st) => s + st.points, 0);
+                const pct = Math.round((totalScore / maxPossible) * 100);
+                const obstacleDifficulty = 0.9 + (pct / 100);
+                const obstacleRewardMult = getCompetitionRewardMultiplier(pet, obstacleDifficulty);
+                const obstacleGain = Math.max(6, Math.round(9 * obstacleRewardMult));
+                pet.happiness = clamp(pet.happiness + obstacleGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
                 saveGame();
 
-                const maxPossible = OBSTACLE_COURSE_STAGES.reduce((s, st) => s + st.points, 0);
-                const pct = Math.round((totalScore / maxPossible) * 100);
                 let grade = 'D';
                 if (pct >= 90) grade = 'S';
                 else if (pct >= 75) grade = 'A';
@@ -1318,6 +1351,8 @@
 
                 function endRivalFight(rivalIdx, won) {
                     const comp = initCompetitionState();
+                    const rivalDifficulty = 1 + (trainer.difficulty * 0.14);
+                    const rewardMult = getCompetitionRewardMultiplier(pet, rivalDifficulty);
                     if (won) {
                         comp.rivalBattlesWon++;
                         const isFirstDefeat = !comp.rivalsDefeated.includes(rivalIdx);
@@ -1327,15 +1362,17 @@
                         if (rivalIdx >= comp.currentRivalIndex) {
                             comp.currentRivalIndex = rivalIdx + 1;
                         }
-                        pet.happiness = clamp(pet.happiness + 15 + trainer.difficulty * 2, 0, 100);
+                        const happyGain = Math.max(8, Math.round((8 + trainer.difficulty * 1.8) * rewardMult));
+                        pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                         pet.careActions = (pet.careActions || 0) + 1;
                         setTimeout(() => {
-                            showToast(`🏅 Defeated ${trainer.name}! +${15 + trainer.difficulty * 2} Happiness!`, '#FFD700');
-                            announce(`Victory! Rival ${trainer.name} defeated! Plus ${15 + trainer.difficulty * 2} happiness!`, true);
+                            showToast(`🏅 Defeated ${trainer.name}! +${happyGain} Happiness!`, '#FFD700');
+                            announce(`Victory! Rival ${trainer.name} defeated! Plus ${happyGain} happiness!`, true);
                         }, 500);
                     } else {
                         comp.rivalBattlesLost++;
-                        pet.happiness = clamp(pet.happiness + 5, 0, 100);
+                        const happyGain = Math.max(3, Math.round(4 * rewardMult));
+                        pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                         setTimeout(() => {
                             showToast(`Keep training! ${trainer.name} is tough!`, '#64B5F6');
                             announce(`Defeat. Keep training! ${trainer.name} is tough.`, true);

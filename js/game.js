@@ -357,6 +357,67 @@
             return Math.max(min, Math.min(max, value));
         }
 
+        function applyProbabilisticDelta(value, amount, direction) {
+            const safeAmount = Math.max(0, Number(amount) || 0);
+            const whole = Math.floor(safeAmount);
+            const fractional = safeAmount - whole;
+            let delta = whole;
+            if (Math.random() < fractional) delta += 1;
+            if (direction === 'up') return clamp(value + delta, 0, 100);
+            return clamp(value - delta, 0, 100);
+        }
+
+        function adjustNeglectCount(currentValue, amount, direction) {
+            const safeAmount = Math.max(0, Number(amount) || 0);
+            const whole = Math.floor(safeAmount);
+            const fractional = safeAmount - whole;
+            let delta = whole;
+            if (Math.random() < fractional) delta += 1;
+            if (direction === 'up') return Math.max(0, (Number(currentValue) || 0) + delta);
+            return Math.max(0, (Number(currentValue) || 0) - delta);
+        }
+
+        function getPetNeedSnapshot(pet) {
+            if (!pet) return null;
+            return {
+                hunger: normalizePetNeedValue(pet.hunger, 70),
+                cleanliness: normalizePetNeedValue(pet.cleanliness, 70),
+                happiness: normalizePetNeedValue(pet.happiness, 70),
+                energy: normalizePetNeedValue(pet.energy, 70)
+            };
+        }
+
+        function getLowestNeedStatKey(pet, snapshot) {
+            const stats = snapshot || getPetNeedSnapshot(pet);
+            if (!stats) return 'hunger';
+            return Object.entries(stats)
+                .sort((a, b) => a[1] - b[1])[0][0];
+        }
+
+        function getCareActionPrimaryNeed(action) {
+            const map = {
+                feed: 'hunger',
+                wash: 'cleanliness',
+                play: 'happiness',
+                sleep: 'energy',
+                groom: 'cleanliness',
+                exercise: 'happiness',
+                cuddle: 'happiness',
+                treat: 'hunger'
+            };
+            return map[action] || null;
+        }
+
+        function getCareFocusMultiplier(action, pet, snapshot) {
+            const primaryNeed = getCareActionPrimaryNeed(action);
+            if (!primaryNeed || !pet) return 1;
+            const lowestNeed = getLowestNeedStatKey(pet, snapshot);
+            if (lowestNeed !== primaryNeed) return 1;
+            const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
+            const focusedBonus = getStageBalance(stage).focusedCareBonus || 0;
+            return 1 + focusedBonus;
+        }
+
         function isFiniteNumber(value) {
             return typeof value === 'number' && Number.isFinite(value);
         }
@@ -397,7 +458,7 @@
                 pet.birthdate = Date.now() - estimatedAgeMs;
             }
             const ageInHours = (Date.now() - pet.birthdate) / (1000 * 60 * 60);
-            if (!pet.growthStage) pet.growthStage = getGrowthStage(pet.careActions, ageInHours);
+            if (!pet.growthStage) pet.growthStage = getGrowthStage(pet.careActions, ageInHours, pet.careQuality || 'average');
             if (!pet.careHistory) pet.careHistory = [];
             if (typeof pet.neglectCount !== 'number' || !Number.isFinite(pet.neglectCount)) pet.neglectCount = 0;
             if (!pet.careQuality) pet.careQuality = 'average';
@@ -1703,16 +1764,18 @@
                 coop: 1.08
             };
             const multiplier = gameBonus[gameId] || 1;
-            const payout = Math.max(4, Math.round((6 + Math.sqrt(score) * 4) * multiplier));
+            const difficulty = typeof getMinigameDifficulty === 'function' ? getMinigameDifficulty(gameId) : 1;
+            const difficultyRewardMult = Math.max(0.9, Math.min(1.22, 0.96 + ((difficulty - 1) * 0.32)));
+            const payout = Math.max(3, Math.round((5 + Math.sqrt(score) * 3.2) * multiplier * difficultyRewardMult));
             const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardMultiplier === 'number')
                 ? ECONOMY_BALANCE.minigameRewardMultiplier
                 : 1;
-            // Strong pets still earn more, but the spread is moderated for economy stability.
-            const petStatRewardMult = 0.92 + (getPetMiniGameStrength(gameState.pet) * 0.28);
+            // Rewards still scale with pet strength, but with tighter spread.
+            const petStatRewardMult = 0.9 + (getPetMiniGameStrength(gameState.pet) * 0.18);
             const cap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardCap === 'number')
                 ? ECONOMY_BALANCE.minigameRewardCap
                 : 9999;
-            const tuned = Math.max(4, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult)));
+            const tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult)));
             addCoins(tuned, 'Mini-game', true);
             return tuned;
         }
@@ -2200,10 +2263,20 @@
         function initDailyChecklist() {
             const today = getTodayString();
             if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
+                const stage = (gameState.pet && GROWTH_STAGES[gameState.pet.growthStage]) ? gameState.pet.growthStage : 'baby';
                 gameState.dailyChecklist = {
                     date: today,
+                    stage,
                     progress: { feedCount: 0, minigameCount: 0, harvestCount: 0, parkVisits: 0, totalCareActions: 0 },
-                    tasks: DAILY_TASKS.map(t => ({ id: t.id, done: false })),
+                    tasks: DAILY_TASKS.map(t => {
+                        const target = typeof getDailyTaskTarget === 'function' ? getDailyTaskTarget(t, stage) : t.target;
+                        return {
+                            id: t.id,
+                            done: false,
+                            target,
+                            name: typeof getDailyTaskName === 'function' ? getDailyTaskName(t, target) : t.name
+                        };
+                    }),
                     _completionCounted: false,
                     _rewardGranted: false
                 };
@@ -2218,9 +2291,14 @@
             // Check completions
             let newlyCompleted = [];
             DAILY_TASKS.forEach((task, idx) => {
-                if (cl.tasks[idx] && !cl.tasks[idx].done && cl.progress[task.trackKey] >= task.target) {
+                if (!cl.tasks[idx]) return;
+                const scaledTarget = Number(cl.tasks[idx].target || task.target || 1);
+                if (!cl.tasks[idx].done && cl.progress[task.trackKey] >= scaledTarget) {
                     cl.tasks[idx].done = true;
-                    newlyCompleted.push(task);
+                    newlyCompleted.push(Object.assign({}, task, {
+                        target: scaledTarget,
+                        name: cl.tasks[idx].name || (typeof getDailyTaskName === 'function' ? getDailyTaskName(task, scaledTarget) : task.name)
+                    }));
                 }
             });
             // Track daily completion count for trophies
@@ -2759,7 +2837,7 @@
                         normalizePetDataForSave(parsed.pet, () => { _needsSaveAfterLoad = true; });
                         // Re-check growth stage to detect elder
                         const currentAge = (Date.now() - parsed.pet.birthdate) / (1000 * 60 * 60);
-                        const detectedStage = getGrowthStage(parsed.pet.careActions, currentAge);
+                        const detectedStage = getGrowthStage(parsed.pet.careActions, currentAge, parsed.pet.careQuality || 'average');
                         if (detectedStage !== parsed.pet.growthStage) {
                             parsed.pet.growthStage = detectedStage;
                         }
@@ -4011,14 +4089,17 @@
             }
             if (!_neglectTickCounters[petId]) _neglectTickCounters[petId] = 0;
             _neglectTickCounters[petId]++;
-            const isNeglected = pet.hunger < 20 || pet.cleanliness < 20 || pet.happiness < 20 || pet.energy < 20;
+            const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
+            const stageBalance = getStageBalance(stage);
+            const neglectThreshold = stageBalance.neglectThreshold || 20;
+            const isNeglected = pet.hunger < neglectThreshold || pet.cleanliness < neglectThreshold || pet.happiness < neglectThreshold || pet.energy < neglectThreshold;
             if (_neglectTickCounters[petId] >= 10) {
                 _neglectTickCounters[petId] = 0;
                 if (isNeglected) {
-                    pet.neglectCount = (pet.neglectCount || 0) + 1;
+                    pet.neglectCount = adjustNeglectCount(pet.neglectCount, stageBalance.neglectGainMultiplier || 1, 'up');
                 } else if ((pet.neglectCount || 0) > 0) {
-                    // Gradually recover from neglect when all stats are healthy
-                    pet.neglectCount = pet.neglectCount - 1;
+                    // Later stages recover neglect more slowly.
+                    pet.neglectCount = adjustNeglectCount(pet.neglectCount, stageBalance.neglectRecoveryMultiplier || 1, 'down');
                 }
             }
 
@@ -4061,7 +4142,7 @@
             if (!pet) return false;
 
             const ageInHours = getPetAge(pet);
-            const currentStage = getGrowthStage(pet.careActions, ageInHours);
+            const currentStage = getGrowthStage(pet.careActions, ageInHours, pet.careQuality || 'average');
             const lastStage = pet.lastGrowthStage || 'baby';
 
             if (currentStage !== lastStage) {
@@ -4130,7 +4211,17 @@
             if (pet.growthStage !== 'adult' && pet.growthStage !== 'elder') return false;
 
             const qualityData = CARE_QUALITY[pet.careQuality];
-            return qualityData && qualityData.canEvolve;
+            if (!qualityData || !qualityData.canEvolve) return false;
+
+            const recentHistory = Array.isArray(pet.careHistory) ? pet.careHistory.slice(-20) : [];
+            const historyAvg = recentHistory.length > 0
+                ? recentHistory.reduce((sum, entry) => sum + (Number(entry.average) || 0), 0) / recentHistory.length
+                : ((Number(pet.hunger) || 0) + (Number(pet.cleanliness) || 0) + (Number(pet.happiness) || 0) + (Number(pet.energy) || 0)) / 4;
+            const neglectCount = Number(pet.neglectCount) || 0;
+            const performanceScore = historyAvg - (neglectCount * 3.5);
+
+            // Keep evolution tied to excellent, active care performance instead of passive waiting.
+            return performanceScore >= 78 && neglectCount <= 4;
         }
 
         function evolvePet(pet) {
@@ -4992,6 +5083,7 @@
                 happiness: gameState.pet.happiness,
                 energy: gameState.pet.energy
             };
+            const focusSnapshot = getPetNeedSnapshot(gameState.pet);
             garden.inventory[cropId]--;
             if (garden.inventory[cropId] <= 0) {
                 delete garden.inventory[cropId];
@@ -5002,7 +5094,9 @@
             const feedPrefMod = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(gameState.pet, 'feed', cropId) : 1.0;
             const feedPersonalityMod = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(gameState.pet, 'feed') : 1.0;
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(gameState.pet) : 0;
-            const feedTotalMod = feedMultiplier * feedPrefMod * feedPersonalityMod;
+            const focusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('feed', gameState.pet, focusSnapshot) : 1.0;
+            const feedTotalMod = feedMultiplier * feedPrefMod * feedPersonalityMod * focusMult;
+            const flatTuning = 0.92;
 
             // Track favorite food feeds
             if (feedPrefMod > 1) {
@@ -5010,12 +5104,12 @@
                 gameState.totalFavoriteFoodFed++;
             }
 
-            gameState.pet.hunger = clamp(gameState.pet.hunger + Math.round((crop.hungerValue + feedWisdom) * feedTotalMod), 0, 100);
+            gameState.pet.hunger = clamp(gameState.pet.hunger + Math.round((crop.hungerValue + feedWisdom) * flatTuning * feedTotalMod), 0, 100);
             if (crop.happinessValue) {
-                gameState.pet.happiness = clamp(gameState.pet.happiness + Math.round(crop.happinessValue * feedTotalMod), 0, 100);
+                gameState.pet.happiness = clamp(gameState.pet.happiness + Math.round(crop.happinessValue * flatTuning * feedTotalMod), 0, 100);
             }
             if (crop.energyValue) {
-                gameState.pet.energy = clamp(gameState.pet.energy + Math.round(crop.energyValue * feedTotalMod), 0, 100);
+                gameState.pet.energy = clamp(gameState.pet.energy + Math.round(crop.energyValue * flatTuning * feedTotalMod), 0, 100);
             }
 
             // Track care actions for growth
@@ -5545,31 +5639,46 @@
                     const cleanMult = pMods ? pMods.cleanlinessDecayMultiplier : 1;
                     const happyMult = pMods ? pMods.happinessDecayMultiplier : 1;
                     const energyMult = pMods ? pMods.energyDecayMultiplier : 1;
+                    const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
+                    const stageBalance = getStageBalance(stage);
+                    const stageDecayMult = stageBalance.needDecayMultiplier || 1;
 
                     // Elder wisdom reduces decay
                     const elderReduction = pet.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
 
-                    // Base decay with personality & elder modifiers (round to avoid float drift)
-                    pet.hunger = Math.round(clamp(pet.hunger - 1 * hungerMult * elderReduction, 0, 100));
-                    pet.cleanliness = Math.round(clamp(pet.cleanliness - 1 * cleanMult * elderReduction, 0, 100));
-                    pet.happiness = Math.round(clamp(pet.happiness - 1 * happyMult * elderReduction, 0, 100));
+                    // Stage-aware base decay with probabilistic fractional handling.
+                    pet.hunger = applyProbabilisticDelta(pet.hunger, 1 * hungerMult * elderReduction * stageDecayMult, 'down');
+                    pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, 1 * cleanMult * elderReduction * stageDecayMult, 'down');
+                    pet.happiness = applyProbabilisticDelta(pet.happiness, 1 * happyMult * elderReduction * stageDecayMult, 'down');
                     const baseEnergyDelta = (1 + energyDecayBonus - energyRegenBonus);
                     if (baseEnergyDelta >= 0) {
-                        pet.energy = Math.round(clamp(pet.energy - baseEnergyDelta * energyMult * elderReduction, 0, 100));
+                        pet.energy = applyProbabilisticDelta(pet.energy, baseEnergyDelta * energyMult * elderReduction * stageDecayMult, 'down');
                     } else {
                         const energyRecoveryMult = energyMult > 0 ? (1 / energyMult) : 1;
-                        pet.energy = Math.round(clamp(pet.energy - baseEnergyDelta * energyRecoveryMult, 0, 100));
+                        const recoveryStageMod = Math.max(0.7, 1 - ((stageDecayMult - 1) * 0.25));
+                        pet.energy = applyProbabilisticDelta(pet.energy, Math.abs(baseEnergyDelta) * energyRecoveryMult * recoveryStageMod, 'up');
                     }
 
                     // Extra weather-based decay when outdoors
                     if (isOutdoor) {
-                        pet.happiness = clamp(pet.happiness - weatherData.happinessDecayModifier, 0, 100);
-                        pet.energy = clamp(pet.energy - weatherData.energyDecayModifier, 0, 100);
-                        pet.cleanliness = clamp(pet.cleanliness - weatherData.cleanlinessDecayModifier, 0, 100);
+                        pet.happiness = applyProbabilisticDelta(pet.happiness, weatherData.happinessDecayModifier * stageDecayMult, 'down');
+                        pet.energy = applyProbabilisticDelta(pet.energy, weatherData.energyDecayModifier * stageDecayMult, 'down');
+                        pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, weatherData.cleanlinessDecayModifier * stageDecayMult, 'down');
+                    }
+
+                    // Neglect pressure scales up by stage and targets the weakest need.
+                    const neglectThreshold = stageBalance.neglectThreshold || 20;
+                    const isNeglectingNow = pet.hunger < neglectThreshold || pet.cleanliness < neglectThreshold || pet.happiness < neglectThreshold || pet.energy < neglectThreshold;
+                    if (isNeglectingNow) {
+                        const lowestNeed = getLowestNeedStatKey(pet);
+                        if (lowestNeed) {
+                            pet[lowestNeed] = applyProbabilisticDelta(pet[lowestNeed], 0.45 * stageDecayMult, 'down');
+                        }
+                        pet.happiness = applyProbabilisticDelta(pet.happiness, 0.2 * stageDecayMult, 'down');
                     }
 
                     // Announce when any stat drops below 20% (threshold crossing)
-                    const lowThreshold = 20;
+                    const lowThreshold = neglectThreshold;
                     const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
                     const lowStats = [];
                     if (pet.hunger < lowThreshold && prevHunger >= lowThreshold) lowStats.push('hunger');
@@ -5590,26 +5699,21 @@
                     if (gameState.pets && gameState.pets.length > 1) {
                         // Sync active pet to array first so its decayed stats are preserved
                         syncActivePetToArray();
-                        const applyProbabilisticDecay = (value, amount) => {
-                            const safeAmount = Math.max(0, amount);
-                            const whole = Math.floor(safeAmount);
-                            const fractional = safeAmount - whole;
-                            let delta = whole;
-                            if (Math.random() < fractional) delta += 1;
-                            return clamp(value - delta, 0, 100);
-                        };
                         gameState.pets.forEach((p, idx) => {
                             if (!p || idx === gameState.activePetIndex) return;
+                            const pStage = p.growthStage && GROWTH_STAGES[p.growthStage] ? p.growthStage : 'baby';
+                            const pStageBalance = getStageBalance(pStage);
+                            const pDecayMult = pStageBalance.needDecayMultiplier || 1;
                             p.hunger = normalizePetNeedValue(p.hunger, 70);
                             p.cleanliness = normalizePetNeedValue(p.cleanliness, 70);
                             p.happiness = normalizePetNeedValue(p.happiness, 70);
                             p.energy = normalizePetNeedValue(p.energy, 70);
-                            p.hunger = applyProbabilisticDecay(p.hunger, 0.5);
-                            p.cleanliness = applyProbabilisticDecay(p.cleanliness, 0.5);
+                            p.hunger = applyProbabilisticDelta(p.hunger, 0.5 * pDecayMult, 'down');
+                            p.cleanliness = applyProbabilisticDelta(p.cleanliness, 0.5 * pDecayMult, 'down');
                             // Net happiness: -0.5 decay + companion bonus (dynamically calculated)
                             const companionBonus = (gameState.pets.length > 1) ? 0.3 : 0;
-                            p.happiness = applyProbabilisticDecay(p.happiness, 0.5 - companionBonus);
-                            p.energy = applyProbabilisticDecay(p.energy, 0.5);
+                            p.happiness = applyProbabilisticDelta(p.happiness, Math.max(0, (0.5 - companionBonus) * pDecayMult), 'down');
+                            p.energy = applyProbabilisticDelta(p.energy, 0.5 * pDecayMult, 'down');
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -5618,11 +5722,12 @@
                                 _neglectTickCounters[pid]++;
                                 if (_neglectTickCounters[pid] >= 10) {
                                     _neglectTickCounters[pid] = 0;
-                                    const neglected = p.hunger < 20 || p.cleanliness < 20 || p.happiness < 20 || p.energy < 20;
+                                    const neglectThreshold = pStageBalance.neglectThreshold || 20;
+                                    const neglected = p.hunger < neglectThreshold || p.cleanliness < neglectThreshold || p.happiness < neglectThreshold || p.energy < neglectThreshold;
                                     if (neglected) {
-                                        p.neglectCount = (p.neglectCount || 0) + 1;
+                                        p.neglectCount = adjustNeglectCount(p.neglectCount, pStageBalance.neglectGainMultiplier || 1, 'up');
                                     } else if ((p.neglectCount || 0) > 0) {
-                                        p.neglectCount = p.neglectCount - 1;
+                                        p.neglectCount = adjustNeglectCount(p.neglectCount, pStageBalance.neglectRecoveryMultiplier || 1, 'down');
                                     }
                                 }
                             }

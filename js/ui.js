@@ -2978,10 +2978,12 @@
 
         // Shared standard-feed logic used by both careAction('feed') and openFeedMenu
         function performStandardFeed(pet) {
+            const focusSnapshot = (typeof getPetNeedSnapshot === 'function') ? getPetNeedSnapshot(pet) : null;
             const feedPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'feed') : 1;
             const feedPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'feed') : 1;
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-            const feedBonus = Math.round((20 + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref);
+            const focusMult = (typeof getCareFocusMultiplier === 'function') ? getCareFocusMultiplier('feed', pet, focusSnapshot) : 1.0;
+            const feedBonus = Math.round((17 + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult);
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
@@ -3089,7 +3091,8 @@
                     const washPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'wash') : 1;
                     const washPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'wash') : 1;
                     const washWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const washBonus = Math.round((20 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref);
+                    const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
+                    const washBonus = Math.round((17 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     if (washPref < 1) message = `😨 ${pet.name || 'Pet'} didn't enjoy that... ${message}`;
@@ -3103,7 +3106,8 @@
                     const playPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'play') : 1;
                     const playPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'play') : 1;
                     const playWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const playBonus = Math.round((20 + playWisdom) * getRoomBonus('play') * playPersonality * playPref);
+                    const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
+                    const playBonus = Math.round((17 + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     if (playPref < 1) message = `😨 ${pet.name || 'Pet'} wasn't into it... ${message}`;
@@ -3117,21 +3121,22 @@
                     const sleepPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'sleep') : 1;
                     const sleepPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'sleep') : 1;
                     const sleepWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const sleepFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('sleep', pet, beforeStats) : 1.0;
                     // Sleep is more effective at night (deep sleep) and less during the day (just a nap)
                     const sleepTime = gameState.timeOfDay || 'day';
-                    let sleepBonus = 25; // default nap
+                    let sleepBonus = 22; // default nap
                     let sleepAnnounce = 'Your pet had a nice nap!';
                     if (sleepTime === 'night') {
-                        sleepBonus = 40; // deep sleep at night
+                        sleepBonus = 35; // deep sleep at night
                         sleepAnnounce = 'Your pet had a wonderful deep sleep!';
                     } else if (sleepTime === 'sunset') {
-                        sleepBonus = 30; // good evening rest
+                        sleepBonus = 27; // good evening rest
                         sleepAnnounce = 'Your pet had a cozy evening rest!';
                     } else if (sleepTime === 'sunrise') {
-                        sleepBonus = 30; // nice morning sleep-in
+                        sleepBonus = 27; // nice morning sleep-in
                         sleepAnnounce = 'Your pet slept in a little!';
                     }
-                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref);
+                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * sleepFocusMult);
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
                     if (petContainer) petContainer.classList.add('sleep-anim', 'pet-sleepy-nod');
@@ -3159,11 +3164,12 @@
                     const groomPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'groom') : 1;
                     const groomPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'groom') : 1;
                     const groomWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const groomFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('groom', pet, beforeStats) : 1.0;
                     // Grooming - brush fur/feathers and trim nails
                     const groomBonus = getRoomBonus('groom');
                     const groomMod = groomPersonality * groomPref;
-                    const groomClean = Math.round((15 + groomWisdom) * groomBonus * groomMod);
-                    const groomHappy = Math.round((10 + groomWisdom) * groomBonus * groomMod);
+                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * groomFocusMult);
+                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
@@ -3178,9 +3184,10 @@
                     const exPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'exercise') : 1;
                     const exPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'exercise') : 1;
                     const exWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const exFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('exercise', pet, beforeStats) : 1.0;
                     // Exercise - take walks or play fetch
                     const exMod = exPersonality * exPref;
-                    const exBonus = Math.round((20 + exWisdom) * getRoomBonus('exercise') * exMod);
+                    const exBonus = Math.round((17 + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult);
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
@@ -3218,10 +3225,11 @@
                     const cuddlePersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'cuddle') : 1;
                     const cuddlePref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'cuddle') : 1;
                     const cuddleWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    const cuddleFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('cuddle', pet, beforeStats) : 1.0;
                     const cuddleMod = cuddlePersonality * cuddlePref;
                     // Petting/Cuddling - direct affection boosts happiness and energy
-                    pet.happiness = clamp(pet.happiness + Math.round((15 + cuddleWisdom) * cuddleMod), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(5 * cuddleMod), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod), 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     if (cuddlePref < 1) message = `😨 ${pet.name || 'Pet'} squirmed away! ${message}`;
                     else if (cuddleMod > 1.2) message = `💕 ${pet.name || 'Pet'} melted into your arms! ${message}`;
@@ -3590,7 +3598,7 @@
             const stage = GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
             const stageData = GROWTH_STAGES[stage];
             if (!stageData) return;
-            const progress = getGrowthProgress(pet.careActions || 0, getPetAge(pet), stage);
+            const progress = getGrowthProgress(pet.careActions || 0, getPetAge(pet), stage, pet.careQuality || 'average');
             const nextStage = getNextGrowthStage(stage);
             const isMythical = (getAllPetTypeData(pet.type) || {}).mythical;
 
@@ -4036,7 +4044,7 @@
             let itemsHTML = '';
 
             // Standard meal option
-            const feedBonus = Math.round(20 * getRoomBonus('feed'));
+            const feedBonus = Math.round(17 * getRoomBonus('feed'));
             const standardEffectText = `+${feedBonus} Food${getRoomBonus('feed') > 1 ? ' (room bonus!)' : ''}`;
             itemsHTML += `
                 <button class="feed-menu-item standard-meal" data-feed="standard" aria-label="Standard Meal: plus ${feedBonus} hunger">
@@ -6520,14 +6528,16 @@
             let tasksHTML = '';
             DAILY_TASKS.forEach((task, idx) => {
                 const isDone = cl.tasks[idx] && cl.tasks[idx].done;
+                const target = Number((cl.tasks[idx] && cl.tasks[idx].target) || task.target || 1);
+                const taskName = (cl.tasks[idx] && cl.tasks[idx].name) || (typeof getDailyTaskName === 'function' ? getDailyTaskName(task, target) : task.name);
                 const current = cl.progress[task.trackKey] || 0;
-                const progress = Math.min(current, task.target);
+                const progress = Math.min(current, target);
                 tasksHTML += `
-                    <div class="daily-task ${isDone ? 'done' : ''}" aria-label="${task.name}: ${isDone ? 'completed' : `${progress}/${task.target}`}">
+                    <div class="daily-task ${isDone ? 'done' : ''}" aria-label="${taskName}: ${isDone ? 'completed' : `${progress}/${target}`}">
                         <span class="daily-task-check">${isDone ? '✅' : '⬜'}</span>
                         <span class="daily-task-icon">${task.icon}</span>
-                        <span class="daily-task-name">${task.name}</span>
-                        <span class="daily-task-progress">${progress}/${task.target}</span>
+                        <span class="daily-task-name">${taskName}</span>
+                        <span class="daily-task-progress">${progress}/${target}</span>
                     </div>
                 `;
             });
