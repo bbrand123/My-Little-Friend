@@ -1416,6 +1416,18 @@
             font-weight: 800;
         }
 
+        .room-btn.locked {
+            opacity: 0.72;
+            filter: grayscale(0.25);
+        }
+
+        .room-lock-badge {
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            font-size: 0.7rem;
+        }
+
         .room-btn-icon {
             font-size: 1.3rem;
             line-height: 1;
@@ -1430,19 +1442,37 @@
 
         /* Room-specific ground styles */
         .pet-area.room-bedroom::after {
-            background: linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
+            background: var(--room-floor-overlay), linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
         }
         .pet-area.room-kitchen::after {
-            background: linear-gradient(180deg, #BDBDBD 0%, #9E9E9E 100%);
+            background: var(--room-floor-overlay), linear-gradient(180deg, #BDBDBD 0%, #9E9E9E 100%);
         }
         .pet-area.room-bathroom::after {
-            background: linear-gradient(180deg, #80DEEA 0%, #4DD0E1 100%);
+            background: var(--room-floor-overlay), linear-gradient(180deg, #80DEEA 0%, #4DD0E1 100%);
         }
         .pet-area.room-backyard::after {
-            background: linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
+            background: var(--room-floor-overlay), linear-gradient(180deg, #7CB342 0%, #558B2F 100%);
         }
         .pet-area.room-park::after {
-            background: linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
+            background: var(--room-floor-overlay), linear-gradient(180deg, #66BB6A 0%, #43A047 100%);
+        }
+        .pet-area.room-garden::after {
+            background: var(--room-floor-overlay), linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
+        }
+        .pet-area.room-library::after {
+            background: var(--room-floor-overlay), linear-gradient(180deg, #7A5A43 0%, #5C4030 100%);
+        }
+        .pet-area.room-arcade::after {
+            background: var(--room-floor-overlay), linear-gradient(180deg, #3F51B5 0%, #1A237E 100%);
+        }
+        .pet-area.room-spa::after {
+            background: var(--room-floor-overlay), linear-gradient(180deg, #66BBB3 0%, #3A9F98 100%);
+        }
+        .pet-area.room-observatory::after {
+            background: var(--room-floor-overlay), linear-gradient(180deg, #5C6BC0 0%, #3949AB 100%);
+        }
+        .pet-area.room-workshop::after {
+            background: var(--room-floor-overlay), linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
         }
 
         /* Room pattern overlays removed to reduce visual weight */
@@ -1468,6 +1498,31 @@
 
 .room-decor-inline {
     letter-spacing: 12px;
+}
+
+.room-theme-badge {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.68);
+    letter-spacing: 0.2px;
+}
+
+.room-furniture-slot {
+    position: absolute;
+    bottom: 30px;
+    font-size: 1.35rem;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.28));
+}
+
+.room-furniture-slot-1 {
+    left: 46px;
+}
+
+.room-furniture-slot-2 {
+    right: 46px;
 }
 
 .room-prop {
@@ -4441,6 +4496,13 @@
         .furniture-option.selected .furniture-name {
             font-weight: 600;
             color: #4ECDC4;
+        }
+
+        .furniture-option.disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         /* ==================== TUTORIAL STYLES ==================== */
@@ -11491,6 +11553,11 @@
     font-size: 1rem;
     opacity: 0.5;
 }
+.room-garden .ambient-element.amb-butterfly {
+    animation: ambButterflyFloat 9s ease-in-out infinite;
+    font-size: 1rem;
+    opacity: 0.58;
+}
 .room-backyard .ambient-element.amb-butterfly:nth-child(2) { animation-delay: -3s; animation-duration: 10s; }
 .room-backyard .ambient-element.amb-butterfly:nth-child(3) { animation-delay: -6s; animation-duration: 12s; }
 
@@ -11500,6 +11567,18 @@
     50% { transform: translate(60px, 5px) rotate(-5deg); }
     75% { transform: translate(30px, -10px) rotate(8deg); }
     100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.ambient-element.amb-firefly {
+    font-size: 0.8rem;
+    opacity: 0.2;
+    animation: ambFireflyGlow 4s ease-in-out infinite;
+}
+
+@keyframes ambFireflyGlow {
+    0%, 100% { transform: translateY(0px) scale(0.9); opacity: 0.16; }
+    35% { transform: translateY(-8px) scale(1.02); opacity: 0.62; }
+    70% { transform: translateY(-3px) scale(0.95); opacity: 0.32; }
 }
 
 /* Bathroom: drifting bubbles */
@@ -12907,10 +12986,84 @@ body.has-core-care-dock .duplicate-core-action {
         linear-gradient(180deg, transparent 52%, rgba(255,255,255,0.2));
 }
 
+.pet-area.room-library .room-art-back {
+    background:
+        repeating-linear-gradient(90deg, rgba(120, 86, 58, 0.18) 0 10px, rgba(72, 48, 33, 0.14) 10px 20px),
+        linear-gradient(180deg, rgba(255,255,255,0.14), transparent 48%);
+}
+
+.pet-area.room-arcade .room-art-back {
+    background:
+        repeating-linear-gradient(90deg, rgba(255, 64, 129, 0.11) 0 8px, rgba(124, 77, 255, 0.11) 8px 16px),
+        linear-gradient(180deg, rgba(255,255,255,0.12), transparent 42%);
+}
+
+.pet-area.room-spa .room-art-back {
+    background:
+        radial-gradient(18px 18px at 16% 74%, rgba(255,255,255,0.28), transparent 70%),
+        radial-gradient(20px 20px at 74% 76%, rgba(255,255,255,0.24), transparent 70%),
+        linear-gradient(180deg, rgba(255,255,255,0.1), transparent 46%);
+}
+
+.pet-area.room-observatory .room-art-back {
+    background:
+        radial-gradient(2px 2px at 22% 10%, rgba(255,255,255,0.5), transparent 4px),
+        radial-gradient(2px 2px at 56% 16%, rgba(255,255,255,0.45), transparent 4px),
+        radial-gradient(2px 2px at 80% 12%, rgba(255,255,255,0.5), transparent 4px),
+        linear-gradient(180deg, rgba(255,255,255,0.1), transparent 50%);
+}
+
+.pet-area.room-workshop .room-art-back {
+    background:
+        repeating-linear-gradient(45deg, rgba(110, 90, 78, 0.2) 0 10px, rgba(74, 58, 48, 0.16) 10px 20px),
+        linear-gradient(180deg, rgba(255,255,255,0.1), transparent 45%);
+}
+
 .pet-area[class*="room-"] .room-art-front {
     background:
+        var(--room-wallpaper-overlay),
         linear-gradient(180deg, rgba(255,255,255,0.18), transparent 46%),
         repeating-linear-gradient(120deg, transparent 0 12px, rgba(255,255,255,0.09) 12px 22px);
+}
+
+.pet-area.daytime .room-art-layer.room-art-back {
+    background-color: rgba(255, 244, 214, 0.08);
+}
+
+.pet-area.sunset .room-art-layer.room-art-back {
+    background-color: rgba(255, 153, 102, 0.16);
+}
+
+.pet-area.nighttime .room-art-layer.room-art-back {
+    background-color: rgba(18, 24, 44, 0.24);
+}
+
+.pet-area.sunrise .room-art-layer.room-art-back {
+    background-color: rgba(255, 205, 148, 0.12);
+}
+
+.pet-area.pet-theme-aquarium .room-art-front {
+    background:
+        radial-gradient(circle at 14% 22%, rgba(130, 210, 255, 0.22), transparent 24%),
+        radial-gradient(circle at 72% 28%, rgba(130, 210, 255, 0.18), transparent 26%),
+        repeating-linear-gradient(180deg, transparent 0 10px, rgba(120, 200, 255, 0.08) 10px 18px),
+        var(--room-wallpaper-overlay);
+}
+
+.pet-area.pet-theme-aquarium .pet-container .pet-svg {
+    filter: drop-shadow(0 0 10px rgba(95, 190, 255, 0.3));
+}
+
+.pet-area.pet-theme-nest .room-art-front {
+    background:
+        radial-gradient(12px 8px at 22% 72%, rgba(170, 120, 80, 0.22), transparent 70%),
+        radial-gradient(14px 9px at 68% 78%, rgba(170, 120, 80, 0.22), transparent 70%),
+        repeating-linear-gradient(30deg, rgba(130, 90, 50, 0.12) 0 6px, transparent 6px 16px),
+        var(--room-wallpaper-overlay);
+}
+
+.pet-area.pet-theme-nest .pet-container .pet-svg {
+    filter: drop-shadow(0 0 8px rgba(160, 100, 60, 0.22));
 }
 
 [data-theme="dark"] .room-art-layer {
