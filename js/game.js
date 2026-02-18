@@ -1970,11 +1970,10 @@
             setTimeout(() => el.remove(), 2000);
 
             // Announce stat changes for screen readers
-            const summary = changes.map(c => {
+            changes.forEach((c) => {
                 const sign = c.amount >= 0 ? '+' : '';
-                return `${c.label} ${sign}${c.amount}`;
-            }).join(', ');
-            announce(summary);
+                announce(`${c.label} ${sign}${c.amount}`);
+            });
         }
 
         // Update wellness bar display
@@ -2007,6 +2006,7 @@
         let _announceQueue = [];
         let _announceTimer = null;
         let _assertiveClearTimer = null;
+        const _announceRecentByKey = new Map();
 
         function getAnnouncementVerbosity() {
             try {
@@ -2021,32 +2021,61 @@
             return /score:|growth progress|now feeling|cooling down|throw again|running to get it|got it|bringing it back/.test(txt);
         }
 
-        function announce(message, assertive = false) {
+        function normalizeAnnounceOptions(assertiveOrOptions) {
+            if (typeof assertiveOrOptions === 'object' && assertiveOrOptions !== null) {
+                return {
+                    assertive: !!assertiveOrOptions.assertive,
+                    source: assertiveOrOptions.source || 'app',
+                    dedupeMs: Number.isFinite(assertiveOrOptions.dedupeMs) ? Math.max(0, assertiveOrOptions.dedupeMs) : 1800
+                };
+            }
+            return { assertive: !!assertiveOrOptions, source: 'app', dedupeMs: 1800 };
+        }
+
+        function flushAnnouncementQueue() {
+            const next = _announceQueue.shift();
+            if (!next) {
+                _announceTimer = null;
+                return;
+            }
+            const announcer = document.getElementById('live-announcer');
+            if (!announcer) {
+                _announceQueue = [];
+                _announceTimer = null;
+                return;
+            }
+            announcer.textContent = '';
+            setTimeout(() => { announcer.textContent = next; }, 60);
+            _announceTimer = setTimeout(flushAnnouncementQueue, 340);
+        }
+
+        function announce(message, assertiveOrOptions = false) {
+            const options = normalizeAnnounceOptions(assertiveOrOptions);
+            const assertive = options.assertive;
+            const plainMessage = String(message || '').trim();
+            if (!plainMessage) return;
             const verbosity = getAnnouncementVerbosity();
-            if (!assertive && verbosity === 'brief' && isRoutineAnnouncement(message)) return;
+            if (!assertive && verbosity === 'brief' && isRoutineAnnouncement(plainMessage)) return;
+            const key = plainMessage.toLowerCase();
+            const now = Date.now();
+            const recent = _announceRecentByKey.get(key) || 0;
+            if (now - recent < options.dedupeMs) return;
+            _announceRecentByKey.set(key, now);
             if (assertive) {
                 // Assertive messages bypass the queue — they're critical
                 const announcer = document.getElementById('live-announcer-assertive');
                 if (!announcer) return;
                 announcer.textContent = '';
-                setTimeout(() => { announcer.textContent = message; }, 100);
+                setTimeout(() => { announcer.textContent = plainMessage; }, 100);
                 if (_assertiveClearTimer) clearTimeout(_assertiveClearTimer);
                 _assertiveClearTimer = setTimeout(() => { announcer.textContent = ''; }, 1800);
                 return;
             }
 
-            // Queue polite messages and flush as a single combined announcement
-            _announceQueue.push(message);
-            if (_announceTimer) clearTimeout(_announceTimer);
-            _announceTimer = setTimeout(() => {
-                const announcer = document.getElementById('live-announcer');
-                if (!announcer) { _announceQueue = []; _announceTimer = null; return; }
-                const combined = _announceQueue.join('. ');
-                _announceQueue = [];
-                _announceTimer = null;
-                announcer.textContent = '';
-                setTimeout(() => { announcer.textContent = combined; }, 100);
-            }, 300);
+            // Queue polite messages and flush one at a time to keep announcements atomic.
+            _announceQueue.push(plainMessage);
+            if (_announceTimer) return;
+            _announceTimer = setTimeout(flushAnnouncementQueue, 40);
         }
 
         // ==================== ACHIEVEMENT SYSTEM ====================
@@ -4345,7 +4374,7 @@
         function generateRoomNavHTML(currentRoom) {
             ensureRoomSystemsState();
             const readyCrops = getReadyCropCount();
-            let html = '<nav class="room-nav" role="navigation" aria-label="Room navigation">';
+            let html = '<nav class="room-nav" id="room-nav" role="navigation" aria-label="Room navigation">';
             for (const id of ROOM_IDS) {
                 const room = ROOMS[id];
                 const status = getRoomUnlockStatus(id);
@@ -4354,9 +4383,11 @@
                 const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
                 const bonusHint = room.bonus ? ` (Bonus: ${getRoomBonusLabel(id)})` : '';
                 const lockBadge = unlocked ? '' : '<span class="room-lock-badge" aria-hidden="true">🔒</span>';
-                const lockHint = unlocked ? '' : ` ${status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked'}`;
+                const lockRequirement = status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked';
+                const lockHint = unlocked ? '' : ` ${lockRequirement}`;
+                const lockA11y = unlocked ? '' : `. Locked. Requirement: ${lockRequirement}.`;
                 html += `<button class="room-btn${isActive ? ' active' : ''}${unlocked ? '' : ' locked'}" type="button" data-room="${id}"
-                    aria-label="Go to ${room.name}" aria-pressed="${isActive}"
+                    aria-label="Go to ${room.name}${lockA11y}" aria-pressed="${isActive}" aria-disabled="${unlocked ? 'false' : 'true'}"
                     ${isActive ? 'aria-current="page"' : ''} tabindex="0" style="position:relative;"
                     title="${room.name}${bonusHint}${lockHint}">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
@@ -4458,6 +4489,11 @@
                         const themeMode = getRoomThemeMode(roomId, gameState.pet);
                         petArea.classList.remove('pet-theme-default', 'pet-theme-aquarium', 'pet-theme-nest');
                         petArea.classList.add(`pet-theme-${themeMode}`);
+                        petArea.setAttribute('data-current-room', roomId);
+                        const activePet = gameState.pet;
+                        const activePetData = activePet ? ((typeof getAllPetTypeData === 'function' ? getAllPetTypeData(activePet.type) : null) || PET_TYPES[activePet.type]) : null;
+                        const petLabel = (activePet && activePet.name) || (activePetData && activePetData.name) || 'pet';
+                        petArea.setAttribute('aria-label', `Your pet ${petLabel} in the ${room.name}`);
 
                         // Update room decor
                         const decor = petArea.querySelector('.room-decor');
@@ -4504,8 +4540,12 @@
             // Update nav buttons
             document.querySelectorAll('.room-btn').forEach(btn => {
                 const isActive = btn.dataset.room === roomId;
+                const status = getRoomUnlockStatus(btn.dataset.room);
+                const unlocked = !!(status && status.unlocked);
                 btn.classList.toggle('active', isActive);
+                btn.classList.toggle('locked', !unlocked);
                 btn.setAttribute('aria-pressed', isActive);
+                btn.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
                 if (isActive) {
                     btn.setAttribute('aria-current', 'page');
                 } else {

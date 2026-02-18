@@ -123,6 +123,14 @@
             outline: var(--focus-outline);
         }
 
+        .skip-link-rooms {
+            left: 180px;
+        }
+
+        .skip-link-status {
+            left: 340px;
+        }
+
         /* Focus styles for accessibility — only show outline on keyboard navigation */
         *:focus-visible {
             outline: var(--focus-outline);
@@ -1491,13 +1499,13 @@
             text-align: center;
             z-index: 1;
             pointer-events: none;
-    opacity: 0.85;
+    opacity: 0.72;
     text-shadow: var(--text-shadow-decorative);
     transition: opacity 0.5s ease;
 }
 
 .room-decor-inline {
-    letter-spacing: 12px;
+    letter-spacing: 10px;
 }
 
 .room-theme-badge {
@@ -1772,8 +1780,16 @@
             }
 
             .game-container {
-                padding: 16px;
+                padding: 12px;
                 border-radius: 18px;
+            }
+
+            .top-action-bar {
+                margin-bottom: 8px;
+            }
+
+            .top-action-group {
+                gap: 6px;
             }
 
             .action-btn {
@@ -1813,12 +1829,12 @@
             }
 
             .game-container {
-                padding: 14px;
+                padding: 10px;
                 border-radius: 15px;
             }
 
             .top-action-bar {
-                margin-bottom: 14px;
+                margin-bottom: 8px;
             }
 
             .pet-switcher {
@@ -1826,7 +1842,15 @@
             }
 
             .room-nav {
-                margin: 8px 0 10px;
+                margin: 4px 0 6px;
+                padding: 3px 2px;
+                gap: 4px;
+            }
+
+            .room-btn {
+                min-width: 42px;
+                min-height: 38px;
+                padding: 4px 6px;
             }
 
             .game-title {
@@ -3070,6 +3094,12 @@
             cursor: not-allowed;
         }
 
+        .fetch-done-btn:disabled {
+            opacity: 0.58;
+            cursor: not-allowed;
+            filter: saturate(0.7);
+        }
+
         .fetch-reward {
             position: absolute;
             font-size: 1.2rem;
@@ -4038,6 +4068,18 @@
             transition: border-color 0.2s, color 0.2s;
         }
 
+        .more-actions-toggle-state {
+            font-size: 0.62rem;
+            letter-spacing: 0.03em;
+            opacity: 0.78;
+        }
+
+        .more-actions-toggle.expanded {
+            border-color: #2f6f93;
+            background: rgba(80, 157, 201, 0.14);
+            color: #184962;
+        }
+
         .more-actions-toggle:hover,
         .more-actions-toggle:focus-visible {
             border-color: var(--color-secondary);
@@ -4136,7 +4178,7 @@
             font-weight: 700;
             line-height: 1.35;
             font-family: inherit;
-            animation: toastIn 0.4s ease forwards, toastOut 0.4s ease 3s forwards;
+            animation: toastIn 0.24s ease-out forwards, toastOut 0.24s ease-in 2.9s forwards;
             white-space: normal;
             overflow-wrap: anywhere;
     border-left: 4px solid var(--toast-color, #66BB6A);
@@ -12500,7 +12542,7 @@
 
 /* ==================== CORE CARE DOCK + COACH UI ==================== */
 body.has-core-care-dock {
-    padding-bottom: calc(122px + env(safe-area-inset-bottom));
+    padding-bottom: calc(138px + env(safe-area-inset-bottom));
 }
 
 body.has-core-care-dock .toast-container {
@@ -12520,8 +12562,8 @@ body.has-core-care-dock .toast-container {
 .core-care-dock {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    padding: 8px;
+    gap: 10px;
+    padding: 10px;
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -12619,7 +12661,7 @@ body.has-core-care-dock .toast-container {
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(245, 251, 255, 0.94));
     border: 1px solid rgba(72, 152, 210, 0.25);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
-    z-index: calc(var(--z-overlay) - 20);
+    z-index: calc(var(--z-overlay) - 25);
 }
 
 .coach-checklist-head {
@@ -12859,22 +12901,24 @@ body.has-core-care-dock .duplicate-core-action {
 
 @media (max-width: 720px) {
     body.has-core-care-dock {
-        padding-bottom: calc(128px + env(safe-area-inset-bottom));
+        padding-bottom: calc(178px + env(safe-area-inset-bottom));
     }
     .core-care-btn {
         min-height: 58px;
     }
     .coach-checklist {
         top: auto;
-        bottom: calc(92px + env(safe-area-inset-bottom));
+        bottom: calc(122px + env(safe-area-inset-bottom));
         right: 50%;
         transform: translateX(50%);
         width: min(360px, calc(100vw - 20px));
+        max-height: min(34vh, 250px);
+        overflow: auto;
     }
     .coach-checklist.minimized {
         width: auto;
         max-width: calc(100vw - 20px);
-        bottom: calc(88px + env(safe-area-inset-bottom));
+        bottom: calc(114px + env(safe-area-inset-bottom));
     }
     .reward-card-pop {
         left: 50%;
@@ -13076,13 +13120,15 @@ body.has-core-care-dock .duplicate-core-action {
 }
 
 .region-heading {
-    font-size: 0.86rem;
+    font-size: 0.9rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     font-weight: 900;
     text-align: left;
-    margin: 8px 4px 4px;
-    color: #244552;
+    margin: 10px 4px 6px;
+    color: #1f4253;
+    border-left: 4px solid rgba(31, 92, 120, 0.3);
+    padding-left: 8px;
 }
 
 .needs-section {
@@ -13114,7 +13160,7 @@ body.has-core-care-dock .duplicate-core-action {
 .need-bubble-value,
 .care-quality-hint,
 .name-char-count {
-    color: #24363c;
+    color: #1f323a;
 }
 
 .achievement-count-badge,
@@ -13188,15 +13234,15 @@ body.has-core-care-dock .duplicate-core-action {
 .shortcut-strip {
     margin: 2px 2px 8px;
     text-align: left;
-    font-size: 0.73rem;
-    color: #2a4956;
+    font-size: 0.78rem;
+    color: #203f4d;
     font-weight: 700;
     line-height: 1.35;
 }
 
 .shortcut-strip kbd {
-    font-size: 0.68rem;
-    padding: 1px 4px;
+    font-size: 0.72rem;
+    padding: 2px 5px;
     border-radius: 4px;
     border: 1px solid #9db6c3;
     background: #f6fbff;
