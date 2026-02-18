@@ -6864,7 +6864,7 @@
                             <div class="rewards-hub-card-label">Trophies</div>
                             <div class="rewards-hub-card-count">${trophyCount}/${trophyTotal}</div>
                         </button>
-                        <button class="rewards-hub-card ${canClaimStreak ? 'has-reward' : ''}" id="rh-streak" aria-label="Daily Streak: ${streak.current} days">
+                        <button class="rewards-hub-card ${canClaimStreak ? 'has-reward' : ''}" id="rh-streak" aria-label="Daily Streak: ${streak.current} day${streak.current !== 1 ? 's' : ''}">
                             <div class="rewards-hub-card-icon">🔥</div>
                             <div class="rewards-hub-card-label">Streak</div>
                             <div class="rewards-hub-card-count">${streak.current} day${streak.current !== 1 ? 's' : ''}</div>
