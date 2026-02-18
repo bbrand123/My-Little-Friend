@@ -190,6 +190,38 @@
             </button>`;
         }
 
+        function generateGoalLadderHTML() {
+            const ladder = (typeof getGoalLadder === 'function') ? getGoalLadder() : null;
+            if (!ladder) return '';
+            const now = ladder.now || { label: 'Care for your pet', progress: '', window: '5 min' };
+            const next = ladder.next || { label: 'Do one focused activity', progress: '', window: '20 min' };
+            const longTerm = ladder.longTerm || { label: 'Build your legacy', progress: '', window: 'Milestone' };
+            const memory = gameState.goalLadderMemory ? `<div class="goal-memory-hook">📝 ${escapeHTML(gameState.goalLadderMemory)}</div>` : '';
+            return `
+                <section class="goal-ladder" aria-label="Goal ladder">
+                    <h3 class="goal-ladder-title">Now / Next / Long-term</h3>
+                    <div class="goal-ladder-grid">
+                        <article class="goal-rung now">
+                            <div class="goal-rung-window">${escapeHTML(now.window || 'Now')}</div>
+                            <div class="goal-rung-label">${escapeHTML(now.label || 'Care action')}</div>
+                            <div class="goal-rung-progress">${escapeHTML(now.progress || '')}</div>
+                        </article>
+                        <article class="goal-rung next">
+                            <div class="goal-rung-window">${escapeHTML(next.window || 'Next')}</div>
+                            <div class="goal-rung-label">${escapeHTML(next.label || 'Session goal')}</div>
+                            <div class="goal-rung-progress">${escapeHTML(next.progress || '')}</div>
+                        </article>
+                        <article class="goal-rung long">
+                            <div class="goal-rung-window">${escapeHTML(longTerm.window || 'Long-term')}</div>
+                            <div class="goal-rung-label">${escapeHTML(longTerm.label || 'Milestone')}</div>
+                            <div class="goal-rung-progress">${escapeHTML(longTerm.progress || '')}</div>
+                        </article>
+                    </div>
+                    ${memory}
+                </section>
+            `;
+        }
+
         // ==================== PET AGE HUD (Feature 3) ====================
         function generatePetAgeHudHTML(pet) {
             const ageInHours = getPetAge(pet);
@@ -1805,6 +1837,8 @@
                     </div>
                 </div>
 
+                ${generateGoalLadderHTML()}
+
                 ${(() => {
                     const careQuality = pet.careQuality || 'average';
                     const qualityData = CARE_QUALITY[careQuality] || CARE_QUALITY.average;
@@ -2983,7 +3017,8 @@
             const feedPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'feed') : 1;
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
             const focusMult = (typeof getCareFocusMultiplier === 'function') ? getCareFocusMultiplier('feed', pet, focusSnapshot) : 1.0;
-            const feedBonus = Math.round((17 + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult);
+            const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
+            const feedBonus = Math.round((17 + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult * rewardCareMult);
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
@@ -3059,6 +3094,8 @@
                 happiness: pet.happiness,
                 energy: pet.energy
             };
+            const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
+            const rewardHappyFlat = (typeof getRewardHappinessFlatBonus === 'function') ? getRewardHappinessFlatBonus() : 0;
             let message = '';
 
             switch (action) {
@@ -3092,7 +3129,7 @@
                     const washPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'wash') : 1;
                     const washWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
-                    const washBonus = Math.round((17 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult);
+                    const washBonus = Math.round((17 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.wash);
                     if (washPref < 1) message = `😨 ${pet.name || 'Pet'} didn't enjoy that... ${message}`;
@@ -3107,7 +3144,7 @@
                     const playPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'play') : 1;
                     const playWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
-                    const playBonus = Math.round((17 + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult);
+                    const playBonus = Math.round((17 + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.play);
                     if (playPref < 1) message = `😨 ${pet.name || 'Pet'} wasn't into it... ${message}`;
@@ -3136,7 +3173,7 @@
                         sleepBonus = 27; // nice morning sleep-in
                         sleepAnnounce = 'Your pet slept in a little!';
                     }
-                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * sleepFocusMult);
+                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * sleepFocusMult * rewardCareMult);
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
                     if (petContainer) petContainer.classList.add('sleep-anim', 'pet-sleepy-nod');
@@ -3149,10 +3186,10 @@
                     const medPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'medicine') : 1;
                     const medMod = medPersonality * medPref;
                     // Medicine gives a gentle boost to all stats - helps pet feel better
-                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod), 0, 100);
-                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod), 0, 100);
-                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(10 * medMod), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod * rewardCareMult), 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * rewardCareMult), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * rewardCareMult), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(10 * medMod * rewardCareMult), 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.medicine);
                     if (medPref < 1) message = `😨 ${pet.name || 'Pet'} doesn't like medicine! ${message}`;
                     if (petContainer) petContainer.classList.add('heal-anim');
@@ -3168,8 +3205,8 @@
                     // Grooming - brush fur/feathers and trim nails
                     const groomBonus = getRoomBonus('groom');
                     const groomMod = groomPersonality * groomPref;
-                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * groomFocusMult);
-                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod);
+                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * groomFocusMult * rewardCareMult);
+                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.groom);
@@ -3187,7 +3224,7 @@
                     const exFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('exercise', pet, beforeStats) : 1.0;
                     // Exercise - take walks or play fetch
                     const exMod = exPersonality * exPref;
-                    const exBonus = Math.round((17 + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult);
+                    const exBonus = Math.round((17 + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
@@ -3210,8 +3247,8 @@
                     if (prefs && treat.name === prefs.favoriteTreat) {
                         treatMod *= 1.5;
                     }
-                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod), 0, 100);
-                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * rewardCareMult), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * rewardCareMult), 0, 100);
                     message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
                     if (prefs && treat.name === prefs.favoriteTreat) {
                         message = `${treat.emoji} 💕 FAVORITE treat! ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
@@ -3228,8 +3265,8 @@
                     const cuddleFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('cuddle', pet, beforeStats) : 1.0;
                     const cuddleMod = cuddlePersonality * cuddlePref;
                     // Petting/Cuddling - direct affection boosts happiness and energy
-                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult * rewardCareMult), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * rewardCareMult), 0, 100);
                     message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     if (cuddlePref < 1) message = `😨 ${pet.name || 'Pet'} squirmed away! ${message}`;
                     else if (cuddleMod > 1.2) message = `💕 ${pet.name || 'Pet'} melted into your arms! ${message}`;
@@ -3238,6 +3275,10 @@
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
                 }
+            }
+
+            if (rewardHappyFlat > 0) {
+                pet.happiness = clamp(pet.happiness + rewardHappyFlat, 0, 100);
             }
 
             // Spawn themed particles, emoji burst, and floating stat text
@@ -3303,8 +3344,11 @@
                     dailyCompleted.push(...incrementDailyProgress('feedCount'));
                 }
                 dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                dailyCompleted.push(...incrementDailyProgress('masteryPoints', 1));
                 dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
             }
+
+            if (typeof consumeCareActionRewardModifiers === 'function') consumeCareActionRewardModifiers();
 
             // Track medicine and groom counts for trophies
             if (action === 'medicine') {
@@ -4044,7 +4088,8 @@
             let itemsHTML = '';
 
             // Standard meal option
-            const feedBonus = Math.round(17 * getRoomBonus('feed'));
+            const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
+            const feedBonus = Math.round(17 * getRoomBonus('feed') * rewardCareMult);
             const standardEffectText = `+${feedBonus} Food${getRoomBonus('feed') > 1 ? ' (room bonus!)' : ''}`;
             itemsHTML += `
                 <button class="feed-menu-item standard-meal" data-feed="standard" aria-label="Standard Meal: plus ${feedBonus} hunger">
@@ -4150,8 +4195,10 @@
                         const dailyCompleted = [];
                         dailyCompleted.push(...incrementDailyProgress('feedCount'));
                         dailyCompleted.push(...incrementDailyProgress('totalCareActions'));
+                        dailyCompleted.push(...incrementDailyProgress('masteryPoints', 1));
                         dailyCompleted.forEach(task => showToast(`${task.icon} Daily task done: ${task.name}!`, '#FFD700'));
                     }
+                    if (typeof consumeCareActionRewardModifiers === 'function') consumeCareActionRewardModifiers();
 
                     // Check achievements
                     if (typeof checkAchievements === 'function') {
@@ -5595,6 +5642,12 @@
                     roomsVisited: preservedRoomsVisited,
                     weatherSeen: preservedWeatherSeen,
                     dailyChecklist: null,
+                    weeklyArc: null,
+                    reminders: (typeof createDefaultReminderState === 'function') ? createDefaultReminderState() : { enabled: false, permission: 'default', lastSent: {} },
+                    rewardModifiers: [],
+                    mastery: (typeof createDefaultMasteryState === 'function') ? createDefaultMasteryState() : { competitionSeason: { points: 0, rank: 1, title: 'Bronze Circuit' }, biomeRanks: {}, familyLegacy: { points: 0, tier: 1, title: 'Founding Family' } },
+                    goalLadder: null,
+                    streak: { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [], prestige: { cycleMonth: '', cycleBest: 0, lifetimeTier: 0, completedCycles: 0, claimedMonthlyReward: '' } },
                     exploration: (typeof createDefaultExplorationState === 'function')
                         ? createDefaultExplorationState()
                         : {
@@ -5775,6 +5828,15 @@
             // Add to family
             addPetToFamily(newPet);
             gameState.totalBreedingHatches = (gameState.totalBreedingHatches || 0) + 1;
+            if (typeof incrementDailyProgress === 'function') {
+                incrementDailyProgress('hatchCount', 1);
+                incrementDailyProgress('masteryPoints', 3);
+                incrementDailyProgress('discoveryEvents', 1);
+            }
+            if (typeof addJournalEntry === 'function') {
+                const typeData = getAllPetTypeData(newPet.type);
+                addJournalEntry('👶', `${newPet.name || (typeData ? typeData.name : 'New Pet')} joined your family.`);
+            }
 
             // Remove from hatched list
             gameState.hatchedBreedingEggs.splice(index, 1);
@@ -6524,23 +6586,46 @@
             const cl = initDailyChecklist();
             const completedCount = cl.tasks.filter(t => t.done).length;
             const totalTasks = cl.tasks.length;
+            const weeklyArc = (typeof initWeeklyArc === 'function') ? initWeeklyArc() : null;
 
             let tasksHTML = '';
-            DAILY_TASKS.forEach((task, idx) => {
-                const isDone = cl.tasks[idx] && cl.tasks[idx].done;
-                const target = Number((cl.tasks[idx] && cl.tasks[idx].target) || task.target || 1);
-                const taskName = (cl.tasks[idx] && cl.tasks[idx].name) || (typeof getDailyTaskName === 'function' ? getDailyTaskName(task, target) : task.name);
+            (cl.tasks || []).forEach((task) => {
+                if (!task) return;
+                const isDone = !!task.done;
+                const target = Number(task.target || 1);
+                const taskName = task.name || 'Daily task';
                 const current = cl.progress[task.trackKey] || 0;
                 const progress = Math.min(current, target);
                 tasksHTML += `
                     <div class="daily-task ${isDone ? 'done' : ''}" aria-label="${taskName}: ${isDone ? 'completed' : `${progress}/${target}`}">
                         <span class="daily-task-check">${isDone ? '✅' : '⬜'}</span>
-                        <span class="daily-task-icon">${task.icon}</span>
+                        <span class="daily-task-icon">${task.icon || '📌'}</span>
                         <span class="daily-task-name">${taskName}</span>
                         <span class="daily-task-progress">${progress}/${target}</span>
                     </div>
                 `;
             });
+
+            let weeklyArcHTML = '';
+            if (weeklyArc && Array.isArray(weeklyArc.tasks) && weeklyArc.tasks.length > 0) {
+                const taskRows = weeklyArc.tasks.map((task) => {
+                    const target = Math.max(1, Number(task.target) || 1);
+                    const progress = Math.min(target, (weeklyArc.progress && weeklyArc.progress[task.trackKey]) || 0);
+                    return `<div class="daily-task ${task.done ? 'done' : ''}">
+                        <span class="daily-task-check">${task.done ? '✅' : '⬜'}</span>
+                        <span class="daily-task-icon">${task.icon || '🏅'}</span>
+                        <span class="daily-task-name">${escapeHTML((typeof getDailyTaskName === 'function' ? getDailyTaskName(task, target) : task.nameTemplate || task.id || 'Arc task'))}</span>
+                        <span class="daily-task-progress">${progress}/${target}</span>
+                    </div>`;
+                }).join('');
+                weeklyArcHTML = `
+                    <div class="daily-weekly-arc ${weeklyArc.completed ? 'completed' : ''}">
+                        <h3 class="daily-weekly-title">${weeklyArc.icon || '🏅'} ${escapeHTML(weeklyArc.theme || 'Weekly Arc')}</h3>
+                        <div class="daily-tasks-list">${taskRows}</div>
+                        <p class="daily-weekly-reward">${weeklyArc.completed ? 'Finale reward unlocked!' : 'Complete all arc tasks for an exclusive finale reward.'}</p>
+                    </div>
+                `;
+            }
 
             const overlay = document.createElement('div');
             overlay.className = 'daily-overlay';
@@ -6555,6 +6640,7 @@
                         <div class="daily-progress-fill" style="width: ${totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0}%;"></div>
                     </div>
                     <div class="daily-tasks-list">${tasksHTML}</div>
+                    ${weeklyArcHTML}
                     ${completedCount === totalTasks ? '<div class="daily-all-done">All tasks complete! Great job today!</div>' : ''}
                     <button class="daily-close" id="daily-close">Close</button>
                 </div>
@@ -6816,15 +6902,20 @@
             const streak = gameState.streak || { current: 0, longest: 0, todayBonusClaimed: false, claimedMilestones: [] };
             const bonus = getStreakBonus(streak.current);
             const canClaim = !streak.todayBonusClaimed && streak.current > 0 && gameState.pet;
+            const prestige = streak.prestige || { lifetimeTier: 0, completedCycles: 0 };
 
             // Build milestone timeline
             let milestonesHTML = '';
             STREAK_MILESTONES.forEach(milestone => {
                 const reached = streak.current >= milestone.days;
                 const claimed = streak.claimedMilestones && streak.claimedMilestones.includes(milestone.days);
-                const rewardLabel = milestone.reward === 'sticker'
-                    ? `${STICKERS[milestone.rewardId] ? STICKERS[milestone.rewardId].emoji : '🎁'} ${STICKERS[milestone.rewardId] ? STICKERS[milestone.rewardId].name : 'Sticker'}`
-                    : `${ACCESSORIES[milestone.rewardId] ? ACCESSORIES[milestone.rewardId].emoji : '🎁'} ${ACCESSORIES[milestone.rewardId] ? ACCESSORIES[milestone.rewardId].name : 'Accessory'}`;
+                const bundle = milestone.bundleId && REWARD_BUNDLES ? REWARD_BUNDLES[milestone.bundleId] : null;
+                const collectible = bundle && bundle.collectible ? bundle.collectible : null;
+                const rewardLabel = collectible && collectible.type === 'sticker'
+                    ? `${STICKERS[collectible.id] ? STICKERS[collectible.id].emoji : '🎁'} ${STICKERS[collectible.id] ? STICKERS[collectible.id].name : 'Collectible'} + ${bundle && bundle.coins ? `${bundle.coins} coins` : 'bundle'}`
+                    : collectible && collectible.type === 'accessory'
+                        ? `${ACCESSORIES[collectible.id] ? ACCESSORIES[collectible.id].emoji : '🎁'} ${ACCESSORIES[collectible.id] ? ACCESSORIES[collectible.id].name : 'Collectible'} + ${bundle && bundle.coins ? `${bundle.coins} coins` : 'bundle'}`
+                        : `${bundle && bundle.coins ? `${bundle.coins} coins` : 'Bundle reward'}`;
 
                 const milestoneBonus = getStreakBonus(milestone.days);
                 milestonesHTML += `
@@ -6858,6 +6949,7 @@
                     <div class="streak-flame-display">${flameEmojis}</div>
                     <div class="streak-count">${streak.current} day${streak.current !== 1 ? 's' : ''}</div>
                     <div class="streak-longest">Longest: ${streak.longest} day${streak.longest !== 1 ? 's' : ''}</div>
+                    <div class="streak-longest">Prestige Tier: ${prestige.lifetimeTier || 0} · Cycles: ${prestige.completedCycles || 0}</div>
                     <div class="streak-bonus-info">
                         <div class="streak-bonus-label">Today's Bonus</div>
                         <div class="streak-bonus-value">${bonus.label}</div>
@@ -6881,9 +6973,13 @@
                     const result = claimStreakBonus();
                     if (result) {
                         showToast(`🔥 Streak bonus: ${result.bonus.label}`, '#FF6D00');
-                        result.milestones.forEach(m => {
-                            setTimeout(() => showToast(`🎁 Streak reward: ${m.label}!`, '#E040FB'), 500);
+                        result.milestones.forEach((m, idx) => {
+                            const rewardCoins = m.bundle && m.bundle.earnedCoins ? ` +${m.bundle.earnedCoins} coins` : '';
+                            setTimeout(() => showToast(`🎁 Streak reward: ${m.label}${rewardCoins}`, '#E040FB'), 500 + (idx * 180));
                         });
+                        if (result.prestigeReward) {
+                            setTimeout(() => showToast(`🌠 Prestige unlocked: ${result.prestigeReward.icon} ${result.prestigeReward.label}!`, '#7C4DFF'), 900);
+                        }
                         // Refresh displays
                         if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
                         if (typeof updateWellnessBar === 'function') updateWellnessBar();
@@ -7702,6 +7798,12 @@
                     }).join('');
 
                 const stats = ex.stats || {};
+                const mastery = (typeof refreshMasteryTracks === 'function') ? refreshMasteryTracks() : (gameState.mastery || null);
+                const biomeRanks = mastery && mastery.biomeRanks ? mastery.biomeRanks : {};
+                const topBiome = Object.entries(biomeRanks).sort((a, b) => (b[1].rank || 0) - (a[1].rank || 0))[0];
+                const topBiomeLabel = topBiome
+                    ? `${(EXPLORATION_BIOMES[topBiome[0]] || {}).icon || '🗺️'} R${topBiome[1].rank || 1}`
+                    : 'R1';
 
                 overlay.innerHTML = `
                     <div class="exploration-modal">
@@ -7718,6 +7820,7 @@
                             <div class="explore-summary-card"><strong>${stats.treasuresFound || 0}</strong><span>Treasures</span></div>
                             <div class="explore-summary-card"><strong>${stats.dungeonsCleared || 0}</strong><span>Dungeons</span></div>
                             <div class="explore-summary-card"><strong>${stats.npcsAdopted || 0}</strong><span>NPC Adoptions</span></div>
+                            <div class="explore-summary-card"><strong>${topBiomeLabel}</strong><span>Biome Mastery</span></div>
                         </div>
 
                         <section class="explore-section">
@@ -7929,6 +8032,7 @@
             const ttsEnabled = !(localStorage.getItem('petCareBuddy_ttsOff') === 'true');
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
             const srVerbosityDetailed = (localStorage.getItem('petCareBuddy_srVerbosity') === 'detailed');
+            const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
 
             const overlay = document.createElement('div');
             overlay.className = 'settings-overlay';
@@ -7994,6 +8098,13 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                             <span class="settings-toggle-state" id="state-setting-reduced-motion">${reducedMotionEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🔔 Local Reactivation Reminders</span>
+                            <button class="settings-toggle ${remindersEnabled ? 'on' : ''}" id="setting-reminders" role="switch" aria-checked="${remindersEnabled}" aria-label="Local reminders">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-reminders">${remindersEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
@@ -8104,6 +8215,29 @@
                 setSwitchStateText('setting-reduced-motion', isOn);
                 document.documentElement.setAttribute('data-reduced-motion', isOn ? 'true' : 'false');
                 try { localStorage.setItem('petCareBuddy_reducedMotion', isOn ? 'true' : 'false'); } catch (e) {}
+            });
+
+            document.getElementById('setting-reminders').addEventListener('click', function() {
+                const isOn = this.classList.toggle('on');
+                this.setAttribute('aria-checked', String(isOn));
+                setSwitchStateText('setting-reminders', isOn);
+                if (!gameState.reminders || typeof gameState.reminders !== 'object') {
+                    gameState.reminders = { enabled: false, permission: 'default', lastSent: {} };
+                }
+                gameState.reminders.enabled = isOn;
+                if (isOn && typeof requestLocalReminderPermission === 'function') {
+                    requestLocalReminderPermission().then((permission) => {
+                        gameState.reminders.permission = permission;
+                        if (permission === 'denied') {
+                            showToast('Browser notification permission denied. In-app reminders still available while open.', '#FFA726');
+                        } else {
+                            showToast('Local reminders enabled for streak risk, expedition, and hatch readiness.', '#66BB6A');
+                        }
+                        saveGame();
+                    });
+                } else {
+                    saveGame();
+                }
             });
 
             const srBrief = document.getElementById('setting-sr-brief');
