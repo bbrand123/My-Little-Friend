@@ -1652,7 +1652,17 @@
             const sellMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.sellPriceMultiplier === 'number')
                 ? ECONOMY_BALANCE.sellPriceMultiplier
                 : 0.8;
-            return Math.max(1, Math.round(getDynamicEconomyPrice(base, 'loot', `loot:${lootId}`) * sellMult));
+            // Recommendation #7: Mastery biome rank loot sell bonus (+5% for biome rank 3+)
+            // Determine which biome this loot is associated with
+            let biomeSellBonus = 0;
+            if (typeof getMasteryLootSellBonus === 'function' && typeof BIOME_LOOT_POOLS !== 'undefined') {
+                for (const [biomeId, pool] of Object.entries(BIOME_LOOT_POOLS)) {
+                    if (Array.isArray(pool) && pool.includes(lootId)) {
+                        biomeSellBonus = Math.max(biomeSellBonus, getMasteryLootSellBonus(biomeId));
+                    }
+                }
+            }
+            return Math.max(1, Math.round(getDynamicEconomyPrice(base, 'loot', `loot:${lootId}`) * sellMult * (1 + biomeSellBonus)));
         }
 
         function sellExplorationLoot(lootId, count) {
@@ -1928,10 +1938,17 @@
             // Keep a slight stat link without heavily penalizing weaker pets.
             const petStrength = getPetMiniGameStrength(gameState.pet);
             const petStatRewardMult = Math.max(0.96, Math.min(1.04, 1 + ((petStrength - 0.5) * 0.08)));
+
+            // Recommendation #2: Escalating mini-game session multiplier
+            // 1st game = 1.0x, 2nd = 1.05x, 3rd = 1.1x, cap at 1.15x. Resets on session end.
+            if (typeof gameState._sessionMinigameCount !== 'number') gameState._sessionMinigameCount = 0;
+            gameState._sessionMinigameCount++;
+            const sessionMult = Math.min(1.15, 1 + (Math.max(0, gameState._sessionMinigameCount - 1) * 0.05));
+
             const cap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardCap === 'number')
                 ? ECONOMY_BALANCE.minigameRewardCap
                 : 9999;
-            const tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult)));
+            const tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult * sessionMult)));
             addCoins(tuned, 'Mini-game', true);
             return tuned;
         }
@@ -2516,6 +2533,27 @@
                 return [];
             }
             const now = Date.now();
+
+            // Recommendation #6: Modifier expiry coin conversion
+            // When a modifier expires with unused actions/duration, convert leftovers into coins
+            let expiryCoins = 0;
+            gameState.rewardModifiers.forEach((modifier) => {
+                if (!modifier.expiresAt || modifier.expiresAt > now) return; // not expired
+                // Convert unused remaining actions: 1 coin per unused action (careRush-style)
+                if (typeof modifier.remainingActions === 'number' && modifier.remainingActions > 0) {
+                    expiryCoins += modifier.remainingActions;
+                }
+                // Convert unused remaining time: 1 coin per 5 min remaining (happyHour-style)
+                if (modifier.expiresAt && modifier.expiresAt > now) {
+                    const remainingMs = modifier.expiresAt - now;
+                    expiryCoins += Math.floor(remainingMs / (5 * 60 * 1000));
+                }
+            });
+            if (expiryCoins > 0) {
+                addCoins(expiryCoins, 'Modifier Expiry', true);
+                if (typeof showToast === 'function') showToast(`🪙 +${expiryCoins} coins from expired modifiers`, '#FFD700');
+            }
+
             gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => !modifier.expiresAt || modifier.expiresAt > now);
             return gameState.rewardModifiers;
         }
@@ -2550,6 +2588,19 @@
                 if (typeof modifier.remainingActions !== 'number') return;
                 modifier.remainingActions = Math.max(0, modifier.remainingActions - 1);
             });
+            // Recommendation #6: Convert remaining time on action-exhausted modifiers
+            let expiryCoins = 0;
+            gameState.rewardModifiers.forEach((modifier) => {
+                if (modifier.remainingActions !== null && modifier.remainingActions <= 0 && modifier.expiresAt) {
+                    const now = Date.now();
+                    if (modifier.expiresAt > now) {
+                        expiryCoins += Math.floor((modifier.expiresAt - now) / (5 * 60 * 1000));
+                    }
+                }
+            });
+            if (expiryCoins > 0) {
+                addCoins(expiryCoins, 'Modifier Expiry', true);
+            }
             gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => modifier.remainingActions === null || modifier.remainingActions > 0);
         }
 
@@ -2736,18 +2787,30 @@
                         const stage = (cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : 'baby';
                         const stageMult = Math.max(1, Number(getStageBalance(stage).dailyTaskMultiplier) || 1);
                         const stageBonusCoins = Math.max(0, Math.round((stageMult - 1) * 45));
-                        if (stageBonusCoins > 0) {
-                            addCoins(stageBonusCoins, 'Daily Tasks (Stage Bonus)', true);
+                        // Recommendation #7: Mastery rank daily bonus (+1 coin if Family Legacy tier 2+)
+                        const masteryDailyBonus = typeof getMasteryDailyBonus === 'function' ? getMasteryDailyBonus() : 0;
+                        // Recommendation #10: Elder legacy passive income
+                        // Each retired elder pet adds +2 coins/day, non-elder retired pets add +1 coin/day
+                        let elderLegacyBonus = 0;
+                        if (Array.isArray(gameState.memorials)) {
+                            gameState.memorials.forEach(m => {
+                                elderLegacyBonus += (m.growthStage === 'elder') ? 2 : 1;
+                            });
+                        }
+                        const totalBonusCoins = stageBonusCoins + masteryDailyBonus + elderLegacyBonus;
+                        if (totalBonusCoins > 0) {
+                            addCoins(totalBonusCoins, 'Daily Tasks (Stage + Mastery + Legacy Bonus)', true);
                         }
                         if (bundled && typeof showToast === 'function') {
                             const modifierText = bundled.modifier ? ` + ${bundled.modifier.emoji} ${bundled.modifier.name}` : '';
-                            const bonusText = stageBonusCoins > 0 ? ` + ${stageBonusCoins} stage bonus` : '';
+                            const elderText = elderLegacyBonus > 0 ? ` + ${elderLegacyBonus} elder legacy` : '';
+                            const bonusText = (stageBonusCoins > 0 || elderLegacyBonus > 0) ? ` + ${stageBonusCoins + elderLegacyBonus} bonus` : '';
                             showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${bonusText}${modifierText}`, '#FFD700');
                         } else {
                             const dailyRewardBase = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
                                 ? ECONOMY_BALANCE.dailyCompletionReward
                                 : 85;
-                            const dailyReward = dailyRewardBase + stageBonusCoins;
+                            const dailyReward = dailyRewardBase + totalBonusCoins;
                             const payout = addCoins(dailyReward, 'Daily Tasks', true);
                             if (payout > 0 && typeof showToast === 'function') {
                                 showToast(`📋 Daily tasks complete! Earned ${payout} coins.`, '#FFD700');
@@ -2824,6 +2887,29 @@
             mastery.familyLegacy.tier = Math.max(1, Math.floor(legacyPoints / 20) + 1);
             mastery.familyLegacy.title = getLegacyTitle(mastery.familyLegacy.tier);
             return mastery;
+        }
+
+        // ==================== MASTERY RANK PERKS (Recommendation #7) ====================
+
+        // Competition rank 3+: +2% battle happiness gain
+        function getMasteryBattleHappinessBonus() {
+            const mastery = ensureMasteryState();
+            if (mastery.competitionSeason && mastery.competitionSeason.rank >= 3) return 0.02;
+            return 0;
+        }
+
+        // Biome rank 3+: +5% loot sell price for that biome
+        function getMasteryLootSellBonus(biomeId) {
+            const mastery = ensureMasteryState();
+            if (biomeId && mastery.biomeRanks && mastery.biomeRanks[biomeId] && mastery.biomeRanks[biomeId].rank >= 3) return 0.05;
+            return 0;
+        }
+
+        // Family Legacy rank 2+: +1 base coin on daily completion
+        function getMasteryDailyBonus() {
+            const mastery = ensureMasteryState();
+            if (mastery.familyLegacy && mastery.familyLegacy.tier >= 2) return 1;
+            return 0;
         }
 
         // ==================== GOAL LADDER ====================
@@ -2966,12 +3052,51 @@
             if (gameState.stickers[stickerId]) return false; // Already collected
             if (!STICKERS[stickerId]) return false; // Invalid sticker
             gameState.stickers[stickerId] = { collected: true, collectedAt: Date.now() };
+            // Recommendation #9: Check for sticker set completion after each grant
+            const setRewards = checkStickerSetCompletions();
+            if (setRewards.length > 0 && typeof showToast === 'function') {
+                setRewards.forEach(r => {
+                    const catLabel = (STICKER_CATEGORIES[r.category] || {}).label || r.category;
+                    const coins = r.earnedCoins || 0;
+                    showToast(`📓 ${catLabel} set complete! +${coins} coins`, '#E040FB');
+                });
+            }
             return true;
         }
 
         function getStickerCount() {
             if (!gameState.stickers) return 0;
             return Object.values(gameState.stickers).filter(s => s.collected).length;
+        }
+
+        // Recommendation #9: Sticker set completion bonuses
+        // When all stickers in a category are collected, grant a one-time bundle
+        function checkStickerSetCompletions() {
+            if (!gameState.stickers) return [];
+            if (!gameState._claimedStickerSets) gameState._claimedStickerSets = {};
+            const collected = gameState.stickers;
+            const rewards = [];
+            const setBundles = {
+                animals: 'stickerSetAnimals',
+                nature: 'stickerSetNature',
+                fun: 'stickerSetFun',
+                special: 'stickerSetSpecial'
+            };
+            for (const [catKey, bundleId] of Object.entries(setBundles)) {
+                if (gameState._claimedStickerSets[catKey]) continue;
+                const stickersInCategory = Object.entries(STICKERS).filter(([, s]) => s.category === catKey);
+                if (stickersInCategory.length === 0) continue;
+                const allCollected = stickersInCategory.every(([id]) => collected[id] && collected[id].collected);
+                if (allCollected) {
+                    gameState._claimedStickerSets[catKey] = true;
+                    const result = applyRewardBundle(bundleId, `${STICKER_CATEGORIES[catKey].icon} ${STICKER_CATEGORIES[catKey].label} Set Complete`);
+                    if (result) rewards.push({ category: catKey, ...result });
+                    if (typeof addJournalEntry === 'function') {
+                        addJournalEntry(STICKER_CATEGORIES[catKey].icon, `Completed the ${STICKER_CATEGORIES[catKey].label} sticker set! Bonus reward unlocked.`);
+                    }
+                }
+            }
+            return rewards;
         }
 
         function checkStickers() {
@@ -3049,6 +3174,53 @@
             }
 
             return newStickers;
+        }
+
+        // Recommendation #3: Sticker progress pips — expose partial progress toward existing stickers
+        function getStickerProgress() {
+            const gs = gameState;
+            const progress = [];
+            const owned = gs.stickers || {};
+
+            // Mini-game score stickers
+            const scores = gs.minigameHighScores || {};
+            const bestScore = Math.max(0, ...Object.values(scores));
+            if (!owned.starSticker) progress.push({ stickerId: 'starSticker', label: 'Gold Star', emoji: '⭐', current: Math.min(bestScore, 25), target: 25, unit: 'best score' });
+            if (!owned.trophySticker) progress.push({ stickerId: 'trophySticker', label: 'Trophy', emoji: '🏆', current: Math.min(bestScore, 50), target: 50, unit: 'best score' });
+
+            // Weather stickers
+            const ws = gs.weatherSeen || {};
+            const weatherCount = (ws.sunny ? 1 : 0) + (ws.rainy ? 1 : 0) + (ws.snowy ? 1 : 0);
+            if (!owned.rainbowSticker) progress.push({ stickerId: 'rainbowSticker', label: 'Rainbow', emoji: '🌈', current: weatherCount, target: 3, unit: 'weather types seen' });
+
+            // Garden stickers
+            const harvests = (gs.garden && gs.garden.totalHarvests) || 0;
+            if (!owned.sproutSticker) progress.push({ stickerId: 'sproutSticker', label: 'Little Sprout', emoji: '🌱', current: Math.min(harvests, 1), target: 1, unit: 'harvests' });
+
+            // Streak sticker
+            const streakDays = (gs.streak && gs.streak.current) || 0;
+            if (!owned.streakFlame) progress.push({ stickerId: 'streakFlame', label: 'Eternal Flame', emoji: '🔥', current: Math.min(streakDays, 7), target: 7, unit: 'day streak' });
+
+            // Relationship sticker
+            const rels = gs.relationships || {};
+            const bestRel = Math.max(0, ...Object.values(rels).map(r => r.points || 0));
+            if (!owned.heartSticker) progress.push({ stickerId: 'heartSticker', label: 'Big Heart', emoji: '💖', current: Math.min(bestRel, 180), target: 180, unit: 'relationship points' });
+
+            // Adults raised stickers
+            const adults = gs.adultsRaised || 0;
+            if (!owned.unicornSticker) progress.push({ stickerId: 'unicornSticker', label: 'Unicorn', emoji: '🦄', current: Math.min(adults, 2), target: 2, unit: 'adults raised' });
+            if (!owned.dragonSticker) progress.push({ stickerId: 'dragonSticker', label: 'Dragon', emoji: '🐉', current: Math.min(adults, 3), target: 3, unit: 'adults raised' });
+
+            // Breeding stickers
+            const breeds = gs.totalBreedings || 0;
+            if (!owned.breedingEgg) progress.push({ stickerId: 'breedingEgg', label: 'Love Egg', emoji: '🥚', current: Math.min(breeds, 1), target: 1, unit: 'breedings' });
+            if (!owned.familyTree) progress.push({ stickerId: 'familyTree', label: 'Family Tree', emoji: '🌳', current: Math.min(breeds, 3), target: 3, unit: 'breedings' });
+
+            // Memorial stickers
+            const memCount = (gs.memorials || []).length;
+            if (!owned.wisdomSticker) progress.push({ stickerId: 'wisdomSticker', label: 'Book of Wisdom', emoji: '📖', current: Math.min(memCount, 5), target: 5, unit: 'memorials' });
+
+            return progress;
         }
 
         // Grant pet-type-specific stickers based on care actions
@@ -3177,6 +3349,7 @@
             // Check for unclaimed milestone rewards
             const unclaimedMilestones = [];
             if (!Array.isArray(streak.claimedMilestones)) streak.claimedMilestones = [];
+            let hitMilestoneToday = false;
             for (const milestone of STREAK_MILESTONES) {
                 if (streak.current >= milestone.days && !streak.claimedMilestones.includes(milestone.days)) {
                     streak.claimedMilestones.push(milestone.days);
@@ -3185,7 +3358,16 @@
                         ...milestone,
                         bundle
                     });
+                    hitMilestoneToday = true;
                 }
+            }
+
+            // Recommendation #4: Streak gap coin drip
+            // Between major milestones (dead zones), grant streakDays × 2 coins daily as a fallback
+            let streakDripCoins = 0;
+            if (!hitMilestoneToday && streak.current > 1) {
+                streakDripCoins = streak.current * 2;
+                addCoins(streakDripCoins, 'Streak Drip', true);
             }
 
             let prestigeReward = null;
@@ -3198,7 +3380,10 @@
                 if (rewards.length > 0 && streak.prestige.claimedMonthlyReward !== monthKey) {
                     const idx = hashDailySeed(`prestige:${monthKey}`) % rewards.length;
                     prestigeReward = rewards[idx];
-                    if (prestigeReward.coins) addCoins(prestigeReward.coins, `${prestigeReward.icon} Prestige`, true);
+                    // Recommendation #8: Prestige escalation — +20 coins per completed cycle, cap 400
+                    const prestigeBaseCoins = prestigeReward.coins || 280;
+                    const prestigeEscalation = Math.min(400, prestigeBaseCoins + ((streak.prestige.completedCycles || 0) * 20));
+                    if (prestigeEscalation > 0) addCoins(prestigeEscalation, `${prestigeReward.icon} Prestige`, true);
                     if (prestigeReward.modifierId) addGameplayModifier(prestigeReward.modifierId, `${prestigeReward.icon} Prestige`);
                     if (prestigeReward.collectible) grantBundleCollectible(prestigeReward.collectible);
                     streak.prestige.claimedMonthlyReward = monthKey;
@@ -3211,7 +3396,7 @@
             }
 
             saveGame();
-            return { bonus, milestones: unclaimedMilestones, prestigeReward };
+            return { bonus, milestones: unclaimedMilestones, prestigeReward, streakDripCoins: streakDripCoins || 0 };
         }
 
         // ==================== PET MEMORIAL SYSTEM ====================
@@ -3783,6 +3968,10 @@
                     } else {
                         _lastSavedStorageSnapshot = saved;
                     }
+                    // Reset session-local transient state (Recommendations #1, #2)
+                    parsed._sessionMinigameCount = 0;
+                    parsed._careActionTimestamps = [];
+
                     return parsed;
                 }
             } catch (e) {
@@ -7078,6 +7267,22 @@
             }
             if (gameState.caretakerActionCounts[actionType] !== undefined) {
                 gameState.caretakerActionCounts[actionType]++;
+            }
+
+            // Recommendation #1: Care momentum bonus
+            // Track recent care action timestamps; grant careRush when 3+ actions in 5 minutes
+            if (!Array.isArray(gameState._careActionTimestamps)) gameState._careActionTimestamps = [];
+            const now = Date.now();
+            gameState._careActionTimestamps.push(now);
+            const fiveMinAgo = now - 5 * 60 * 1000;
+            gameState._careActionTimestamps = gameState._careActionTimestamps.filter(t => t > fiveMinAgo);
+            if (gameState._careActionTimestamps.length >= 3) {
+                const alreadyActive = Array.isArray(gameState.rewardModifiers) && gameState.rewardModifiers.some(m => m.typeId === 'careRush' && (!m.expiresAt || m.expiresAt > now) && (m.remainingActions === null || m.remainingActions > 0));
+                if (!alreadyActive && typeof addGameplayModifier === 'function') {
+                    addGameplayModifier('careRush', 'Care Momentum');
+                    if (typeof showToast === 'function') showToast('⚡ Care Rush! 3+ actions in 5 min — bonus activated!', '#FF9800');
+                    gameState._careActionTimestamps = [];
+                }
             }
 
             // Track room-specific action counts on the pet
