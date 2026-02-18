@@ -357,10 +357,21 @@
             } catch (e) {}
         }
 
+        function isElementKeyboardVisible(el) {
+            if (!el || !(el instanceof HTMLElement)) return false;
+            if (!el.isConnected) return false;
+            if (el.hidden) return false;
+            if (el.getAttribute('aria-hidden') === 'true') return false;
+            if (el.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
+            const style = window.getComputedStyle(el);
+            if (!style || style.display === 'none' || style.visibility === 'hidden') return false;
+            return el.getClientRects().length > 0;
+        }
+
         function setupRovingTabindex(container, itemSelector) {
             if (!container) return;
             const items = Array.from(container.querySelectorAll(itemSelector))
-                .filter((el) => !el.disabled && el.getAttribute('aria-hidden') !== 'true');
+                .filter((el) => !el.disabled && isElementKeyboardVisible(el));
             if (items.length === 0) return;
             let activeIdx = Math.max(0, items.findIndex((el) => el === document.activeElement));
             if (activeIdx < 0) activeIdx = 0;
@@ -369,7 +380,7 @@
             container.addEventListener('keydown', (e) => {
                 if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
                 const enabledItems = Array.from(container.querySelectorAll(itemSelector))
-                    .filter((el) => !el.disabled && el.getAttribute('aria-hidden') !== 'true');
+                    .filter((el) => !el.disabled && isElementKeyboardVisible(el));
                 if (enabledItems.length === 0) return;
                 const current = enabledItems.indexOf(document.activeElement);
                 let next = current >= 0 ? current : 0;
@@ -381,6 +392,16 @@
                 enabledItems.forEach((el, idx) => el.setAttribute('tabindex', idx === next ? '0' : '-1'));
                 enabledItems[next].focus();
             });
+        }
+
+        function ensureContinuousTabFocus() {
+            if (document.querySelector('.modal-overlay, [role="dialog"], [role="alertdialog"], .settings-overlay')) return;
+            const active = document.activeElement;
+            if (active && active !== document.body && active !== document.documentElement) return;
+            const firstFocusable = document.querySelector('.skip-link:not([hidden]), .top-action-btn:not([disabled]), .room-btn:not([disabled]), .core-care-btn:not([disabled]), .action-btn:not([disabled]):not([aria-hidden="true"])');
+            if (firstFocusable && typeof firstFocusable.focus === 'function') {
+                firstFocusable.focus({ preventScroll: true });
+            }
         }
 
         function setUiBusyState() {
@@ -690,6 +711,27 @@
                 } else {
                     skipLink.removeAttribute('tabindex');
                 }
+            });
+        }
+
+        function setupSkipLinkFocusFlow() {
+            document.querySelectorAll('.skip-link').forEach((skipLink) => {
+                if (skipLink.dataset.focusFlowBound === 'true') return;
+                skipLink.dataset.focusFlowBound = 'true';
+                skipLink.addEventListener('click', (e) => {
+                    const href = skipLink.getAttribute('href') || '';
+                    if (!href.startsWith('#')) return;
+                    const target = document.getElementById(href.slice(1));
+                    if (!target) return;
+                    e.preventDefault();
+                    const hadTabindex = target.hasAttribute('tabindex');
+                    if (!hadTabindex) target.setAttribute('tabindex', '-1');
+                    target.focus({ preventScroll: true });
+                    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    if (!hadTabindex) {
+                        target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+                    }
+                });
             });
         }
 
@@ -1557,19 +1599,19 @@
                 <nav class="core-care-dock-wrap" aria-label="Core care dock">
                     <div class="core-care-dock" role="group" aria-label="Core care actions">
                         <button class="core-care-btn feed" id="core-feed-btn" type="button" aria-label="Feed">
-                            <span class="core-care-icon">${renderUiIcon('feed', '🍎', 'Feed')}</span>
+                            <span class="core-care-icon">${renderUiIcon('feed', '🍎', '')}</span>
                             <span class="core-care-label">Feed</span>
                         </button>
                         <button class="core-care-btn wash" id="core-wash-btn" type="button" aria-label="Wash">
-                            <span class="core-care-icon">${renderUiIcon('wash', '🛁', 'Wash')}</span>
+                            <span class="core-care-icon">${renderUiIcon('wash', '🛁', '')}</span>
                             <span class="core-care-label">Wash</span>
                         </button>
                         <button class="core-care-btn play" id="core-play-btn" type="button" aria-label="Play">
-                            <span class="core-care-icon">${renderUiIcon('play', '⚽', 'Play')}</span>
+                            <span class="core-care-icon">${renderUiIcon('play', '⚽', '')}</span>
                             <span class="core-care-label">Play</span>
                         </button>
                         <button class="core-care-btn sleep" id="core-sleep-btn" type="button" aria-label="Sleep">
-                            <span class="core-care-icon">${renderUiIcon('sleep', '🛏️', 'Sleep')}</span>
+                            <span class="core-care-icon">${renderUiIcon('sleep', '🛏️', '')}</span>
                             <span class="core-care-label">Sleep</span>
                         </button>
                     </div>
@@ -1890,9 +1932,9 @@
                         <span class="more-actions-toggle-state" aria-hidden="true">Collapsed</span>
                     </button>
                     <div class="more-actions-panel" id="more-actions-panel" hidden>
-                        <div class="action-group">
-                            <div class="action-group-buttons" role="group" aria-label="Additional actions">
-                                ${simplifiedActionPanel ? secondaryQuickActionsHTML : ''}
+                        <div class="more-actions-section">
+                            <h3 class="more-actions-section-title">Care</h3>
+                            <div class="action-group-buttons" role="group" aria-label="Extra care actions">
                                 <button class="action-btn exercise ${getRoomBonusBadge('exercise', currentRoom) ? 'has-room-bonus' : ''}" id="exercise-btn">
                                     <span class="action-btn-tooltip">+Happy, −Energy</span>
                                     <span class="btn-icon" aria-hidden="true">🏃</span>
@@ -1913,6 +1955,12 @@
                                     ${getRoomBonusBadge('groom', currentRoom)}
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
+                            </div>
+                        </div>
+                        <div class="more-actions-section">
+                            <h3 class="more-actions-section-title">Activities</h3>
+                            <div class="action-group-buttons" role="group" aria-label="Activity actions">
+                                ${simplifiedActionPanel ? secondaryQuickActionsHTML : ''}
                                 <button class="action-btn treasure-hunt-btn" id="treasure-btn">
                                     <span class="action-btn-tooltip">Hidden treasure in this room</span>
                                     <span class="btn-icon" aria-hidden="true">🧭</span>
@@ -1925,6 +1973,11 @@
                                     <span>${seasonData.activityName}</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
+                            </div>
+                        </div>
+                        <div class="more-actions-section">
+                            <h3 class="more-actions-section-title">Utility</h3>
+                            <div class="action-group-buttons" role="group" aria-label="Utility actions">
                                 ${gameState.pets && gameState.pets.length >= 2 ? `
                                 <button class="action-btn interact-btn" id="interact-btn" aria-haspopup="dialog">
                                     <span class="action-btn-tooltip">+Happy, +Bond</span>
@@ -2165,6 +2218,7 @@
             document.querySelectorAll('.action-group-buttons').forEach((group) => {
                 setupRovingTabindex(group, '.action-btn:not(.duplicate-core-action)');
             });
+            ensureContinuousTabFocus();
             setUiBusyState();
 
             // Make pet directly pettable by clicking/touching the pet SVG
@@ -2404,6 +2458,7 @@
                         <button class="tools-menu-btn" data-tool-action="journal">📔 Journal</button>
                         <button class="tools-menu-btn" data-tool-action="memorial">🏛️ Hall</button>
                         <button class="tools-menu-btn" data-tool-action="alerts">🔔 Alerts</button>
+                        <button class="tools-menu-btn" data-tool-action="settings">⚙️ Settings</button>
                     </div>
                     <button class="tools-menu-close" id="tools-menu-close">Close</button>
                 </div>
@@ -2415,6 +2470,7 @@
                 if (action === 'journal' && typeof showJournalModal === 'function') showJournalModal();
                 if (action === 'memorial' && typeof showMemorialHall === 'function') showMemorialHall();
                 if (action === 'alerts' && typeof showNotificationHistory === 'function') showNotificationHistory();
+                if (action === 'settings' && typeof showSettingsModal === 'function') showSettingsModal();
             };
 
             function closeToolsMenu() {
@@ -3188,6 +3244,12 @@
                 energy: pet.energy - beforeStats.energy
             };
             showStatDeltaNearNeedBubbles(statDeltas);
+            if (typeof showStatChangeSummary === 'function') {
+                const summaryChanges = Object.entries(statDeltas)
+                    .filter(([, amount]) => amount !== 0)
+                    .map(([key, amount]) => ({ label: STAT_DELTA_TARGETS[key] ? STAT_DELTA_TARGETS[key].label : key, amount }));
+                showStatChangeSummary(summaryChanges, { action });
+            }
 
             // Haptic feedback per action type
             if (typeof hapticPattern === 'function') hapticPattern(action);
@@ -3399,6 +3461,19 @@
                     iconEl.textContent = statusIcon;
                 } else if (iconEl) {
                     iconEl.remove();
+                }
+                const explicitState = value <= 15 ? 'Critical' : value <= 45 ? 'Low' : '';
+                let stateTextEl = bubble.querySelector('.need-state-text');
+                if (explicitState) {
+                    if (!stateTextEl) {
+                        stateTextEl = document.createElement('span');
+                        stateTextEl.className = 'need-state-text';
+                        stateTextEl.setAttribute('aria-hidden', 'true');
+                        bubble.appendChild(stateTextEl);
+                    }
+                    stateTextEl.textContent = explicitState;
+                } else if (stateTextEl) {
+                    stateTextEl.remove();
                 }
                 // Animate glow when stat increased (care action, not passive decay)
                 if (!silent && statKey && _prevStats[statKey] >= 0 && value > _prevStats[statKey]) {
@@ -7912,8 +7987,8 @@
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
-                            <button class="settings-choice ${srVerbosityDetailed ? '' : 'active'}" id="setting-sr-brief" type="button">Brief</button>
-                            <button class="settings-choice ${srVerbosityDetailed ? 'active' : ''}" id="setting-sr-detailed" type="button">Detailed</button>
+                            <button class="settings-choice ${srVerbosityDetailed ? '' : 'active'}" id="setting-sr-brief" type="button" aria-pressed="${srVerbosityDetailed ? 'false' : 'true'}">Brief</button>
+                            <button class="settings-choice ${srVerbosityDetailed ? 'active' : ''}" id="setting-sr-detailed" type="button" aria-pressed="${srVerbosityDetailed ? 'true' : 'false'}">Detailed</button>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🌿 Low Stimulation</span>
@@ -8027,6 +8102,8 @@
                 const setSrVerbosity = (mode) => {
                     srBrief.classList.toggle('active', mode === 'brief');
                     srDetailed.classList.toggle('active', mode === 'detailed');
+                    srBrief.setAttribute('aria-pressed', mode === 'brief' ? 'true' : 'false');
+                    srDetailed.setAttribute('aria-pressed', mode === 'detailed' ? 'true' : 'false');
                     try { localStorage.setItem('petCareBuddy_srVerbosity', mode); } catch (e) {}
                 };
                 srBrief.addEventListener('click', () => setSrVerbosity('brief'));
@@ -8046,7 +8123,11 @@
                     const reducedBtn = document.getElementById('setting-reduced-motion');
                     if (reducedBtn && !reducedBtn.classList.contains('on')) reducedBtn.click();
                     if (srBrief) srBrief.click();
-                    showToast('Low stimulation preset applied.', '#66BB6A');
+                    const presetSummary = 'Low stimulation preset applied: sound off, text-to-speech off, reduced motion on, screen reader verbosity set to brief.';
+                    showToast(presetSummary, '#66BB6A');
+                    if (typeof announce === 'function') {
+                        announce(presetSummary, { source: 'settings', dedupeMs: 1200 });
+                    }
                 });
             }
 
@@ -8091,7 +8172,7 @@
                 if (pet.cleanliness < lowThreshold) lowStats.push('🛁');
                 if (pet.happiness < lowThreshold) lowStats.push('💖');
                 if (pet.energy < lowThreshold) lowStats.push('😴');
-                indicator.innerHTML = `<span class="low-stat-pulse">${lowStats.join('')} Needs care!</span>`;
+                indicator.innerHTML = `<span class="low-stat-pulse">${lowStats.join('')} Needs care now</span>`;
                 roomNav.appendChild(indicator);
             } else if (!hasLowStat && indicator) {
                 indicator.remove();
@@ -8101,12 +8182,13 @@
                 if (pet.cleanliness < lowThreshold) lowStats.push('🛁');
                 if (pet.happiness < lowThreshold) lowStats.push('💖');
                 if (pet.energy < lowThreshold) lowStats.push('😴');
-                indicator.innerHTML = `<span class="low-stat-pulse">${lowStats.join('')} Needs care!</span>`;
+                indicator.innerHTML = `<span class="low-stat-pulse">${lowStats.join('')} Needs care now</span>`;
             }
         }
 
         // Ensure activation delegates are active even if render binding fails
         setupGlobalActivateDelegates();
+        setupSkipLinkFocusFlow();
 
         // ==================== KEYBOARD SHORTCUTS (Item 24) ====================
         document.addEventListener('keydown', (e) => {
@@ -8245,7 +8327,7 @@
                 : stepOrAction === 'open_minigame' ? 'open_minigame'
                 : stepOrAction;
             if (typeof announce === 'function' && stepLabels[changedStep]) {
-                announce(`Quick Start updated: ${stepLabels[changedStep]}.`, { source: 'coach', dedupeMs: 0 });
+                announce(`Quick Start updated: ${stepLabels[changedStep]}.`, { source: 'coach', dedupeMs: 2200 });
             }
 
             saveCoachChecklistState(state);
@@ -8253,13 +8335,20 @@
                 try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
                 removeCoachChecklist();
                 showToast('✅ Coach checklist complete!', '#66BB6A', { announce: false });
-                if (typeof announce === 'function') announce('Quick Start complete.', { source: 'coach', dedupeMs: 0 });
+                if (typeof announce === 'function') announce('Quick Start complete.', { source: 'coach', dedupeMs: 2200 });
                 return;
+            }
+            const completedCount = COACH_CHECKLIST_STEPS.filter((step) => !!state[step.id]).length;
+            if (completedCount > 0) {
+                setCoachChecklistMinimizedPref(true);
             }
             if (isNarrowViewport()) {
                 setCoachChecklistMinimizedPref(true);
             }
             renderCoachChecklist(true);
+            if (completedCount > 0) {
+                setCoachChecklistMinimized(true, 'manual');
+            }
         }
 
         function renderCoachChecklist(forceVisible = false) {
@@ -8315,7 +8404,7 @@
                     const nextMinimized = !panel.classList.contains('minimized');
                     setCoachChecklistMinimized(nextMinimized, 'manual');
                     if (typeof announce === 'function') {
-                        announce(`Quick Start ${nextMinimized ? 'collapsed' : 'expanded'}.`, { source: 'coach', dedupeMs: 0 });
+                        announce(`Quick Start ${nextMinimized ? 'collapsed' : 'expanded'}.`, { source: 'coach', dedupeMs: 2200 });
                     }
                 });
             }
@@ -8324,7 +8413,7 @@
                 skipBtn.addEventListener('click', () => {
                     try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
                     removeCoachChecklist();
-                    if (typeof announce === 'function') announce('Quick Start skipped.', { source: 'coach', dedupeMs: 0 });
+                    if (typeof announce === 'function') announce('Quick Start skipped.', { source: 'coach', dedupeMs: 2200 });
                 });
             }
             setCoachChecklistMinimized(getCoachChecklistMinimizedPref(), 'manual');

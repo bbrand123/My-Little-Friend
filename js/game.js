@@ -2028,7 +2028,7 @@
         // area instead of separate per-stat bubbles.
         // `changes` is an array of {label, amount} objects,
         // e.g. [{label:'Hunger', amount:10}, {label:'Energy', amount:-5}]
-        function showStatChangeSummary(changes) {
+        function showStatChangeSummary(changes, options = {}) {
             if (!changes || changes.length === 0) return;
             const anchor = document.getElementById('pet-container');
             if (!anchor) return;
@@ -2048,11 +2048,17 @@
             anchor.appendChild(el);
             setTimeout(() => el.remove(), 2000);
 
-            // Announce stat changes for screen readers
-            changes.forEach((c) => {
-                const sign = c.amount >= 0 ? '+' : '';
-                announce(`${c.label} ${sign}${c.amount}`);
-            });
+            // Announce one compact update to reduce live-region traffic.
+            const parts = changes
+                .filter(c => Number.isFinite(c.amount) && c.amount !== 0)
+                .map((c) => `${c.label} ${c.amount >= 0 ? '+' : ''}${c.amount}`);
+            if (parts.length > 0) {
+                const action = options && options.action ? String(options.action) : '';
+                const actionPrefix = action
+                    ? `${action.charAt(0).toUpperCase()}${action.slice(1)}: `
+                    : 'Stat update: ';
+                announce(`${actionPrefix}${parts.join(', ')}.`, { source: 'care', dedupeMs: 900 });
+            }
         }
 
         // Update wellness bar display
@@ -2135,6 +2141,10 @@
             if (!plainMessage) return;
             const verbosity = getAnnouncementVerbosity();
             if (!assertive && verbosity === 'brief' && isRoutineAnnouncement(plainMessage)) return;
+            if (!assertive && options.source === 'coach') {
+                const assertiveAnnouncer = document.getElementById('live-announcer-assertive');
+                if ((_announceQueue && _announceQueue.length > 0) || (assertiveAnnouncer && assertiveAnnouncer.textContent)) return;
+            }
             const key = plainMessage.toLowerCase();
             const now = Date.now();
             const recent = _announceRecentByKey.get(key) || 0;
@@ -4489,7 +4499,7 @@
                 const lockA11y = unlocked ? '' : `. Locked. Requirement: ${lockRequirement}.`;
                 html += `<button class="room-btn${isActive ? ' active' : ''}${unlocked ? '' : ' locked'}" type="button" data-room="${id}"
                     aria-label="Go to ${room.name}${lockA11y}" aria-pressed="${isActive}" aria-disabled="${unlocked ? 'false' : 'true'}"
-                    ${isActive ? 'aria-current="page"' : ''} tabindex="0" style="position:relative;"
+                    ${isActive ? 'aria-current="page"' : ''} tabindex="${unlocked ? '0' : '-1'}" style="position:relative;"
                     title="${room.name}${bonusHint}${lockHint}">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
                     <span class="room-btn-label">${room.name}</span>
@@ -4501,12 +4511,12 @@
             if (beginnerMode && lockedRooms.length > 0) {
                 const lockedHTML = lockedRooms.map(({ id, room, status }) => {
                     const lockRequirement = status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked';
-                    return `<button class="room-btn locked room-coming-item" type="button" data-room="${id}"
-                        aria-label="Go to ${room.name}. Locked. Requirement: ${lockRequirement}." aria-disabled="true" tabindex="0"
+                    return `<div class="room-btn locked room-coming-item" data-room="${id}" role="listitem" aria-disabled="true"
+                        aria-label="${room.name}. Locked. Requirement: ${lockRequirement}."
                         title="${room.name} ${lockRequirement}">
                         <span class="room-coming-icon" aria-hidden="true">${room.icon}</span>
                         <span class="room-coming-copy"><strong>${room.name}</strong><span>${lockRequirement}</span></span>
-                    </button>`;
+                    </div>`;
                 }).join('');
                 html += `<section class="room-coming-wrap" aria-label="Locked rooms">
                     <button class="room-coming-toggle" id="room-coming-toggle" type="button" aria-expanded="false" aria-controls="room-coming-panel">Coming Soon (${lockedRooms.length})</button>

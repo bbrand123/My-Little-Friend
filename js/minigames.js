@@ -181,7 +181,8 @@
 
             const playCounts = gameState.minigamePlayCounts || {};
 
-            let cardsHTML = '';
+            const startedGames = [];
+            const newGames = [];
             MINI_GAMES.forEach(game => {
                 const best = highScores[game.id];
                 const label = scoreLabels[game.id] || '';
@@ -189,7 +190,7 @@
                 const history = scoreHistory[game.id];
                 let historyHTML = '';
                 if (history && history.length > 0) {
-                    const historyItems = history.map(s => `${s}`).join(', ');
+                    const historyItems = history.slice(-3).map(s => `${s}`).join(', ');
                     historyHTML = `<span class="minigame-card-history">Recent: ${historyItems}</span>`;
                 }
                 const plays = playCounts[game.id] || 0;
@@ -204,28 +205,40 @@
                     difficultyHTML = `<div class="minigame-difficulty-meter" id="diff-${game.id}" aria-label="Difficulty ${diffLevel} of 10"><span class="difficulty-label">Difficulty:</span><div class="difficulty-bar">${pips}</div></div>`;
                 }
                 const a11yNoteHTML = game.a11yNote ? `<div class="minigame-a11y-note"><span class="a11y-icon" aria-hidden="true">⌨️</span> ${game.a11yNote}</div>` : '';
-                cardsHTML += `
+                const shortDescription = String(game.description || '').split(/[.!?]/)[0] || game.description || '';
+                const cardHTML = `
                     <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name}${best ? ', best: ' + best : ''}${plays > 0 ? ', difficulty ' + diffLevel + ' of 10' : ''}"${plays > 0 ? ` aria-describedby="diff-${game.id}"` : ''}>
                         <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
                         <span class="minigame-card-name">${game.name}</span>
-                        <span class="minigame-card-desc">${game.description}</span>
+                        <span class="minigame-card-desc">${shortDescription}</span>
                         ${a11yNoteHTML}
                         ${bestHTML}
                         ${difficultyHTML}
                         ${historyHTML}
                     </button>
                 `;
+                if (plays > 0) startedGames.push(cardHTML);
+                else newGames.push(cardHTML);
             });
+
+            const cardsHTML = `
+                <section class="minigame-menu-section" aria-label="Continue playing">
+                    <h3 class="minigame-menu-section-title">Continue</h3>
+                    <div class="minigame-list">${startedGames.length > 0 ? startedGames.join('') : '<p class="minigame-section-empty">Play any game once to track progress here.</p>'}</div>
+                </section>
+                <section class="minigame-menu-section" aria-label="Try new games">
+                    <h3 class="minigame-menu-section-title">Try New</h3>
+                    <div class="minigame-list">${newGames.length > 0 ? newGames.join('') : '<p class="minigame-section-empty">You have tried all available games.</p>'}</div>
+                </section>
+            `;
 
             overlay.innerHTML = `
                 <div class="minigame-menu" tabindex="-1">
                     <h2 class="minigame-menu-title" id="minigame-menu-title"><span aria-hidden="true">🎮</span> Mini Games</h2>
-                    <p class="minigame-menu-subtitle">Pick a game to play with your pet!</p>
+                    <p class="minigame-menu-subtitle">Pick a game.</p>
                     <p class="minigame-menu-keyboard-note"><span aria-hidden="true">⌨️</span> Keyboard: Use Tab to navigate, Enter or Space to play</p>
-                    <div class="minigame-list">
-                        ${cardsHTML}
-                    </div>
-                    <button class="minigame-close-btn" id="minigame-close">Back</button>
+                    ${cardsHTML}
+                    <button class="minigame-close-btn" id="minigame-close">Close</button>
                 </div>
             `;
 
@@ -312,7 +325,7 @@
                     <p class="minigame-summary-scoreline">Score: <strong>${score}</strong> • Coins: <strong>+${coinReward}</strong></p>
                     <div class="minigame-summary-grid">${statsHTML}</div>
                     <div class="minigame-summary-actions">
-                        <button class="minigame-summary-btn primary" type="button" data-summary-close>Back to Game</button>
+                        <button class="minigame-summary-btn primary" type="button" data-summary-close>Done</button>
                     </div>
                 </div>
             `;

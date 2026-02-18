@@ -706,6 +706,17 @@
             transform: none;
         }
 
+        .top-action-btn[aria-disabled="true"],
+        .room-btn[aria-disabled="true"],
+        .modal-btn:disabled,
+        .tools-menu-btn:disabled,
+        .minigame-card:disabled,
+        .core-care-btn:disabled {
+            opacity: 0.58;
+            cursor: not-allowed;
+            filter: grayscale(0.2);
+        }
+
         .action-btn.cooldown {
             pointer-events: none;
             opacity: 0.55;
@@ -2531,10 +2542,14 @@
             align-items: center;
             gap: 8px;
             margin-bottom: 12px;
-            position: relative;
-            z-index: 5;
+            position: sticky;
+            top: max(0px, env(safe-area-inset-top));
+            z-index: 24;
             padding-top: env(safe-area-inset-top);
+            padding-bottom: 4px;
             width: 100%;
+            background: linear-gradient(180deg, rgba(255, 248, 240, 0.96), rgba(255, 248, 240, 0.84));
+            backdrop-filter: blur(4px);
         }
 
         .top-action-buttons {
@@ -2702,6 +2717,31 @@
             gap: 10px;
             margin-bottom: 18px;
             align-items: start;
+        }
+
+        .minigame-menu-section {
+            margin-bottom: 14px;
+        }
+
+        .minigame-menu-section-title {
+            margin: 0 0 8px;
+            font-size: 0.82rem;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #305164;
+            text-align: left;
+        }
+
+        .minigame-section-empty {
+            grid-column: 1 / -1;
+            font-size: 0.78rem;
+            color: var(--color-text-secondary);
+            text-align: left;
+            padding: 8px;
+            border: 1px dashed rgba(51, 77, 96, 0.25);
+            border-radius: 10px;
+            background: rgba(236, 246, 255, 0.4);
         }
 
         .minigame-card {
@@ -4122,6 +4162,23 @@
             animation: moreActionsSlide 0.2s ease-out;
         }
 
+        .more-actions-section {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid rgba(32, 72, 96, 0.16);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.68);
+        }
+
+        .more-actions-section-title {
+            margin: 0 0 8px;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #305164;
+            text-align: left;
+        }
+
         @keyframes moreActionsSlide {
             from { opacity: 0; transform: translateY(-6px); }
             to { opacity: 1; transform: translateY(0); }
@@ -4172,6 +4229,21 @@
             pointer-events: none;
             z-index: 2;
             border: 1.5px solid #fff;
+        }
+
+        .need-state-text {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: #9c2f2f;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 0 4px;
         }
 
         .need-bubble.warning .need-status-icon {
@@ -6057,6 +6129,10 @@
             color: #ddd;
         }
 
+        [data-theme="dark"] .top-action-bar {
+            background: linear-gradient(180deg, rgba(26, 26, 46, 0.95), rgba(26, 26, 46, 0.82));
+        }
+
         [data-theme="dark"] .top-action-group-secondary {
             border-top-color: rgba(255,255,255,0.12);
         }
@@ -6083,6 +6159,20 @@
 
         [data-theme="dark"] .action-btn.mini-games {
             color: #fff;
+        }
+
+        [data-theme="dark"] .more-actions-section {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        [data-theme="dark"] .more-actions-section-title {
+            color: #b9d5e2;
+        }
+
+        [data-theme="dark"] .need-state-text {
+            background: rgba(36, 36, 62, 0.9);
+            color: #ffb3b3;
         }
 
         [data-theme="dark"] .need-bubble {
@@ -10681,6 +10771,15 @@
     color: #FFB74D;
 }
 
+[data-theme="dark"] .minigame-menu-section-title {
+    color: #b9d5e2;
+}
+
+[data-theme="dark"] .minigame-section-empty {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
 [data-theme="dark"] .battle-modal {
     background: #24243e;
     color: var(--color-text);
@@ -10896,10 +10995,11 @@
 }
 
 /* ===== Beginner UI Density ===== */
-body.beginner-ui .top-action-group-secondary,
 body.beginner-ui #codex-btn,
 body.beginner-ui #achievements-btn,
-body.beginner-ui #daily-btn {
+body.beginner-ui #daily-btn,
+body.beginner-ui #economy-btn,
+body.beginner-ui #explore-btn {
     display: none !important;
 }
 
