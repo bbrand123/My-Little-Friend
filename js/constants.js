@@ -167,6 +167,144 @@ const BIRTHDAY_REWARDS = {
     }
 };
 
+// Personality-aware and care-quality-aware birthday messages
+const BIRTHDAY_PERSONALITY_MESSAGES = {
+    child: {
+        lazy: {
+            excellent: '{name} stretches awake, a little bigger now. All those cozy naps together built real trust.',
+            good: '{name} yawns and blinks sleepily. Growing up is exhausting, but worth it.',
+            average: '{name} rolls over lazily — wait, they\'re bigger! Growth happens, even between naps.',
+            poor: '{name} has grown, though they seem a bit listless. Maybe more attention would help.'
+        },
+        energetic: {
+            excellent: '{name} ZOOMS around the room — they\'re bigger AND faster! Your energy together is electric!',
+            good: '{name} bounces excitedly — look how much they\'ve grown! All that play paid off.',
+            average: '{name} can\'t sit still long enough to notice they\'ve grown. Classic.',
+            poor: '{name} has grown, but their bounce seems a bit dimmer than usual.'
+        },
+        curious: {
+            excellent: '{name} examines their own paws in wonder — they\'re bigger! Every discovery you shared led here.',
+            good: '{name} tilts their head, noticing something\'s different. They\'ve grown! New things to explore!',
+            average: '{name} discovers they can reach higher shelves now. Growth is its own adventure.',
+            poor: '{name} has grown, but their curiosity seems a bit subdued lately.'
+        },
+        shy: {
+            excellent: '{name} peeks out from behind you, a little bigger now. Those quiet moments of trust have paid off.',
+            good: '{name} shyly shows off their new size. You can tell they feel safe with you.',
+            average: '{name} notices they\'re bigger and hides behind you. Change is scary, but they\'ll be okay.',
+            poor: '{name} has grown, but they seem to hide more than usual. They need more gentle care.'
+        },
+        playful: {
+            excellent: '{name} does a victory dance — they\'re BIGGER! All those games together built something special.',
+            good: '{name} spins around showing off their new size. Look at them go!',
+            average: '{name} accidentally knocks something over. Oops — they didn\'t realize they\'d grown!',
+            poor: '{name} has grown, but their playful spark seems a bit faded.'
+        },
+        grumpy: {
+            excellent: '{name} grumbles at the fuss, but you catch a tiny smile. Growing up is hard — but you\'ve been there.',
+            good: '{name} huffs at the attention, but secretly stands a little taller. They appreciate you.',
+            average: '{name} glares at the birthday decorations. "I didn\'t ask for this." ...But they kept the hat.',
+            poor: '{name} has grown, but their grumbles sound more tired than usual.'
+        }
+    },
+    adult: {
+        lazy: {
+            excellent: '{name} lounges with the confidence of a fully grown pet. Your patient care made this cozy soul.',
+            good: '{name} is all grown up and already looking for the perfect nap spot.',
+            average: '{name} is fully grown now. They celebrate by immediately falling asleep.',
+            poor: '{name} has reached adulthood, though they seem rather lethargic.'
+        },
+        energetic: {
+            excellent: '{name} is FULLY GROWN and absolutely unstoppable! The bond you\'ve built is incredible!',
+            good: '{name} has grown into a powerhouse of energy! Ready for anything!',
+            average: '{name} is all grown up and has even MORE energy somehow.',
+            poor: '{name} is fully grown, but their energy feels unfocused.'
+        },
+        curious: {
+            excellent: '{name} gazes at the world with wise, curious eyes. Your adventures together shaped a true explorer.',
+            good: '{name} is all grown up and the world is their laboratory!',
+            average: '{name} is fully grown and already investigating something new.',
+            poor: '{name} has reached adulthood, but their spark of curiosity has dimmed.'
+        },
+        shy: {
+            excellent: '{name} gently nuzzles your hand. They\'re all grown up, and you\'re their safe place.',
+            good: '{name} has grown up beautifully. They still stay close, but with quiet confidence now.',
+            average: '{name} is fully grown but still hides during parties. Some things never change.',
+            poor: '{name} has reached adulthood, but they seem withdrawn. They need more reassurance.'
+        },
+        playful: {
+            excellent: '{name} throws confetti everywhere! Fully grown and fully FUN! You built this together.',
+            good: '{name} is all grown up and the party is just getting started!',
+            average: '{name} celebrates being fully grown by pranking everyone. Naturally.',
+            poor: '{name} is fully grown, but their tricks lack their usual sparkle.'
+        },
+        grumpy: {
+            excellent: '{name} crosses their arms but their eyes are misty. "I\'m not emotional. YOU\'RE emotional." ...They love you.',
+            good: '{name} is fully grown and fully opinionated. Wouldn\'t have it any other way.',
+            average: '{name} is all grown up. They\'d like everyone to stop making a big deal about it.',
+            poor: '{name} has reached adulthood, but their grumbles sound more weary than feisty.'
+        }
+    },
+    elder: {
+        lazy: {
+            excellent: '{name} has earned every nap in their long, well-loved life. A true master of relaxation.',
+            good: '{name} has reached elder status. Their napping technique is now legendary.',
+            average: '{name} is an elder now. They were probably asleep when it happened.',
+            poor: '{name} has reached elder age, but they seem more tired than peaceful.'
+        },
+        energetic: {
+            excellent: '{name} may be an elder, but they still have more energy than anyone! A lifetime of love shows.',
+            good: '{name} is an elder who still won\'t sit still. Age is just a number!',
+            average: '{name} has reached elder status and is somehow STILL bouncing around.',
+            poor: '{name} is an elder now. Their energy isn\'t what it used to be.'
+        },
+        curious: {
+            excellent: '{name} has seen it all and still asks "What\'s that?" Your shared journey of discovery was beautiful.',
+            good: '{name} is a wise elder with an endless sense of wonder.',
+            average: '{name} has reached elder status. They\'re already investigating what that means.',
+            poor: '{name} is an elder now, but their curiosity seems diminished.'
+        },
+        shy: {
+            excellent: '{name} quietly leans against you. No words needed. A lifetime of trust speaks for itself.',
+            good: '{name} is a gentle elder who still finds comfort in your presence.',
+            average: '{name} has reached elder status. They mark the occasion with a quiet nod.',
+            poor: '{name} is an elder now, but they seem more isolated than peaceful.'
+        },
+        playful: {
+            excellent: '{name} is the eldest and the silliest! A lifetime of joy, built game by game.',
+            good: '{name} is an elder who still knows how to have fun!',
+            average: '{name} has reached elder status. They celebrate with one last prank.',
+            poor: '{name} is an elder now, but their playful spirit has faded.'
+        },
+        grumpy: {
+            excellent: '"I\'m old, not soft." But {name}\'s eyes tell a different story. You\'ve been their person all along.',
+            good: '{name} is a grumpy elder who secretly loves being fussed over.',
+            average: '{name} has reached elder status. "Big deal." (It is, and they know it.)',
+            poor: '{name} is an elder now. Their grumbles carry a weight of loneliness.'
+        }
+    }
+};
+
+function getBirthdayPersonalityMessage(pet, stage) {
+    const name = pet.name || 'Your pet';
+    const personality = pet.personality || 'playful';
+    const quality = pet.careQuality || 'average';
+    const stageMessages = BIRTHDAY_PERSONALITY_MESSAGES[stage];
+    if (!stageMessages) return null;
+    const personalityMessages = stageMessages[personality];
+    if (!personalityMessages) return null;
+    const message = personalityMessages[quality] || personalityMessages['average'];
+    return message ? message.replace(/\{name\}/g, name) : null;
+}
+
+function getBirthdayRetrospective(pet) {
+    const actions = pet.careActions || 0;
+    const ageHours = typeof getPetAge === 'function' ? getPetAge(pet) : 0;
+    const playHours = Math.round(ageHours * 10) / 10;
+    const name = pet.name || 'Your pet';
+    return `You've cared for ${name} ${actions} times over ${playHours > 1 ? playHours.toFixed(1) + ' hours' : Math.round(playHours * 60) + ' minutes'} together.`;
+}
+
 function getGrowthStage(careActions, ageInHours, stageOrCareQuality) {
     // Growth still requires BOTH time and actions, but high-quality care shifts
     // progression toward active play quality over passive waiting.
@@ -2865,3 +3003,516 @@ function getMemorialTitle(pet) {
     if (pet.growthStage === 'child') return MEMORIAL_TITLES.child;
     return MEMORIAL_TITLES.baby;
 }
+
+// ==================== MEMORY MOMENTS SYSTEM ====================
+const MEMORY_MOMENTS = {
+    baby: {
+        25: {
+            lazy: ['{name} fell asleep in their food bowl. Twice.', '{name} found the softest spot in the house and claimed it forever.'],
+            energetic: ['{name} tried to chase their own tail and got dizzy!', '{name} bounced off every wall in the room. Literally.'],
+            curious: ['{name} just discovered their own reflection and stared at it for 5 minutes.', '{name} tried to figure out where the light switch sound comes from.'],
+            shy: ['{name} hid behind the curtain, but their tail was sticking out the whole time.', '{name} peeked at you from behind a pillow for ten minutes straight.'],
+            playful: ['{name} turned a sock into their favorite toy. It\'s their best friend now.', '{name} invented a game where they pounce on shadows.'],
+            grumpy: ['{name} glared at a butterfly. The butterfly did not care.', '{name} grumbled at their own hiccups.']
+        },
+        50: {
+            lazy: ['{name} perfected the art of sleeping with one eye open.', '{name} dreamed about treats and made little chomping sounds.'],
+            energetic: ['{name} discovered running and hasn\'t stopped since!', '{name} tried to play with the vacuum cleaner. It did not go well.'],
+            curious: ['{name} figured out how to open the treat cabinet. Uh oh.', '{name} spent an hour watching ants march across the garden.'],
+            shy: ['{name} fell asleep on your lap during a thunderstorm. You didn\'t move for an hour.', '{name} brought you their favorite toy — the first time they\'ve shared it.'],
+            playful: ['{name} organized all their toys by size. Then knocked them all over.', '{name} learned to play hide and seek. They always hide in the same spot.'],
+            grumpy: ['{name} pushed their water bowl an inch to the left. Apparently it was in the wrong spot.', '{name} sat in a sunbeam and almost smiled. Almost.']
+        },
+        75: {
+            lazy: ['{name} has developed a three-nap-per-day routine. Very disciplined.', '{name} sighed contentedly and melted into the couch like butter.'],
+            energetic: ['{name} did three laps of the house to celebrate breakfast. Just breakfast.', '{name} brought you a ball at 6 AM. Every. Single. Day.'],
+            curious: ['{name} has catalogued every bug in the garden. They have names.', '{name} tried to figure out what "outside the window" is.'],
+            shy: ['{name} touched noses with you for the first time. You both froze.', '{name} waited by the door when they heard you coming home.'],
+            playful: ['{name} taught themselves a new trick just to impress you!', '{name} stole your shoe and led you on a chase around the house.'],
+            grumpy: ['{name} let you pet them for 3 whole seconds before walking away. A new record!', '{name} brought you a dead leaf. It might have been a gift. Maybe.']
+        }
+    },
+    child: {
+        25: {
+            lazy: ['{name} found an even comfier napping spot. Research is ongoing.', '{name} yawned so big they startled themselves.'],
+            energetic: ['{name} learned a new trick and won\'t stop showing it off!', '{name} challenged the neighbor\'s pet to a race through the fence.'],
+            curious: ['{name} tried to catch a snowflake and looked genuinely confused when it disappeared.', '{name} discovered the mirror and spent the day making faces at it.'],
+            shy: ['{name} made a friend! ...It was a stuffed animal, but it counts.', '{name} bravely explored a new room while holding onto your leg.'],
+            playful: ['{name} set up an elaborate obstacle course out of household items.', '{name} tried to sneak a treat from the kitchen counter. So close.'],
+            grumpy: ['{name} judged the weather from the window. Unacceptable, apparently.', '{name} reluctantly shared their bed with a stuffed toy. Don\'t tell anyone.']
+        },
+        50: {
+            lazy: ['{name} has mastered the art of the strategic yawn to get belly rubs.', '{name} fell asleep standing up. Impressive, honestly.'],
+            energetic: ['{name} found a stick and decided it\'s the best stick in the world.', '{name} ran circles around an elder pet until they got dizzy.'],
+            curious: ['{name} tried to understand how the fridge makes food cold. Still working on it.', '{name} followed a butterfly through three rooms.'],
+            shy: ['{name} made eye contact with a stranger and handled it like a champion.', '{name} hummed softly while you brushed them. They trust you so much.'],
+            playful: ['{name} invented a new game. Nobody else understands the rules.', '{name} hid your keys as a "game." Very funny, {name}.'],
+            grumpy: ['{name} tolerated a belly rub for 5 seconds. Personal best!', '{name} complained about dinner, ate all of it, then complained again.']
+        },
+        75: {
+            lazy: ['{name} and you watched the sunset together in comfortable silence.', '{name} dreamed so vividly their paws twitched. Chasing dream-treats, probably.'],
+            energetic: ['{name} learned that puddles are for jumping in, not walking around.', '{name} tried to bring the entire park home. Just the good parts.'],
+            curious: ['{name} discovered music and tilts their head at every new song.', '{name} learned to open doors. Nothing is safe now.'],
+            shy: ['{name} voluntarily sat next to a new visitor. Everyone held their breath.', '{name} sang softly when they thought no one was listening. You were.'],
+            playful: ['{name} put on a show for the family. Standing ovation. They bowed.', '{name} found a cardboard box and declared it their castle.'],
+            grumpy: ['{name} growled at the rain, then sat watching it for an hour. Complicated feelings.', '{name} saw you were sad and sat next to you. Said nothing. Meant everything.']
+        }
+    },
+    adult: {
+        25: {
+            lazy: ['{name} has refined lounging to an art form. Truly a master.', '{name} invented a new sleeping position that looks physically impossible.'],
+            energetic: ['{name} still has the energy of a baby. Some things never change.', '{name} organized a game with every pet in the house. Team captain energy.'],
+            curious: ['{name} reads the expressions on your face and responds perfectly now.', '{name} figured out your daily routine and waits at each spot.'],
+            shy: ['{name} gently comforted a scared baby pet. They remember how it feels.', '{name} chose to sit next to you at the window. No words needed.'],
+            playful: ['{name} still turns everything into a game. Laundry day is an adventure.', '{name} developed a signature move. It\'s kind of adorable.'],
+            grumpy: ['{name} has earned "distinguished grump" status. Wears it with pride.', '{name} secretly saved the best treat for you. Don\'t mention it.']
+        },
+        50: {
+            lazy: ['{name} and you have perfected the lazy Sunday together.', '{name} taught a younger pet the art of the perfect nap.'],
+            energetic: ['{name} started the morning with parkour. Off the couch, over the table, into your arms.', '{name} has enough energy to power a small city. Or at least this house.'],
+            curious: ['{name} has become the house detective. No crumb goes unexamined.', '{name} watches cooking shows with genuine interest. Taking notes?'],
+            shy: ['{name} let a stranger pet them today. You\'ve never been so proud.', '{name} fell asleep in the middle of the living room. Anywhere is safe with you.'],
+            playful: ['{name} threw their own surprise party. Everyone was surprised, including {name}.', '{name} learned that the best toy is quality time with you.'],
+            grumpy: ['{name} pretended to be annoyed by cuddles, then fell asleep in your arms.', '{name} has a special grumpy face just for you. It means "I love you."']
+        },
+        75: {
+            lazy: ['You and {name} have achieved peak relaxation synchronization.', '{name} sighed so contentedly the whole room felt calmer.'],
+            energetic: ['{name} is living proof that joy is a choice. And they choose it every day.', '{name} still gets the zoomies. Some things are eternal.'],
+            curious: ['{name} has explored every corner of this world and still finds wonder in it.', '{name} noticed you changed something in the room instantly. Nothing gets past them.'],
+            shy: ['{name} initiated a cuddle for the first time. Time stopped for a moment.', '{name} trusts you completely now. It was a long, beautiful journey.'],
+            playful: ['{name} taught you a game today. Role reversal! They were very patient.', '{name}\'s favorite game is still whatever game you\'re playing together.'],
+            grumpy: ['{name} let their guard down and purred. Don\'t tell anyone. Seriously.', '{name} grumped at a younger pet, then tucked them in. Softie.']
+        }
+    }
+};
+
+function getMemoryMoment(pet) {
+    if (!pet) return null;
+    const stage = pet.growthStage || 'baby';
+    const personality = pet.personality || 'playful';
+    const name = pet.name || 'Your pet';
+    const ageInHours = typeof getPetAge === 'function' ? getPetAge(pet) : 0;
+    const progress = typeof getGrowthProgress === 'function'
+        ? getGrowthProgress(pet.careActions || 0, ageInHours, stage, pet.careQuality || 'average')
+        : 0;
+
+    if (!MEMORY_MOMENTS[stage]) return null;
+
+    const thresholds = [25, 50, 75];
+    const seen = pet._seenMemoryMoments || {};
+
+    for (const threshold of thresholds) {
+        if (progress >= threshold && !seen[`${stage}_${threshold}`]) {
+            const momentPool = MEMORY_MOMENTS[stage][threshold];
+            if (!momentPool) continue;
+            const personalityPool = momentPool[personality] || momentPool['playful'];
+            if (!personalityPool || personalityPool.length === 0) continue;
+            const msg = personalityPool[Math.floor(Math.random() * personalityPool.length)];
+            if (!pet._seenMemoryMoments) pet._seenMemoryMoments = {};
+            pet._seenMemoryMoments[`${stage}_${threshold}`] = true;
+            return msg.replace(/\{name\}/g, name);
+        }
+    }
+    return null;
+}
+
+// ==================== WELCOME BACK PERSONALITY MESSAGES ====================
+const WELCOME_BACK_MESSAGES = {
+    short: {
+        lazy: '{name} opens one eye. "Oh, you\'re back already? I barely noticed."',
+        energetic: '{name} looks up and wags excitedly. "Oh! You\'re back already!"',
+        curious: '{name} glances up from investigating something. "Back so soon? I just found something cool!"',
+        shy: '{name} peeks out. "Oh! You weren\'t gone long... that\'s good."',
+        playful: '{name} bounces over. "Yay! Ready for round two?"',
+        grumpy: '{name} barely acknowledges your return. "Hmph. That was quick."'
+    },
+    medium: {
+        lazy: '{name} stretches and yawns. "Welcome back... I had the best nap while you were gone."',
+        energetic: '{name} runs to the door! "I missed you! I have SO much energy saved up!"',
+        curious: '{name} trots over with bright eyes. "You\'re back! Where did you go? What did you see?"',
+        shy: '{name} pads over nervously. "I-I missed you... is that okay to say?"',
+        playful: '{name} does a happy spin! "FINALLY! I\'ve been waiting to show you this trick!"',
+        grumpy: '{name} pretends not to notice you\'re back. ...Then follows you to every room.'
+    },
+    long: {
+        lazy: '{name} was sleeping by the door. They yawn and shuffle toward you. "Took you long enough..."',
+        energetic: '{name} is sitting by the door, tail going a mile a minute! "YOU\'RE HERE YOU\'RE HERE YOU\'RE HERE!"',
+        curious: '{name} was watching the door intently. Their eyes light up when they see you!',
+        shy: '{name} is sitting by the door, waiting. Their eyes light up when they see you.',
+        playful: '{name} has been rearranging their toys by the door. "I was just... you know... organizing."',
+        grumpy: '{name} is sitting by the door with their back to you. They turn slowly. "Oh. It\'s you. ...Good."'
+    },
+    veryLong: {
+        lazy: '{name} is curled up by the door. When they hear your voice, they slowly pad over and lean against you.',
+        energetic: '{name} bursts into tears of joy and practically tackles you! "NEVER LEAVE AGAIN!"',
+        curious: '{name} searches your face, trying to understand. Then nuzzles close. "Don\'t go that long again, okay?"',
+        shy: '{name} is curled up alone. When they hear your voice, they slowly pad over... then won\'t leave your side.',
+        playful: '{name} tries to act normal, but their bottom lip quivers. "I wasn\'t worried! ...Okay, I was a little worried."',
+        grumpy: '{name} won\'t look at you at first. Then they press against your leg and stay there. "...Don\'t do that again."'
+    }
+};
+
+function getWelcomeBackMessage(pet, minutesAway) {
+    const name = pet.name || 'Your pet';
+    const personality = pet.personality || 'playful';
+    let tier;
+    if (minutesAway < 60) tier = 'short';
+    else if (minutesAway < 240) tier = 'medium';
+    else if (minutesAway < 720) tier = 'long';
+    else tier = 'veryLong';
+    const messages = WELCOME_BACK_MESSAGES[tier];
+    const msg = messages[personality] || messages['playful'];
+    return msg.replace(/\{name\}/g, name);
+}
+
+// ==================== ELDER WISDOM MOMENTS ====================
+const ELDER_WISDOM_SPEECHES = {
+    lazy: [
+        'Remember when we used to nap in the garden? Those were perfect afternoons.',
+        'The secret to a good life? A full belly and a soft spot to rest.',
+        'I\'ve learned that the best moments are the quiet ones, side by side.',
+        'Young ones rush around so much. They\'ll learn — the best things come to those who wait.',
+        'I dreamed about our first day together. We\'ve come so far since then.'
+    ],
+    energetic: [
+        'Remember when we used to race around the park? I could still beat you!',
+        'Every day is a gift. That\'s why I still get the zoomies!',
+        'I\'ve run a thousand laps, but the best ones were with you beside me.',
+        'The young ones think they have energy. Ha! I invented energy.',
+        'We\'ve shared so many adventures. Let\'s have a thousand more!'
+    ],
+    curious: [
+        'Remember when we explored the garden for the first time? Everything was so new.',
+        'I\'ve investigated every corner of this world, and the most wonderful thing is still you.',
+        'Wisdom isn\'t about knowing everything. It\'s about never stopping asking questions.',
+        'The young ones ask me what I\'ve learned. I tell them: stay curious, always.',
+        'I still wonder about things. That\'s how you know you\'re alive.'
+    ],
+    shy: [
+        'Remember when I was too scared to come out? You waited for me. That meant everything.',
+        'Trust is the greatest gift anyone ever gave me. Thank you for your patience.',
+        'I used to hide from the world. Now the world feels like home because of you.',
+        'The young ones are scared sometimes. I tell them: find your person. You\'ll be okay.',
+        'Quiet love is still love. Maybe the deepest kind.'
+    ],
+    playful: [
+        'Remember when we played in the park? Those were the best times.',
+        'I\'m old, but I\'ve never lost my sense of fun. Life\'s too short for seriousness!',
+        'The best games are the ones where everyone is laughing — especially you.',
+        'I\'ve played a thousand games, but my favorite was always the next one with you.',
+        'The young ones think I\'m silly. Good. The world needs more silly.'
+    ],
+    grumpy: [
+        'Don\'t tell anyone, but... I\'m glad we\'ve had all this time together.',
+        'I\'ve complained about a lot of things. Never once complained about you. ...Don\'t let it go to your head.',
+        'Remember when I used to grumble at everything? ...Okay, I still do. But I mean it less now.',
+        'The young ones think I\'m tough. Between us? You made me soft.',
+        'If I had to do it all again, I\'d grumble exactly the same amount. But I\'d always choose you.'
+    ]
+};
+
+// ==================== LEGACY MENTORING SYSTEM ====================
+const MENTOR_CONFIG = {
+    minElderAge: 20,
+    mentorBonusRelationship: 1.5,
+    mentorBonusCareGain: 1.15,
+    mentorWisdomMessages: {
+        lazy: ['{elder} shows {young} the perfect napping position. Wisdom passed down!',
+               '{elder} teaches {young} that patience is a virtue. Then falls asleep.'],
+        energetic: ['{elder} races {young} around the yard. The elder still wins!',
+                    '{elder} teaches {young} a new trick. "I learned this when I was your age!"'],
+        curious: ['{elder} shows {young} a secret hiding spot. Eyes wide with wonder!',
+                  '{elder} and {young} investigate the garden together. Two generations of curiosity!'],
+        shy: ['{elder} gently encourages {young} to try something new. Baby steps!',
+              '{elder} sits quietly with {young}. Sometimes presence is the best lesson.'],
+        playful: ['{elder} invents a new game just for {young}. It\'s a hit!',
+                  '{elder} teaches {young} their signature move. The legacy continues!'],
+        grumpy: ['{elder} pretends to be annoyed by {young}. Then secretly teaches them everything.',
+                 '{elder} grumbles wisdom at {young}. "Listen up, kid. I\'m only saying this once."']
+    }
+};
+
+// ==================== CARETAKER TITLE SYSTEM ====================
+const CARETAKER_TITLES = {
+    newcomer: { label: 'Newcomer', emoji: '🌱', minActions: 0, description: 'Just starting your journey' },
+    caringFriend: { label: 'Caring Friend', emoji: '💚', minActions: 20, description: 'Building bonds of trust' },
+    devotedGuardian: { label: 'Devoted Guardian', emoji: '🛡️', minActions: 50, description: 'A steadfast protector' },
+    belovedKeeper: { label: 'Beloved Keeper', emoji: '💖', minActions: 100, description: 'Cherished by all pets' },
+    legendaryCaretaker: { label: 'Legendary Caretaker', emoji: '👑', minActions: 200, description: 'A true legend of care' }
+};
+
+const CARETAKER_TITLE_ORDER = ['newcomer', 'caringFriend', 'devotedGuardian', 'belovedKeeper', 'legendaryCaretaker'];
+
+function getCaretakerTitle(totalActions) {
+    let result = 'newcomer';
+    for (const key of CARETAKER_TITLE_ORDER) {
+        if (totalActions >= CARETAKER_TITLES[key].minActions) result = key;
+    }
+    return result;
+}
+
+function getCaretakerTitleData(totalActions) {
+    const key = getCaretakerTitle(totalActions);
+    return { key, ...CARETAKER_TITLES[key] };
+}
+
+// ==================== CARETAKER STYLE PROFILE ====================
+const CARETAKER_STYLES = {
+    chef: { label: 'The Chef', emoji: '👨‍🍳', description: 'Loves feeding their pets' },
+    entertainer: { label: 'The Entertainer', emoji: '🎭', description: 'Always playing and having fun' },
+    healer: { label: 'The Healer', emoji: '💊', description: 'Keeps their pets healthy and clean' },
+    cuddler: { label: 'The Cuddler', emoji: '🤗', description: 'Gentle care and affection' },
+    natural: { label: 'The Natural', emoji: '🌿', description: 'A balanced caretaker' }
+};
+
+function getCaretakerStyle(actionCounts) {
+    if (!actionCounts) return CARETAKER_STYLES.natural;
+    const feed = (actionCounts.feed || 0) + (actionCounts.treat || 0);
+    const play = (actionCounts.play || 0) + (actionCounts.exercise || 0);
+    const heal = (actionCounts.wash || 0) + (actionCounts.medicine || 0) + (actionCounts.groom || 0);
+    const cuddle = (actionCounts.cuddle || 0) + (actionCounts.sleep || 0);
+    const total = feed + play + heal + cuddle;
+    if (total < 10) return CARETAKER_STYLES.natural;
+    const threshold = total * 0.35;
+    if (feed > threshold && feed >= play && feed >= heal && feed >= cuddle) return CARETAKER_STYLES.chef;
+    if (play > threshold && play >= feed && play >= heal && play >= cuddle) return CARETAKER_STYLES.entertainer;
+    if (heal > threshold && heal >= feed && heal >= play && heal >= cuddle) return CARETAKER_STYLES.healer;
+    if (cuddle > threshold && cuddle >= feed && cuddle >= play && cuddle >= heal) return CARETAKER_STYLES.cuddler;
+    return CARETAKER_STYLES.natural;
+}
+
+// ==================== SEASONAL NARRATIVE EVENTS ====================
+const SEASONAL_NARRATIVE_EVENTS = {
+    spring: [
+        { id: 'spring_bird', title: '🐦 A Visitor!', message: 'A baby bird has landed in the garden! {name} watches it with wide eyes.', duration: 3, chance: 0.3 },
+        { id: 'spring_flowers', title: '🌸 First Blooms', message: 'The garden is blooming! {name} sniffs every single flower.', duration: 2, chance: 0.3 }
+    ],
+    summer: [
+        { id: 'summer_fireflies', title: '✨ Firefly Festival', message: 'The garden glows with fireflies tonight! {name} tries to catch them, giggling.', duration: 2, chance: 0.3 },
+        { id: 'summer_heatwave', title: '☀️ Hot Day', message: '{name} found the coolest spot in the house and is NOT moving.', duration: 1, chance: 0.3 }
+    ],
+    autumn: [
+        { id: 'autumn_harvest', title: '🍂 Harvest Festival', message: 'It\'s harvest time! {name} helps gather fallen leaves into a big pile, then jumps in.', duration: 2, chance: 0.3 },
+        { id: 'autumn_wind', title: '🍃 Breezy Day', message: '{name} chases leaves tumbling in the autumn wind, laughing all the way.', duration: 1, chance: 0.3 }
+    ],
+    winter: [
+        { id: 'winter_snow', title: '❄️ First Snow!', message: '{name} discovers snow for the first time and makes tiny paw prints everywhere!', duration: 2, chance: 0.3, oneTime: true },
+        { id: 'winter_cozy', title: '🧣 Cozy Evening', message: 'You and {name} cuddle up by the warmest spot in the house. Perfect.', duration: 1, chance: 0.3 }
+    ]
+};
+
+function getSeasonalEvent(pet, season) {
+    if (!pet || !season) return null;
+    const events = SEASONAL_NARRATIVE_EVENTS[season];
+    if (!events) return null;
+    const name = pet.name || 'Your pet';
+    const seenEvents = pet._seenSeasonalEvents || {};
+    for (const event of events) {
+        if (event.oneTime && seenEvents[event.id]) continue;
+        if (Math.random() < event.chance) {
+            return { ...event, message: event.message.replace(/\{name\}/g, name) };
+        }
+    }
+    return null;
+}
+
+// ==================== WEATHER MICRO-STORIES ====================
+const WEATHER_MICRO_STORIES = {
+    rainy: {
+        first: ['{name} sees rain for the first time and tries to catch the drops!',
+                '{name} presses their nose against the window, mesmerized by raindrops racing down the glass.'],
+        recurring: ['{name} listens to the rain and their eyelids get heavy...',
+                    '{name} watches puddles form outside. So many splashing possibilities!']
+    },
+    snowy: {
+        first: ['{name} discovers snow for the first time! They poke it cautiously, then POUNCE!',
+                '{name} makes tiny paw prints in the snow and looks back at them in wonder.'],
+        recurring: ['{name} watches snowflakes fall and tries to count them.',
+                    '{name} presses against the window, breath making fog circles on the glass.']
+    },
+    sunny: {
+        afterRain: ['{name} spots a rainbow and stares in wonder.',
+                    'The sun breaks through! {name} runs to the window to feel the warmth.'],
+        recurring: ['{name} finds the perfect sunbeam and melts into it.',
+                    '{name} squints happily in the sunshine.']
+    }
+};
+
+function getWeatherStory(pet, weather, previousWeather) {
+    if (!pet || !weather) return null;
+    const name = pet.name || 'Your pet';
+    const weatherSeen = pet._weatherSeen || {};
+    const stories = WEATHER_MICRO_STORIES[weather];
+    if (!stories) return null;
+    let pool;
+    if (weather === 'sunny' && previousWeather === 'rainy') {
+        pool = stories.afterRain || stories.recurring;
+    } else if (!weatherSeen[weather]) {
+        pool = stories.first || stories.recurring;
+    } else {
+        pool = stories.recurring;
+        if (Math.random() > 0.3) return null;
+    }
+    if (!pool || pool.length === 0) return null;
+    const msg = pool[Math.floor(Math.random() * pool.length)];
+    return msg.replace(/\{name\}/g, name);
+}
+
+// ==================== ROOM MEMORIES ====================
+const ROOM_MEMORY_THRESHOLDS = {
+    kitchen: {
+        stat: 'feedCount',
+        thresholds: [
+            { count: 10, emoji: '🥣', label: 'Favorite Bowl', description: 'A well-worn food bowl sits in the corner — {name}\'s favorite spot to eat.' },
+            { count: 25, emoji: '🧑‍🍳', label: 'Kitchen Helper', description: '{name} has their own little spot by the counter. They "help" with every meal.' }
+        ]
+    },
+    bedroom: {
+        stat: 'sleepCount',
+        thresholds: [
+            { count: 10, emoji: '🛏️', label: 'Cozy Indent', description: 'There\'s a pet-shaped indent in the bed. {name}\'s spot, always warm.' },
+            { count: 25, emoji: '💤', label: 'Dream Corner', description: '{name}\'s corner of the bedroom is covered in their favorite things. Home within home.' }
+        ]
+    },
+    bathroom: {
+        stat: 'washCount',
+        thresholds: [
+            { count: 8, emoji: '🧴', label: 'Bath Buddy', description: '{name}\'s favorite bath toy sits on the edge of the tub, always ready.' },
+            { count: 20, emoji: '🫧', label: 'Splash Zone', description: 'Water marks on the wall from {name}\'s enthusiastic bath times. Memories in every splash.' }
+        ]
+    },
+    backyard: {
+        stat: 'playCount',
+        thresholds: [
+            { count: 10, emoji: '⚽', label: 'Play Spot', description: 'A worn patch of grass marks {name}\'s favorite play area.' },
+            { count: 25, emoji: '🏆', label: 'Champion\'s Ground', description: 'The backyard bears the marks of a thousand games. This is {name}\'s kingdom.' }
+        ]
+    },
+    park: {
+        stat: 'parkVisits',
+        thresholds: [
+            { count: 8, emoji: '🌳', label: 'Favorite Tree', description: '{name} always runs to the same tree first. It\'s their tree now.' },
+            { count: 20, emoji: '🐾', label: 'Trail Blazer', description: '{name} has worn a little path through the park. Their own personal trail.' }
+        ]
+    },
+    garden: {
+        stat: 'harvestCount',
+        thresholds: [
+            { count: 10, emoji: '🌱', label: 'Green Paws', description: '{name} likes to "help" in the garden. There are tiny paw prints between the rows.' },
+            { count: 25, emoji: '🌻', label: 'Garden Guardian', description: 'A sunflower grows in {name}\'s favorite corner. They check on it every day.' }
+        ]
+    }
+};
+
+function getRoomMemories(pet, room) {
+    if (!pet || !room) return [];
+    const config = ROOM_MEMORY_THRESHOLDS[room];
+    if (!config) return [];
+    const counts = pet._roomActionCounts || {};
+    const count = counts[config.stat] || 0;
+    const name = pet.name || 'Your pet';
+    const memories = [];
+    for (const t of config.thresholds) {
+        if (count >= t.count) {
+            memories.push({ emoji: t.emoji, label: t.label, description: t.description.replace(/\{name\}/g, name) });
+        }
+    }
+    return memories;
+}
+
+// ==================== LOW STAT REACTIONS ====================
+const LOW_STAT_REACTIONS = {
+    hunger: {
+        lazy: '{name} lies flat, too hungry to even yawn. They gaze at you weakly.',
+        energetic: '{name} slumps against the wall, energy gone. Their tummy rumbles sadly.',
+        curious: '{name} has stopped exploring. They just stare at the food bowl, then at you.',
+        shy: '{name} hides in a corner, holding their tummy. They\'re too shy to ask for food.',
+        playful: '{name} pushes their empty bowl toward you with a sad little nudge.',
+        grumpy: '{name} gives you the silent treatment and pointedly looks at the empty food bowl.'
+    },
+    cleanliness: {
+        lazy: '{name} doesn\'t even care about being messy anymore. That\'s concerning.',
+        energetic: '{name} tries to shake off the dirt but just makes it worse.',
+        curious: '{name} sniffs themselves and looks confused. "What is that smell?"',
+        shy: '{name} hides, embarrassed about being dirty. They won\'t come out.',
+        playful: '{name} tried to clean themselves but just made a bigger mess.',
+        grumpy: '{name} glares at you as if it\'s YOUR fault they\'re dirty. (It might be.)'
+    },
+    happiness: {
+        lazy: '{name} doesn\'t even have the energy to be sad. They just... exist.',
+        energetic: '{name}\'s bounce is gone. They sit still, staring at nothing. It\'s heartbreaking.',
+        curious: '{name} has lost interest in everything. The spark in their eyes has dimmed.',
+        shy: '{name} is hiding and won\'t come out. Soft whimpering sounds come from the corner.',
+        playful: '{name}\'s toys sit untouched. They don\'t want to play. Something is very wrong.',
+        grumpy: '{name} isn\'t even grumpy anymore. Just... sad. That\'s worse.'
+    },
+    energy: {
+        lazy: '{name} is beyond tired. Even breathing seems like an effort.',
+        energetic: '{name} crashes hard. All that energy, just... gone. They can barely keep their eyes open.',
+        curious: '{name} wants to explore but their legs won\'t cooperate. They need rest.',
+        shy: '{name} curls up in the smallest ball possible. They need rest and safety.',
+        playful: '{name} fell asleep mid-play. They pushed too hard. Time for rest.',
+        grumpy: '{name} is too exhausted to grumble. They just sigh and close their eyes.'
+    }
+};
+
+function getLowStatReaction(pet, stat) {
+    if (!pet || !stat) return null;
+    const personality = pet.personality || 'playful';
+    const name = pet.name || 'Your pet';
+    const reactions = LOW_STAT_REACTIONS[stat];
+    if (!reactions) return null;
+    const msg = reactions[personality] || reactions['playful'];
+    return msg ? msg.replace(/\{name\}/g, name) : null;
+}
+
+// ==================== NEGLECT RECOVERY ARC ====================
+const NEGLECT_RECOVERY_MESSAGES = {
+    first: {
+        lazy: '{name} eats quietly, not looking at you.',
+        energetic: '{name} accepts the care but doesn\'t bounce. Just a quiet nod.',
+        curious: '{name} glances at you briefly but looks away.',
+        shy: '{name} flinches at your touch, then holds still. Waiting.',
+        playful: '{name} takes the treat but doesn\'t smile. Not yet.',
+        grumpy: '{name} turns away from you, but stays close enough to reach.'
+    },
+    second: {
+        lazy: '{name} shifts a little closer. A tired blink that might mean something.',
+        energetic: '{name} perks up slightly. A tiny tail wag, quickly hidden.',
+        curious: '{name} glances up briefly and holds your gaze for a moment.',
+        shy: '{name} doesn\'t flinch this time. Progress.',
+        playful: '{name} pokes at a toy, then looks at you. Testing the waters.',
+        grumpy: '{name} huffs, but doesn\'t move away when you come near.'
+    },
+    third: {
+        lazy: '{name} leans against you with a soft sigh. Forgiveness is warm.',
+        energetic: '{name} bounces once — just once — and looks hopeful.',
+        curious: '{name} nudges your hand. Maybe things are okay.',
+        shy: '{name} reaches out and touches your hand. The tiniest gesture, the biggest meaning.',
+        playful: '{name} brings you a toy and drops it at your feet. Ready to try again?',
+        grumpy: '{name} grumbles something that sounds suspiciously like "I missed you."'
+    }
+};
+
+function getNeglectRecoveryMessage(pet, recoveryStep) {
+    if (!pet) return null;
+    const personality = pet.personality || 'playful';
+    const name = pet.name || 'Your pet';
+    let tier;
+    if (recoveryStep <= 1) tier = 'first';
+    else if (recoveryStep === 2) tier = 'second';
+    else tier = 'third';
+    const messages = NEGLECT_RECOVERY_MESSAGES[tier];
+    if (!messages) return null;
+    const msg = messages[personality] || messages['playful'];
+    return msg ? msg.replace(/\{name\}/g, name) : null;
+}
+
+// ==================== CARETAKER TITLE PET REFERENCES ====================
+const CARETAKER_PET_SPEECHES = {
+    newcomer: ['My person is still learning!', 'We\'re figuring this out together.'],
+    caringFriend: ['My Caring Friend is the best!', 'I\'m lucky to have such a good friend.'],
+    devotedGuardian: ['My Guardian always takes care of me!', 'I feel so safe with my Guardian.'],
+    belovedKeeper: ['My Beloved Keeper is amazing!', 'Everyone wishes they had a Keeper like mine!'],
+    legendaryCaretaker: ['My Caretaker is LEGENDARY!', 'I have the greatest Caretaker in the whole world!']
+};
