@@ -1443,6 +1443,15 @@ function getRelationshipProgress(points) {
 // Ensures only the topmost modal/overlay responds to the Escape key.
 const _modalEscapeStack = [];
 let _modalLastReturnAnnounceAt = 0;
+const _modalFocusRestoreByCloseFn = new WeakMap();
+
+function isBriefScreenReaderMode() {
+    try {
+        return localStorage.getItem('petCareBuddy_srVerbosity') !== 'detailed';
+    } catch (e) {
+        return true;
+    }
+}
 
 function updateBackgroundInertState() {
     if (typeof document === 'undefined') return;
@@ -1468,6 +1477,12 @@ function updateBackgroundInertState() {
 }
 
 function pushModalEscape(closeFn) {
+    if (typeof document !== 'undefined' && typeof closeFn === 'function') {
+        const active = document.activeElement;
+        if (active && active !== document.body && typeof active.focus === 'function') {
+            _modalFocusRestoreByCloseFn.set(closeFn, active);
+        }
+    }
     _modalEscapeStack.push(closeFn);
     updateBackgroundInertState();
 }
@@ -1478,15 +1493,19 @@ function popModalEscape(closeFn) {
     updateBackgroundInertState();
     if (_modalEscapeStack.length === 0) {
         setTimeout(() => {
+            const restoreTarget = (typeof closeFn === 'function' && _modalFocusRestoreByCloseFn.get(closeFn)) || null;
+            if (restoreTarget && document.contains(restoreTarget) && typeof restoreTarget.focus === 'function') {
+                restoreTarget.focus();
+            }
             const active = document.activeElement;
-            if (!active || typeof announce !== 'function') return;
+            if (!active || typeof announce !== 'function' || isBriefScreenReaderMode()) return;
             const label = active.getAttribute('aria-label') || active.textContent || '';
             const compact = String(label).trim().replace(/\s+/g, ' ').slice(0, 48);
             if (!compact) return;
             const now = Date.now();
             if (now - _modalLastReturnAnnounceAt < 1200) return;
             _modalLastReturnAnnounceAt = now;
-            announce(`Returned to ${compact}.`);
+            announce(`Returned to ${compact}.`, { source: 'focus-return', dedupeMs: 1000 });
         }, 60);
     }
 }
@@ -1504,9 +1523,20 @@ if (typeof document !== 'undefined' && !window.__modalEscapeListenerRegistered) 
 
 // Trap Tab focus within a modal overlay element
 function trapFocus(overlay) {
+    const ensureOverlayFocusable = () => {
+        if (!overlay.hasAttribute('tabindex')) overlay.setAttribute('tabindex', '-1');
+    };
+    const getFocusable = () => overlay.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [role="button"]:not([disabled]), [role="link"], [role="tab"], [tabindex]:not([tabindex="-1"]):not([disabled])');
+    ensureOverlayFocusable();
+    const focusableNow = getFocusable();
+    if (focusableNow.length > 0) {
+        if (!overlay.contains(document.activeElement)) focusableNow[0].focus();
+    } else if (!overlay.contains(document.activeElement)) {
+        overlay.focus();
+    }
     overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
-            const focusable = overlay.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [role="button"]:not([disabled]), [role="link"], [role="tab"], [tabindex]:not([tabindex="-1"]):not([disabled])');
+            const focusable = getFocusable();
             if (focusable.length === 0) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];

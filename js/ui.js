@@ -654,15 +654,24 @@
         }
 
         function setCareActionsSkipLinkVisible(isVisible) {
-            const skipLink = document.querySelector('.skip-link-secondary');
-            if (!skipLink) return;
-            skipLink.hidden = !isVisible;
-            skipLink.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
-            if (!isVisible) {
-                skipLink.setAttribute('tabindex', '-1');
-            } else {
-                skipLink.removeAttribute('tabindex');
-            }
+            const skipLinks = [
+                { selector: '.skip-link-secondary', targetId: 'care-actions' },
+                { selector: '.skip-link-rooms', targetId: 'room-nav' },
+                { selector: '.skip-link-status', targetId: 'status-heading' }
+            ];
+            skipLinks.forEach(({ selector, targetId }) => {
+                const skipLink = document.querySelector(selector);
+                if (!skipLink) return;
+                const target = document.getElementById(targetId);
+                const shouldShow = !!isVisible && !!target;
+                skipLink.hidden = !shouldShow;
+                skipLink.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+                if (!shouldShow) {
+                    skipLink.setAttribute('tabindex', '-1');
+                } else {
+                    skipLink.removeAttribute('tabindex');
+                }
+            });
         }
 
         function renderEggPhase(maintainFocus = false) {
@@ -1474,9 +1483,9 @@
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">6</span>
                             </button>
-                            <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog">
+                            <button class="action-btn mini-games" id="minigames-btn" aria-haspopup="dialog" aria-label="Mini games">
                                 <span class="action-btn-tooltip">+Happy, +XP</span>
-                                <span class="btn-icon">${renderUiIcon('gamepad', '🎮', 'Games')}</span>
+                                <span class="btn-icon" aria-hidden="true">${renderUiIcon('gamepad', '🎮', '')}</span>
                                 <span>Games</span>
                                 <span class="cooldown-count" aria-hidden="true"></span>
                                 <span class="kbd-hint" aria-hidden="true">7</span>
@@ -1516,7 +1525,7 @@
 
 
             content.innerHTML = `
-                <div class="top-action-bar" role="toolbar" aria-label="Game actions">
+                <div class="top-action-bar" id="top-actions" role="toolbar" aria-label="Game actions">
                     <div class="top-action-buttons">
                         <div class="top-action-group" role="group" aria-label="Pet data and progress">
                             <button class="top-action-btn" id="codex-btn" type="button" aria-haspopup="dialog" title="Codex" aria-label="Codex">
@@ -1571,7 +1580,7 @@
                 <div class="sr-only" id="top-meta-explore">${explorationAlerts > 0 ? `${Math.min(9, explorationAlerts)} exploration updates available.` : 'No new exploration updates.'}</div>
                 ${generatePetSwitcherHTML()}
                 ${generateRoomNavHTML(currentRoom)}
-                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season} pet-theme-${roomThemeMode}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg}; --room-wallpaper-overlay: ${wallpaper.bg || 'none'}; --room-floor-overlay: ${flooring.bg || 'none'};">
+                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season} pet-theme-${roomThemeMode}" role="region" data-current-room="${currentRoom}" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg}; --room-wallpaper-overlay: ${wallpaper.bg || 'none'}; --room-floor-overlay: ${flooring.bg || 'none'};">
                     ${weatherHTML}
                     ${generateAmbientLayerHTML(currentRoom, timeOfDay, weather, isOutdoor)}
                     ${generateWeatherParticlesHTML(weather, isOutdoor)}
@@ -1595,7 +1604,7 @@
 
                             if (!nextStage) {
                                 return `
-                                    <div class="growth-progress-wrap" id="growth-progress-section" aria-label="Growth stage: ${stageData.label}, fully grown">
+                                    <div class="growth-progress-wrap" id="growth-progress-section" role="progressbar" aria-label="Growth stage: ${stageData.label}, fully grown" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-valuetext="Growth 100 percent, fully grown">
                                         <div class="growth-compact-row">
                                             <span class="growth-compact-label${isMythical ? ' mythical' : ''}"><span aria-hidden="true">${stageData.emoji}</span> ${stageData.label} — Fully Grown</span>
                                         </div>
@@ -1628,7 +1637,7 @@
                             const timeDisplay = `${Math.floor(timeHoursElapsed)}/${nextHoursThreshold}h`;
 
                             return `
-                                <div class="growth-progress-wrap" id="growth-progress-section" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}: ${Math.round(overallProgress)}%" title="${growthHint}">
+                                <div class="growth-progress-wrap" id="growth-progress-section" role="progressbar" aria-label="${stageData.label}, growth progress to ${GROWTH_STAGES[nextStage].label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(overallProgress)}" aria-valuetext="Growth ${Math.round(overallProgress)} percent. Care ${Math.round(actionProgress)} percent. Time ${Math.round(timeProgress)} percent." title="${growthHint}">
                                     <div class="growth-compact-row">
                                         <span class="growth-compact-label${isMythical ? ' mythical' : ''}"><span aria-hidden="true">${stageData.emoji}</span> ${stageData.label}</span>
                                         <span class="growth-compact-arrow" aria-hidden="true">→</span>
@@ -1651,7 +1660,7 @@
                     <div class="seasonal-decor" aria-hidden="true"></div>
                 </div>
 
-                <h2 class="region-heading">Status</h2>
+                <h2 class="region-heading" id="status-heading">Status</h2>
                 <section class="needs-section" aria-label="Pet needs" aria-atomic="false">
                     <div class="needs-row">
                         <div class="need-bubble ${needClass(pet.hunger)}" id="hunger-bubble"
@@ -1821,8 +1830,10 @@
                         </div>
                     </div>
                     ${simplifiedActionsHintHTML}
-                    <button class="more-actions-toggle" id="more-actions-toggle" type="button" aria-expanded="false" aria-controls="more-actions-panel">
-                        <span class="more-actions-toggle-icon">▸</span> More
+                    <button class="more-actions-toggle" id="more-actions-toggle" type="button" aria-expanded="false" aria-controls="more-actions-panel" aria-label="More actions collapsed">
+                        <span class="more-actions-toggle-icon">▸</span>
+                        <span class="more-actions-toggle-text">More actions</span>
+                        <span class="more-actions-toggle-state" aria-hidden="true">Collapsed</span>
                     </button>
                     <div class="more-actions-panel" id="more-actions-panel" hidden>
                         <div class="action-group">
@@ -2007,7 +2018,11 @@
                     panel.hidden = !prefExpanded;
                     moreToggle.setAttribute('aria-expanded', String(prefExpanded));
                     const icon = moreToggle.querySelector('.more-actions-toggle-icon');
+                    const stateLabel = moreToggle.querySelector('.more-actions-toggle-state');
                     if (icon) icon.textContent = prefExpanded ? '▾' : '▸';
+                    if (stateLabel) stateLabel.textContent = prefExpanded ? 'Expanded' : 'Collapsed';
+                    moreToggle.classList.toggle('expanded', !!prefExpanded);
+                    moreToggle.setAttribute('aria-label', `More actions ${prefExpanded ? 'expanded' : 'collapsed'}`);
                 }
                 moreToggle.addEventListener('click', () => {
                     const panel = document.getElementById('more-actions-panel');
@@ -2015,7 +2030,12 @@
                     const expanded = moreToggle.getAttribute('aria-expanded') === 'true';
                     moreToggle.setAttribute('aria-expanded', String(!expanded));
                     panel.hidden = expanded;
-                    moreToggle.querySelector('.more-actions-toggle-icon').textContent = expanded ? '▸' : '▾';
+                    const icon = moreToggle.querySelector('.more-actions-toggle-icon');
+                    const stateLabel = moreToggle.querySelector('.more-actions-toggle-state');
+                    if (icon) icon.textContent = expanded ? '▸' : '▾';
+                    if (stateLabel) stateLabel.textContent = expanded ? 'Collapsed' : 'Expanded';
+                    moreToggle.classList.toggle('expanded', !expanded);
+                    moreToggle.setAttribute('aria-label', `More actions ${expanded ? 'collapsed' : 'expanded'}`);
                     setMoreActionsExpandedPref(!expanded);
                 });
             }
@@ -2532,7 +2552,7 @@
             trafficMinimizeCoachChecklist();
             const next = _toastQueue.shift();
             renderToastNow(next.safeMessage, next.color);
-            if (_toastQueue.length > 0) _toastQueueTimer = setTimeout(flushToastQueue, 420);
+            if (_toastQueue.length > 0) _toastQueueTimer = setTimeout(flushToastQueue, 480);
         }
 
         function shouldAnnounceToast(plainText, options) {
@@ -2556,7 +2576,7 @@
                 const last = _toastAnnounceLastByText.get(key) || 0;
                 if (now - last > 1800) {
                     _toastAnnounceLastByText.set(key, now);
-                    announce(plainText, !!options.assertive);
+                    announce(plainText, { assertive: !!options.assertive, source: 'toast', dedupeMs: 1800 });
                 }
             }
         }
@@ -2620,8 +2640,8 @@
                 setTimeout(() => {
                     card.remove();
                     showNextRewardCard();
-                }, 260);
-            }, 1900);
+                }, 240);
+            }, 1800);
         }
 
         // Toast color map for actions
@@ -3163,7 +3183,8 @@
             actionAnimating = true;
             if (petContainer) {
                 // If reduced motion is preferred, skip animation entirely
-                const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                const reducedMotion = (document.documentElement.getAttribute('data-reduced-motion') === 'true')
+                    || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
                 if (reducedMotion) {
                     actionAnimClasses.forEach(c => petContainer.classList.remove(c));
                     actionAnimating = false;
@@ -4185,8 +4206,14 @@
             trapFocus(modal);
         }
 
+        function isReducedMotionEnabled() {
+            const manual = document.documentElement.getAttribute('data-reduced-motion') === 'true';
+            const system = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            return manual || system;
+        }
+
         function createCelebrationFlash() {
-            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
+            if (isReducedMotionEnabled()) return;
             const flash = document.createElement('div');
             flash.className = 'celebration-flash';
             flash.setAttribute('aria-hidden', 'true');
@@ -4207,7 +4234,7 @@
         }
 
         function createConfetti() {
-            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
+            if (isReducedMotionEnabled()) return;
             const container = document.createElement('div');
             container.className = 'confetti-container';
             container.style.cssText = `
@@ -4284,7 +4311,7 @@
 
         // ==================== MILESTONE FIREWORKS ====================
         function createMilestoneFireworks() {
-            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
+            if (isReducedMotionEnabled()) return;
             const container = document.createElement('div');
             container.className = 'fireworks-container';
             container.setAttribute('aria-hidden', 'true');
@@ -8069,12 +8096,25 @@
                 changed = true;
             }
             if (!changed) return;
+            const stepLabels = {
+                feed_once: 'Feed once complete',
+                play_once: 'Play once complete',
+                open_minigame: 'Mini game opened'
+            };
+            const changedStep = stepOrAction === 'feed' ? 'feed_once'
+                : stepOrAction === 'play' ? 'play_once'
+                : stepOrAction === 'open_minigame' ? 'open_minigame'
+                : stepOrAction;
+            if (typeof announce === 'function' && stepLabels[changedStep]) {
+                announce(`Quick Start updated: ${stepLabels[changedStep]}.`, { source: 'coach', dedupeMs: 0 });
+            }
 
             saveCoachChecklistState(state);
             if (isCoachChecklistComplete(state)) {
                 try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
                 removeCoachChecklist();
                 showToast('✅ Coach checklist complete!', '#66BB6A', { announce: false });
+                if (typeof announce === 'function') announce('Quick Start complete.', { source: 'coach', dedupeMs: 0 });
                 return;
             }
             if (isNarrowViewport()) {
@@ -8108,9 +8148,9 @@
             if (!panel) {
                 panel = document.createElement('aside');
                 panel.className = 'coach-checklist';
-                panel.setAttribute('aria-live', 'polite');
                 document.body.appendChild(panel);
             }
+            panel.removeAttribute('aria-live');
 
             const itemsHTML = COACH_CHECKLIST_STEPS.map((step) => `
                 <li class="coach-checklist-item ${state[step.id] ? 'done' : ''}">
@@ -8135,6 +8175,9 @@
                 toggleBtn.addEventListener('click', () => {
                     const nextMinimized = !panel.classList.contains('minimized');
                     setCoachChecklistMinimized(nextMinimized, 'manual');
+                    if (typeof announce === 'function') {
+                        announce(`Quick Start ${nextMinimized ? 'collapsed' : 'expanded'}.`, { source: 'coach', dedupeMs: 0 });
+                    }
                 });
             }
             const skipBtn = panel.querySelector('[data-coach-skip]');
@@ -8142,6 +8185,7 @@
                 skipBtn.addEventListener('click', () => {
                     try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
                     removeCoachChecklist();
+                    if (typeof announce === 'function') announce('Quick Start skipped.', { source: 'coach', dedupeMs: 0 });
                 });
             }
             setCoachChecklistMinimized(getCoachChecklistMinimizedPref(), 'manual');

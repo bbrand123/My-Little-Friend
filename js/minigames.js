@@ -394,6 +394,12 @@
                 const busy = fetchState.phase !== 'ready';
                 doneBtn.disabled = busy;
                 doneBtn.setAttribute('aria-disabled', busy ? 'true' : 'false');
+                doneBtn.setAttribute('aria-describedby', 'fetch-instruction');
+                if (busy) {
+                    doneBtn.setAttribute('title', 'Wait for the current throw to finish before exiting.');
+                } else {
+                    doneBtn.removeAttribute('title');
+                }
             };
 
             field.addEventListener('click', (e) => handleFetchThrow(e));
@@ -457,7 +463,11 @@
             const instruction = document.getElementById('fetch-instruction');
             const throwBtn = document.getElementById('fetch-throw-btn');
 
-            if (throwBtn) throwBtn.disabled = true;
+            if (throwBtn) {
+                throwBtn.disabled = true;
+                throwBtn.setAttribute('aria-disabled', 'true');
+                throwBtn.setAttribute('title', 'Wait for your pet to bring the ball back.');
+            }
             if (fetchState._updateExitButtons) fetchState._updateExitButtons();
 
             // Calculate where the ball lands (random position on the right side)
@@ -571,7 +581,11 @@
                 instruction.textContent = 'Throw again! Click or press Enter!';
                 instruction.className = 'fetch-instruction highlight';
 
-                if (throwBtn) throwBtn.disabled = false;
+                if (throwBtn) {
+                    throwBtn.disabled = false;
+                    throwBtn.setAttribute('aria-disabled', 'false');
+                    throwBtn.removeAttribute('title');
+                }
                 if (fetchState._updateExitButtons) fetchState._updateExitButtons();
 
                 announce(`Great fetch! Score: ${fetchState.score}. Throw again!`);
