@@ -37,6 +37,51 @@ const GROWTH_STAGES = {
 
 const GROWTH_ORDER = ['baby', 'child', 'adult', 'elder'];
 
+// Stage-based balance tuning for decay pressure, neglect impact, focused care reward,
+// daily target scaling, and growth progression weighting.
+const STAGE_BALANCE = {
+    baby: {
+        needDecayMultiplier: 0.95,
+        neglectThreshold: 18,
+        neglectGainMultiplier: 1.0,
+        neglectRecoveryMultiplier: 1.0,
+        focusedCareBonus: 0.12,
+        dailyTaskMultiplier: 1.0,
+        growthCareWeight: 0.95
+    },
+    child: {
+        needDecayMultiplier: 1.08,
+        neglectThreshold: 21,
+        neglectGainMultiplier: 1.15,
+        neglectRecoveryMultiplier: 0.95,
+        focusedCareBonus: 0.18,
+        dailyTaskMultiplier: 1.18,
+        growthCareWeight: 1.0
+    },
+    adult: {
+        needDecayMultiplier: 1.22,
+        neglectThreshold: 24,
+        neglectGainMultiplier: 1.35,
+        neglectRecoveryMultiplier: 0.82,
+        focusedCareBonus: 0.24,
+        dailyTaskMultiplier: 1.45,
+        growthCareWeight: 1.1
+    },
+    elder: {
+        needDecayMultiplier: 1.33,
+        neglectThreshold: 26,
+        neglectGainMultiplier: 1.55,
+        neglectRecoveryMultiplier: 0.7,
+        focusedCareBonus: 0.3,
+        dailyTaskMultiplier: 1.72,
+        growthCareWeight: 1.18
+    }
+};
+
+function getStageBalance(stage) {
+    return STAGE_BALANCE[stage] || STAGE_BALANCE.baby;
+}
+
 // Care quality levels and their thresholds
 const CARE_QUALITY = {
     poor: {
@@ -122,14 +167,25 @@ const BIRTHDAY_REWARDS = {
     }
 };
 
-function getGrowthStage(careActions, ageInHours) {
-    // Growth requires BOTH time passage AND care actions
-    const hasElderTime = ageInHours >= GROWTH_STAGES.elder.hoursNeeded;
-    const hasElderActions = careActions >= GROWTH_STAGES.elder.actionsNeeded;
-    const hasAdultTime = ageInHours >= GROWTH_STAGES.adult.hoursNeeded;
-    const hasAdultActions = careActions >= GROWTH_STAGES.adult.actionsNeeded;
-    const hasChildTime = ageInHours >= GROWTH_STAGES.child.hoursNeeded;
-    const hasChildActions = careActions >= GROWTH_STAGES.child.actionsNeeded;
+function getGrowthStage(careActions, ageInHours, stageOrCareQuality) {
+    // Growth still requires BOTH time and actions, but high-quality care shifts
+    // progression toward active play quality over passive waiting.
+    const stageHint = GROWTH_STAGES[stageOrCareQuality] ? stageOrCareQuality : 'baby';
+    const stageBalance = getStageBalance(stageHint);
+    const hasCareQuality = !!(stageOrCareQuality && CARE_QUALITY[stageOrCareQuality] && typeof CARE_QUALITY[stageOrCareQuality].minAverage === 'number');
+    const qualityBoost = hasCareQuality
+        ? (0.92 + (CARE_QUALITY[stageOrCareQuality].minAverage / 100) * 0.24)
+        : 1.0;
+    const growthWeight = hasCareQuality ? stageBalance.growthCareWeight : 1.0;
+    const weightedActions = careActions * qualityBoost * growthWeight;
+    const weightedHours = ageInHours * (0.96 + (qualityBoost - 1.0) * 0.45);
+
+    const hasElderTime = weightedHours >= GROWTH_STAGES.elder.hoursNeeded;
+    const hasElderActions = weightedActions >= GROWTH_STAGES.elder.actionsNeeded;
+    const hasAdultTime = weightedHours >= GROWTH_STAGES.adult.hoursNeeded;
+    const hasAdultActions = weightedActions >= GROWTH_STAGES.adult.actionsNeeded;
+    const hasChildTime = weightedHours >= GROWTH_STAGES.child.hoursNeeded;
+    const hasChildActions = weightedActions >= GROWTH_STAGES.child.actionsNeeded;
 
     if (hasElderTime && hasElderActions) return 'elder';
     if (hasAdultTime && hasAdultActions) return 'adult';
@@ -144,9 +200,18 @@ function getNextGrowthStage(currentStage) {
     return null;
 }
 
-function getGrowthProgress(careActions, ageInHours, currentStage) {
+function getGrowthProgress(careActions, ageInHours, currentStage, careQuality) {
     const nextStage = getNextGrowthStage(currentStage);
     if (!nextStage) return 100;
+
+    const stageBalance = getStageBalance(currentStage);
+    const hasCareQuality = !!(careQuality && CARE_QUALITY[careQuality] && typeof CARE_QUALITY[careQuality].minAverage === 'number');
+    const qualityBoost = hasCareQuality
+        ? (0.92 + (CARE_QUALITY[careQuality].minAverage / 100) * 0.24)
+        : 1.0;
+    const growthWeight = hasCareQuality ? stageBalance.growthCareWeight : 1.0;
+    const weightedActions = careActions * qualityBoost * growthWeight;
+    const weightedHours = ageInHours * (0.96 + (qualityBoost - 1.0) * 0.45);
 
     const currentActionsThreshold = GROWTH_STAGES[currentStage].actionsNeeded;
     const nextActionsThreshold = GROWTH_STAGES[nextStage].actionsNeeded;
@@ -156,8 +221,8 @@ function getGrowthProgress(careActions, ageInHours, currentStage) {
     // Progress is the minimum of time-based and action-based progress
     const actionDiff = nextActionsThreshold - currentActionsThreshold;
     const timeDiff = nextHoursThreshold - currentHoursThreshold;
-    const actionProgress = actionDiff > 0 ? ((careActions - currentActionsThreshold) / actionDiff) * 100 : 100;
-    const timeProgress = timeDiff > 0 ? ((ageInHours - currentHoursThreshold) / timeDiff) * 100 : 100;
+    const actionProgress = actionDiff > 0 ? ((weightedActions - currentActionsThreshold) / actionDiff) * 100 : 100;
+    const timeProgress = timeDiff > 0 ? ((weightedHours - currentHoursThreshold) / timeDiff) * 100 : 100;
 
     return Math.min(100, Math.max(0, Math.min(actionProgress, timeProgress)));
 }
@@ -475,7 +540,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #3E2723 0%, #4E342E 50%, #5D4037 100%)',
         bgSunset: 'linear-gradient(180deg, #D7CCC8 0%, #EFEBE9 50%, #DCC8A0 100%)',
         bgSunrise: 'linear-gradient(180deg, #FFF3E0 0%, #FFE0B2 50%, #DCC8A0 100%)',
-        bonus: { action: 'sleep', multiplier: 1.3, label: 'Sleep' }
+        bonus: { action: 'sleep', multiplier: 1.18, label: 'Sleep' }
     },
     kitchen: {
         name: 'Kitchen',
@@ -489,7 +554,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #33302A 0%, #3E3A32 50%, #4A4538 100%)',
         bgSunset: 'linear-gradient(180deg, #FFE0B2 0%, #FFF8E1 50%, #FFF59D 100%)',
         bgSunrise: 'linear-gradient(180deg, #FFF8E1 0%, #FFFDE7 50%, #FFF59D 100%)',
-        bonus: { action: 'feed', multiplier: 1.3, label: 'Feed' }
+        bonus: { action: 'feed', multiplier: 1.18, label: 'Feed' }
     },
     bathroom: {
         name: 'Bathroom',
@@ -503,7 +568,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #1A3A3A 0%, #1E4D4D 50%, #1B3F3F 100%)',
         bgSunset: 'linear-gradient(180deg, #B2EBF2 0%, #E0F7FA 50%, #80DEEA 100%)',
         bgSunrise: 'linear-gradient(180deg, #E0F7FA 0%, #B2EBF2 50%, #80DEEA 100%)',
-        bonus: { action: 'wash', multiplier: 1.3, label: 'Wash' }
+        bonus: { action: 'wash', multiplier: 1.18, label: 'Wash' }
     },
     backyard: {
         name: 'Backyard',
@@ -517,7 +582,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
         bgSunset: 'linear-gradient(180deg, #FF7E5F 0%, #FEB47B 50%, #98FB98 100%)',
         bgSunrise: 'linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #98FB98 100%)',
-        bonus: { action: 'exercise', multiplier: 1.3, label: 'Exercise' }
+        bonus: { action: 'exercise', multiplier: 1.18, label: 'Exercise' }
     },
     park: {
         name: 'Park',
@@ -531,7 +596,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #0D1B2A 0%, #1B2838 50%, #1A472A 100%)',
         bgSunset: 'linear-gradient(180deg, #FF8A65 0%, #FFB74D 50%, #81C784 100%)',
         bgSunrise: 'linear-gradient(180deg, #FFCCBC 0%, #FFE0B2 50%, #81C784 100%)',
-        bonus: { action: 'play', multiplier: 1.3, label: 'Play' }
+        bonus: { action: 'play', multiplier: 1.18, label: 'Play' }
     },
     garden: {
         name: 'Garden',
@@ -545,7 +610,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #1a1a2e 0%, #1B3A1B 50%, #0f3460 100%)',
         bgSunset: 'linear-gradient(180deg, #FF7E5F 0%, #FEB47B 50%, #A5D6A7 100%)',
         bgSunrise: 'linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #A5D6A7 100%)',
-        bonus: { action: 'groom', multiplier: 1.3, label: 'Groom' }
+        bonus: { action: 'groom', multiplier: 1.18, label: 'Groom' }
     },
     library: {
         name: 'Library',
@@ -559,7 +624,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #2E221A 0%, #3C2F23 50%, #4E3C2F 100%)',
         bgSunset: 'linear-gradient(180deg, #E7C8A0 0%, #D9B98C 50%, #C19A6B 100%)',
         bgSunrise: 'linear-gradient(180deg, #F3DFC3 0%, #E6CCAA 50%, #C19A6B 100%)',
-        bonus: { action: 'sleep', multiplier: 1.35, label: 'Sleep' }
+        bonus: { action: 'sleep', multiplier: 1.22, label: 'Sleep' }
     },
     arcade: {
         name: 'Arcade',
@@ -573,7 +638,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #120C2B 0%, #1F1147 50%, #2A1D6A 100%)',
         bgSunset: 'linear-gradient(180deg, #D8B4FE 0%, #C084FC 50%, #9575CD 100%)',
         bgSunrise: 'linear-gradient(180deg, #E9D5FF 0%, #D8B4FE 50%, #9575CD 100%)',
-        bonus: { action: 'play', multiplier: 1.35, label: 'Play' }
+        bonus: { action: 'play', multiplier: 1.22, label: 'Play' }
     },
     spa: {
         name: 'Spa',
@@ -587,7 +652,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #1D3735 0%, #25504D 50%, #2D6A65 100%)',
         bgSunset: 'linear-gradient(180deg, #B2DFDB 0%, #A7DCD4 50%, #80CBC4 100%)',
         bgSunrise: 'linear-gradient(180deg, #E8F5F3 0%, #CDEBE8 50%, #80CBC4 100%)',
-        bonus: { action: 'wash', multiplier: 1.35, label: 'Wash' }
+        bonus: { action: 'wash', multiplier: 1.22, label: 'Wash' }
     },
     observatory: {
         name: 'Observatory',
@@ -601,7 +666,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #090B24 0%, #151C4A 50%, #22347A 100%)',
         bgSunset: 'linear-gradient(180deg, #FFB199 0%, #A18CD1 50%, #5C6BC0 100%)',
         bgSunrise: 'linear-gradient(180deg, #FAD0C4 0%, #A1C4FD 50%, #5C6BC0 100%)',
-        bonus: { action: 'sleep', multiplier: 1.35, label: 'Sleep' }
+        bonus: { action: 'sleep', multiplier: 1.22, label: 'Sleep' }
     },
     workshop: {
         name: 'Workshop',
@@ -615,7 +680,7 @@ const ROOMS = {
         bgNight: 'linear-gradient(180deg, #2E2723 0%, #3D332E 50%, #5D4A42 100%)',
         bgSunset: 'linear-gradient(180deg, #CBB8A9 0%, #B69F8E 50%, #8D6E63 100%)',
         bgSunrise: 'linear-gradient(180deg, #E3D6CE 0%, #CCB8AD 50%, #8D6E63 100%)',
-        bonus: { action: 'exercise', multiplier: 1.35, label: 'Exercise' }
+        bonus: { action: 'exercise', multiplier: 1.22, label: 'Exercise' }
     }
 };
 
@@ -657,6 +722,7 @@ const ROOM_THEMES = {
 
 const ROOM_UPGRADE_COSTS = [150, 260, 420];
 const MAX_ROOM_UPGRADE_LEVEL = ROOM_UPGRADE_COSTS.length;
+const ROOM_UPGRADE_BONUS_STEPS = [0, 0.05, 0.09, 0.12];
 
 function getRoomUpgradeLevel(roomId) {
     try {
@@ -673,7 +739,8 @@ function getRoomBonusMultiplierForRoom(roomId, action) {
     const room = ROOMS[roomId];
     if (!room || !room.bonus || room.bonus.action !== action) return 1.0;
     const upgradeLevel = getRoomUpgradeLevel(roomId);
-    return room.bonus.multiplier + (upgradeLevel * 0.1);
+    const step = ROOM_UPGRADE_BONUS_STEPS[Math.max(0, Math.min(upgradeLevel, ROOM_UPGRADE_BONUS_STEPS.length - 1))] || 0;
+    return room.bonus.multiplier + step;
 }
 
 function getRoomBonusLabel(roomId) {
@@ -1589,12 +1656,29 @@ const ACHIEVEMENTS = {
 // ==================== DAILY CHECKLIST ====================
 
 const DAILY_TASKS = [
-    { id: 'feed3', name: 'Feed your pet 3 times', icon: '🍎', target: 3, trackKey: 'feedCount' },
-    { id: 'playMinigame', name: 'Play a mini-game', icon: '🎮', target: 1, trackKey: 'minigameCount' },
-    { id: 'harvestCrop', name: 'Harvest a crop', icon: '🌱', target: 1, trackKey: 'harvestCount' },
-    { id: 'visitPark', name: 'Visit the Park', icon: '🌳', target: 1, trackKey: 'parkVisits' },
-    { id: 'careAction5', name: 'Do 5 care actions', icon: '💝', target: 5, trackKey: 'totalCareActions' }
+    { id: 'feed3', nameTemplate: 'Feed your pet {target} times', icon: '🍎', target: 3, trackKey: 'feedCount', maxTarget: 6 },
+    { id: 'playMinigame', nameTemplate: 'Play {target} mini-game{plural}', icon: '🎮', target: 1, trackKey: 'minigameCount', maxTarget: 3 },
+    { id: 'harvestCrop', nameTemplate: 'Harvest {target} crop{plural}', icon: '🌱', target: 1, trackKey: 'harvestCount', maxTarget: 2 },
+    { id: 'visitPark', nameTemplate: 'Visit the Park {target} time{plural}', icon: '🌳', target: 1, trackKey: 'parkVisits', maxTarget: 2 },
+    { id: 'careAction5', nameTemplate: 'Do {target} care actions', icon: '💝', target: 5, trackKey: 'totalCareActions', maxTarget: 10 }
 ];
+
+function getDailyTaskTarget(task, growthStage) {
+    const t = task || {};
+    const stage = GROWTH_STAGES[growthStage] ? growthStage : 'baby';
+    const mult = getStageBalance(stage).dailyTaskMultiplier;
+    const base = Math.max(1, Number(t.target) || 1);
+    const maxTarget = Math.max(base, Number(t.maxTarget) || base);
+    const scaled = Math.max(base, Math.min(maxTarget, Math.round(base * mult)));
+    return scaled;
+}
+
+function getDailyTaskName(task, target) {
+    const tmpl = String((task && task.nameTemplate) || (task && task.name) || 'Daily task');
+    const safeTarget = Math.max(1, Number(target) || 1);
+    const plural = safeTarget === 1 ? '' : 's';
+    return tmpl.replace('{target}', safeTarget).replace('{plural}', plural);
+}
 
 // ==================== BADGES ====================
 
