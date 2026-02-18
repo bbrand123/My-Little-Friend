@@ -559,6 +559,55 @@
                 return isEnabled;
             }
 
+            function clampVolumeSetting(value) {
+                const n = parseFloat(value);
+                if (isNaN(n)) return 1.0;
+                return Math.max(0, Math.min(1, n));
+            }
+
+            function setSfxVolumeSetting(value) {
+                sfxVolume = clampVolumeSetting(value);
+                try { localStorage.setItem('petCareBuddy_sfxVolume', String(sfxVolume)); } catch (e) {}
+                return sfxVolume;
+            }
+
+            function getSfxVolumeSetting() {
+                return sfxVolume;
+            }
+
+            function setAmbientVolumeSetting(value) {
+                ambientVolume = clampVolumeSetting(value);
+                try { localStorage.setItem('petCareBuddy_ambientVolume', String(ambientVolume)); } catch (e) {}
+                if (audioCtx && currentEarcon && currentEarcon.gainNode) {
+                    const target = EARCON_VOLUME * ambientVolume;
+                    currentEarcon.gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+                    currentEarcon.gainNode.gain.setTargetAtTime(target, audioCtx.currentTime, 0.08);
+                }
+                return ambientVolume;
+            }
+
+            function getAmbientVolumeSetting() {
+                return ambientVolume;
+            }
+
+            function setMusicVolumeSetting(value) {
+                musicVolumeSetting = clampVolumeSetting(value);
+                try { localStorage.setItem('petCareBuddy_musicVolume', String(musicVolumeSetting)); } catch (e) {}
+                if (currentSampleMusic) {
+                    currentSampleMusic.volume = Math.max(0, Math.min(1, MUSIC_VOLUME * musicVolumeSetting * 2.8));
+                }
+                if (audioCtx && currentMusicLoop && currentMusicLoop.gainNode) {
+                    const target = MUSIC_VOLUME * musicVolumeSetting;
+                    currentMusicLoop.gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+                    currentMusicLoop.gainNode.gain.setTargetAtTime(target, audioCtx.currentTime, 0.12);
+                }
+                return musicVolumeSetting;
+            }
+
+            function getMusicVolumeSetting() {
+                return musicVolumeSetting;
+            }
+
             // Initialize audio context on first user interaction
             function initOnInteraction() {
                 const handler = () => {
@@ -1437,6 +1486,12 @@
                 getMasterGain,
                 hasUserInteracted,
                 initOnInteraction,
+                setSfxVolumeSetting,
+                getSfxVolumeSetting,
+                setAmbientVolumeSetting,
+                getAmbientVolumeSetting,
+                setMusicVolumeSetting,
+                getMusicVolumeSetting,
                 playSFX,
                 playSFXByName,
                 destroy,

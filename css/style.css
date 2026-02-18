@@ -24,8 +24,8 @@
         :root {
             /* Harmonized pastel color palette */
             --color-bg: #FFF8F0;
-            --color-primary: #FF7B7B;
-            --color-secondary: #5CD6CC;
+            --color-primary: #C54545;
+            --color-secondary: #1B8A80;
             --color-accent: #FFE066;
             --color-happy: #7ED68A;
             --color-neutral: #FFB84D;
@@ -51,7 +51,7 @@
             --radius-md: 14px;
             --radius-lg: 20px;
             --color-text-secondary: #666;
-            --color-text-tertiary: #999;
+            --color-text-tertiary: #5F6368;
             --focus-outline: 3px solid #7C6BFF;
             --text-size-floor: 0.78rem;
             --button-label-color: #1D2528;
@@ -117,6 +117,9 @@
             background: #7A1F2D;
             color: white;
             padding: 10px 20px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
             z-index: 100;
             border-radius: 0 0 10px 0;
             font-weight: bold;
@@ -4114,15 +4117,16 @@
         }
 
         /* ===== More Actions Toggle ===== */
-        .more-actions-toggle {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin: 4px auto 6px;
-            padding: 6px 16px;
-            border: 1.5px solid #E0E0E0;
-            border-radius: var(--radius-md);
-            background: transparent;
+.more-actions-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px auto 6px;
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1.5px solid #E0E0E0;
+    border-radius: var(--radius-md);
+    background: transparent;
             font-size: 0.7rem;
             font-weight: 700;
             color: var(--color-text-secondary);
@@ -7463,6 +7467,39 @@
     border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
+.settings-volume-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-volume-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.settings-volume-value {
+    min-width: 44px;
+    text-align: right;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #2f4d5e;
+}
+
+.settings-volume-slider {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    accent-color: var(--color-secondary);
+}
+
+.settings-volume-slider:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .settings-row:last-child {
     border-bottom: none;
 }
@@ -7563,6 +7600,10 @@
 
 [data-theme="dark"] .settings-row {
     border-bottom-color: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .settings-volume-value {
+    color: #c9d6df;
 }
 
 /* Notification history modal */
@@ -8691,12 +8732,12 @@
     padding: 0 3px;
 }
 .pet-alert-badge.warning {
-    width: 8px;
-    height: 8px;
-    min-width: 8px;
+    min-width: 14px;
+    height: 14px;
     background: #FFA726;
-    border-radius: 50%;
-    animation: alertPulse 2s ease-in-out infinite;
+    color: #fff;
+    padding: 0 3px;
+    animation: alertPulse 2s ease-in-out 4;
 }
 .pet-tab-critical {
     border-color: #FF4444 !important;
@@ -9953,10 +9994,11 @@
 }
 
 .breeding-egg-collect-btn:hover,
-.breeding-egg-collect-btn:focus {
+.breeding-egg-collect-btn:focus-visible {
     transform: scale(1.05);
     box-shadow: 0 2px 12px rgba(224,64,251,0.3);
-    outline: none;
+    outline: var(--focus-outline);
+    outline-offset: 2px;
 }
 
 .breeding-egg-count {
@@ -11040,7 +11082,8 @@ body.beginner-ui #explore-btn {
     width: 100%;
     border: none;
     border-radius: 10px;
-    padding: 8px 10px;
+    min-height: 44px;
+    padding: 10px 12px;
     font-weight: 800;
     background: #edf5ff;
     color: #224459;
@@ -11087,7 +11130,11 @@ body.beginner-ui #explore-btn {
     z-index: 6;
     border: none;
     border-radius: 999px;
-    padding: 6px 10px;
+    min-height: 44px;
+    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.75rem;
     font-weight: 800;
     color: #17394c;
@@ -12461,7 +12508,9 @@ body.beginner-ui #explore-btn {
     font-weight: 700;
     color: #FF6D00;
     background: rgba(255, 109, 0, 0.08);
-    padding: 3px 9px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
     border-radius: 12px;
     cursor: pointer;
     transition: transform 0.2s, background 0.2s;
@@ -12482,7 +12531,7 @@ body.beginner-ui #explore-btn {
 }
 
 .streak-hud.has-bonus .streak-flame-icon {
-    animation: streakFlameFlicker 1.8s ease-in-out infinite alternate;
+    animation: streakFlameFlicker 1.8s ease-in-out 6 alternate;
 }
 
 @keyframes streakFlameFlicker {
@@ -13046,7 +13095,9 @@ body.has-core-care-dock .toast-container {
     background: rgba(0, 0, 0, 0.08);
     color: #355064;
     border-radius: 999px;
-    padding: 3px 9px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 12px;
     font-size: 0.7rem;
     font-weight: 800;
     cursor: pointer;
@@ -13057,7 +13108,9 @@ body.has-core-care-dock .toast-container {
     background: rgba(59, 116, 146, 0.16);
     color: #2f5872;
     border-radius: 999px;
-    padding: 3px 9px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 12px;
     font-size: 0.7rem;
     font-weight: 800;
     cursor: pointer;
@@ -13577,6 +13630,7 @@ body.has-core-care-dock .duplicate-core-action {
 .settings-choice {
     border: 1px solid #b6c8d3;
     border-radius: 10px;
+    min-height: 44px;
     padding: 9px 10px;
     background: #fff;
     font-weight: 700;

@@ -154,9 +154,10 @@
 
         function spawnEmojiBurst(container, action) {
             if (!container) return;
+            if (isReducedMotionEnabled()) return;
             const emojis = EMOJI_BURST_MAP[action] || ['❤️', '⭐', '✨'];
             const visualLoad = document.querySelectorAll('.toast, .onboarding-tooltip').length;
-            const count = visualLoad > 0 ? 5 : 7;
+            const count = visualLoad > 0 ? 4 : 6;
             const rect = container.getBoundingClientRect();
             for (let i = 0; i < count; i++) {
                 const el = document.createElement('span');
@@ -731,13 +732,13 @@
                 { selector: '.skip-link-rooms', targetId: 'room-nav' },
                 { selector: '.skip-link-status', targetId: 'status-heading' }
             ];
-            skipLinks.forEach(({ selector, targetId }) => {
+            skipLinks.forEach(({ selector }) => {
                 const skipLink = document.querySelector(selector);
                 if (!skipLink) return;
-                const target = document.getElementById(targetId);
-                const shouldShow = !!isVisible && !!target;
+                const shouldShow = !!isVisible;
                 skipLink.hidden = !shouldShow;
                 skipLink.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+                skipLink.setAttribute('aria-disabled', shouldShow ? 'false' : 'true');
                 if (!shouldShow) {
                     skipLink.setAttribute('tabindex', '-1');
                 } else {
@@ -759,7 +760,7 @@
                     const hadTabindex = target.hasAttribute('tabindex');
                     if (!hadTabindex) target.setAttribute('tabindex', '-1');
                     target.focus({ preventScroll: true });
-                    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    target.scrollIntoView({ block: 'start', behavior: isReducedMotionEnabled() ? 'auto' : 'smooth' });
                     if (!hadTabindex) {
                         target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
                     }
@@ -2043,6 +2044,7 @@
                     🥚 ${canAdoptMore() ? 'Adopt New Pet' : 'Start Over'}
                 </button>
             `;
+            setCareActionsSkipLinkVisible(true);
 
             // Add event listeners
             // Emergency care button
@@ -6182,7 +6184,7 @@
                 const alertBadge = alertStatus === 'critical'
                     ? '<span class="pet-alert-badge critical" aria-label="Needs urgent attention!" title="Needs urgent attention!">!</span>'
                     : alertStatus === 'warning'
-                    ? '<span class="pet-alert-badge warning" aria-label="Needs attention" title="Needs attention"></span>'
+                    ? '<span class="pet-alert-badge warning" aria-label="Needs attention" title="Needs attention">!</span>'
                     : '';
                 tabs += `
                     <button class="pet-tab ${isActive ? 'active' : ''} ${alertStatus ? 'pet-tab-' + alertStatus : ''}" data-pet-index="${idx}"
@@ -8056,6 +8058,15 @@
             const samplePackEnabled = typeof SoundManager !== 'undefined' && typeof SoundManager.getSamplePackEnabled === 'function'
                 ? SoundManager.getSamplePackEnabled()
                 : true;
+            const sfxVolumeSetting = typeof SoundManager !== 'undefined' && typeof SoundManager.getSfxVolumeSetting === 'function'
+                ? SoundManager.getSfxVolumeSetting()
+                : 1;
+            const ambientVolumeSetting = typeof SoundManager !== 'undefined' && typeof SoundManager.getAmbientVolumeSetting === 'function'
+                ? SoundManager.getAmbientVolumeSetting()
+                : 1;
+            const musicVolumeSetting = typeof SoundManager !== 'undefined' && typeof SoundManager.getMusicVolumeSetting === 'function'
+                ? SoundManager.getMusicVolumeSetting()
+                : 1;
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
                 (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
             const hapticEnabled = !(localStorage.getItem('petCareBuddy_hapticOff') === 'true');
@@ -8093,6 +8104,27 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                             <span class="settings-toggle-state" id="state-setting-sample-pack">${samplePackEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row settings-volume-row">
+                            <div class="settings-volume-head">
+                                <span class="settings-row-label">🔈 Sound Effects Volume</span>
+                                <span class="settings-volume-value" id="setting-sfx-volume-value">${Math.round(sfxVolumeSetting * 100)}%</span>
+                            </div>
+                            <input type="range" class="settings-volume-slider" id="setting-sfx-volume" min="0" max="100" step="5" value="${Math.round(sfxVolumeSetting * 100)}" aria-label="Sound effects volume">
+                        </div>
+                        <div class="settings-row settings-volume-row">
+                            <div class="settings-volume-head">
+                                <span class="settings-row-label">🌿 Ambient Volume</span>
+                                <span class="settings-volume-value" id="setting-ambient-volume-value">${Math.round(ambientVolumeSetting * 100)}%</span>
+                            </div>
+                            <input type="range" class="settings-volume-slider" id="setting-ambient-volume" min="0" max="100" step="5" value="${Math.round(ambientVolumeSetting * 100)}" aria-label="Ambient volume">
+                        </div>
+                        <div class="settings-row settings-volume-row">
+                            <div class="settings-volume-head">
+                                <span class="settings-row-label">🎼 Music Volume</span>
+                                <span class="settings-volume-value" id="setting-music-volume-value">${Math.round(musicVolumeSetting * 100)}%</span>
+                            </div>
+                            <input type="range" class="settings-volume-slider" id="setting-music-volume" min="0" max="100" step="5" value="${Math.round(musicVolumeSetting * 100)}" aria-label="Music volume">
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">${isDark ? '🌙' : '☀️'} Dark Mode</span>
@@ -8163,6 +8195,35 @@
                 if (stateEl) stateEl.textContent = isOn ? 'On' : 'Off';
             }
 
+            function updateVolumeLabel(id, value) {
+                const output = document.getElementById(`${id}-value`);
+                if (output) output.textContent = `${Math.round(value)}%`;
+            }
+
+            function bindVolumeSlider(sliderId, setter) {
+                const slider = document.getElementById(sliderId);
+                if (!slider) return;
+                const onInput = () => {
+                    const raw = Number(slider.value);
+                    const value = Number.isFinite(raw) ? raw : 100;
+                    updateVolumeLabel(sliderId, value);
+                    if (typeof setter === 'function') setter(value / 100);
+                };
+                slider.addEventListener('input', onInput);
+                slider.addEventListener('change', onInput);
+            }
+
+            function syncVolumeControlAvailability() {
+                const soundOn = typeof SoundManager !== 'undefined' ? SoundManager.getEnabled() : false;
+                const musicOn = typeof SoundManager !== 'undefined' ? SoundManager.getMusicEnabled() : false;
+                const sfxSlider = document.getElementById('setting-sfx-volume');
+                const ambientSlider = document.getElementById('setting-ambient-volume');
+                const musicSlider = document.getElementById('setting-music-volume');
+                if (sfxSlider) sfxSlider.disabled = !soundOn;
+                if (ambientSlider) ambientSlider.disabled = !soundOn;
+                if (musicSlider) musicSlider.disabled = !(soundOn && musicOn);
+            }
+
             // Sound toggle
             document.getElementById('setting-sound').addEventListener('click', function() {
                 if (typeof SoundManager !== 'undefined') {
@@ -8170,6 +8231,7 @@
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
                     setSwitchStateText('setting-sound', enabled);
+                    syncVolumeControlAvailability();
                     if (enabled && gameState.currentRoom) SoundManager.enterRoom(gameState.currentRoom);
                 }
             });
@@ -8181,6 +8243,7 @@
                     this.classList.toggle('on', enabled);
                     this.setAttribute('aria-checked', String(enabled));
                     setSwitchStateText('setting-music', enabled);
+                    syncVolumeControlAvailability();
                 }
             });
 
@@ -8194,6 +8257,19 @@
                     showToast(enabled ? '🎧 Sample audio pack enabled' : '🎛️ Sample audio pack disabled', '#A8D8EA');
                 }
             });
+            bindVolumeSlider(
+                'setting-sfx-volume',
+                (value) => { if (typeof SoundManager !== 'undefined' && typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(value); }
+            );
+            bindVolumeSlider(
+                'setting-ambient-volume',
+                (value) => { if (typeof SoundManager !== 'undefined' && typeof SoundManager.setAmbientVolumeSetting === 'function') SoundManager.setAmbientVolumeSetting(value); }
+            );
+            bindVolumeSlider(
+                'setting-music-volume',
+                (value) => { if (typeof SoundManager !== 'undefined' && typeof SoundManager.setMusicVolumeSetting === 'function') SoundManager.setMusicVolumeSetting(value); }
+            );
+            syncVolumeControlAvailability();
 
             // Dark mode toggle
             document.getElementById('setting-darkmode').addEventListener('click', function() {
@@ -8407,10 +8483,27 @@
         // ==================== TEXT SIZE RESTORE (Item 30) ====================
         (function restoreTextSize() {
             try {
+                const firstRunDefaultsKey = 'petCareBuddy_firstRunA11yDefaultsV1';
+                const hasSaveData = !!localStorage.getItem('petCareBuddy');
+                const shouldApplyFirstRunDefaults = !hasSaveData && localStorage.getItem(firstRunDefaultsKey) !== 'true';
+                if (shouldApplyFirstRunDefaults) {
+                    if (localStorage.getItem('petCareBuddy_reducedMotion') === null) localStorage.setItem('petCareBuddy_reducedMotion', 'true');
+                    if (localStorage.getItem('petCareBuddy_srVerbosity') === null) localStorage.setItem('petCareBuddy_srVerbosity', 'brief');
+                    if (localStorage.getItem('petCareBuddy_soundEnabled') === null) localStorage.setItem('petCareBuddy_soundEnabled', 'false');
+                    if (localStorage.getItem('petCareBuddy_musicEnabled') === null) localStorage.setItem('petCareBuddy_musicEnabled', 'false');
+                    if (localStorage.getItem('petCareBuddy_samplePackEnabled') === null) localStorage.setItem('petCareBuddy_samplePackEnabled', 'false');
+                    if (localStorage.getItem('petCareBuddy_coachChecklistMinimized') === null) localStorage.setItem('petCareBuddy_coachChecklistMinimized', 'true');
+                    localStorage.setItem(firstRunDefaultsKey, 'true');
+                }
                 const size = localStorage.getItem('petCareBuddy_textSize');
                 if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
                 const reducedMotion = localStorage.getItem('petCareBuddy_reducedMotion');
                 if (reducedMotion === 'true') document.documentElement.setAttribute('data-reduced-motion', 'true');
+                if (shouldApplyFirstRunDefaults && typeof SoundManager !== 'undefined') {
+                    if (typeof SoundManager.getEnabled === 'function' && SoundManager.getEnabled()) SoundManager.toggle();
+                    if (typeof SoundManager.getMusicEnabled === 'function' && SoundManager.getMusicEnabled()) SoundManager.toggleMusic();
+                    if (typeof SoundManager.getSamplePackEnabled === 'function' && typeof SoundManager.toggleSamplePack === 'function' && SoundManager.getSamplePackEnabled()) SoundManager.toggleSamplePack();
+                }
             } catch (e) {}
         })();
 
