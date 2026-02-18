@@ -7,6 +7,7 @@
             let masterGain = null;
             let currentEarcon = null;
             let currentRoom = null;
+            let hasInteracted = false;
             let isEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_soundEnabled'); return v !== 'false'; } catch (e) { return true; } })();
             let _audioSupported = true; // Item 39: Track Web Audio API support
 
@@ -475,6 +476,10 @@
             async function enterRoom(roomId) {
                 if (!isEnabled) return;
                 if (roomId === currentRoom) return;
+                if (!hasInteracted) {
+                    currentRoom = roomId;
+                    return;
+                }
 
                 const ctx = getContext();
                 if (!ctx) return;
@@ -555,11 +560,21 @@
                     document.removeEventListener('click', handler);
                     document.removeEventListener('touchstart', handler);
                     document.removeEventListener('keydown', handler);
+                    hasInteracted = true;
                     getContext();
+                    if (isEnabled && currentRoom) {
+                        const roomToRestore = currentRoom;
+                        currentRoom = null;
+                        enterRoom(roomToRestore);
+                    }
                 };
                 document.addEventListener('click', handler);
                 document.addEventListener('touchstart', handler);
                 document.addEventListener('keydown', handler);
+            }
+
+            function hasUserInteracted() {
+                return hasInteracted;
             }
 
             // ==================== ACTION SOUND EFFECTS ====================
@@ -1415,6 +1430,7 @@
                 getEnabled,
                 getContext,
                 getMasterGain,
+                hasUserInteracted,
                 initOnInteraction,
                 playSFX,
                 playSFXByName,

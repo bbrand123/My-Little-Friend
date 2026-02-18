@@ -2525,6 +2525,28 @@
             }
         }
 
+        let _lastSavedStorageSnapshot = null;
+        let _suppressUnloadAutosave = false;
+
+        function suppressUnloadAutosaveForReload() {
+            _suppressUnloadAutosave = true;
+        }
+
+        function hasExternalSaveChangeSinceLastSave() {
+            try {
+                const current = localStorage.getItem('petCareBuddy');
+                return current !== _lastSavedStorageSnapshot;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function shouldRunUnloadAutosave() {
+            if (_suppressUnloadAutosave) return false;
+            if (hasExternalSaveChangeSinceLastSave()) return false;
+            return true;
+        }
+
         function saveGame() {
             try {
                 ensureExplorationState();
@@ -2537,7 +2559,9 @@
                 const hadOfflineChanges = Object.prototype.hasOwnProperty.call(gameState, '_offlineChanges');
                 if (hadOfflineChanges) delete gameState._offlineChanges;
                 try {
-                    localStorage.setItem('petCareBuddy', JSON.stringify(gameState));
+                    const serialized = JSON.stringify(gameState);
+                    localStorage.setItem('petCareBuddy', serialized);
+                    _lastSavedStorageSnapshot = serialized;
                 } finally {
                     if (hadOfflineChanges) gameState._offlineChanges = offlineChanges;
                 }
@@ -2916,8 +2940,23 @@
                         }
                     }
                     // Persist any migrations (e.g. random personality) so they're stable
+                    if (parsed.phase === 'pet') {
+                        const hasStaleEggData = !!(parsed.eggTaps || parsed.eggType || parsed.pendingPetType);
+                        if (hasStaleEggData) {
+                            parsed.eggTaps = 0;
+                            parsed.eggType = null;
+                            parsed.pendingPetType = null;
+                            _needsSaveAfterLoad = true;
+                        }
+                    }
                     if (_needsSaveAfterLoad) {
-                        try { localStorage.setItem('petCareBuddy', JSON.stringify(parsed)); } catch (e) {}
+                        try {
+                            const migrated = JSON.stringify(parsed);
+                            localStorage.setItem('petCareBuddy', migrated);
+                            _lastSavedStorageSnapshot = migrated;
+                        } catch (e) {}
+                    } else {
+                        _lastSavedStorageSnapshot = saved;
                     }
                     return parsed;
                 }
@@ -2953,6 +2992,8 @@
             document.body.appendChild(overlay);
             document.getElementById('recovery-fresh').addEventListener('click', () => {
                 try { localStorage.removeItem('petCareBuddy'); } catch(e) {}
+                _lastSavedStorageSnapshot = null;
+                suppressUnloadAutosaveForReload();
                 overlay.remove();
                 location.reload();
             });
@@ -3027,7 +3068,10 @@
                             showToast('Invalid save file!', '#EF5350');
                             return;
                         }
-                        localStorage.setItem('petCareBuddy', JSON.stringify(data));
+                        const imported = JSON.stringify(data);
+                        localStorage.setItem('petCareBuddy', imported);
+                        _lastSavedStorageSnapshot = imported;
+                        suppressUnloadAutosaveForReload();
                         showToast('Save data imported! Reloading...', '#66BB6A');
                         announce('Save data imported. The game will reload.', true);
                         setTimeout(() => location.reload(), 1500);
@@ -6029,12 +6073,16 @@
 
         // Save and cleanup on page unload
         window.addEventListener('beforeunload', () => {
-            saveGame();
+            if (shouldRunUnloadAutosave()) {
+                saveGame();
+            }
         });
 
         // Also handle page hide for mobile browsers
         window.addEventListener('pagehide', () => {
-            saveGame();
+            if (shouldRunUnloadAutosave()) {
+                saveGame();
+            }
             stopDecayTimer();
             stopGardenGrowTimer();
             if (typeof SoundManager !== 'undefined') SoundManager.stopAll();

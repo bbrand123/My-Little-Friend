@@ -332,7 +332,6 @@
                 }
                 return;
             }
-            incrementMinigamePlayCount('fetch');
             const fetchDiff = getMinigameDifficulty('fetch');
             fetchState = {
                 score: 0,
@@ -606,6 +605,7 @@
 
             // Apply rewards based on score
             if (fetchState && fetchState.score > 0 && gameState.pet) {
+                incrementMinigamePlayCount('fetch');
                 const bonus = Math.min(fetchState.score * 5, 30);
                 const energyLoss = Math.min(fetchState.score * 2, 10);
                 const hungerLoss = Math.min(fetchState.score, 5);
@@ -677,7 +677,6 @@
                 }
                 return;
             }
-            incrementMinigamePlayCount('hideseek');
             const hideSeekDiff = getMinigameDifficulty('hideseek');
             // More treats to find with difficulty, less time
             const totalTreats = Math.min(5 + Math.floor((hideSeekDiff - 1) * 5), 8);
@@ -1038,6 +1037,9 @@
 
             // Apply rewards based on treats found
             if (hideSeekState && hideSeekState.treatsFound > 0 && gameState.pet) {
+                if (hideSeekState.phase === 'finished') {
+                    incrementMinigamePlayCount('hideseek');
+                }
                 const bonus = Math.min(hideSeekState.treatsFound * 6, 30);
                 gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
@@ -1085,7 +1087,6 @@
             const existing = document.querySelector('.bubblepop-game-overlay');
             if (existing) existing.remove();
 
-            incrementMinigamePlayCount('bubblepop');
             const bubbleDiff = getMinigameDifficulty('bubblepop');
             bubblePopState = {
                 score: 0,
@@ -1455,6 +1456,9 @@
 
             // Apply rewards: bath-themed game boosts cleanliness and happiness
             if (bubblePopState && bubblePopState.score > 0 && gameState.pet) {
+                if (bubblePopState._finishing) {
+                    incrementMinigamePlayCount('bubblepop');
+                }
                 const happinessBonus = Math.min(bubblePopState.score, 30);
                 const cleanlinessBonus = Math.min(Math.floor(bubblePopState.score * 1.5), 30);
 
@@ -1528,7 +1532,6 @@
             const existing = document.querySelector('.matching-game-overlay');
             if (existing) existing.remove();
 
-            incrementMinigamePlayCount('matching');
             const matchDiff = getMinigameDifficulty('matching');
             // Scale pairs: 6 at base, up to 10 at max difficulty (capped by available items)
             const pairCount = Math.min(6 + Math.floor((matchDiff - 1) * 4), MATCHING_ITEMS.length);
@@ -1812,6 +1815,9 @@
                     ? Math.max(1, Math.round(matchingState.totalPairs * 100 / matchingState.moves))
                     : 0;
                 const coinBasis = Math.max(matchingState.matchesFound * 8, Math.round(matchScore / 5));
+                if (matchScore > 0) {
+                    incrementMinigamePlayCount('matching');
+                }
                 const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('matching', coinBasis) : 0;
                 const isNewBest = matchScore > 0 && updateMinigameHighScore('matching', matchScore);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -1906,7 +1912,6 @@
             const existing = document.querySelector('.simonsays-game-overlay');
             if (existing) existing.remove();
 
-            incrementMinigamePlayCount('simonsays');
             const simonDiff = getMinigameDifficulty('simonsays');
             simonState = {
                 pattern: [],
@@ -2186,6 +2191,9 @@
 
             // Apply rewards based on rounds completed
             if (simonState && simonState.score > 0 && gameState.pet) {
+                if (simonState.phase === 'gameover' && simonState.score > 0) {
+                    incrementMinigamePlayCount('simonsays');
+                }
                 const roundsCompleted = Math.max(simonState.highestRound || 0, 0);
                 const happinessBonus = Math.min(roundsCompleted * 4, 30);
                 const energyCost = Math.min(roundsCompleted * 2, 10);
@@ -2249,7 +2257,6 @@
             const existing = document.querySelector('.coloring-game-overlay');
             if (existing) existing.remove();
 
-            incrementMinigamePlayCount('coloring');
             coloringState = {
                 selectedColor: COLORING_PALETTE[0].hex,
                 regionsColored: new Set(),
@@ -2633,6 +2640,7 @@
 
             // Apply rewards based on regions colored
             if (coloringState && coloringState.regionsColored.size > 0 && gameState.pet) {
+                incrementMinigamePlayCount('coloring');
                 const colored = coloringState.regionsColored.size;
                 const total = coloringState.totalRegions;
                 const ratio = colored / Math.max(total, 1);
