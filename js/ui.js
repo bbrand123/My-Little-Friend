@@ -653,8 +653,21 @@
             document.addEventListener('touchend', dispatch, { passive: false, capture: true });
         }
 
+        function setCareActionsSkipLinkVisible(isVisible) {
+            const skipLink = document.querySelector('.skip-link-secondary');
+            if (!skipLink) return;
+            skipLink.hidden = !isVisible;
+            skipLink.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+            if (!isVisible) {
+                skipLink.setAttribute('tabindex', '-1');
+            } else {
+                skipLink.removeAttribute('tabindex');
+            }
+        }
+
         function renderEggPhase(maintainFocus = false) {
             document.body.classList.remove('has-core-care-dock');
+            setCareActionsSkipLinkVisible(false);
             // Initialize egg if not set
             if (!gameState.eggType || !gameState.pendingPetType) {
                 initializeNewEgg();
@@ -792,6 +805,9 @@
             const newPet = createPet();
             gameState.pet = newPet;
             gameState.phase = 'pet';
+            gameState.eggTaps = 0;
+            gameState.eggType = null;
+            gameState.pendingPetType = null;
             gameState.adoptingAdditional = false;
 
             // Add to pets array
@@ -1370,6 +1386,7 @@
             }
             markPetSessionSeen();
             document.body.classList.add('has-core-care-dock');
+            setCareActionsSkipLinkVisible(true);
             const mood = getMood(pet);
 
             // Update time of day
