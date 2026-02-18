@@ -1187,7 +1187,25 @@ const ECONOMY_BALANCE = {
     minigameRewardMultiplier: 0.88,
     harvestRewardMultiplier: 0.82,
     dailyCompletionReward: 70,
-    minigameRewardCap: 74
+    minigameRewardCap: 74,
+    // Rec 1: Daily minigame earning cap to prevent unlimited grinding
+    dailyMinigameEarningsCap: 350,
+    // Rec 3: Auction transaction tax (percentage taken from sale proceeds)
+    auctionTransactionTaxRate: 0.08,
+    // Rec 4: Auction listing fee (percentage of listing price, non-refundable)
+    auctionListingFeeRate: 0.03,
+    // Rec 5: Item durability — toys/accessories lose durability on use, need repair
+    toyDurabilityMax: 10,
+    accessoryDurabilityMax: 15,
+    durabilityRepairCostBase: 8,
+    // Rec 7: Narrowed volatility window (was 0.86 + hash%33/100 = 86%-119%)
+    volatilityMin: 0.92,
+    volatilityRange: 16, // 92%-108%
+    // Rec 8: Per-slot auction listing cap
+    auctionPerSlotListingCap: 12,
+    // Rec 11: Coin decay — daily tax on balances above threshold
+    coinDecayThreshold: 1000,
+    coinDecayRate: 0.005
 };
 
 const ECONOMY_SHOP_ITEMS = {
@@ -1430,7 +1448,8 @@ const CRAFTING_RECIPES = {
         outputType: 'crafted',
         outputId: 'heartyStew',
         outputCount: 1,
-        craftCost: 12,
+        // Rec 9: Rebalanced from 12 to 28 (closer to 50% of Deluxe Platter's 58 value)
+        craftCost: 28,
         ingredients: [
             { source: 'crop', id: 'carrot', count: 1 },
             { source: 'crop', id: 'tomato', count: 1 },
@@ -1444,7 +1463,8 @@ const CRAFTING_RECIPES = {
         outputType: 'crafted',
         outputId: 'glowTonic',
         outputCount: 1,
-        craftCost: 16,
+        // Rec 9: Rebalanced from 16 to 34 (closer to 45% of Pet Med Kit's 76 value)
+        craftCost: 34,
         ingredients: [
             { source: 'crop', id: 'strawberry', count: 1 },
             { source: 'loot', id: 'glowMushroom', count: 1 },
@@ -1458,7 +1478,8 @@ const CRAFTING_RECIPES = {
         outputType: 'crafted',
         outputId: 'adventureToy',
         outputCount: 1,
-        craftCost: 20,
+        // Rec 9: Rebalanced from 20 to 30 (closer to 47% of Comet Frisbee's 64 value)
+        craftCost: 30,
         ingredients: [
             { source: 'loot', id: 'forestCharm', count: 1 },
             { source: 'loot', id: 'cloudRibbon', count: 1 },
@@ -1472,7 +1493,8 @@ const CRAFTING_RECIPES = {
         outputType: 'accessory',
         outputId: 'ribbonBow',
         outputCount: 1,
-        craftCost: 22,
+        // Rec 9: Rebalanced from 22 to 26 (closer to 50% of Ribbon Bow's 52 value)
+        craftCost: 26,
         ingredients: [
             { source: 'loot', id: 'stardust', count: 1 },
             { source: 'loot', id: 'forestCharm', count: 1 },
@@ -1482,6 +1504,113 @@ const CRAFTING_RECIPES = {
 };
 
 const ECONOMY_AUCTION_SLOTS = ['slotA', 'slotB', 'slotC'];
+
+// Rec 6: High-value prestige sinks — late-game aspirational purchases
+const PRESTIGE_PURCHASES = {
+    gardenExpansion: {
+        id: 'gardenExpansion',
+        name: 'Garden Plot Expansion',
+        emoji: '🌿',
+        description: 'Unlock 2 additional garden plots beyond the standard 6.',
+        cost: 800,
+        maxOwned: 1,
+        category: 'garden'
+    },
+    premiumNursery: {
+        id: 'premiumNursery',
+        name: 'Premium Nursery',
+        emoji: '🏠',
+        description: 'Increase max pet capacity by 1 (up to 5 pets).',
+        cost: 1200,
+        maxOwned: 1,
+        category: 'pets'
+    },
+    goldenFeeder: {
+        id: 'goldenFeeder',
+        name: 'Golden Feeder',
+        emoji: '🥇',
+        description: 'All food items give +15% bonus effects permanently.',
+        cost: 600,
+        maxOwned: 1,
+        category: 'boost'
+    },
+    masterCrafterBench: {
+        id: 'masterCrafterBench',
+        name: 'Master Crafter Bench',
+        emoji: '🔨',
+        description: 'All crafting costs reduced by 25% permanently.',
+        cost: 500,
+        maxOwned: 1,
+        category: 'crafting'
+    },
+    luxuryRoomUpgrade: {
+        id: 'luxuryRoomUpgrade',
+        name: 'Luxury Room Upgrade',
+        emoji: '🏰',
+        description: 'Unlock a 4th upgrade tier for all rooms (+16% bonus).',
+        cost: 1500,
+        maxOwned: 1,
+        category: 'rooms'
+    },
+    petSpa: {
+        id: 'petSpa',
+        name: 'Pet Spa Pass',
+        emoji: '💆',
+        description: 'Unlock passive cleanliness decay reduction (-20%).',
+        cost: 700,
+        maxOwned: 1,
+        category: 'boost'
+    },
+    expeditionGuild: {
+        id: 'expeditionGuild',
+        name: 'Expedition Guild Card',
+        emoji: '🗺️',
+        description: 'All expeditions yield +20% more loot.',
+        cost: 900,
+        maxOwned: 1,
+        category: 'exploration'
+    },
+    cosmeticChest: {
+        id: 'cosmeticChest',
+        name: 'Rare Cosmetic Chest',
+        emoji: '👑',
+        description: 'Unlock an exclusive pet accessory set (Crown, Cape, Monocle).',
+        cost: 2000,
+        maxOwned: 1,
+        category: 'cosmetic'
+    }
+};
+
+// Rec 10: Seasonal item rotation — items only available in specific seasons
+const SEASONAL_SHOP_AVAILABILITY = {
+    // Food
+    kibbleBag: ['spring', 'summer', 'autumn', 'winter'], // Always available (staple)
+    veggieMix: ['spring', 'summer', 'autumn'], // Not in winter
+    deluxePlatter: ['summer', 'winter'], // Special occasion food
+    // Toys
+    squeakyBall: ['spring', 'summer', 'autumn', 'winter'], // Always available (staple)
+    puzzleCube: ['autumn', 'winter'], // Indoor activity seasons
+    cometFrisbee: ['spring', 'summer'], // Outdoor seasons only
+    // Medicine
+    herbalDrops: ['spring', 'summer', 'autumn', 'winter'], // Always available (essential)
+    medKit: ['autumn', 'winter'], // Sick season availability
+    // Seeds
+    carrotSeeds: ['spring', 'autumn'],
+    tomatoSeeds: ['spring', 'summer'],
+    strawberrySeeds: ['spring', 'summer'],
+    pumpkinSeeds: ['autumn'],
+    sunflowerSeeds: ['spring', 'summer'],
+    appleSeeds: ['summer', 'autumn'],
+    // Accessories — always available
+    ribbonBow: ['spring', 'summer', 'autumn', 'winter'],
+    sunglasses: ['spring', 'summer'],
+    wizardHat: ['autumn', 'winter'],
+    // Decorations
+    plantDecor: ['spring', 'summer'],
+    balloonDecor: ['spring', 'summer', 'autumn', 'winter'],
+    lightDecor: ['autumn', 'winter'],
+    toyDecor: ['spring', 'summer', 'autumn', 'winter']
+};
 
 const MAX_GARDEN_PLOTS = 6;
 
