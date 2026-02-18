@@ -9,6 +9,8 @@
                 gameState.competition = {
                     battlesWon: 0,
                     battlesLost: 0,
+                    rivalBattlesWon: 0,
+                    rivalBattlesLost: 0,
                     bossesDefeated: {},    // { bossId: { defeated: true, bestTime: ms } }
                     showsEntered: 0,
                     bestShowRank: '',
@@ -22,6 +24,8 @@
             const comp = gameState.competition;
             if (typeof comp.battlesWon !== 'number' || !Number.isFinite(comp.battlesWon)) comp.battlesWon = 0;
             if (typeof comp.battlesLost !== 'number' || !Number.isFinite(comp.battlesLost)) comp.battlesLost = 0;
+            if (typeof comp.rivalBattlesWon !== 'number' || !Number.isFinite(comp.rivalBattlesWon)) comp.rivalBattlesWon = 0;
+            if (typeof comp.rivalBattlesLost !== 'number' || !Number.isFinite(comp.rivalBattlesLost)) comp.rivalBattlesLost = 0;
             if (!comp.bossesDefeated || typeof comp.bossesDefeated !== 'object' || Array.isArray(comp.bossesDefeated)) comp.bossesDefeated = {};
             if (typeof comp.showsEntered !== 'number' || !Number.isFinite(comp.showsEntered)) comp.showsEntered = 0;
             if (typeof comp.bestShowRank !== 'string') comp.bestShowRank = '';
@@ -1120,7 +1124,7 @@
                     <div class="modal-content competition-modal rival-modal">
                         <button class="competition-close-btn" id="rival-close" aria-label="Close">&times;</button>
                         <h2 class="competition-title"><span aria-hidden="true">🏅</span> Rival Trainers</h2>
-                        <p class="competition-subtitle">Defeat trainers to progress! Each one is tougher than the last.</p>
+                        <p class="competition-subtitle">Defeat trainers to progress! Each one is tougher than the last. Rival record: ${comp.rivalBattlesWon}W / ${comp.rivalBattlesLost}L.</p>
                         <div class="rival-list">
                             ${RIVAL_TRAINERS.map((trainer, idx) => {
                                 const isDefeated = comp.rivalsDefeated.includes(idx);
@@ -1315,10 +1319,10 @@
                 function endRivalFight(rivalIdx, won) {
                     const comp = initCompetitionState();
                     if (won) {
+                        comp.rivalBattlesWon++;
                         const isFirstDefeat = !comp.rivalsDefeated.includes(rivalIdx);
                         if (isFirstDefeat) {
                             comp.rivalsDefeated.push(rivalIdx);
-                            comp.battlesWon++;
                         }
                         if (rivalIdx >= comp.currentRivalIndex) {
                             comp.currentRivalIndex = rivalIdx + 1;
@@ -1330,7 +1334,7 @@
                             announce(`Victory! Rival ${trainer.name} defeated! Plus ${15 + trainer.difficulty * 2} happiness!`, true);
                         }, 500);
                     } else {
-                        comp.battlesLost++;
+                        comp.rivalBattlesLost++;
                         pet.happiness = clamp(pet.happiness + 5, 0, 100);
                         setTimeout(() => {
                             showToast(`Keep training! ${trainer.name} is tough!`, '#64B5F6');
@@ -1346,7 +1350,7 @@
                             <div class="battle-result-content">
                                 <h3>${won ? '🏅 Rival Defeated!' : '😢 Defeat'}</h3>
                                 <p>${won ? trainer.winMessage : trainer.loseMessage}</p>
-                                <p class="battle-stats-summary">Rivals defeated: ${comp.rivalsDefeated.length}/${RIVAL_TRAINERS.length}</p>
+                                <p class="battle-stats-summary">Rivals defeated: ${comp.rivalsDefeated.length}/${RIVAL_TRAINERS.length} | Rival record: ${comp.rivalBattlesWon}W / ${comp.rivalBattlesLost}L</p>
                                 <div class="battle-result-actions">
                                     <button class="competition-btn primary" id="rival-done">Done</button>
                                     <button class="competition-btn secondary" id="rival-back-hub">Back to Hub</button>
@@ -1449,7 +1453,7 @@
                             <div class="hub-option-info">
                                 <span class="hub-option-name">Rival Trainers</span>
                                 <span class="hub-option-desc">Challenge escalating rivals!</span>
-                                <span class="hub-option-stat">${comp.rivalsDefeated.length}/${RIVAL_TRAINERS.length} defeated</span>
+                                <span class="hub-option-stat">${comp.rivalsDefeated.length}/${RIVAL_TRAINERS.length} defeated | ${comp.rivalBattlesWon}W / ${comp.rivalBattlesLost}L</span>
                             </div>
                         </button>
                     </div>
