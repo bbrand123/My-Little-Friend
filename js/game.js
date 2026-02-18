@@ -54,6 +54,16 @@
                 kitchen: { decoration: 'none' },
                 bathroom: { decoration: 'none' }
             },
+            roomUnlocks: {
+                bedroom: true,
+                kitchen: true,
+                bathroom: true,
+                backyard: true,
+                park: true,
+                garden: true
+            },
+            roomUpgrades: {},
+            roomCustomizations: {},
             garden: {
                 plots: [], // { cropId, stage, growTicks, watered }
                 inventory: {}, // { cropId: count }
@@ -1239,7 +1249,7 @@
         function applyDecorationToCurrentRoom(decorationId) {
             if (!FURNITURE.decorations[decorationId]) return false;
             const room = gameState.currentRoom || 'bedroom';
-            const validRooms = ['bedroom', 'kitchen', 'bathroom'];
+            const validRooms = ROOM_IDS;
             const targetRoom = validRooms.includes(room) ? room : 'bedroom';
             if (!gameState.furniture[targetRoom]) gameState.furniture[targetRoom] = {};
             gameState.furniture[targetRoom].decoration = decorationId;
@@ -2629,6 +2639,30 @@
 
                     // Add currentRoom if missing (for existing saves)
                     if (!parsed.currentRoom || !ROOMS[parsed.currentRoom]) {
+                        parsed.currentRoom = 'bedroom';
+                    }
+                    if (!parsed.roomUnlocks || typeof parsed.roomUnlocks !== 'object') parsed.roomUnlocks = {};
+                    if (!parsed.roomUpgrades || typeof parsed.roomUpgrades !== 'object') parsed.roomUpgrades = {};
+                    if (!parsed.roomCustomizations || typeof parsed.roomCustomizations !== 'object') parsed.roomCustomizations = {};
+                    ROOM_IDS.forEach((roomId) => {
+                        const room = ROOMS[roomId];
+                        if (!room) return;
+                        if (typeof parsed.roomUnlocks[roomId] !== 'boolean') {
+                            parsed.roomUnlocks[roomId] = room.unlockRule && room.unlockRule.type === 'default';
+                        }
+                        if (!Number.isFinite(parsed.roomUpgrades[roomId])) parsed.roomUpgrades[roomId] = 0;
+                        if (!parsed.roomCustomizations[roomId] || typeof parsed.roomCustomizations[roomId] !== 'object') {
+                            parsed.roomCustomizations[roomId] = {};
+                        }
+                        const custom = parsed.roomCustomizations[roomId];
+                        if (!custom.wallpaper || !ROOM_WALLPAPERS[custom.wallpaper]) custom.wallpaper = 'classic';
+                        if (!custom.flooring || !ROOM_FLOORINGS[custom.flooring]) custom.flooring = 'natural';
+                        if (!custom.theme || !ROOM_THEMES[custom.theme]) custom.theme = 'auto';
+                        if (!Array.isArray(custom.furnitureSlots)) custom.furnitureSlots = ['none', 'none'];
+                        while (custom.furnitureSlots.length < 2) custom.furnitureSlots.push('none');
+                        custom.furnitureSlots = custom.furnitureSlots.slice(0, 2).map((id) => ROOM_FURNITURE_ITEMS[id] ? id : 'none');
+                    });
+                    if (!parsed.roomUnlocks[parsed.currentRoom]) {
                         parsed.currentRoom = 'bedroom';
                     }
 
@@ -4122,6 +4156,86 @@
 
         // ==================== ROOM FUNCTIONS ====================
 
+        function ensureRoomSystemsState() {
+            if (!gameState.roomUnlocks || typeof gameState.roomUnlocks !== 'object') gameState.roomUnlocks = {};
+            if (!gameState.roomUpgrades || typeof gameState.roomUpgrades !== 'object') gameState.roomUpgrades = {};
+            if (!gameState.roomCustomizations || typeof gameState.roomCustomizations !== 'object') gameState.roomCustomizations = {};
+            ROOM_IDS.forEach((roomId) => {
+                const room = ROOMS[roomId];
+                if (!room) return;
+                if (typeof gameState.roomUnlocks[roomId] !== 'boolean') {
+                    gameState.roomUnlocks[roomId] = room.unlockRule && room.unlockRule.type === 'default';
+                }
+                if (!Number.isFinite(gameState.roomUpgrades[roomId])) gameState.roomUpgrades[roomId] = 0;
+                if (!gameState.roomCustomizations[roomId] || typeof gameState.roomCustomizations[roomId] !== 'object') {
+                    gameState.roomCustomizations[roomId] = {};
+                }
+                const custom = gameState.roomCustomizations[roomId];
+                if (!custom.wallpaper || !ROOM_WALLPAPERS[custom.wallpaper]) custom.wallpaper = 'classic';
+                if (!custom.flooring || !ROOM_FLOORINGS[custom.flooring]) custom.flooring = 'natural';
+                if (!custom.theme || !ROOM_THEMES[custom.theme]) custom.theme = 'auto';
+                if (!Array.isArray(custom.furnitureSlots)) custom.furnitureSlots = ['none', 'none'];
+                while (custom.furnitureSlots.length < 2) custom.furnitureSlots.push('none');
+                custom.furnitureSlots = custom.furnitureSlots.slice(0, 2).map((id) => ROOM_FURNITURE_ITEMS[id] ? id : 'none');
+            });
+        }
+
+        function getRoomCustomization(roomId) {
+            ensureRoomSystemsState();
+            return gameState.roomCustomizations[roomId] || { wallpaper: 'classic', flooring: 'natural', theme: 'auto', furnitureSlots: ['none', 'none'] };
+        }
+
+        function getRoomThemeMode(roomId, pet) {
+            const custom = getRoomCustomization(roomId);
+            const theme = custom.theme || 'auto';
+            const petType = pet && pet.type;
+            if (theme === 'default') return 'default';
+            if (theme === 'aquarium') return 'aquarium';
+            if (theme === 'nest') return 'nest';
+            if (petType === 'fish') return 'aquarium';
+            if (petType === 'bird' || petType === 'penguin') return 'nest';
+            return 'default';
+        }
+
+        function getRoomUnlockStatus(roomId) {
+            const room = ROOMS[roomId];
+            if (!room) return { unlocked: false, reason: 'Unknown room.' };
+            ensureRoomSystemsState();
+            if (gameState.roomUnlocks[roomId]) return { unlocked: true, met: true, reason: '' };
+            const rule = room.unlockRule || { type: 'default' };
+            if (rule.type === 'default') return { unlocked: true, met: true, reason: '' };
+            if (rule.type === 'careActions') {
+                const care = Array.isArray(gameState.pets) && gameState.pets.length > 0
+                    ? Math.max(...gameState.pets.map((p) => (p && Number.isFinite(p.careActions)) ? p.careActions : 0))
+                    : (gameState.pet && Number.isFinite(gameState.pet.careActions) ? gameState.pet.careActions : 0);
+                const count = Math.max(0, Number(rule.count) || 0);
+                return {
+                    unlocked: false,
+                    met: care >= count,
+                    reason: `Need ${count} care actions (${care}/${count}).`
+                };
+            }
+            if (rule.type === 'adultsRaised') {
+                const adults = Number(gameState.adultsRaised || 0);
+                const count = Math.max(0, Number(rule.count) || 0);
+                return {
+                    unlocked: false,
+                    met: adults >= count,
+                    reason: `Need ${count} adult pets raised (${adults}/${count}).`
+                };
+            }
+            return { unlocked: false, met: false, reason: room.unlockRule && room.unlockRule.text ? room.unlockRule.text : 'Locked.' };
+        }
+
+        function unlockRoom(roomId) {
+            const status = getRoomUnlockStatus(roomId);
+            if (status.unlocked) return { ok: true, already: true };
+            if (!status.met) return { ok: false, reason: status.reason || 'Requirement not met.' };
+            gameState.roomUnlocks[roomId] = true;
+            saveGame();
+            return { ok: true };
+        }
+
         function getRoomBackground(roomId, timeOfDay) {
             const room = ROOMS[roomId];
             if (!room) return ROOMS.bedroom.bgDay;
@@ -4139,7 +4253,12 @@
             bathroom: ['assets/props/soap-stack.svg', 'assets/props/towel-rack.svg'],
             backyard: ['assets/props/kite-rack.svg', 'assets/props/flower-pot.svg'],
             park: ['assets/props/picnic-basket.svg', 'assets/props/bench-plaque.svg'],
-            garden: ['assets/props/watering-can.svg', 'assets/props/garden-lantern.svg']
+            garden: ['assets/props/watering-can.svg', 'assets/props/garden-lantern.svg'],
+            library: ['assets/props/framed-photo.svg', 'assets/props/tea-shelf.svg'],
+            arcade: ['assets/props/toy-bin.svg', 'assets/props/bench-plaque.svg'],
+            spa: ['assets/props/soap-stack.svg', 'assets/props/towel-rack.svg'],
+            observatory: ['assets/props/garden-lantern.svg', 'assets/props/bench-plaque.svg'],
+            workshop: ['assets/props/watering-can.svg', 'assets/props/wall-plant.svg']
         };
 
         function getRoomPropTier() {
@@ -4154,15 +4273,23 @@
             const room = ROOMS[roomId];
             if (!room) return '<span class="room-decor-inline">🌸 🌼 🌷</span>';
             const emojiDecor = timeOfDay === 'night' ? room.nightDecorEmoji : room.decorEmoji;
+            const custom = getRoomCustomization(roomId);
+            const themed = getRoomThemeMode(roomId, gameState.pet);
+            let themeDecor = '';
+            if (themed === 'aquarium') themeDecor = '<span class="room-theme-badge">🐠 Aquarium</span>';
+            if (themed === 'nest') themeDecor = '<span class="room-theme-badge">🪺 Nest</span>';
             const tier = getRoomPropTier();
-            if (tier <= 0) return `<span class="room-decor-inline">${emojiDecor}</span>`;
+            const slotDecor = (custom.furnitureSlots || [])
+                .map((id, idx) => ROOM_FURNITURE_ITEMS[id] ? `<span class="room-furniture-slot room-furniture-slot-${idx + 1}">${ROOM_FURNITURE_ITEMS[id].emoji}</span>` : '')
+                .join('');
+            if (tier <= 0) return `<span class="room-decor-inline">${emojiDecor}</span>${themeDecor}${slotDecor}`;
             const assets = ROOM_PROP_ASSETS[roomId] || [];
             const maxProps = Math.min(tier, assets.length);
             const props = [];
             for (let i = 0; i < maxProps; i++) {
                 props.push(`<span class="room-prop room-prop-tier-${i + 1}" aria-hidden="true"><img src="${assets[i]}" alt="" loading="lazy" decoding="async"></span>`);
             }
-            return `<span class="room-decor-inline">${emojiDecor}</span>${props.join('')}`;
+            return `<span class="room-decor-inline">${emojiDecor}</span>${themeDecor}${slotDecor}${props.join('')}`;
         }
 
         function getReadyCropCount() {
@@ -4172,20 +4299,26 @@
         }
 
         function generateRoomNavHTML(currentRoom) {
+            ensureRoomSystemsState();
             const readyCrops = getReadyCropCount();
             let html = '<nav class="room-nav" role="navigation" aria-label="Room navigation">';
             for (const id of ROOM_IDS) {
                 const room = ROOMS[id];
+                const status = getRoomUnlockStatus(id);
+                const unlocked = !!status.unlocked;
                 const isActive = id === currentRoom;
                 const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
-                const bonusHint = room.bonus ? ` (Bonus: ${room.bonus.label})` : '';
-                html += `<button class="room-btn${isActive ? ' active' : ''}" type="button" data-room="${id}"
+                const bonusHint = room.bonus ? ` (Bonus: ${getRoomBonusLabel(id)})` : '';
+                const lockBadge = unlocked ? '' : '<span class="room-lock-badge" aria-hidden="true">🔒</span>';
+                const lockHint = unlocked ? '' : ` ${status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked'}`;
+                html += `<button class="room-btn${isActive ? ' active' : ''}${unlocked ? '' : ' locked'}" type="button" data-room="${id}"
                     aria-label="Go to ${room.name}" aria-pressed="${isActive}"
                     ${isActive ? 'aria-current="page"' : ''} tabindex="0" style="position:relative;"
-                    title="${room.name}${bonusHint}">
+                    title="${room.name}${bonusHint}${lockHint}">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
                     <span class="room-btn-label">${room.name}</span>
                     ${badge}
+                    ${lockBadge}
                 </button>`;
             }
             html += '</nav>';
@@ -4215,6 +4348,15 @@
 
         function switchRoom(roomId) {
             if (!ROOMS[roomId] || roomId === gameState.currentRoom) return;
+            ensureRoomSystemsState();
+            const unlockResult = unlockRoom(roomId);
+            if (!unlockResult.ok) {
+                showToast(`🔒 ${unlockResult.reason}`, '#FFA726');
+                return;
+            }
+            if (!unlockResult.already) {
+                showToast(`🔓 Unlocked ${ROOMS[roomId].name}!`, '#66BB6A');
+            }
 
             const previousRoom = gameState.currentRoom;
             gameState.currentRoom = roomId;
@@ -4264,6 +4406,14 @@
 
                         // Update background
                         petArea.style.background = getRoomBackground(roomId, gameState.timeOfDay);
+                        const roomCustom = getRoomCustomization(roomId);
+                        const wallpaper = ROOM_WALLPAPERS[roomCustom.wallpaper] || ROOM_WALLPAPERS.classic;
+                        const flooring = ROOM_FLOORINGS[roomCustom.flooring] || ROOM_FLOORINGS.natural;
+                        petArea.style.setProperty('--room-wallpaper-overlay', wallpaper.bg || 'none');
+                        petArea.style.setProperty('--room-floor-overlay', flooring.bg || 'none');
+                        const themeMode = getRoomThemeMode(roomId, gameState.pet);
+                        petArea.classList.remove('pet-theme-default', 'pet-theme-aquarium', 'pet-theme-nest');
+                        petArea.classList.add(`pet-theme-${themeMode}`);
 
                         // Update room decor
                         const decor = petArea.querySelector('.room-decor');
@@ -4323,9 +4473,9 @@
             if (room.bonus) {
                 roomBonusToastCount[roomId] = (roomBonusToastCount[roomId] || 0) + 1;
                 if (roomBonusToastCount[roomId] <= MAX_ROOM_BONUS_TOASTS) {
-                    showToast(`${room.icon} ${room.name}: ${room.bonus.label}!`, '#4ECDC4');
+                    showToast(`${room.icon} ${room.name}: ${getRoomBonusLabel(roomId)}!`, '#4ECDC4');
                 } else {
-                    announce(`Moved to ${room.name}. Room bonus still active: ${room.bonus.label}.`);
+                    announce(`Moved to ${room.name}. Room bonus still active: ${getRoomBonusLabel(roomId)}.`);
                 }
             } else {
                 showToast(`${room.icon} Moved to ${room.name}`, '#4ECDC4');
@@ -5442,6 +5592,14 @@
 
             // Update room background for new time of day
             petArea.style.background = getRoomBackground(currentRoom, timeOfDay);
+            const roomCustom = getRoomCustomization(currentRoom);
+            const wallpaper = ROOM_WALLPAPERS[roomCustom.wallpaper] || ROOM_WALLPAPERS.classic;
+            const flooring = ROOM_FLOORINGS[roomCustom.flooring] || ROOM_FLOORINGS.natural;
+            petArea.style.setProperty('--room-wallpaper-overlay', wallpaper.bg || 'none');
+            petArea.style.setProperty('--room-floor-overlay', flooring.bg || 'none');
+            const themeMode = getRoomThemeMode(currentRoom, gameState.pet);
+            petArea.classList.remove('pet-theme-default', 'pet-theme-aquarium', 'pet-theme-nest');
+            petArea.classList.add(`pet-theme-${themeMode}`);
 
             // Update context indicator (collapsed weather + time + season)
             updateContextIndicator();
@@ -5591,6 +5749,9 @@
                         if (saved.minigameScoreHistory) gameState.minigameScoreHistory = saved.minigameScoreHistory;
                         if (saved.relationships) gameState.relationships = saved.relationships;
                         if (saved.furniture) gameState.furniture = saved.furniture;
+                        if (saved.roomUnlocks) gameState.roomUnlocks = saved.roomUnlocks;
+                        if (saved.roomUpgrades) gameState.roomUpgrades = saved.roomUpgrades;
+                        if (saved.roomCustomizations) gameState.roomCustomizations = saved.roomCustomizations;
                         if (saved.badges) gameState.badges = saved.badges;
                         if (saved.stickers) gameState.stickers = saved.stickers;
                         if (saved.trophies) gameState.trophies = saved.trophies;
@@ -5607,6 +5768,7 @@
                         if (saved.hatchedBreedingEggs) gameState.hatchedBreedingEggs = saved.hatchedBreedingEggs;
                         if (typeof saved.totalFeedCount === 'number') gameState.totalFeedCount = saved.totalFeedCount;
                         if (typeof saved.adultsRaised === 'number') gameState.adultsRaised = saved.adultsRaised;
+                        ensureRoomSystemsState();
 
                         // Update time of day (may have changed while tab was hidden)
                         const newTimeOfDay = getTimeOfDay();
@@ -5699,6 +5861,7 @@
             if (typeof gameState.adultsRaised !== 'number') {
                 gameState.adultsRaised = 0;
             }
+            ensureRoomSystemsState();
             ensureExplorationState();
             ensureEconomyState();
             updateExplorationUnlocks(true);

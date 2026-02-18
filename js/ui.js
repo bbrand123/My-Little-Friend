@@ -20,6 +20,19 @@
                 const pos = config.positions[i];
                 html += `<span class="ambient-element ${config.cls}" style="top:${pos.top};left:${pos.left}">${config.emoji}</span>`;
             }
+            // Ambient critters system
+            if (roomId === 'garden' && timeOfDay !== 'night') {
+                const butterflies = [{ top: '18%', left: '16%' }, { top: '28%', left: '58%' }, { top: '36%', left: '76%' }];
+                butterflies.forEach((pos, idx) => {
+                    html += `<span class="ambient-element amb-butterfly" style="top:${pos.top};left:${pos.left};animation-delay:${idx * 0.7}s">🦋</span>`;
+                });
+            }
+            if ((roomId === 'garden' || roomId === 'backyard' || roomId === 'park') && timeOfDay === 'night') {
+                const fireflies = [{ top: '16%', left: '12%' }, { top: '24%', left: '34%' }, { top: '14%', left: '66%' }, { top: '22%', left: '82%' }, { top: '30%', left: '52%' }];
+                fireflies.forEach((pos, idx) => {
+                    html += `<span class="ambient-element amb-firefly" style="top:${pos.top};left:${pos.left};animation-delay:${idx * 0.35}s">✨</span>`;
+                });
+            }
             // Night stars for outdoor rooms
             if (isOutdoor && timeOfDay === 'night') {
                 const starPositions = [{top:'8%',left:'10%'},{top:'12%',left:'55%'},{top:'5%',left:'80%'},{top:'18%',left:'35%'},{top:'3%',left:'65%'}];
@@ -1069,7 +1082,10 @@
             const room = ROOMS[currentRoom];
             if (!room || !room.bonus) return '';
             if (room.bonus.action !== actionName) return '';
-            const pct = Math.round((room.bonus.multiplier - 1) * 100);
+            const mult = typeof getRoomBonusMultiplierForRoom === 'function'
+                ? getRoomBonusMultiplierForRoom(currentRoom, actionName)
+                : room.bonus.multiplier;
+            const pct = Math.round((mult - 1) * 100);
             return `<span class="room-bonus-badge" aria-label="${room.name} bonus: +${pct}%">+${pct}%</span>`;
         }
 
@@ -1362,14 +1378,25 @@
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
 
             // Current room
-            const currentRoom = ROOMS[gameState.currentRoom] ? gameState.currentRoom : 'bedroom';
+            let currentRoom = ROOMS[gameState.currentRoom] ? gameState.currentRoom : 'bedroom';
             if (currentRoom !== gameState.currentRoom) {
                 gameState.currentRoom = currentRoom;
+            }
+            if (typeof getRoomUnlockStatus === 'function') {
+                const roomStatus = getRoomUnlockStatus(currentRoom);
+                if (!roomStatus.unlocked) {
+                    currentRoom = 'bedroom';
+                    gameState.currentRoom = 'bedroom';
+                }
             }
             const room = ROOMS[currentRoom];
             const isOutdoor = room.isOutdoor;
             const roomBg = getRoomBackground(currentRoom, timeOfDay);
             const roomDecor = getRoomDecor(currentRoom, timeOfDay);
+            const roomCustom = typeof getRoomCustomization === 'function' ? getRoomCustomization(currentRoom) : { wallpaper: 'classic', flooring: 'natural', theme: 'auto' };
+            const wallpaper = (typeof ROOM_WALLPAPERS !== 'undefined' && ROOM_WALLPAPERS[roomCustom.wallpaper]) ? ROOM_WALLPAPERS[roomCustom.wallpaper] : { bg: 'none' };
+            const flooring = (typeof ROOM_FLOORINGS !== 'undefined' && ROOM_FLOORINGS[roomCustom.flooring]) ? ROOM_FLOORINGS[roomCustom.flooring] : { bg: 'none' };
+            const roomThemeMode = typeof getRoomThemeMode === 'function' ? getRoomThemeMode(currentRoom, pet) : 'default';
 
             // Celestial elements (stars, moon, sun, clouds) removed to reduce visual layers
 
@@ -1527,7 +1554,7 @@
                 <div class="sr-only" id="top-meta-explore">${explorationAlerts > 0 ? `${Math.min(9, explorationAlerts)} exploration updates available.` : 'No new exploration updates.'}</div>
                 ${generatePetSwitcherHTML()}
                 ${generateRoomNavHTML(currentRoom)}
-                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg};">
+                <div class="pet-area ${timeClass} ${weatherClass} room-${currentRoom} season-${season} pet-theme-${roomThemeMode}" role="region" aria-label="Your pet ${petDisplayName} in the ${room.name}" style="background: ${roomBg}; --room-wallpaper-overlay: ${wallpaper.bg || 'none'}; --room-floor-overlay: ${flooring.bg || 'none'};">
                     ${weatherHTML}
                     ${generateAmbientLayerHTML(currentRoom, timeOfDay, weather, isOutdoor)}
                     ${generateWeatherParticlesHTML(weather, isOutdoor)}
@@ -2084,7 +2111,7 @@
         // ==================== ONBOARDING HINTS ====================
         // Lightweight first-time tooltip system stored in localStorage
         const ONBOARDING_HINTS = [
-            { id: 'room_bonus', trigger: 'first_render', message: 'Tip: Each room gives a bonus to certain actions! Look for the +30% badges on buttons.' },
+            { id: 'room_bonus', trigger: 'first_render', message: 'Tip: Each room gives a bonus to certain actions! Look for the +% badges on buttons.' },
             { id: 'garden_intro', trigger: 'garden', message: 'Tip: Plant seeds and water them to grow food for your pet!' },
             { id: 'minigames_intro', trigger: 'first_render', message: 'Tip: Play mini-games to earn happiness and unlock achievements!' },
             { id: 'explore_intro', trigger: 'first_render', message: 'Tip: Open the 🗺️ button for world map biomes, expeditions, dungeons, and wild NPC pets.' },
@@ -4581,19 +4608,26 @@
 
         function showFurnitureModal() {
             const currentRoom = gameState.currentRoom || 'bedroom';
-            if (!gameState.furniture || typeof gameState.furniture !== 'object') {
-                gameState.furniture = {};
-            }
-            const furniture = gameState.furniture;
+            if (typeof ensureRoomSystemsState === 'function') ensureRoomSystemsState();
             const triggerBtn = document.getElementById('furniture-btn');
-
-            // Only show furniture options for certain rooms
-            if (!['bedroom', 'kitchen', 'bathroom'].includes(currentRoom)) {
-                showToast('Furniture customization is available in bedroom, kitchen, and bathroom!', '#FFA726');
-                return;
-            }
-
-            const roomFurniture = furniture[currentRoom] || {};
+            const roomConfig = ROOMS[currentRoom];
+            if (!roomConfig) return;
+            const roomCustom = typeof getRoomCustomization === 'function'
+                ? getRoomCustomization(currentRoom)
+                : { wallpaper: 'classic', flooring: 'natural', furnitureSlots: ['none', 'none'], theme: 'auto' };
+            const roomFurniture = (gameState.furniture && gameState.furniture[currentRoom]) ? gameState.furniture[currentRoom] : {};
+            const roomUpgradeLevel = (gameState.roomUpgrades && Number.isFinite(gameState.roomUpgrades[currentRoom]))
+                ? Math.floor(gameState.roomUpgrades[currentRoom])
+                : 0;
+            const canUpgrade = typeof ROOM_UPGRADE_COSTS !== 'undefined' && roomUpgradeLevel < ROOM_UPGRADE_COSTS.length;
+            const upgradeCost = canUpgrade ? ROOM_UPGRADE_COSTS[roomUpgradeLevel] : null;
+            const nextBonusPct = roomConfig.bonus
+                ? Math.round(((roomConfig.bonus.multiplier + ((roomUpgradeLevel + 1) * 0.1)) - 1) * 100)
+                : null;
+            const petType = gameState.pet && gameState.pet.type ? gameState.pet.type : '';
+            const canAquariumTheme = petType === 'fish';
+            const canNestTheme = petType === 'bird' || petType === 'penguin';
+            const roomThemeMode = roomCustom.theme || 'auto';
 
             const overlay = document.createElement('div');
             overlay.className = 'naming-overlay';
@@ -4603,6 +4637,10 @@
 
             let bedOptions = '';
             let decorOptions = '';
+            let wallpaperOptions = '';
+            let flooringOptions = '';
+            let themeOptions = '';
+            let furnitureSlotOptions = '';
 
             if (currentRoom === 'bedroom') {
                 bedOptions = `
@@ -4636,12 +4674,81 @@
                 </div>
             `;
 
+            wallpaperOptions = `
+                <div class="customization-section">
+                    <h3 class="customization-title">Wallpaper</h3>
+                    <div class="furniture-options">
+                        ${Object.entries(ROOM_WALLPAPERS).map(([id, data]) => `
+                            <button class="furniture-option ${roomCustom.wallpaper === id ? 'selected' : ''}" data-room-custom-type="wallpaper" data-room-custom-value="${id}">
+                                <span class="furniture-emoji">🧱</span>
+                                <span class="furniture-name">${data.name}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            flooringOptions = `
+                <div class="customization-section">
+                    <h3 class="customization-title">Flooring</h3>
+                    <div class="furniture-options">
+                        ${Object.entries(ROOM_FLOORINGS).map(([id, data]) => `
+                            <button class="furniture-option ${roomCustom.flooring === id ? 'selected' : ''}" data-room-custom-type="flooring" data-room-custom-value="${id}">
+                                <span class="furniture-emoji">🧩</span>
+                                <span class="furniture-name">${data.name}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            themeOptions = `
+                <div class="customization-section">
+                    <h3 class="customization-title">Pet Theme Mode</h3>
+                    <div class="furniture-options">
+                        ${Object.entries(ROOM_THEMES).map(([id, data]) => {
+                            const disallowed = (id === 'aquarium' && !canAquariumTheme) || (id === 'nest' && !canNestTheme);
+                            const selected = roomThemeMode === id;
+                            return `
+                                <button class="furniture-option ${selected ? 'selected' : ''}${disallowed ? ' disabled' : ''}" data-room-custom-type="theme" data-room-custom-value="${id}" ${disallowed ? 'disabled' : ''} title="${disallowed ? 'Requires matching pet type.' : data.name}">
+                                    <span class="furniture-emoji">${id === 'aquarium' ? '🐠' : id === 'nest' ? '🪺' : id === 'auto' ? '🪄' : '🏠'}</span>
+                                    <span class="furniture-name">${data.name}</span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+
+            furnitureSlotOptions = [0, 1].map((slotIdx) => `
+                <div class="customization-section">
+                    <h3 class="customization-title">Furniture Slot ${slotIdx + 1}</h3>
+                    <div class="furniture-options">
+                        ${Object.entries(ROOM_FURNITURE_ITEMS).map(([id, data]) => `
+                            <button class="furniture-option ${(roomCustom.furnitureSlots && roomCustom.furnitureSlots[slotIdx] === id) ? 'selected' : ''}" data-room-custom-type="slot-${slotIdx}" data-room-custom-value="${id}">
+                                <span class="furniture-emoji">${data.emoji}</span>
+                                <span class="furniture-name">${data.name}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
             overlay.innerHTML = `
                 <div class="naming-modal">
                     <h2 class="naming-modal-title" id="furniture-title">🛋️ Customize ${ROOMS[currentRoom].name}</h2>
-                    <p class="naming-modal-subtitle">Make this room your own!</p>
+                    <p class="naming-modal-subtitle">Make this room your own. Bonus now: ${typeof getRoomBonusLabel === 'function' ? getRoomBonusLabel(currentRoom) : (roomConfig.bonus ? roomConfig.bonus.label : 'No bonus')}</p>
+                    <div class="customization-section">
+                        <h3 class="customization-title">Room Upgrade</h3>
+                        <p class="naming-modal-subtitle" style="margin-bottom:10px;">Level ${roomUpgradeLevel}${roomConfig.bonus ? ` · ${typeof getRoomBonusLabel === 'function' ? getRoomBonusLabel(currentRoom) : roomConfig.bonus.label}` : ''}</p>
+                        ${canUpgrade ? `<button class="naming-submit-btn" id="room-upgrade-btn" type="button">Upgrade (${upgradeCost} coins) → +${nextBonusPct}%</button>` : '<button class="naming-submit-btn" type="button" disabled>Max upgrade reached</button>'}
+                    </div>
                     ${bedOptions}
                     ${decorOptions}
+                    ${wallpaperOptions}
+                    ${flooringOptions}
+                    ${themeOptions}
+                    ${furnitureSlotOptions}
                     <button class="naming-submit-btn" id="furniture-done">Done</button>
                 </div>
             `;
@@ -4672,6 +4779,48 @@
                     showToast(`${type === 'bed' ? 'Bed' : 'Decoration'} updated!`, '#4ECDC4');
                 });
             });
+
+            overlay.querySelectorAll('[data-room-custom-type]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const type = btn.getAttribute('data-room-custom-type');
+                    const value = btn.getAttribute('data-room-custom-value');
+                    if (!type || !value) return;
+                    if (!gameState.roomCustomizations[currentRoom]) gameState.roomCustomizations[currentRoom] = {};
+                    const custom = gameState.roomCustomizations[currentRoom];
+                    if (type === 'wallpaper') custom.wallpaper = value;
+                    if (type === 'flooring') custom.flooring = value;
+                    if (type === 'theme') custom.theme = value;
+                    if (type.startsWith('slot-')) {
+                        const idx = Number(type.replace('slot-', ''));
+                        if (!Array.isArray(custom.furnitureSlots)) custom.furnitureSlots = ['none', 'none'];
+                        custom.furnitureSlots[idx] = value;
+                    }
+
+                    overlay.querySelectorAll(`[data-room-custom-type="${type}"]`).forEach((opt) => opt.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    saveGame();
+                    renderPetPhase();
+                });
+            });
+
+            const upgradeBtn = document.getElementById('room-upgrade-btn');
+            if (upgradeBtn && canUpgrade) {
+                upgradeBtn.addEventListener('click', () => {
+                    if (typeof spendCoins !== 'function') return;
+                    const spend = spendCoins(upgradeCost, `${roomConfig.name} upgrade`);
+                    if (!spend || !spend.ok) {
+                        showToast(`Need ${upgradeCost} coins to upgrade ${roomConfig.name}.`, '#FF7043');
+                        return;
+                    }
+                    if (!gameState.roomUpgrades) gameState.roomUpgrades = {};
+                    gameState.roomUpgrades[currentRoom] = roomUpgradeLevel + 1;
+                    saveGame();
+                    showToast(`⬆️ ${roomConfig.name} upgraded! Bonus increased.`, '#66BB6A');
+                    overlay.remove();
+                    showFurnitureModal();
+                    renderPetPhase();
+                });
+            }
 
             function closeFurniture() {
                 popModalEscape(closeFurniture);
@@ -4809,8 +4958,11 @@
 
             const roomBonusesHTML = Object.keys(ROOMS).map(key => {
                 const room = ROOMS[key];
-                const bonusLabel = room.bonus ? room.bonus.label : 'No bonus';
-                return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${bonusLabel}</div>`;
+                const bonusLabel = room.bonus
+                    ? (typeof getRoomBonusLabel === 'function' ? getRoomBonusLabel(key) : room.bonus.label)
+                    : 'No bonus';
+                const upgradeLevel = (gameState.roomUpgrades && Number.isFinite(gameState.roomUpgrades[key])) ? Math.floor(gameState.roomUpgrades[key]) : 0;
+                return `<div class="stats-room-bonus"><span class="stats-room-bonus-icon">${room.icon}</span> ${room.name}: ${bonusLabel}${upgradeLevel > 0 ? ` (Lv.${upgradeLevel})` : ''}</div>`;
             }).join('');
 
             const overlay = document.createElement('div');
@@ -5123,6 +5275,9 @@
                     kitchen: { decoration: 'none' },
                     bathroom: { decoration: 'none' }
                 };
+                const preservedRoomUnlocks = gameState.roomUnlocks || {};
+                const preservedRoomUpgrades = gameState.roomUpgrades || {};
+                const preservedRoomCustomizations = gameState.roomCustomizations || {};
                 const preservedMinigameScoreHistory = gameState.minigameScoreHistory || {};
                 const preservedMinigameHighScores = gameState.minigameHighScores || {};
                 const preservedMinigamePlayCounts = gameState.minigamePlayCounts || {};
@@ -5154,6 +5309,9 @@
                     season: getCurrentSeason(),
                     adultsRaised: preservedAdultsRaised,
                     furniture: preservedFurniture,
+                    roomUnlocks: preservedRoomUnlocks,
+                    roomUpgrades: preservedRoomUpgrades,
+                    roomCustomizations: preservedRoomCustomizations,
                     minigamePlayCounts: preservedMinigamePlayCounts,
                     minigameHighScores: preservedMinigameHighScores,
                     minigameScoreHistory: preservedMinigameScoreHistory,
