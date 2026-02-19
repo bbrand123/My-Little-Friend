@@ -144,7 +144,17 @@
             wash: 'assets/icons/ui/wash.svg',
             play: 'assets/icons/ui/play.svg',
             sleep: 'assets/icons/ui/sleep.svg',
-            gamepad: 'assets/icons/ui/gamepad.svg'
+            gamepad: 'assets/icons/ui/gamepad.svg',
+            // F38: Extended icon coverage
+            state: 'assets/icons/ui/state.svg',
+            medicine: 'assets/icons/ui/medicine.svg',
+            groom: 'assets/icons/ui/groom.svg',
+            exercise: 'assets/icons/ui/exercise.svg',
+            treat: 'assets/icons/ui/treat.svg',
+            cuddle: 'assets/icons/ui/cuddle.svg',
+            garden: 'assets/icons/ui/garden.svg',
+            explore: 'assets/icons/ui/explore.svg',
+            settings: 'assets/icons/ui/settings.svg'
         };
 
         function renderUiIcon(assetId, fallbackEmoji, label) {

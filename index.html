@@ -14,6 +14,7 @@
     <title>Pet Care Buddy</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" as="style">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -55,8 +56,40 @@
     <script src="js/competition.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
+            navigator.serviceWorker.register('./sw.js').then(function(reg) {
+                // F40: Update detection
+                reg.addEventListener('updatefound', function() {
+                    var newWorker = reg.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                                var banner = document.createElement('div');
+                                banner.className = 'offline-update-banner';
+                                banner.setAttribute('role', 'status');
+                                banner.innerHTML = 'A new version is available. <button onclick="location.reload()" style="background:none;border:1px solid;padding:2px 8px;border-radius:4px;cursor:pointer;font-weight:700;color:inherit;margin-left:6px;">Refresh</button> <button onclick="this.parentNode.remove()" aria-label="Dismiss" style="background:none;border:none;cursor:pointer;font-weight:700;color:inherit;margin-left:4px;">✕</button>';
+                                document.body.appendChild(banner);
+                            }
+                        });
+                    }
+                });
+            }).catch(function() {});
         }
+        // F40: Online/offline status
+        window.addEventListener('offline', function() {
+            var existing = document.querySelector('.offline-update-banner');
+            if (existing) existing.remove();
+            var banner = document.createElement('div');
+            banner.className = 'offline-update-banner offline-banner';
+            banner.setAttribute('role', 'status');
+            banner.setAttribute('aria-live', 'polite');
+            banner.textContent = "You're playing offline. Progress will sync when you reconnect.";
+            document.body.appendChild(banner);
+        });
+        window.addEventListener('online', function() {
+            var banner = document.querySelector('.offline-banner');
+            if (banner) banner.remove();
+            if (typeof showToast === 'function') showToast('Back online!', '#66BB6A');
+        });
     </script>
 </body>
 </html>
