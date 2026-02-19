@@ -14222,3 +14222,194 @@ html[data-reduced-motion="true"] *::after {
         padding: 12px;
     }
 }
+
+/* ==================== PET DIARY ==================== */
+.diary-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-overlay-dialog);
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+    transition: opacity 0.2s ease;
+}
+.diary-modal {
+    background: #fdf8f0;
+    border-radius: var(--radius-lg);
+    padding: var(--modal-padding);
+    max-width: 440px;
+    width: 100%;
+    box-shadow: var(--shadow-overlay);
+    animation: modalPop 0.3s ease;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+.diary-title {
+    font-size: var(--heading-md);
+    margin-bottom: 12px;
+    text-align: center;
+    color: #5D4037;
+}
+.diary-entries {
+    overflow-y: auto;
+    max-height: 60vh;
+    flex: 1;
+    padding-right: 4px;
+}
+.diary-entry {
+    background: white;
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 12px;
+    border-left: 4px solid #A1887F;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.diary-entry-today {
+    border-left-color: #66BB6A;
+    background: #f0faf0;
+}
+.diary-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.diary-entry-date {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #5D4037;
+}
+.diary-entry-quality {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.diary-quality-excellent {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+.diary-quality-good {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+.diary-quality-average {
+    background: #FFF3E0;
+    color: #E65100;
+}
+.diary-quality-poor {
+    background: #FFEBEE;
+    color: #C62828;
+}
+.diary-entry-opening {
+    font-size: 0.92rem;
+    color: #4E342E;
+    margin: 0 0 6px 0;
+    font-style: italic;
+    line-height: 1.4;
+}
+.diary-entry-seasonal {
+    font-size: 0.85rem;
+    color: #6D4C41;
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+}
+.diary-entry-activities {
+    font-size: 0.85rem;
+    color: #5D4037;
+    margin: 4px 0 8px 16px;
+    padding: 0;
+    line-height: 1.5;
+    list-style-type: '• ';
+}
+.diary-entry-activities li {
+    margin-bottom: 2px;
+}
+.diary-entry-mood {
+    font-size: 0.85rem;
+    color: #6D4C41;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+}
+.diary-entry-closing {
+    font-size: 0.88rem;
+    color: #795548;
+    margin: 0;
+    padding: 8px 12px;
+    border-left: 3px solid #BCAAA4;
+    background: #FAF3EB;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-style: italic;
+    line-height: 1.4;
+}
+.diary-close {
+    margin-top: 12px;
+    padding: var(--btn-pad-md);
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #8D6E63, #6D4C41);
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+.diary-close:hover,
+.diary-close:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+[data-theme="dark"] .diary-modal {
+    background: #2a2520;
+    color: #ddd;
+}
+[data-theme="dark"] .diary-title {
+    color: #BCAAA4;
+}
+[data-theme="dark"] .diary-entry {
+    background: #352f2a;
+    border-left-color: #6D4C41;
+}
+[data-theme="dark"] .diary-entry-today {
+    background: #2a3530;
+    border-left-color: #4CAF50;
+}
+[data-theme="dark"] .diary-entry-date {
+    color: #BCAAA4;
+}
+[data-theme="dark"] .diary-entry-opening,
+[data-theme="dark"] .diary-entry-mood,
+[data-theme="dark"] .diary-entry-seasonal {
+    color: #ccc;
+}
+[data-theme="dark"] .diary-entry-activities {
+    color: #bbb;
+}
+[data-theme="dark"] .diary-entry-closing {
+    background: #3a322c;
+    border-left-color: #6D4C41;
+    color: #BCAAA4;
+}
+[data-theme="dark"] .diary-quality-excellent {
+    background: #1B5E20;
+    color: #A5D6A7;
+}
+[data-theme="dark"] .diary-quality-good {
+    background: #0D47A1;
+    color: #90CAF9;
+}
+[data-theme="dark"] .diary-quality-average {
+    background: #E65100;
+    color: #FFCC80;
+}
+[data-theme="dark"] .diary-quality-poor {
+    background: #B71C1C;
+    color: #EF9A9A;
+}

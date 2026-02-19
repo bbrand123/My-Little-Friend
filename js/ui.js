@@ -2602,6 +2602,7 @@
                     <div class="tools-menu-list" role="group" aria-label="More tools">
                         <button class="tools-menu-btn" data-tool-action="furniture">🛋️ Decor</button>
                         <button class="tools-menu-btn" data-tool-action="journal">📔 Journal</button>
+                        <button class="tools-menu-btn" data-tool-action="diary">📖 Diary</button>
                         <button class="tools-menu-btn" data-tool-action="memorial">🏛️ Hall</button>
                         <button class="tools-menu-btn" data-tool-action="alerts">🔔 Alerts</button>
                         <button class="tools-menu-btn" data-tool-action="settings">⚙️ Settings</button>
@@ -2614,6 +2615,7 @@
             const runAction = (action) => {
                 if (action === 'furniture' && typeof showFurnitureModal === 'function') showFurnitureModal();
                 if (action === 'journal' && typeof showJournalModal === 'function') showJournalModal();
+                if (action === 'diary' && typeof showDiaryModal === 'function') showDiaryModal();
                 if (action === 'memorial' && typeof showMemorialHall === 'function') showMemorialHall();
                 if (action === 'alerts' && typeof showNotificationHistory === 'function') showNotificationHistory();
                 if (action === 'settings' && typeof showSettingsModal === 'function') showSettingsModal();
@@ -4935,6 +4937,101 @@
             pushModalEscape(closeJournal);
             overlay._closeOverlay = closeJournal;
             trapFocus(overlay);
+        }
+
+        // ==================== PET DIARY ====================
+
+        function showDiaryModal() {
+            const existing = document.querySelector('.diary-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const entries = (typeof getDiaryEntries === 'function') ? getDiaryEntries() : (gameState.diary || []);
+            const overlay = document.createElement('div');
+            overlay.className = 'diary-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Pet Diary');
+
+            let entriesHTML = '';
+            if (entries.length === 0) {
+                entriesHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📖</div>
+                        <div class="empty-state-text">No diary entries yet. Come back tomorrow to see your pet's first diary page!</div>
+                    </div>
+                `;
+            } else {
+                // Show newest first
+                const reversed = [...entries].reverse();
+                entriesHTML = reversed.map(entry => {
+                    const dateStr = entry.isToday
+                        ? 'Today (so far...)'
+                        : formatDiaryDate(entry.date);
+                    const qualityClass = 'diary-quality-' + (entry.quality || 'average');
+                    const todayClass = entry.isToday ? ' diary-entry-today' : '';
+
+                    // Build activity list
+                    const activitiesHTML = (entry.activities && entry.activities.length > 0)
+                        ? entry.activities.map(a => `<li>${escapeHTML(a)}</li>`).join('')
+                        : '<li>A quiet day with no recorded activities.</li>';
+
+                    return `
+                        <article class="diary-entry${todayClass}" aria-label="Diary entry for ${escapeHTML(dateStr)}">
+                            <div class="diary-entry-header">
+                                <span class="diary-entry-date">${escapeHTML(dateStr)}</span>
+                                <span class="diary-entry-quality ${qualityClass}">${escapeHTML(entry.quality || 'average')}</span>
+                            </div>
+                            <p class="diary-entry-opening">${escapeHTML(entry.opening || '')}</p>
+                            ${entry.seasonal ? `<p class="diary-entry-seasonal">${escapeHTML(entry.seasonal)}</p>` : ''}
+                            <ul class="diary-entry-activities" aria-label="Activities">${activitiesHTML}</ul>
+                            <p class="diary-entry-mood">${escapeHTML(entry.mood || '')}</p>
+                            <blockquote class="diary-entry-closing">${escapeHTML(entry.closing || '')}</blockquote>
+                        </article>
+                    `;
+                }).join('');
+            }
+
+            overlay.innerHTML = `
+                <div class="diary-modal">
+                    <h2 class="diary-title">📖 ${escapeHTML((gameState.pet && gameState.pet.name) || 'Pet')}'s Diary</h2>
+                    <div class="diary-entries" role="log" aria-label="Diary entries">${entriesHTML}</div>
+                    <button class="diary-close" id="diary-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeDiary() {
+                popModalEscape(closeDiary);
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('diary-btn');
+                    if (trigger) trigger.focus();
+                });
+            }
+
+            overlay.querySelector('#diary-close').focus();
+            overlay.querySelector('#diary-close').addEventListener('click', closeDiary);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDiary(); });
+            pushModalEscape(closeDiary);
+            overlay._closeOverlay = closeDiary;
+            trapFocus(overlay);
+        }
+
+        function formatDiaryDate(dateStr) {
+            if (!dateStr) return 'Unknown date';
+            // Handle YYYY-MM-DD format
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                const parts = dateStr.split('-');
+                const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+            // Handle ISO date string
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
         }
 
         // ==================== PET MEMORIAL HALL ====================

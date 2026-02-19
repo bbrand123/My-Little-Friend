@@ -5506,3 +5506,295 @@ function getCollectibleFlavorText(itemId, itemType) {
     if (loot && loot.flavorText) return loot.flavorText;
     return STICKER_FLAVOR_TEXT[itemId] || null;
 }
+
+// ==================== PET DIARY / JOURNAL SYSTEM ====================
+// Daily diary entries summarize the pet's day using template sentences.
+// Each entry is assembled from modular sentence fragments based on
+// what actually happened that day. Personality-specific closing
+// observations add character.
+
+const DIARY_OPENING_TEMPLATES = [
+    'Dear Diary, today was {quality} day for {name}.',
+    '{name} had a {quality} day today!',
+    'Day {dayNum}: A {quality} day in the life of {name}.',
+    'Another page in {name}\'s story — today was {quality}.',
+    'Today\'s chapter: {name} had a {quality} time.',
+    '{name}\'s daily report: overall, a {quality} day.',
+    'If today had a rating, {name} would give it "{quality}."',
+    '{name} looks back on a {quality} day.'
+];
+
+const DIARY_QUALITY_WORDS = {
+    excellent: ['wonderful', 'fantastic', 'magnificent', 'splendid', 'glorious', 'truly special'],
+    good: ['great', 'lovely', 'really nice', 'delightful', 'pleasant', 'cheerful'],
+    average: ['decent', 'pretty okay', 'fine', 'normal', 'typical', 'solid'],
+    poor: ['tough', 'challenging', 'rough', 'hard', 'difficult', 'not the best']
+};
+
+const DIARY_ACTIVITY_TEMPLATES = {
+    feeding: [
+        '{name} enjoyed {count} tasty meal{plural} today.',
+        'Mealtime happened {count} time{plural} — every bite counted!',
+        '{name} was fed {count} time{plural}. Tummy status: satisfied.',
+        'The kitchen saw {count} visit{plural} from a hungry {name}.'
+    ],
+    care: [
+        '{name} received {count} act{plural} of care and attention.',
+        'With {count} care action{plural}, {name} felt well looked after.',
+        '{name}\'s caretaker gave {count} loving attention{plural} today.',
+        'Today brought {count} moment{plural} of dedicated care for {name}.'
+    ],
+    play: [
+        '{name} played {count} mini-game{plural} — so much fun!',
+        'Game time! {name} jumped into {count} mini-game{plural}.',
+        '{count} mini-game{plural} kept {name} entertained today.',
+        '{name} scored fun points across {count} mini-game session{plural}.'
+    ],
+    expedition: [
+        '{name} went on {count} expedition{plural} to explore the world.',
+        'Adventure called! {name} completed {count} expedition{plural}.',
+        '{count} expedition{plural} brought new discoveries for {name}.',
+        'The brave explorer {name} ventured out {count} time{plural}.'
+    ],
+    garden: [
+        '{name} harvested {count} crop{plural} from the garden.',
+        'Green thumbs! {count} harvest{plural} made the garden proud.',
+        '{name}\'s garden yielded {count} beautiful crop{plural}.',
+        'Gardening success: {count} crop{plural} harvested today.'
+    ],
+    park: [
+        '{name} visited the park {count} time{plural} today.',
+        'Fresh air! {name} made {count} trip{plural} to the park.',
+        'The park welcomed {name} for {count} visit{plural}.',
+        '{count} park visit{plural} gave {name} the outdoor time needed.'
+    ],
+    battle: [
+        '{name} fought in {count} arena battle{plural}.',
+        'The arena saw {name} compete {count} time{plural} — warrior spirit!',
+        '{count} battle{plural} tested {name}\'s strength today.',
+        '{name} stood brave through {count} arena challenge{plural}.'
+    ]
+};
+
+const DIARY_MOOD_TEMPLATES = {
+    high: [
+        '{name} ended the day beaming with happiness.',
+        'Smiles all around — {name} is in a wonderful mood.',
+        '{name} feels loved and content tonight.',
+        'What a mood! {name} is practically glowing.'
+    ],
+    medium: [
+        '{name} seems comfortable and settled tonight.',
+        'A calm, contented {name} is winding down.',
+        '{name} is doing alright — not bad at all.',
+        'Things are steady for {name} this evening.'
+    ],
+    low: [
+        '{name} could use some extra love tomorrow.',
+        'A quiet night for {name} — hopefully tomorrow is brighter.',
+        '{name} looks a little worn out tonight.',
+        '{name} needs a bit more attention. Tomorrow is a new chance!'
+    ]
+};
+
+const DIARY_SEASON_SNIPPETS = {
+    spring: [
+        'Spring blossoms made the world colorful today.',
+        'The fresh spring air was full of new beginnings.',
+        'Birdsong and blooming flowers set the spring mood.'
+    ],
+    summer: [
+        'The warm summer sun made everything feel golden.',
+        'Long, lazy summer hours stretched out beautifully.',
+        'Summer heat called for shade and cold drinks.'
+    ],
+    autumn: [
+        'Falling leaves painted the world in warm autumn tones.',
+        'The crisp autumn air made everything feel cozy.',
+        'Autumn\'s golden light made the day feel magical.'
+    ],
+    winter: [
+        'A hushed, frosty winter day wrapped the world in white.',
+        'Winter\'s chill made cozy indoor moments extra special.',
+        'The cold winter air made warm blankets essential.'
+    ]
+};
+
+const DIARY_PERSONALITY_CLOSINGS = {
+    lazy: [
+        '{name} yawns and mumbles: "Best part was definitely the naps."',
+        '"Can we do less tomorrow?" {name} asks, already dozing off.',
+        '{name} rates today: three pillows out of five.',
+        '"I conserved a LOT of energy today. Very productive." — {name}',
+        '{name} is already asleep before the diary entry is finished.',
+        '"Moving is overrated. Resting is an art form." — {name}',
+        '{name} stretches once, flops down, and that\'s the review done.',
+        '"Tomorrow I plan to do even less. If that\'s possible." — {name}',
+        '{name} mumbles something about blanket quality and drifts off.',
+        '"I\'d give today a review, but that sounds like effort." — {name}',
+        '{name} curls up tighter: "Wake me when something truly amazing happens."',
+        '"My goal tomorrow? Find an even comfier spot." — {name}'
+    ],
+    energetic: [
+        '{name} bounces: "Was that enough? I feel like we could do MORE!"',
+        '"Today was awesome! Tomorrow will be AWESOMER!" — {name}',
+        '{name} is still vibrating with energy. Sleep is a suggestion.',
+        '"I ran, jumped, played, and I\'m STILL not tired!" — {name}',
+        '{name} does a tiny victory dance before bed. What a day!',
+        '"Let\'s wake up extra early tomorrow! Adventures await!" — {name}',
+        '{name} recaps the day at triple speed, barely pausing for breath.',
+        '"Every day is the best day when you give it everything!" — {name}',
+        '{name} already has seventeen plans for tomorrow morning.',
+        '"I don\'t walk anywhere. I ZOOM." — {name}',
+        '{name} tries to do one more lap before lights out.',
+        '"Sleep is just charging up for more fun!" — {name}'
+    ],
+    curious: [
+        '{name} wonders: "Why does the moon follow you when you walk?"',
+        '"I learned three new things today. Or was it four?" — {name}',
+        '{name} is still asking questions as the lights go out.',
+        '"Do you think clouds have feelings?" {name} ponders thoughtfully.',
+        '{name} mentally catalogs today\'s discoveries before sleeping.',
+        '"I have a hypothesis about why puddles are shaped that way." — {name}',
+        '{name} stares at a shadow for a long time, thinking deep thoughts.',
+        '"The best days are the ones where you notice something new." — {name}',
+        '{name} wonders if dust particles ever get lonely.',
+        '"I read somewhere that stars are just far-away suns. Wild." — {name}',
+        '{name} whispers a question to the ceiling and waits for an answer.',
+        '"Tomorrow I\'m going to figure out what that sound was." — {name}'
+    ],
+    shy: [
+        '{name} whispers: "Today was nice. Don\'t tell anyone I said that."',
+        '"I didn\'t mind today... it was... okay." {name} blushes slightly.',
+        '{name} hides under a blanket but peeks out with a tiny smile.',
+        '"Maybe tomorrow we could do quiet things? Just us?" — {name}',
+        '{name} writes a secret thank-you note and hides it under the pillow.',
+        '"I liked the part where it was peaceful." {name} says softly.',
+        '{name} clutches a favorite toy and whispers goodnight to it.',
+        '"The best moments are the ones nobody else notices." — {name}',
+        '{name} offers a tiny wave goodnight from under the covers.',
+        '"I have feelings about today but they\'re private." — {name}',
+        '{name} left a small doodle on the diary page. It\'s a heart.',
+        '"Thank you for... being around." {name} whispers almost inaudibly.'
+    ],
+    playful: [
+        '{name} giggles: "Today gets a smiley face sticker! 😄"',
+        '"If today were a game, I\'d give it a high score!" — {name}',
+        '{name} turned the diary page into a paper airplane. Oops.',
+        '"Who writes in diaries? This is a FUN-ary!" — {name}',
+        '{name} drew silly faces in the margins of the diary.',
+        '"Plot twist: tomorrow is going to be even sillier!" — {name}',
+        '{name} rates today: eleven out of ten rubber duckies.',
+        '"I made at least three people smile today. Maybe four!" — {name}',
+        '{name} attempts to juggle before bed. It doesn\'t go great.',
+        '"Every day is an adventure if you make weird sound effects!" — {name}',
+        '{name} hides a joke under the pillow for tomorrow morning.',
+        '"What do you call a sleeping pet? A nap-kin! Goodnight!" — {name}'
+    ],
+    grumpy: [
+        '{name} grumbles: "It was fine. I GUESS."',
+        '"Could have been worse. Could have been better. Mostly worse." — {name}',
+        '{name} gives today a firm 6 out of 10. Generous, honestly.',
+        '"The food was acceptable. The company was... tolerable." — {name}',
+        '{name} harrumphs and turns away. That means it was a good day.',
+        '"I didn\'t complain THAT much today. That\'s growth." — {name}',
+        '{name} crosses their arms: "I had fun and I\'m NOT happy about it."',
+        '"Tomorrow better not be as annoyingly pleasant as today." — {name}',
+        '{name} scowls at the diary, then secretly adds a tiny smiley.',
+        '"Fine. ONE good thing happened. I refuse to say which." — {name}',
+        '{name} pulls the blanket over their head: "This conversation is over."',
+        '"If today were a sandwich, it would need more mustard." — {name}'
+    ]
+};
+
+/**
+ * Generate a diary entry for the pet's day.
+ * @param {Object} pet - The pet object
+ * @param {Object} dailyProgress - The daily checklist progress object
+ * @param {string} season - Current season
+ * @param {number} dayNum - Days since pet was born (approximate)
+ * @returns {Object} { date, opening, activities, mood, seasonal, closing, fullText }
+ */
+function generateDiaryEntry(pet, dailyProgress, season, dayNum) {
+    if (!pet) return null;
+    const name = pet.name || 'Your pet';
+    const personality = pet.personality || 'playful';
+    const progress = dailyProgress || {};
+
+    // Determine day quality from average stats
+    const avgStat = ((pet.hunger || 0) + (pet.cleanliness || 0) + (pet.happiness || 0) + (pet.energy || 0)) / 4;
+    let quality;
+    if (avgStat >= 75) quality = 'excellent';
+    else if (avgStat >= 50) quality = 'good';
+    else if (avgStat >= 30) quality = 'average';
+    else quality = 'poor';
+
+    const qualityWord = randomFromArray(DIARY_QUALITY_WORDS[quality] || DIARY_QUALITY_WORDS.average);
+
+    // Opening line
+    const openingTemplate = randomFromArray(DIARY_OPENING_TEMPLATES);
+    const opening = openingTemplate
+        .replace(/\{name\}/g, name)
+        .replace(/\{quality\}/g, qualityWord)
+        .replace(/\{dayNum\}/g, String(dayNum || 1));
+
+    // Activity sentences (only for activities that actually happened)
+    const activities = [];
+    const activityMap = [
+        { key: 'feedCount', type: 'feeding' },
+        { key: 'totalCareActions', type: 'care' },
+        { key: 'minigameCount', type: 'play' },
+        { key: 'expeditionCount', type: 'expedition' },
+        { key: 'harvestCount', type: 'garden' },
+        { key: 'parkVisits', type: 'park' },
+        { key: 'battleCount', type: 'battle' }
+    ];
+
+    for (const { key, type } of activityMap) {
+        const count = progress[key] || 0;
+        if (count > 0 && DIARY_ACTIVITY_TEMPLATES[type]) {
+            const template = randomFromArray(DIARY_ACTIVITY_TEMPLATES[type]);
+            const plural = count === 1 ? '' : 's';
+            activities.push(
+                template.replace(/\{name\}/g, name).replace(/\{count\}/g, String(count)).replace(/\{plural\}/g, plural)
+            );
+        }
+    }
+
+    // Mood sentence
+    let moodLevel;
+    if (avgStat >= 65) moodLevel = 'high';
+    else if (avgStat >= 35) moodLevel = 'medium';
+    else moodLevel = 'low';
+    const moodSentence = randomFromArray(DIARY_MOOD_TEMPLATES[moodLevel] || DIARY_MOOD_TEMPLATES.medium)
+        .replace(/\{name\}/g, name);
+
+    // Seasonal snippet
+    const seasonSnippet = (DIARY_SEASON_SNIPPETS[season])
+        ? randomFromArray(DIARY_SEASON_SNIPPETS[season])
+        : '';
+
+    // Personality closing
+    const closings = DIARY_PERSONALITY_CLOSINGS[personality] || DIARY_PERSONALITY_CLOSINGS.playful;
+    const closing = randomFromArray(closings).replace(/\{name\}/g, name);
+
+    // Assemble full text
+    const parts = [opening];
+    if (seasonSnippet) parts.push(seasonSnippet);
+    if (activities.length > 0) parts.push(...activities);
+    parts.push(moodSentence);
+    parts.push(closing);
+
+    return {
+        date: new Date().toISOString(),
+        petName: name,
+        personality: personality,
+        quality: quality,
+        opening: opening,
+        activities: activities,
+        mood: moodSentence,
+        seasonal: seasonSnippet,
+        closing: closing,
+        fullText: parts.join(' ')
+    };
+}
