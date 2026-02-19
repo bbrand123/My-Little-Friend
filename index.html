@@ -19,6 +19,43 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <!-- Splash/Loading Screen (shown immediately, dismissed by JS after init) -->
+    <div id="splash-screen" role="status" aria-label="Loading Pet Care Buddy" style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#FFF8F0,#A8D8EA);transition:opacity 0.3s ease;">
+        <svg class="splash-egg" viewBox="0 0 100 130" width="80" height="104" aria-hidden="true" style="animation:splashBounce 1s ease-in-out infinite;">
+            <defs>
+                <linearGradient id="splashEggGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#FFDDE1"/>
+                    <stop offset="50%" style="stop-color:#F8BBD0"/>
+                    <stop offset="100%" style="stop-color:#FFDDE1"/>
+                </linearGradient>
+                <linearGradient id="splashEggShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.6"/>
+                    <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+                </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="70" rx="40" ry="50" fill="url(#splashEggGrad)" stroke="#CE93D8" stroke-width="3"/>
+            <circle cx="35" cy="50" r="8" fill="#CE93D8" opacity="0.7"/>
+            <circle cx="65" cy="45" r="6" fill="#CE93D8" opacity="0.7"/>
+            <circle cx="55" cy="80" r="7" fill="#CE93D8" opacity="0.7"/>
+            <ellipse cx="35" cy="45" rx="15" ry="20" fill="url(#splashEggShine)"/>
+        </svg>
+        <p style="margin-top:16px;font-family:'Nunito',sans-serif;font-size:1.3rem;font-weight:700;color:#5D4037;">Pet Care Buddy</p>
+        <p style="margin-top:4px;font-family:'Nunito',sans-serif;font-size:0.85rem;color:#8D6E63;">Loading...</p>
+    </div>
+    <style>
+        @keyframes splashBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .splash-egg { animation: none !important; }
+        }
+        @media (prefers-color-scheme: dark) {
+            #splash-screen { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; }
+            #splash-screen p { color: #e0e0e0 !important; }
+        }
+    </style>
+
     <a href="#game-content" class="skip-link">Skip to game</a>
     <a href="#care-actions" class="skip-link skip-link-secondary" hidden aria-hidden="true" tabindex="-1">Skip to care actions</a>
     <a href="#room-nav" class="skip-link skip-link-rooms" hidden aria-hidden="true" tabindex="-1">Skip to rooms</a>
