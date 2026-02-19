@@ -1339,6 +1339,13 @@
 
         let _speechBubbleTimer = null;
         let _lastSpeechTime = 0;
+        let _lastUserInteraction = Date.now();
+
+        // Track user interactions to detect idle state for monologues
+        function _trackUserActivity() { _lastUserInteraction = Date.now(); }
+        document.addEventListener('click', _trackUserActivity, { passive: true });
+        document.addEventListener('keydown', _trackUserActivity, { passive: true });
+        document.addEventListener('touchstart', _trackUserActivity, { passive: true });
 
         function scheduleSpeechBubble() {
             if (_speechBubbleTimer) {
@@ -1375,21 +1382,42 @@
             // Don't show if a speech bubble is already visible
             if (petContainer.querySelector('.speech-bubble')) return;
 
-            const mood = getMood(pet);
-            const message = pickSpeechMessage(pet, mood);
+            let message = null;
+            let isMonologue = false;
+
+            // If player has been idle 30+ seconds, try showing an idle monologue
+            const idleMs = Date.now() - _lastUserInteraction;
+            if (idleMs >= 30000 && typeof getIdleMonologue === 'function') {
+                const monologue = getIdleMonologue(pet);
+                if (monologue) {
+                    message = monologue;
+                    isMonologue = true;
+                }
+            }
+
+            // Fallback to regular speech
+            if (!message) {
+                const mood = getMood(pet);
+                message = pickSpeechMessage(pet, mood);
+            }
             if (!message) return;
 
             const bubble = document.createElement('div');
-            bubble.className = 'speech-bubble';
+            bubble.className = isMonologue ? 'speech-bubble speech-bubble-monologue' : 'speech-bubble';
             bubble.setAttribute('aria-hidden', 'true');
             bubble.innerHTML = `<span class="speech-text">${escapeHTML(message)}</span>`;
             petContainer.appendChild(bubble);
+            // Announce monologues for screen readers since they contain richer content
+            if (isMonologue && typeof announce === 'function') {
+                announce(message, { source: 'monologue' });
+            }
 
-            // Remove after display
+            // Monologues stay visible longer due to their length
+            const displayDuration = isMonologue ? 6000 : 3500;
             setTimeout(() => {
                 bubble.classList.add('speech-bubble-fade');
                 setTimeout(() => bubble.remove(), 400);
-            }, 3500);
+            }, displayDuration);
         }
 
         function pickSpeechMessage(pet, mood) {
@@ -1472,6 +1500,41 @@
             }
             if (pools.length === 0) return null;
             return pools[Math.floor(Math.random() * pools.length)];
+        }
+
+        // Pet-to-pet commentary timer (every 2-3 minutes when 2+ pets exist)
+        let _petCommentaryTimer = null;
+
+        function schedulePetCommentary() {
+            if (_petCommentaryTimer) { clearTimeout(_petCommentaryTimer); _petCommentaryTimer = null; }
+            if (!gameState.pets || gameState.pets.length < 2) return;
+            const delay = 120000 + Math.random() * 60000; // 2-3 minutes
+            _petCommentaryTimer = setTimeout(() => {
+                removeIdleTimer(_petCommentaryTimer);
+                _petCommentaryTimer = null;
+                showPetCommentary();
+                schedulePetCommentary();
+            }, delay);
+            idleAnimTimers.push(_petCommentaryTimer);
+        }
+
+        function showPetCommentary() {
+            if (gameState.phase !== 'pet' || !gameState.pet) return;
+            if (!gameState.pets || gameState.pets.length < 2) return;
+            if (typeof getPetCommentary !== 'function' || typeof getRelationshipLevel !== 'function') return;
+            const activePet = gameState.pet;
+            // Pick a random other pet to comment about
+            const others = gameState.pets.filter(p => p && p.id !== activePet.id);
+            if (others.length === 0) return;
+            const target = others[Math.floor(Math.random() * others.length)];
+            // Get relationship level
+            const relKey = [activePet.id, target.id].sort().join('-');
+            const relData = (gameState.relationships && gameState.relationships[relKey]) || { points: 0 };
+            const relLevel = getRelationshipLevel(relData.points || 0);
+            const commentary = getPetCommentary(activePet, target, relLevel);
+            if (commentary) {
+                showToast(commentary, '#FFB74D');
+            }
         }
 
         const EARLY_SESSION_LIMIT = 3;
@@ -2539,6 +2602,7 @@
                     <div class="tools-menu-list" role="group" aria-label="More tools">
                         <button class="tools-menu-btn" data-tool-action="furniture">🛋️ Decor</button>
                         <button class="tools-menu-btn" data-tool-action="journal">📔 Journal</button>
+                        <button class="tools-menu-btn" data-tool-action="diary">📖 Diary</button>
                         <button class="tools-menu-btn" data-tool-action="memorial">🏛️ Hall</button>
                         <button class="tools-menu-btn" data-tool-action="alerts">🔔 Alerts</button>
                         <button class="tools-menu-btn" data-tool-action="settings">⚙️ Settings</button>
@@ -2551,6 +2615,7 @@
             const runAction = (action) => {
                 if (action === 'furniture' && typeof showFurnitureModal === 'function') showFurnitureModal();
                 if (action === 'journal' && typeof showJournalModal === 'function') showJournalModal();
+                if (action === 'diary' && typeof showDiaryModal === 'function') showDiaryModal();
                 if (action === 'memorial' && typeof showMemorialHall === 'function') showMemorialHall();
                 if (action === 'alerts' && typeof showNotificationHistory === 'function') showNotificationHistory();
                 if (action === 'settings' && typeof showSettingsModal === 'function') showSettingsModal();
@@ -3072,7 +3137,9 @@
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
             gameState.totalFeedCount++;
-            const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
+            const msg = (typeof getExpandedFeedbackMessage === 'function')
+                ? getExpandedFeedbackMessage('feed', pet.personality, pet.growthStage)
+                : randomFromArray(FEEDBACK_MESSAGES.feed);
             const petContainer = document.getElementById('pet-container');
             const sparkles = document.getElementById('sparkles');
             if (petContainer) petContainer.classList.add('bounce', 'pet-munch-loop');
@@ -3180,7 +3247,9 @@
                     const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
                     const washBonus = Math.round((17 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.wash);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('wash', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.wash);
                     if (washPref < 1) message = `😨 ${pet.name || 'Pet'} didn't enjoy that... ${message}`;
                     else if (washPref > 1) message = `💕 ${pet.name || 'Pet'} loved that! ${message}`;
                     if (petContainer) petContainer.classList.add('sparkle', 'pet-scrub-shake');
@@ -3195,7 +3264,9 @@
                     const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
                     const playBonus = Math.round((17 + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.play);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('play', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.play);
                     if (playPref < 1) message = `😨 ${pet.name || 'Pet'} wasn't into it... ${message}`;
                     else if (playPref > 1) message = `💕 ${pet.name || 'Pet'} LOVED playing! ${message}`;
                     if (petContainer) petContainer.classList.add('wiggle', 'pet-happy-bounce');
@@ -3239,7 +3310,9 @@
                     pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * rewardCareMult), 0, 100);
                     pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * rewardCareMult), 0, 100);
                     pet.energy = clamp(pet.energy + Math.round(10 * medMod * rewardCareMult), 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.medicine);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('medicine', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.medicine);
                     if (medPref < 1) message = `😨 ${pet.name || 'Pet'} doesn't like medicine! ${message}`;
                     if (petContainer) petContainer.classList.add('heal-anim');
                     if (sparkles) createMedicineParticles(sparkles);
@@ -3258,7 +3331,9 @@
                     const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.groom);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('groom', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.groom);
                     if (groomPref < 1) message = `😨 ${pet.name || 'Pet'} squirmed through grooming! ${message}`;
                     else if (groomPref > 1) message = `💕 ${pet.name || 'Pet'} loved the pampering! ${message}`;
                     if (petContainer) petContainer.classList.add('groom-anim');
@@ -3277,7 +3352,9 @@
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.exercise);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('exercise', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.exercise);
                     if (exPref < 1) message = `😨 ${pet.name || 'Pet'} got tired quickly! ${message}`;
                     else if (exPref > 1) message = `💕 ${pet.name || 'Pet'} had an amazing workout! ${message}`;
                     if (petContainer) petContainer.classList.add('exercise-anim');
@@ -3298,9 +3375,12 @@
                     }
                     pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * rewardCareMult), 0, 100);
                     pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * rewardCareMult), 0, 100);
-                    message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                    const treatMsg = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('treat', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.treat);
+                    message = `${treat.emoji} ${treatMsg}`;
                     if (prefs && treat.name === prefs.favoriteTreat) {
-                        message = `${treat.emoji} 💕 FAVORITE treat! ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                        message = `${treat.emoji} 💕 FAVORITE treat! ${treatMsg}`;
                     }
                     if (petContainer) petContainer.classList.add('treat-anim');
                     if (sparkles) createTreatParticles(sparkles, treat.emoji);
@@ -3316,7 +3396,9 @@
                     // Petting/Cuddling - direct affection boosts happiness and energy
                     pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult * rewardCareMult), 0, 100);
                     pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * rewardCareMult), 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('cuddle', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     if (cuddlePref < 1) message = `😨 ${pet.name || 'Pet'} squirmed away! ${message}`;
                     else if (cuddleMod > 1.2) message = `💕 ${pet.name || 'Pet'} melted into your arms! ${message}`;
                     if (petContainer) petContainer.classList.add('cuddle-anim');
@@ -3432,6 +3514,13 @@
                         showToast(`${badge.icon} Badge: ${badge.name}!`, badgeColor);
                         queueRewardCard('badge', badge, badgeColor);
                     }, 500);
+                    // Personality reaction to earning this badge
+                    if (typeof getMilestoneReaction === 'function') {
+                        const reaction = getMilestoneReaction(badge.id, pet.personality, pet.name);
+                        if (reaction) {
+                            setTimeout(() => showToast(reaction, '#FFF59D'), 1500);
+                        }
+                    }
                 });
             }
             if (typeof checkPetActionSticker === 'function') {
@@ -3459,6 +3548,13 @@
                         showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700');
                         queueRewardCard('trophy', trophy, '#FFD700');
                     }, 900);
+                    // Personality reaction to earning this trophy
+                    if (typeof getMilestoneReaction === 'function') {
+                        const reaction = getMilestoneReaction(trophy.id, pet.personality, pet.name);
+                        if (reaction) {
+                            setTimeout(() => showToast(reaction, '#FFF59D'), 1800);
+                        }
+                    }
                 });
             }
 
@@ -3473,6 +3569,26 @@
                 saveGame();
                 setTimeout(() => renderPetPhase(), 100);
                 return;
+            }
+
+            // Room-specific flavor text (~30% chance, supplements care feedback)
+            if (typeof getRoomFlavorText === 'function') {
+                const flavorRoom = (gameState && gameState.currentRoom) || 'bedroom';
+                const flavorText = getRoomFlavorText(action, flavorRoom, pet.name || 'Your pet');
+                if (flavorText && Math.random() < 0.30) {
+                    setTimeout(() => showToast(flavorText, '#81C784'), 800);
+                }
+            }
+
+            // Check for micro-event (supplementary flavor text ~12% of care actions)
+            if (typeof getMicroEvent === 'function') {
+                const currentRoom = (gameState && gameState.currentRoom) || 'bedroom';
+                const currentSeason = (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring';
+                const currentWeather = (gameState && gameState.weather) || 'sunny';
+                const microEvent = getMicroEvent(pet, action, currentRoom, currentSeason, currentWeather);
+                if (microEvent && microEvent.text) {
+                    setTimeout(() => showToast(microEvent.text, '#B39DDB'), 1200);
+                }
             }
 
             // Batch rapid care toasts into a single notification
@@ -3918,6 +4034,7 @@
             scheduleNeedBasedAnim();
             scheduleSpeechBubble();
             scheduleSpeciesIdleAnim();
+            schedulePetCommentary();
         }
 
         // Blink: random interval between 8-15 seconds (slowed to reduce visual noise)
@@ -4820,6 +4937,101 @@
             pushModalEscape(closeJournal);
             overlay._closeOverlay = closeJournal;
             trapFocus(overlay);
+        }
+
+        // ==================== PET DIARY ====================
+
+        function showDiaryModal() {
+            const existing = document.querySelector('.diary-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+
+            const entries = (typeof getDiaryEntries === 'function') ? getDiaryEntries() : (gameState.diary || []);
+            const overlay = document.createElement('div');
+            overlay.className = 'diary-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Pet Diary');
+
+            let entriesHTML = '';
+            if (entries.length === 0) {
+                entriesHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📖</div>
+                        <div class="empty-state-text">No diary entries yet. Come back tomorrow to see your pet's first diary page!</div>
+                    </div>
+                `;
+            } else {
+                // Show newest first
+                const reversed = [...entries].reverse();
+                entriesHTML = reversed.map(entry => {
+                    const dateStr = entry.isToday
+                        ? 'Today (so far...)'
+                        : formatDiaryDate(entry.date);
+                    const qualityClass = 'diary-quality-' + (entry.quality || 'average');
+                    const todayClass = entry.isToday ? ' diary-entry-today' : '';
+
+                    // Build activity list
+                    const activitiesHTML = (entry.activities && entry.activities.length > 0)
+                        ? entry.activities.map(a => `<li>${escapeHTML(a)}</li>`).join('')
+                        : '<li>A quiet day with no recorded activities.</li>';
+
+                    return `
+                        <article class="diary-entry${todayClass}" aria-label="Diary entry for ${escapeHTML(dateStr)}">
+                            <div class="diary-entry-header">
+                                <span class="diary-entry-date">${escapeHTML(dateStr)}</span>
+                                <span class="diary-entry-quality ${qualityClass}">${escapeHTML(entry.quality || 'average')}</span>
+                            </div>
+                            <p class="diary-entry-opening">${escapeHTML(entry.opening || '')}</p>
+                            ${entry.seasonal ? `<p class="diary-entry-seasonal">${escapeHTML(entry.seasonal)}</p>` : ''}
+                            <ul class="diary-entry-activities" aria-label="Activities">${activitiesHTML}</ul>
+                            <p class="diary-entry-mood">${escapeHTML(entry.mood || '')}</p>
+                            <blockquote class="diary-entry-closing">${escapeHTML(entry.closing || '')}</blockquote>
+                        </article>
+                    `;
+                }).join('');
+            }
+
+            overlay.innerHTML = `
+                <div class="diary-modal">
+                    <h2 class="diary-title">📖 ${escapeHTML((gameState.pet && gameState.pet.name) || 'Pet')}'s Diary</h2>
+                    <div class="diary-entries" role="log" aria-label="Diary entries">${entriesHTML}</div>
+                    <button class="diary-close" id="diary-close">Close</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            function closeDiary() {
+                popModalEscape(closeDiary);
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('diary-btn');
+                    if (trigger) trigger.focus();
+                });
+            }
+
+            overlay.querySelector('#diary-close').focus();
+            overlay.querySelector('#diary-close').addEventListener('click', closeDiary);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDiary(); });
+            pushModalEscape(closeDiary);
+            overlay._closeOverlay = closeDiary;
+            trapFocus(overlay);
+        }
+
+        function formatDiaryDate(dateStr) {
+            if (!dateStr) return 'Unknown date';
+            // Handle YYYY-MM-DD format
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                const parts = dateStr.split('-');
+                const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+            // Handle ISO date string
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
         }
 
         // ==================== PET MEMORIAL HALL ====================
@@ -7062,12 +7274,16 @@
                     const isCollected = collected[sticker.id] && collected[sticker.id].collected;
                     const rarityData = STICKER_RARITIES[sticker.rarity];
                     const stars = isCollected ? Array(rarityData.stars).fill('⭐').join('') : '';
+                    const flavor = (isCollected && typeof getCollectibleFlavorText === 'function') ? getCollectibleFlavorText(sticker.id, 'sticker') : null;
+                    const flavorHTML = flavor ? `<div class="sticker-flavor">${escapeHTML(flavor)}</div>` : '';
+                    const ariaFlavor = flavor ? ' ' + flavor : '';
                     pagesHTML += `
-                        <div class="sticker-slot ${isCollected ? 'collected' : 'empty'} rarity-${sticker.rarity}" aria-label="${isCollected ? sticker.name : 'Empty slot'}: ${sticker.source}">
+                        <div class="sticker-slot ${isCollected ? 'collected' : 'empty'} rarity-${sticker.rarity}" aria-label="${isCollected ? sticker.name : 'Empty slot'}: ${sticker.source}${ariaFlavor}">
                             <div class="sticker-emoji">${isCollected ? sticker.emoji : '?'}</div>
                             <div class="sticker-name">${isCollected ? sticker.name : '???'}</div>
                             ${isCollected ? `<div class="sticker-rarity" style="color: ${rarityData.color}">${stars}</div>` : ''}
                             <div class="sticker-source">${sticker.source}</div>
+                            ${flavorHTML}
                         </div>
                     `;
                 });
@@ -8204,7 +8420,9 @@
                     .slice(0, 10)
                     .map(([lootId, count]) => {
                         const loot = EXPLORATION_LOOT[lootId] || { emoji: '📦', name: lootId };
-                        return `<li><span aria-hidden="true">${loot.emoji}</span> ${loot.name} x${count}</li>`;
+                        const flavor = (typeof getCollectibleFlavorText === 'function') ? getCollectibleFlavorText(lootId, 'loot') : null;
+                        const titleAttr = flavor ? ` title="${escapeHTML(flavor)}" aria-label="${escapeHTML(loot.name)} x${count}. ${escapeHTML(flavor)}"` : '';
+                        return `<li${titleAttr}><span aria-hidden="true">${loot.emoji}</span> ${loot.name} x${count}</li>`;
                     }).join('');
 
                 const stats = ex.stats || {};

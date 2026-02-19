@@ -167,6 +167,7 @@
             totalMutations: 0,          // Total mutations occurred
             hybridsDiscovered: {},       // { hybridType: true }
             journal: [],                 // Array of { timestamp, icon, text } entries
+            diary: [],                   // Array of daily diary entries from generateDiaryEntry()
             totalFeedCount: 0,           // Lifetime feed count for badges/achievements
             memorials: [],               // Hall of fame for retired pets
             personalitiesSeen: {},       // Track unique personalities for badges
@@ -987,13 +988,20 @@
             if (!silent) {
                 const rewardPreview = rewards.slice(0, 3).map((r) => `${r.data.emoji}x${r.count}`).join(' ');
                 showToast(`🧭 Expedition complete in ${biome.icon} ${biome.name}! ${rewardPreview}`, '#4ECDC4');
+                // Show encounter narrative for this biome
+                if (typeof getExplorationNarrative === 'function') {
+                    const narrative = getExplorationNarrative(expedition.biomeId, expedition.petName || 'Your pet');
+                    if (narrative) {
+                        setTimeout(() => showToast(narrative, '#90CAF9'), 400);
+                    }
+                }
                 if (npc) {
-                    setTimeout(() => showToast(`${npc.icon} You discovered ${npc.name} in the wild!`, '#FFD54F'), 220);
+                    setTimeout(() => showToast(`${npc.icon} You discovered ${npc.name} in the wild!`, '#FFD54F'), 620);
                 }
                 if (newlyUnlocked.length > 0) {
                     newlyUnlocked.forEach((id, idx) => {
                         const b = EXPLORATION_BIOMES[id];
-                        if (b) setTimeout(() => showToast(`${b.icon} ${b.name} unlocked!`, '#81C784'), 420 + idx * 200);
+                        if (b) setTimeout(() => showToast(`${b.icon} ${b.name} unlocked!`, '#81C784'), 820 + idx * 200);
                     });
                 }
             }
@@ -2915,6 +2923,29 @@
         function initDailyChecklist() {
             const today = getTodayString();
             if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
+                // Generate diary entry for previous day before resetting
+                if (gameState.dailyChecklist && gameState.dailyChecklist.date && gameState.pet) {
+                    if (typeof generateDiaryEntry === 'function') {
+                        try {
+                            const prevProgress = gameState.dailyChecklist.progress || {};
+                            const pet = gameState.pet;
+                            const season = (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring';
+                            const dayNum = pet.birthdate ? Math.max(1, Math.floor((Date.now() - pet.birthdate) / 86400000)) : 1;
+                            const entry = generateDiaryEntry(pet, prevProgress, season, dayNum);
+                            if (entry) {
+                                entry.date = gameState.dailyChecklist.date; // Use the actual day being summarized
+                                if (!Array.isArray(gameState.diary)) gameState.diary = [];
+                                gameState.diary.push(entry);
+                                // Keep last 30 diary entries
+                                if (gameState.diary.length > 30) {
+                                    gameState.diary = gameState.diary.slice(-30);
+                                }
+                            }
+                        } catch (e) {
+                            // Diary generation should never block daily reset
+                        }
+                    }
+                }
                 // Rec 11: Apply coin decay on new day (before daily tasks reset)
                 if (gameState.dailyChecklist && gameState.dailyChecklist.date) {
                     if (typeof applyCoinDecay === 'function') applyCoinDecay();
@@ -2929,6 +2960,11 @@
                 const wildcard = pickDailyWildcardTask(stage, today);
                 const taskList = [...fixedTasks, ...modeTasks];
                 if (wildcard) taskList.push(wildcard);
+                // Add seasonal daily task if available
+                if (typeof DAILY_SEASONAL_TASKS === 'object' && typeof getCurrentSeason === 'function') {
+                    const seasonTask = DAILY_SEASONAL_TASKS[getCurrentSeason()];
+                    if (seasonTask) taskList.push(seasonTask);
+                }
                 gameState.dailyChecklist = {
                     date: today,
                     stage,
@@ -3732,6 +3768,32 @@
             if (gameState.journal.length > 100) {
                 gameState.journal = gameState.journal.slice(-100);
             }
+        }
+
+        /**
+         * Get the full diary including a live entry for today (if applicable).
+         * Past entries come from gameState.diary; today's entry is generated on the fly.
+         */
+        function getDiaryEntries() {
+            const entries = Array.isArray(gameState.diary) ? [...gameState.diary] : [];
+            // Generate a live entry for today
+            if (gameState.pet && gameState.dailyChecklist && typeof generateDiaryEntry === 'function') {
+                try {
+                    const pet = gameState.pet;
+                    const progress = gameState.dailyChecklist.progress || {};
+                    const season = (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring';
+                    const dayNum = pet.birthdate ? Math.max(1, Math.floor((Date.now() - pet.birthdate) / 86400000)) : 1;
+                    const todayEntry = generateDiaryEntry(pet, progress, season, dayNum);
+                    if (todayEntry) {
+                        todayEntry.date = gameState.dailyChecklist.date || new Date().toISOString().slice(0, 10);
+                        todayEntry.isToday = true;
+                        entries.push(todayEntry);
+                    }
+                } catch (e) {
+                    // Diary generation failure should not break the UI
+                }
+            }
+            return entries;
         }
 
         let _lastSavedStorageSnapshot = null;
