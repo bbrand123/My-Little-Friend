@@ -13128,12 +13128,23 @@ body.has-core-care-dock .toast-container {
 }
 
 .stat-bar-delta.positive { color: #2e7d32; }
-.stat-bar-delta.negative { color: #c62828; }
+.stat-bar-delta.negative {
+    color: #c62828;
+    top: auto;
+    bottom: -16px;
+    animation: statBarDeltaFloatDown 1s ease-out forwards;
+}
 
 @keyframes statBarDeltaFloat {
     0% { opacity: 0; transform: translateX(-50%) translateY(2px); }
     20% { opacity: 1; }
     100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+}
+
+@keyframes statBarDeltaFloatDown {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-2px); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(18px); }
 }
 
 .coach-checklist {

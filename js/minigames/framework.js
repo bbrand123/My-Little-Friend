@@ -471,6 +471,11 @@
             updateWellnessBar();
             saveGame();
 
+            // Show floating stat deltas near need bubbles for mini-game rewards
+            if (typeof showStatDeltaNearNeedBubbles === 'function' && statAggregate) {
+                showStatDeltaNearNeedBubbles(statAggregate);
+            }
+
             if (typeof config.onAfterRewards === 'function') {
                 config.onAfterRewards({ score, coinReward, isNewBest, previousBest });
             }

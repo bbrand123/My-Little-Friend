@@ -1193,17 +1193,38 @@
             if (!bubble) return;
             const delta = document.createElement('div');
             delta.className = `stat-bar-delta ${amount > 0 ? 'positive' : 'negative'}`;
-            delta.textContent = `${amount > 0 ? '+' : '−'}${target.label}`;
+            delta.textContent = `${amount > 0 ? '+' : ''}${amount}`;
+            delta.setAttribute('aria-hidden', 'true');
             delta.style.left = `${44 + (Math.random() * 12 - 6)}%`;
             bubble.appendChild(delta);
             setTimeout(() => delta.remove(), 1150);
+        }
+
+        // Debounced aria-live announcements for stat changes (batches decay ticks)
+        let _statChangeAnnounceTimer = null;
+        let _statChangeBatch = {};
+        function _flushStatChangeAnnouncement() {
+            _statChangeAnnounceTimer = null;
+            const entries = Object.entries(_statChangeBatch).filter(([, v]) => v !== 0);
+            _statChangeBatch = {};
+            if (entries.length === 0 || typeof announce !== 'function') return;
+            const parts = entries.map(([key, amount]) => {
+                const target = STAT_DELTA_TARGETS[key];
+                const label = target ? target.label : key;
+                return `${label} ${amount > 0 ? '+' : ''}${amount}`;
+            });
+            announce(parts.join(', '));
         }
 
         function showStatDeltaNearNeedBubbles(deltas) {
             if (!deltas || typeof deltas !== 'object') return;
             Object.entries(deltas).forEach(([key, amount]) => {
                 showNeedBubbleStatDelta(key, amount);
+                // Batch for debounced screen reader announcement
+                _statChangeBatch[key] = (_statChangeBatch[key] || 0) + amount;
             });
+            if (_statChangeAnnounceTimer) clearTimeout(_statChangeAnnounceTimer);
+            _statChangeAnnounceTimer = setTimeout(_flushStatChangeAnnouncement, 2000);
         }
 
         // Map care actions to themed particle emojis

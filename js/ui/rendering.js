@@ -682,16 +682,8 @@
             }
 
             // Show floating stat number near happiness bubble
-            if (delta > 0) {
-                const happyBubble = document.getElementById('happy-bubble');
-                if (happyBubble) {
-                    const floatEl = document.createElement('span');
-                    floatEl.className = 'stat-change-float positive';
-                    floatEl.textContent = `+${delta}`;
-                    floatEl.setAttribute('aria-hidden', 'true');
-                    happyBubble.appendChild(floatEl);
-                    setTimeout(() => floatEl.remove(), 1200);
-                }
+            if (delta > 0 && typeof showStatDeltaNearNeedBubbles === 'function') {
+                showStatDeltaNearNeedBubbles({ happiness: delta });
             }
 
             // Update need displays and persist

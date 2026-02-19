@@ -255,6 +255,22 @@
                     // Check for growth milestones
                     checkGrowthMilestone(pet);
 
+                    // Show floating stat deltas for decay when integer values change
+                    if (typeof showStatDeltaNearNeedBubbles === 'function') {
+                        const decayDeltas = {};
+                        const dH = Math.round(pet.hunger) - Math.round(prevHunger);
+                        const dC = Math.round(pet.cleanliness) - Math.round(prevClean);
+                        const dHa = Math.round(pet.happiness) - Math.round(prevHappy);
+                        const dE = Math.round(pet.energy) - Math.round(prevEnergy);
+                        if (dH) decayDeltas.hunger = dH;
+                        if (dC) decayDeltas.cleanliness = dC;
+                        if (dHa) decayDeltas.happiness = dHa;
+                        if (dE) decayDeltas.energy = dE;
+                        if (Object.keys(decayDeltas).length > 0) {
+                            showStatDeltaNearNeedBubbles(decayDeltas);
+                        }
+                    }
+
                     updateNeedDisplays(true);
                     updatePetMood();
                     updateWellnessBar();
