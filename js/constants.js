@@ -1037,7 +1037,21 @@ const SEASONS = {
         activityIcon: '🌷',
         activityMessages: ['found a beautiful flower!', 'made a flower crown!', 'loves the spring blossoms!', 'is chasing butterflies!'],
         activityEffects: { happiness: 15, energy: -5 },
-        ambientMessages: ['The flowers are blooming!', 'Spring is in the air!', 'What a lovely spring day!', 'The butterflies are out!']
+        ambientMessages: [
+            'The flowers are blooming!', 'Spring is in the air!', 'What a lovely spring day!', 'The butterflies are out!',
+            'A warm breeze carries the scent of fresh blossoms.',
+            'Bees are buzzing happily from flower to flower.',
+            'The garden soil is soft and ready for planting.',
+            'Birdsong fills the air — spring\'s own orchestra.',
+            'Tiny green shoots are pushing through the earth!',
+            'The days are getting longer and warmer.',
+            'Dandelion fluff drifts by on the gentle breeze.',
+            'A robin is building a nest nearby — new beginnings!',
+            'The world smells of rain-washed earth and new growth.',
+            'Puddles from last night\'s rain reflect a blue sky.',
+            'Everything feels fresh, clean, and full of possibility.',
+            'Crocuses and daffodils dot the ground like little jewels.'
+        ]
     },
     summer: {
         name: 'Summer',
@@ -1052,7 +1066,21 @@ const SEASONS = {
         activityIcon: '💦',
         activityMessages: ['is splashing in water!', 'loves the summer fun!', 'had a water play session!', 'is cooling off in the sprinkler!'],
         activityEffects: { happiness: 20, cleanliness: 10, energy: -10 },
-        ambientMessages: ['The sun is shining bright!', 'What a hot summer day!', 'Perfect for outdoor fun!', 'Summer vibes!']
+        ambientMessages: [
+            'The sun is shining bright!', 'What a hot summer day!', 'Perfect for outdoor fun!', 'Summer vibes!',
+            'Cicadas sing their buzzing summer song all afternoon.',
+            'The grass is warm underfoot — perfect for barefoot walking.',
+            'A sprinkler hisses in the distance. Splash time!',
+            'The air smells of sun-warmed earth and ripe berries.',
+            'Fireflies will be out tonight — living sparkles!',
+            'Ice cream weather! The best kind of weather!',
+            'Lazy clouds drift across an endless blue sky.',
+            'The shade of a big tree is the most valuable real estate.',
+            'Watermelon slices and cold drinks — summer essentials.',
+            'Long golden evenings stretch out like a warm blanket.',
+            'The sound of distant laughter carries on the warm air.',
+            'Everything moves a little slower in the summer heat.'
+        ]
     },
     autumn: {
         name: 'Autumn',
@@ -1067,7 +1095,21 @@ const SEASONS = {
         activityIcon: '🍁',
         activityMessages: ['jumped in the leaf pile!', 'is crunching autumn leaves!', 'loves the fall colors!', 'found a cool pinecone!'],
         activityEffects: { happiness: 15, energy: -5 },
-        ambientMessages: ['The leaves are changing colors!', 'Autumn is so cozy!', 'Crisp fall air!', 'Pumpkin season!']
+        ambientMessages: [
+            'The leaves are changing colors!', 'Autumn is so cozy!', 'Crisp fall air!', 'Pumpkin season!',
+            'Crunchy leaves crackle underfoot like nature\'s bubble wrap.',
+            'The air smells of wood smoke and cinnamon.',
+            'Acorns drop from the oak tree — squirrels are busy today!',
+            'Golden light filters through amber and crimson canopies.',
+            'A cool breeze carries the scent of ripe apples.',
+            'The harvest moon hangs low and orange in the evening sky.',
+            'Geese honk overhead, flying in a wobbly V formation.',
+            'Warm scarves and crunchy leaves — the best combo.',
+            'Mushrooms pop up in the damp grass like tiny umbrellas.',
+            'The world is painting itself in warm golds and reds.',
+            'Misty mornings give everything a soft, dreamy glow.',
+            'Hot cider steams in the cool air — autumn perfection.'
+        ]
     },
     winter: {
         name: 'Winter',
@@ -1082,7 +1124,21 @@ const SEASONS = {
         activityIcon: '⛄',
         activityMessages: ['built a tiny snowman!', 'is catching snowflakes!', 'loves playing in the snow!', 'made a snow angel!'],
         activityEffects: { happiness: 15, cleanliness: -5, energy: -10 },
-        ambientMessages: ['It\'s a winter wonderland!', 'So cozy and cold!', 'Hot cocoa weather!', 'Winter magic!']
+        ambientMessages: [
+            'It\'s a winter wonderland!', 'So cozy and cold!', 'Hot cocoa weather!', 'Winter magic!',
+            'Frost paints delicate feather patterns on the windowpane.',
+            'Snowflakes drift down like tiny frozen ballet dancers.',
+            'The world is hushed under a thick blanket of white.',
+            'Icicles hang from the eaves like crystal chandeliers.',
+            'Warm breath makes little clouds in the crisp, cold air.',
+            'Bare tree branches trace intricate patterns against the grey sky.',
+            'The crunch of fresh snow underfoot is deeply satisfying.',
+            'Cozy blankets and warm socks — winter survival essentials.',
+            'A robin perches on the fence, puffed up against the cold.',
+            'Candlelight flickers warmly in the early evening darkness.',
+            'The kettle whistles — time for something warm to drink.',
+            'Stars shine extra bright in the cold, clear winter sky.'
+        ]
     }
 };
 
@@ -1941,6 +1997,21 @@ const DAILY_WILDCARD_TASKS = [
     { id: 'wildMastery', nameTemplate: 'Gain {target} mastery point{plural}', icon: '🎯', target: 2, trackKey: 'masteryPoints', maxTarget: 6, lane: 'wildcard', minStage: 'adult' },
     { id: 'wildExplorer', nameTemplate: 'Discover {target} world event{plural}', icon: '🗺️', target: 1, trackKey: 'discoveryEvents', maxTarget: 3, lane: 'wildcard', minStage: 'baby' }
 ];
+
+const DAILY_SEASONAL_TASKS = {
+    spring: { id: 'seasonalSpring', nameTemplate: 'Enjoy {target} springtime activity', icon: '🌸', target: 1, trackKey: 'totalCareActions', maxTarget: 3, lane: 'seasonal' },
+    summer: { id: 'seasonalSummer', nameTemplate: 'Do {target} summer splash play{plural}', icon: '☀️', target: 1, trackKey: 'totalCareActions', maxTarget: 3, lane: 'seasonal' },
+    autumn: { id: 'seasonalAutumn', nameTemplate: 'Crunch through {target} autumn leaf pile{plural}', icon: '🍂', target: 1, trackKey: 'totalCareActions', maxTarget: 3, lane: 'seasonal' },
+    winter: { id: 'seasonalWinter', nameTemplate: 'Have {target} cozy winter moment{plural}', icon: '❄️', target: 1, trackKey: 'totalCareActions', maxTarget: 3, lane: 'seasonal' }
+};
+
+function getDailyTasksWithSeason() {
+    const season = (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring';
+    const seasonalTask = DAILY_SEASONAL_TASKS[season];
+    const base = [...DAILY_FIXED_TASKS, ...DAILY_MODE_TASKS, ...DAILY_WILDCARD_TASKS];
+    if (seasonalTask) base.push(seasonalTask);
+    return base;
+}
 
 const DAILY_TASKS = [...DAILY_FIXED_TASKS, ...DAILY_MODE_TASKS, ...DAILY_WILDCARD_TASKS];
 
@@ -4426,7 +4497,27 @@ const CARE_MICRO_EVENTS = [
     { id: 'me72', text: 'Somewhere in the house, a clock chimed. {name} counted the bongs.', action: null },
     { id: 'me73', text: '{name} found a warm spot on the floor and absolutely refused to move.', action: null },
     { id: 'me74', text: '{name} blinked slowly at you. In pet language, that means "I love you."', action: null },
-    { id: 'me75', text: 'A gentle hum from somewhere in the house lulled {name} into a happy daze.', action: null }
+    { id: 'me75', text: 'A gentle hum from somewhere in the house lulled {name} into a happy daze.', action: null },
+    // Seasonal micro-events — spring
+    { id: 'me_sp1', text: 'A butterfly landed on {name}\'s nose mid-meal. Surprise guest!', action: 'feed', season: 'spring' },
+    { id: 'me_sp2', text: '{name} spotted a robin building a nest outside the window during bath time.', action: 'bathe', season: 'spring' },
+    { id: 'me_sp3', text: 'Spring rain tapped on the roof like tiny applause for {name}.', action: null, season: 'spring' },
+    { id: 'me_sp4', text: '{name} sneezed from the flower pollen and then giggled about it.', action: null, season: 'spring' },
+    // Seasonal micro-events — summer
+    { id: 'me_su1', text: '{name} noticed their water bowl evaporating fast in the summer heat!', action: 'water', season: 'summer' },
+    { id: 'me_su2', text: 'A cricket hopped right across {name}\'s play area. Bold little visitor!', action: 'play', season: 'summer' },
+    { id: 'me_su3', text: '{name} found a ladybug on the windowsill and watched it fly away.', action: null, season: 'summer' },
+    { id: 'me_su4', text: 'The afternoon heat made {name} extra drowsy. Perfect nap weather.', action: null, season: 'summer' },
+    // Seasonal micro-events — autumn
+    { id: 'me_au1', text: 'A leaf blew in through the window and landed on {name}\'s head like a hat!', action: null, season: 'autumn' },
+    { id: 'me_au2', text: '{name} heard acorns dropping on the roof — nature\'s percussion!', action: null, season: 'autumn' },
+    { id: 'me_au3', text: 'The smell of cinnamon drifted in. {name}\'s nose twitched with interest.', action: 'feed', season: 'autumn' },
+    { id: 'me_au4', text: '{name} pressed against the window to watch the leaves spiral down.', action: null, season: 'autumn' },
+    // Seasonal micro-events — winter
+    { id: 'me_wi1', text: '{name} noticed frost flowers on the window and tried to touch them.', action: null, season: 'winter' },
+    { id: 'me_wi2', text: 'The bath water steamed extra in the cold air. {name} looked like a cloud!', action: 'bathe', season: 'winter' },
+    { id: 'me_wi3', text: '{name} burrowed deeper into the blankets. Winter hibernation mode: ON.', action: 'sleep', season: 'winter' },
+    { id: 'me_wi4', text: 'A gust of cold wind rattled the window. {name} snuggled closer to you.', action: null, season: 'winter' }
 ];
 
 // Trigger chance for micro-events (10-15%)

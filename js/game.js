@@ -2936,6 +2936,11 @@
                 const wildcard = pickDailyWildcardTask(stage, today);
                 const taskList = [...fixedTasks, ...modeTasks];
                 if (wildcard) taskList.push(wildcard);
+                // Add seasonal daily task if available
+                if (typeof DAILY_SEASONAL_TASKS === 'object' && typeof getCurrentSeason === 'function') {
+                    const seasonTask = DAILY_SEASONAL_TASKS[getCurrentSeason()];
+                    if (seasonTask) taskList.push(seasonTask);
+                }
                 gameState.dailyChecklist = {
                     date: today,
                     stage,
