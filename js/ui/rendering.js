@@ -646,6 +646,68 @@
             return { action: 'play', icon: '⚽', hint: 'Great pace: Play a mini-game next', tone: 'normal', label: 'Play' };
         }
 
+        // ==================== PET TAP (Click-to-Pet) ====================
+        let _petTapCooldown = false;
+        function handlePetTap() {
+            if (_petTapCooldown) return;
+            const pet = gameState.pet;
+            if (!pet) return;
+
+            _petTapCooldown = true;
+            setTimeout(() => { _petTapCooldown = false; }, 2500);
+
+            // Small happiness boost (+3)
+            const prevHappy = pet.happiness;
+            pet.happiness = clamp(pet.happiness + 3, 0, 100);
+            const delta = pet.happiness - prevHappy;
+
+            // Heart particle burst
+            const sparkles = document.getElementById('sparkles');
+            if (sparkles && typeof createCuddleParticles === 'function') {
+                createCuddleParticles(sparkles);
+            }
+
+            // Cuddle SFX
+            if (typeof SoundManager !== 'undefined' && SoundManager.sfx) {
+                SoundManager.playSFX(SoundManager.sfx.cuddle);
+            }
+
+            // Quick bounce animation on pet container
+            const petContainer = document.getElementById('pet-container');
+            if (petContainer) {
+                petContainer.classList.remove('pet-tap-bounce');
+                void petContainer.offsetWidth;
+                petContainer.classList.add('pet-tap-bounce');
+                setTimeout(() => petContainer.classList.remove('pet-tap-bounce'), 500);
+            }
+
+            // Show floating stat number near happiness bubble
+            if (delta > 0) {
+                const happyBubble = document.getElementById('happy-bubble');
+                if (happyBubble) {
+                    const floatEl = document.createElement('span');
+                    floatEl.className = 'stat-change-float positive';
+                    floatEl.textContent = `+${delta}`;
+                    floatEl.setAttribute('aria-hidden', 'true');
+                    happyBubble.appendChild(floatEl);
+                    setTimeout(() => floatEl.remove(), 1200);
+                }
+            }
+
+            // Update need displays and persist
+            if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
+            if (typeof updatePetMood === 'function') updatePetMood();
+            if (typeof saveGame === 'function') saveGame();
+
+            // Announce to screen readers
+            const petName = getPetDisplayName(pet);
+            if (delta > 0) {
+                announce(`You petted ${petName}! Happiness increased by ${delta}.`);
+            } else {
+                announce(`You petted ${petName}! Already at maximum happiness.`);
+            }
+        }
+
         function renderPetPhase() {
             // Clear any pending deferred render to avoid redundant double re-renders
             if (pendingRenderTimer) {
@@ -865,7 +927,7 @@
                         return `<div class="room-memories" aria-label="Room memories" style="position:absolute;bottom:4px;left:4px;display:flex;gap:4px;z-index:1;opacity:0.85;">${memories.map(m => `<span class="room-memory-icon" title="${escapeHTML(m.description)}" style="font-size:1.1rem;cursor:help;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${m.emoji}</span>`).join('')}</div>`;
                     })()}
                     <div class="sparkles" id="sparkles"></div>
-                    <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Give ${petDisplayName} cuddles">
+                    <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Pet your ${petDisplayName}">
                         ${generateThoughtBubble(pet)}
                         ${generatePetSVG(pet, mood)}
                         ${generateNeedsAttentionDot(pet)}
@@ -1438,8 +1500,8 @@
             const petContainer = document.getElementById('pet-container');
             if (petContainer) {
                 petContainer.classList.add('pettable');
-                petContainer.setAttribute('aria-label', `Give ${petDisplayName} cuddles`);
-                petContainer.addEventListener('click', () => careAction('cuddle'));
+                petContainer.setAttribute('aria-label', `Pet your ${petDisplayName}`);
+                petContainer.addEventListener('click', handlePetTap);
             }
 
             // Only restart timers, earcons, and idle animations when they aren't
