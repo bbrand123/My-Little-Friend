@@ -407,7 +407,8 @@
             background: conic-gradient(var(--ring-color) calc(var(--progress) * 1%), #e0e0e0 0);
             mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
             -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
-            transition: --progress 0.8s ease, background 0.5s ease;
+            transition: --progress 400ms ease-out, background 0.5s ease;
+            will-change: --progress;
         }
 
         .need-bubble-icon {
