@@ -2789,8 +2789,37 @@
             box-shadow: var(--shadow-medium);
         }
 
+        .minigame-card-visual {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+        }
+
+        .minigame-thumb {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            animation: minigameThumbIdle 2.5s ease-in-out infinite;
+        }
+
+        @keyframes minigameThumbIdle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .minigame-thumb { animation: none !important; }
+        }
+
         .minigame-card-icon {
-            font-size: 2rem;
+            position: relative;
+            z-index: 1;
+            font-size: 1.3rem;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
         }
 
         .minigame-card-name {
