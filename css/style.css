@@ -734,7 +734,7 @@
 
         .action-btn.cooldown {
             pointer-events: none;
-            opacity: 0.55;
+            opacity: 0.6;
             filter: grayscale(0.5) brightness(0.9);
             position: relative;
             overflow: hidden;
@@ -746,15 +746,20 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: rgba(255,255,255,0.35);
-            animation: cooldownSweep 0.6s linear forwards;
+            background: conic-gradient(transparent var(--cooldown-progress, 0%), rgba(0,0,0,0.35) var(--cooldown-progress, 0%));
             border-radius: inherit;
             pointer-events: none;
         }
 
-        @keyframes cooldownSweep {
-            0% { clip-path: inset(0 0 0 0); }
-            100% { clip-path: inset(100% 0 0 0); }
+        /* Pulse glow when cooldown ends and button becomes available */
+        .action-btn.cooldown-ready {
+            animation: cooldownReadyPulse 0.5s ease-out;
+        }
+
+        @keyframes cooldownReadyPulse {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5); }
+            50% { box-shadow: 0 0 8px 4px rgba(76, 175, 80, 0.4); }
+            100% { box-shadow: var(--shadow-subtle, 0 1px 4px rgba(0,0,0,0.1)); }
         }
 
         .action-btn .cooldown-timer {
@@ -6076,6 +6081,7 @@
             .egg-container { animation: none !important; }
             .action-btn.cooldown .cooldown-count::before { animation: none !important; }
             .action-btn.cooldown::after { animation: none !important; }
+            .action-btn.cooldown-ready { animation: none !important; }
 
             .sparkle-particle,
             .heart-particle,

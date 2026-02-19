@@ -1134,7 +1134,7 @@
                 if (!btn.dataset.originalLabel) {
                     btn.dataset.originalLabel = btn.getAttribute('aria-label') || btn.querySelector('span:not(.btn-icon):not(.action-btn-tooltip):not(.cooldown-count):not(.kbd-hint):not(.room-bonus-badge):not(.feed-crop-badge)')?.textContent.trim() || '';
                 }
-                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ' (cooling down)');
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ` (available in ${Math.ceil(ACTION_COOLDOWN_MS / 1000)} second${Math.ceil(ACTION_COOLDOWN_MS / 1000) !== 1 ? 's' : ''})`);
             });
             if (actionCooldownTimer) {
                 clearTimeout(actionCooldownTimer);
@@ -1248,9 +1248,13 @@
                 btn.classList.remove('cooldown');
                 btn.disabled = false;
                 btn.removeAttribute('aria-disabled');
+                btn.style.removeProperty('--cooldown-progress');
                 if (btn.dataset.originalLabel) {
                     btn.setAttribute('aria-label', btn.dataset.originalLabel);
                 }
+                // Pulse glow to signal availability
+                btn.classList.add('cooldown-ready');
+                setTimeout(() => btn.classList.remove('cooldown-ready'), 600);
             });
         }
 
@@ -1280,7 +1284,7 @@
                 if (!btn.dataset.originalLabel) {
                     btn.dataset.originalLabel = btn.getAttribute('aria-label') || btn.querySelector('span:not(.btn-icon):not(.action-btn-tooltip):not(.cooldown-count):not(.kbd-hint):not(.room-bonus-badge):not(.feed-crop-badge)')?.textContent.trim() || '';
                 }
-                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ' (cooling down)');
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ` (available in ${Math.ceil(ACTION_COOLDOWN_MS / 1000)} second${Math.ceil(ACTION_COOLDOWN_MS / 1000) !== 1 ? 's' : ''})`);
             });
 
             if (actionCooldownTimer) {

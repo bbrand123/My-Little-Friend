@@ -612,9 +612,15 @@
             .action-btn.cooldown::after {
                 background: rgba(0,0,0,0.25);
             }
+            .action-btn.cooldown-ready {
+                animation: none !important;
+            }
         }
         html[data-reduced-motion="true"] .action-btn.cooldown::after {
             background: rgba(0,0,0,0.25);
+        }
+        html[data-reduced-motion="true"] .action-btn.cooldown-ready {
+            animation: none !important;
         }
 
         .action-btn .cooldown-timer {
