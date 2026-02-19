@@ -3492,6 +3492,17 @@
                 return;
             }
 
+            // Check for micro-event (supplementary flavor text ~12% of care actions)
+            if (typeof getMicroEvent === 'function') {
+                const currentRoom = (gameState && gameState.currentRoom) || 'bedroom';
+                const currentSeason = (typeof getCurrentSeason === 'function') ? getCurrentSeason() : 'spring';
+                const currentWeather = (gameState && gameState.weather) || 'sunny';
+                const microEvent = getMicroEvent(pet, action, currentRoom, currentSeason, currentWeather);
+                if (microEvent && microEvent.text) {
+                    setTimeout(() => showToast(microEvent.text, '#B39DDB'), 1200);
+                }
+            }
+
             // Batch rapid care toasts into a single notification
             queueCareToast(action, petData.emoji);
 

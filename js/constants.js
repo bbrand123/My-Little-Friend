@@ -4334,3 +4334,134 @@ function getExpandedFeedbackMessage(action, personality, stage) {
     const legacy = FEEDBACK_MESSAGES[action];
     return legacy ? legacy[Math.floor(Math.random() * legacy.length)] : '';
 }
+
+// ==================== CARE ACTION MICRO-EVENTS ====================
+// ~10-15% of care actions trigger a one-line micro-event.
+// Each event can optionally filter by room, season, or weather.
+// {name} is replaced with the pet's name at runtime.
+
+const CARE_MICRO_EVENTS = [
+    // Universal events (no filters)
+    { id: 'me1', text: 'While being cared for, {name} spotted a ladybug on the window!', action: 'feed' },
+    { id: 'me2', text: '{name} found a shiny coin under their bed while stretching!', action: null },
+    { id: 'me3', text: '{name} sneezed the cutest little sneeze mid-action!', action: null },
+    { id: 'me4', text: 'A butterfly drifted past, and {name} froze to watch it.', action: null },
+    { id: 'me5', text: '{name} yawned so wide their eyes watered. Adorable.', action: null },
+    { id: 'me6', text: '{name} accidentally knocked over a small toy and looked very guilty.', action: null },
+    { id: 'me7', text: 'A distant wind chime tinkled, and {name}\'s ears perked up.', action: null },
+    { id: 'me8', text: '{name}\'s tummy made a funny rumbling sound. They looked surprised.', action: null },
+    { id: 'me9', text: '{name} discovered a dust bunny and pounced on it heroically!', action: null },
+    { id: 'me10', text: '{name} did a full-body wiggle for absolutely no reason. Pure joy.', action: null },
+    { id: 'me11', text: '{name} heard a bird singing outside and tried to sing along!', action: null },
+    { id: 'me12', text: 'A gentle breeze ruffled {name}\'s fur. They looked so peaceful.', action: null },
+    { id: 'me13', text: '{name} found a lost feather and added it to their treasure collection.', action: null },
+    { id: 'me14', text: '{name} stretched SO far that they tipped over. No regrets.', action: null },
+    { id: 'me15', text: '{name}\'s shadow caught their attention. They tried to play with it!', action: null },
+    // Feed-specific micro-events
+    { id: 'me16', text: 'While eating, {name} got food on their nose and went cross-eyed looking at it!', action: 'feed' },
+    { id: 'me17', text: '{name} was chewing so happily they accidentally bit their own tongue. Oops!', action: 'feed' },
+    { id: 'me18', text: '{name} saved one tiny morsel "for later" and hid it under a cushion.', action: 'feed' },
+    { id: 'me19', text: 'The sound of crunching was SO loud. {name} eats with enthusiasm!', action: 'feed' },
+    // Wash-specific micro-events
+    { id: 'me20', text: 'During bathtime, {name} made the most ridiculous soap-beard!', action: 'wash' },
+    { id: 'me21', text: '{name} caught a bubble and stared at the rainbow swirling inside it.', action: 'wash' },
+    { id: 'me22', text: 'A tiny splash from {name}\'s bath hit you right on the nose!', action: 'wash' },
+    { id: 'me23', text: '{name} discovered that wet paws make the funniest squeaky sounds on tile!', action: 'wash' },
+    // Play-specific micro-events
+    { id: 'me24', text: '{name} invented a completely new game on the spot! Rules unclear, but fun!', action: 'play' },
+    { id: 'me25', text: 'During play, {name} accidentally did a perfect somersault!', action: 'play' },
+    { id: 'me26', text: '{name} got the giggles and couldn\'t stop for a full minute!', action: 'play' },
+    { id: 'me27', text: '{name} challenged their own reflection to a staring contest. They lost.', action: 'play' },
+    // Groom-specific micro-events
+    { id: 'me28', text: 'While being groomed, {name} purred so loudly the brush vibrated!', action: 'groom' },
+    { id: 'me29', text: 'The brush found a tangled knot. {name} was VERY brave about it.', action: 'groom' },
+    { id: 'me30', text: '{name} admired their reflection after grooming and struck a pose.', action: 'groom' },
+    // Exercise-specific micro-events
+    { id: 'me31', text: '{name} ran so fast they slid on the floor and spun in a circle!', action: 'exercise' },
+    { id: 'me32', text: 'During the workout, {name} spotted a stick and HAD to fetch it.', action: 'exercise' },
+    { id: 'me33', text: '{name} attempted a cool jump move and... almost nailed it!', action: 'exercise' },
+    // Cuddle-specific micro-events
+    { id: 'me34', text: 'Mid-cuddle, {name} let out the most contented sigh ever heard.', action: 'cuddle' },
+    { id: 'me35', text: '{name} nuzzled so hard they bumped noses with you! Boop!', action: 'cuddle' },
+    { id: 'me36', text: '{name}\'s tail wagged so hard during cuddles it knocked over a pillow.', action: 'cuddle' },
+    // Room-filtered events
+    { id: 'me37', text: '{name} heard the fridge hum and tilted their head at it curiously.', action: null, room: 'kitchen' },
+    { id: 'me38', text: 'Something in the oven smells delicious! {name} is drooling a little.', action: null, room: 'kitchen' },
+    { id: 'me39', text: '{name} found a cozy spot between the pillows and claimed it as theirs.', action: null, room: 'bedroom' },
+    { id: 'me40', text: 'The bedroom clock ticked softly. {name} finds the rhythm soothing.', action: null, room: 'bedroom' },
+    { id: 'me41', text: '{name} drew a smiley face in the bathroom mirror steam!', action: null, room: 'bathroom' },
+    { id: 'me42', text: 'The sound of dripping water echoes. {name} thinks it sounds like music.', action: null, room: 'bathroom' },
+    { id: 'me43', text: '{name} spotted a worm in the garden and watched it with fascination!', action: null, room: 'garden' },
+    { id: 'me44', text: 'A bee buzzed past {name}\'s nose. They went cross-eyed following it!', action: null, room: 'garden' },
+    { id: 'me45', text: '{name} found a four-leaf clover in the park! Lucky day!', action: null, room: 'park' },
+    { id: 'me46', text: 'A friendly squirrel waved at {name} from a park tree!', action: null, room: 'park' },
+    { id: 'me47', text: '{name} chased their tail in the backyard and got dizzy!', action: null, room: 'backyard' },
+    { id: 'me48', text: 'The grass tickled {name}\'s paws and they did a funny hop-walk!', action: null, room: 'backyard' },
+    { id: 'me49', text: '{name} pulled a book off the library shelf and "read" it upside down.', action: null, room: 'library' },
+    { id: 'me50', text: '{name} found a cozy reading nook in the library and curled up in it.', action: null, room: 'library' },
+    { id: 'me51', text: 'An arcade machine made a funny jingle and {name} bopped along!', action: null, room: 'arcade' },
+    { id: 'me52', text: '{name} pressed random arcade buttons and somehow got a high score!', action: null, room: 'arcade' },
+    { id: 'me53', text: 'The spa steam made {name}\'s fur extra fluffy. Cloud-level fluffy!', action: null, room: 'spa' },
+    { id: 'me54', text: '{name} wrapped themselves in a warm towel like a cozy burrito!', action: null, room: 'spa' },
+    // Season-filtered events
+    { id: 'me55', text: 'A cherry blossom petal drifted in through the window! {name} caught it!', action: null, season: 'spring' },
+    { id: 'me56', text: '{name} heard baby birds chirping outside. Spring babies!', action: null, season: 'spring' },
+    { id: 'me57', text: '{name} found a cool spot in the shade. Smart move in this heat!', action: null, season: 'summer' },
+    { id: 'me58', text: 'A warm summer breeze carried the scent of flowers to {name}.', action: null, season: 'summer' },
+    { id: 'me59', text: '{name} heard leaves crunching outside and wanted to join in!', action: null, season: 'autumn' },
+    { id: 'me60', text: 'An acorn rolled across the floor! {name} batted it around.', action: null, season: 'autumn' },
+    { id: 'me61', text: '{name} pressed their nose to the cold window and made a fog circle!', action: null, season: 'winter' },
+    { id: 'me62', text: '{name} watched snowflakes fall and tried to count each one.', action: null, season: 'winter' },
+    // Weather-filtered events
+    { id: 'me63', text: 'The sound of rain on the roof made {name} feel cozy and safe.', action: null, weather: 'rainy' },
+    { id: 'me64', text: '{name} watched raindrops race down the window. Go, little drop, go!', action: null, weather: 'rainy' },
+    { id: 'me65', text: 'A patch of warm sunshine found {name}, and they melted into it.', action: null, weather: 'sunny' },
+    { id: 'me66', text: '{name} squinted happily at a sunbeam dancing across the floor.', action: null, weather: 'sunny' },
+    { id: 'me67', text: '{name} watched snowflakes swirl outside, mesmerized by the patterns.', action: null, weather: 'snowy' },
+    { id: 'me68', text: 'The world outside is white and quiet. {name} finds it magical.', action: null, weather: 'snowy' },
+    // More universal flavor
+    { id: 'me69', text: '{name} made the tiniest, most polite little hiccup!', action: null },
+    { id: 'me70', text: 'A sunbeam shifted and {name} shuffled to stay in its warm path.', action: null },
+    { id: 'me71', text: '{name} scratched behind their ear and hit THE perfect spot!', action: null },
+    { id: 'me72', text: 'Somewhere in the house, a clock chimed. {name} counted the bongs.', action: null },
+    { id: 'me73', text: '{name} found a warm spot on the floor and absolutely refused to move.', action: null },
+    { id: 'me74', text: '{name} blinked slowly at you. In pet language, that means "I love you."', action: null },
+    { id: 'me75', text: 'A gentle hum from somewhere in the house lulled {name} into a happy daze.', action: null }
+];
+
+// Trigger chance for micro-events (10-15%)
+const MICRO_EVENT_CHANCE = 0.12;
+
+/**
+ * Get a micro-event for a care action, if one triggers.
+ * Filters by action, room, season, weather. Tracks seen-history on pet object.
+ * Returns { text } or null if no event triggers.
+ */
+function getMicroEvent(pet, action, room, season, weather) {
+    if (!pet || Math.random() > MICRO_EVENT_CHANCE) return null;
+    const name = pet.name || 'Your pet';
+    // Initialize seen-history on pet
+    if (!Array.isArray(pet._seenMicroEvents)) pet._seenMicroEvents = [];
+    // Filter eligible events
+    const eligible = CARE_MICRO_EVENTS.filter(ev => {
+        // Already seen in current cycle?
+        if (pet._seenMicroEvents.includes(ev.id)) return false;
+        // Action filter: null matches any, otherwise must match
+        if (ev.action && ev.action !== action) return false;
+        // Room filter
+        if (ev.room && ev.room !== room) return false;
+        // Season filter
+        if (ev.season && ev.season !== season) return false;
+        // Weather filter
+        if (ev.weather && ev.weather !== weather) return false;
+        return true;
+    });
+    if (eligible.length === 0) {
+        // Reset seen history when pool is exhausted
+        pet._seenMicroEvents = [];
+        return null;
+    }
+    const event = eligible[Math.floor(Math.random() * eligible.length)];
+    pet._seenMicroEvents.push(event.id);
+    return { text: event.text.replace(/\{name\}/g, name) };
+}
