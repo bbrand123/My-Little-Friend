@@ -365,7 +365,7 @@
                             <h2>🪙 Economy & Trading</h2>
                             <div class="explore-header-actions">
                                 <button class="modal-btn" id="economy-refresh-btn">Refresh</button>
-                                <button class="modal-btn" id="economy-close-btn">Close</button>
+                                <button class="modal-btn" id="economy-close-btn" aria-label="Close economy">Close</button>
                             </div>
                         </div>
 

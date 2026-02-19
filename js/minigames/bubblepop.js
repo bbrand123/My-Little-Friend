@@ -269,6 +269,11 @@
                 scoreEl.textContent = `Bubbles popped: ${bubblePopState.score}`;
             }
 
+            // B14: Announce score every 3rd pop to avoid screen reader spam
+            if (bubblePopState.score % 3 === 0) {
+                announce(`Score: ${bubblePopState.score}`);
+            }
+
             // Show splash effect
             const field = document.getElementById('bubblepop-field');
             if (field) {

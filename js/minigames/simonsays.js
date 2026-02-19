@@ -258,6 +258,7 @@
                 simonState.playerIndex++;
                 simonState.score++;
                 if (typeof hapticBuzz === 'function') hapticBuzz(30);
+                announce(`You pressed ${color}. Correct!`);
 
                 // Update score
                 const scoreEl = document.getElementById('simon-score');
@@ -294,6 +295,7 @@
                 simonState.phase = 'gameover';
                 simonPlayErrorTone();
                 simonSetPadsDisabled(true);
+                announce(`You pressed ${color}. Wrong!`);
 
                 // Flash all pads to indicate error
                 document.querySelectorAll('.simonsays-pad').forEach(pad => {

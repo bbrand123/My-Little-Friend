@@ -5860,8 +5860,8 @@
 
                         // Slide in
                         petArea.classList.add('room-slide-in');
-                        setTimeout(() => petArea.classList.remove('room-slide-in'), 250);
-                    }, 150);
+                        setTimeout(() => petArea.classList.remove('room-slide-in'), 350);
+                    }, 250);
                 }
             }
 

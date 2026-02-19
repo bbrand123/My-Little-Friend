@@ -93,6 +93,15 @@
                     region.style.fill = coloringState.selectedColor;
                     coloringState.regionsColored.add(regionId);
 
+                    // B14: Screen reader announcement for coloring progress
+                    const colored = coloringState.regionsColored.size;
+                    const total = coloringState.totalRegions;
+                    if (colored >= total) {
+                        announce(`Coloring complete! Great job! All ${total} regions colored.`);
+                    } else {
+                        announce(`${colored} of ${total} regions colored.`);
+                    }
+
                     // Feedback flash
                     region.style.transition = 'none';
                     region.style.opacity = '0.7';

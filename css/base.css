@@ -88,7 +88,7 @@
         }
 
         body {
-            font-family: 'Nunito', 'Comic Sans MS', 'Chalkboard', 'Arial Rounded MT Bold', sans-serif;
+            font-family: 'Nunito', 'Segoe UI', 'Helvetica Neue', 'Arial Rounded MT Bold', sans-serif;
             background: var(--color-bg);
             min-height: 100vh;
             display: flex;

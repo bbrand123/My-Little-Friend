@@ -1100,6 +1100,7 @@
         // Track button cooldowns
         let actionCooldown = false;
         let actionCooldownTimer = null;
+        let _cooldownRAF = null;
         const ACTION_COOLDOWN_MS = GAME_BALANCE.timing.actionCooldownMs;
         let _lastCooldownAnnouncement = 0;
         const _cooldownToastByKey = {};
@@ -1287,9 +1288,24 @@
                 actionCooldownTimer = null;
             }
 
+            // C27: Animate radial cooldown progress
+            const cooldownStart = Date.now();
+            if (_cooldownRAF) cancelAnimationFrame(_cooldownRAF);
+            (function animateCooldownProgress() {
+                const elapsed = Date.now() - cooldownStart;
+                const progress = Math.min(100, (elapsed / ACTION_COOLDOWN_MS) * 100);
+                document.querySelectorAll('.action-btn.cooldown').forEach(b => {
+                    b.style.setProperty('--cooldown-progress', progress + '%');
+                });
+                if (progress < 100) {
+                    _cooldownRAF = requestAnimationFrame(animateCooldownProgress);
+                }
+            })();
+
             actionCooldownTimer = setTimeout(() => {
                 actionCooldown = false;
                 actionCooldownTimer = null;
+                if (_cooldownRAF) cancelAnimationFrame(_cooldownRAF);
                 // Re-query current buttons in case renderPetPhase() rebuilt the DOM.
                 restoreActionButtonsFromCooldown();
             }, ACTION_COOLDOWN_MS);
@@ -1687,6 +1703,41 @@
 
             // Batch rapid care toasts into a single notification
             queueCareToast(action, petData.emoji);
+
+            // C21: Undo toast for care actions
+            (function showUndoToast() {
+                const container = document.querySelector('.toast-container');
+                if (!container) return;
+                const undoToast = document.createElement('div');
+                undoToast.className = 'toast';
+                undoToast.style.setProperty('--toast-color', '#90A4AE');
+                undoToast.style.animation = 'toastIn 0.24s ease-out forwards';
+                undoToast.style.pointerEvents = 'auto';
+                undoToast.innerHTML = `<span class="toast-text">${escapeHTML(action)} — <button class="undo-toast-btn" aria-label="Undo ${escapeHTML(action)}" style="background:none;border:1px solid #90A4AE;border-radius:6px;padding:2px 8px;font-weight:700;cursor:pointer;font-family:inherit;color:inherit;">Undo</button></span>`;
+                container.appendChild(undoToast);
+                const undoBtn = undoToast.querySelector('.undo-toast-btn');
+                let undone = false;
+                undoBtn.addEventListener('click', () => {
+                    if (undone) return;
+                    undone = true;
+                    pet.hunger = beforeStats.hunger;
+                    pet.cleanliness = beforeStats.cleanliness;
+                    pet.happiness = beforeStats.happiness;
+                    pet.energy = beforeStats.energy;
+                    updateNeedDisplays();
+                    updatePetMood();
+                    updateWellnessBar();
+                    saveGame();
+                    undoToast.remove();
+                    showToast('Action undone', '#90A4AE');
+                });
+                setTimeout(() => {
+                    if (!undone && undoToast.parentNode) {
+                        undoToast.classList.add('toast-exiting');
+                        setTimeout(() => undoToast.remove(), 300);
+                    }
+                }, 4000);
+            })();
 
             // Update displays
             updateNeedDisplays();

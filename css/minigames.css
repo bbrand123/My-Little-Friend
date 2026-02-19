@@ -589,9 +589,11 @@
             font-family: inherit;
         }
 
-        .matching-card:focus {
-            outline: 3px solid #AB47BC;
+        .matching-card:focus-visible {
+            outline: 3px solid var(--focus-color, #4A90D9);
             outline-offset: 2px;
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .matching-card-inner {
@@ -702,11 +704,12 @@
             font-family: inherit;
         }
 
-        .simonsays-pad:focus {
-            outline: 3px solid #222;
-            outline-offset: 3px;
+        .simonsays-pad:focus-visible {
+            outline: 3px solid #FFD700;
+            outline-offset: 2px;
             z-index: 2;
             box-shadow: 0 0 0 2px white;
+            transform: scale(1.05);
         }
 
         .simonsays-pad[data-color="green"] {
@@ -1839,5 +1842,103 @@ body.beginner-ui #explore-btn {
     .racing-game-shell {
         padding: 12px;
     }
+}
+
+/* ===== A2: Consistent hover/focus/active states for minigame interactive elements ===== */
+.matching-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.matching-card:active {
+    transform: scale(0.97);
+}
+
+.bubblepop-bubble:focus-visible {
+    outline: 3px solid var(--focus-color, #4A90D9);
+    outline-offset: 2px;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.coloring-region:focus-visible {
+    outline: 3px solid var(--focus-color, #4A90D9);
+    outline-offset: 2px;
+}
+.coloring-region:active {
+    opacity: 0.7;
+}
+
+.coloring-swatch:focus-visible {
+    outline: 3px solid var(--focus-color, #4A90D9);
+    outline-offset: 2px;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.coloring-swatch:active {
+    transform: scale(0.97);
+}
+
+.hideseek-hiding-spot:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.hideseek-hiding-spot:focus-visible {
+    outline: 3px solid var(--focus-color, #4A90D9);
+    outline-offset: 2px;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.simonsays-pad:active:not(.disabled) {
+    transform: scale(0.97);
+}
+
+.fetch-field:focus-visible {
+    outline: 3px solid var(--focus-color, #4A90D9);
+    outline-offset: 2px;
+}
+
+/* ===== A4: Minigame spacing standardization ===== */
+:root {
+    --minigame-title-margin: 8px 0;
+    --minigame-score-margin: 6px 0;
+    --minigame-instruction-margin: 8px 0;
+    --minigame-btn-padding: var(--btn-pad-md);
+}
+
+.fetch-game-title,
+.hideseek-game-title,
+.bubblepop-game-title,
+.matching-game-title,
+.simonsays-game-title,
+.coloring-game-title {
+    margin: var(--minigame-title-margin);
+}
+
+.fetch-game-score,
+.hideseek-game-score,
+.bubblepop-game-score,
+.matching-game-score,
+.simonsays-game-score {
+    margin: var(--minigame-score-margin);
+}
+
+.fetch-instruction,
+.hideseek-instruction,
+.bubblepop-instruction,
+.matching-instruction,
+.simonsays-instruction {
+    margin: var(--minigame-instruction-margin);
+}
+
+.fetch-done-btn,
+.hideseek-done-btn,
+.bubblepop-done-btn,
+.matching-done-btn,
+.simonsays-done-btn,
+.coloring-done-btn,
+.coloring-clear-btn,
+.fetch-throw-btn {
+    padding: var(--minigame-btn-padding);
 }
 

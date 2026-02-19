@@ -17,6 +17,54 @@
     .new-highscore-banner {
         animation: none !important;
     }
+    /* B13: Extended reduced-motion coverage */
+    .modal-overlay,
+    .modal-content,
+    .celebration-content,
+    .naming-modal,
+    .settings-modal,
+    .modal-closing .modal-content,
+    .modal-closing .celebration-content {
+        animation: none !important;
+        transition: none !important;
+    }
+    .toast {
+        animation: none !important;
+        transition: none !important;
+    }
+    .toast.toast-exiting {
+        animation: none !important;
+    }
+    .weather-particle,
+    .weather-particles-layer *,
+    .rain-drop,
+    .snow-flake,
+    .ambient-layer * {
+        animation: none !important;
+        transition: none !important;
+    }
+    .confetti-container,
+    .confetti-container *,
+    .fireworks-container,
+    .fireworks-container *,
+    .minigame-celebration,
+    .minigame-celebration * {
+        animation: none !important;
+    }
+    .pet-area.room-slide-out,
+    .pet-area.room-slide-in {
+        animation: none !important;
+    }
+    .emoji-burst,
+    .emoji-burst * {
+        animation: none !important;
+    }
+    .celebration-flash {
+        animation: none !important;
+    }
+    .cloud {
+        animation: none !important;
+    }
 }
 
 
@@ -211,15 +259,16 @@
 /* Item 22: Save indicator */
 .save-indicator {
     position: fixed;
-    top: 12px;
+    top: auto;
+    bottom: 12px;
     right: 12px;
     padding: 6px 14px;
     border-radius: var(--radius-sm, 6px);
     font-size: 0.85rem;
     font-weight: 700;
-    z-index: 9999;
+    z-index: 1050;
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(8px);
     transition: opacity 0.3s, transform 0.3s;
     pointer-events: none;
     background: #E8F5E9;
@@ -764,6 +813,66 @@
     color: var(--color-text);
 }
 
+/* A1: Dark mode coverage for minigame fields/containers */
+[data-theme="dark"] .fetch-field {
+    background: linear-gradient(180deg, #1a2a3a 0%, #1a2a3a 55%, #2a3a2a 55%, #1e2e1e 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .hideseek-field {
+    background: linear-gradient(180deg, #1e2e1e 0%, #1a2a1a 30%, #162616 60%, #122012 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .bubblepop-field {
+    background: linear-gradient(180deg, #1a2a3a 0%, #152535 30%, #102030 60%, #0d1b28 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .matching-grid {
+    background: linear-gradient(135deg, #2a1e3a 0%, #24183a 50%, #1e1230 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .simonsays-board {
+    background: #1a1a2e;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] .coloring-canvas-wrap {
+    background: #2e2e4a;
+    border-color: #555;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .coloring-palette {
+    background: #24243e;
+}
+[data-theme="dark"] .matching-card-front {
+    background: linear-gradient(135deg, #4a3a6a, #5a3a7a);
+}
+[data-theme="dark"] .matching-card-back {
+    background: #2e2e4a;
+    border-color: #555;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .matching-card.matched .matching-card-back {
+    background: #3a2a4a;
+    border-color: #7a4a9a;
+}
+[data-theme="dark"] .racing-track {
+    background: linear-gradient(180deg, #0d1722 0%, #060d14 100%);
+}
+[data-theme="dark"] .exp-game-shell,
+[data-theme="dark"] .racing-game-shell {
+    background: linear-gradient(180deg, #1a2a3a, #152535);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .exp-game-hud span {
+    background: #2e2e4a;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
 /* Keyboard shortcut hint badge */
 .kbd-hint {
     display: none;
@@ -972,6 +1081,64 @@ html[data-reduced-motion="true"] *::after {
     scroll-behavior: auto !important;
 }
 
+/* D29: High Contrast Mode */
+[data-high-contrast="true"] {
+    --focus-color: #0000FF;
+}
+[data-high-contrast="true"] body {
+    color: #000 !important;
+    background: #FFF !important;
+}
+[data-high-contrast="true"][data-theme="dark"] body {
+    color: #FFF !important;
+    background: #000 !important;
+}
+[data-high-contrast="true"] button,
+[data-high-contrast="true"] .action-btn,
+[data-high-contrast="true"] .modal-btn,
+[data-high-contrast="true"] .core-care-btn,
+[data-high-contrast="true"] .top-action-btn,
+[data-high-contrast="true"] .room-btn {
+    border-width: 3px !important;
+    border-style: solid !important;
+    font-weight: 700 !important;
+}
+[data-high-contrast="true"] :focus-visible {
+    outline: 4px solid #0000FF !important;
+    outline-offset: 2px !important;
+}
+[data-high-contrast="true"][data-theme="dark"] :focus-visible {
+    outline-color: #FFD700 !important;
+}
+[data-high-contrast="true"] .toast,
+[data-high-contrast="true"] .modal-content,
+[data-high-contrast="true"] .settings-modal {
+    border: 2px solid #000 !important;
+}
+[data-high-contrast="true"][data-theme="dark"] .toast,
+[data-high-contrast="true"][data-theme="dark"] .modal-content,
+[data-high-contrast="true"][data-theme="dark"] .settings-modal {
+    border-color: #FFF !important;
+}
+
+/* D31: Settings grouped sections */
+.settings-group {
+    border: none;
+    padding: 0;
+    margin: 0 0 8px 0;
+}
+.settings-group-heading {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text-secondary, #666);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+[data-theme="dark"] .settings-group-heading {
+    border-bottom-color: #444;
+}
+
 @media (max-width: 480px) {
     .game-container {
         padding: 14px;
@@ -982,6 +1149,7 @@ html[data-reduced-motion="true"] *::after {
     .top-action-btn {
         min-width: 62px;
         padding: 6px 4px;
+        min-height: 44px;
     }
     .needs-section {
         margin-top: 4px;
@@ -992,5 +1160,103 @@ html[data-reduced-motion="true"] *::after {
     .actions-section {
         margin-top: 6px;
     }
+}
+
+/* E34: Minimum touch target sizes for small viewports */
+@media (max-width: 374px) {
+    .room-btn,
+    .action-btn,
+    .core-care-btn,
+    .modal-btn,
+    .matching-card,
+    .bubblepop-bubble,
+    .hideseek-hiding-spot,
+    .simonsays-pad,
+    .coloring-swatch {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    .modal-content button,
+    .settings-toggle,
+    .settings-choice,
+    .settings-preset-btn {
+        min-height: 44px;
+    }
+}
+
+/* E35: Bidirectional scroll fade indicators */
+.actions-scroll-wrap::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    background: linear-gradient(to right, var(--color-bg, #fff), transparent);
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.actions-scroll-wrap.scrolled-start::before {
+    opacity: 1;
+}
+.actions-scroll-wrap::after {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.actions-scroll-wrap.scrolled-end::after {
+    opacity: 0;
+}
+.actions-scroll-wrap:not(.scrolled-end)::after {
+    opacity: 1;
+}
+
+/* E36: Modal max-height on small viewports */
+.modal-content,
+.settings-modal,
+.celebration-content {
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+/* E37: Landscape mode pet area adjustment */
+@media (orientation: landscape) and (max-height: 500px) {
+    .pet-display-area,
+    .pet-area {
+        min-height: 160px;
+        max-height: 40vh;
+    }
+}
+
+/* F40: Offline/update status banner */
+.offline-update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    z-index: 10000;
+    background: #FFF3E0;
+    color: #E65100;
+    border-bottom: 1px solid #FFB74D;
+}
+.offline-update-banner.offline-banner {
+    background: #ECEFF1;
+    color: #455A64;
+    border-bottom-color: #B0BEC5;
+}
+[data-theme="dark"] .offline-update-banner {
+    background: #3E2723;
+    color: #FFCC80;
+    border-bottom-color: #5D4037;
+}
+[data-theme="dark"] .offline-update-banner.offline-banner {
+    background: #263238;
+    color: #B0BEC5;
+    border-bottom-color: #37474F;
 }
 

@@ -459,7 +459,7 @@
                 <div class="journal-modal">
                     <h2 class="journal-title">📔 Pet Journal</h2>
                     <div class="journal-entries">${entriesHTML}</div>
-                    <button class="journal-close" id="journal-close">Close</button>
+                    <button class="journal-close" id="journal-close" aria-label="Close journal">Close</button>
                 </div>
             `;
 
@@ -540,7 +540,7 @@
                 <div class="diary-modal">
                     <h2 class="diary-title">📖 ${escapeHTML((gameState.pet && gameState.pet.name) || 'Pet')}'s Diary</h2>
                     <div class="diary-entries" role="log" aria-label="Diary entries">${entriesHTML}</div>
-                    <button class="diary-close" id="diary-close">Close</button>
+                    <button class="diary-close" id="diary-close" aria-label="Close diary">Close</button>
                 </div>
             `;
 
@@ -682,7 +682,7 @@
                     ${memorials.length > 0 ? `<button class="modal-btn" id="memorial-garden-btn" style="margin-top:8px;background:#E8F5E9;color:#2E7D32;border:1px solid #C8E6C9;">🌿 Visit Memorial Garden</button>` : ''}
                     ${mentorHTML}
                     ${retireHTML}
-                    <button class="modal-btn cancel" id="memorial-close">Close</button>
+                    <button class="modal-btn cancel" id="memorial-close" aria-label="Close memorial hall">Close</button>
                 </div>
             `;
 
@@ -1033,16 +1033,17 @@
                         ${unlockHTML}
                         <p style="font-size: 0.65rem; color: #888; margin-top: 8px;">Raise pets to adult stage to unlock mythical species!</p>
                     </div>
-                    <button class="codex-close-btn" id="codex-close">Close</button>
+                    <button class="codex-close-btn" id="codex-close" aria-label="Close codex">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeCodex() {
                 popModalEscape(closeCodex);
-                overlay.remove();
-                const btn = document.getElementById('codex-btn');
-                if (btn) btn.focus();
+                animateModalClose(overlay, () => {
+                    const btn = document.getElementById('codex-btn');
+                    if (btn) btn.focus();
+                });
             }
 
             document.getElementById('codex-close').focus();
@@ -1210,16 +1211,17 @@
                         </div>
                     </div>
 
-                    <button class="stats-close-btn" id="stats-close">Close</button>
+                    <button class="stats-close-btn" id="stats-close" aria-label="Close stats">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeStats() {
                 popModalEscape(closeStats);
-                overlay.remove();
-                const btn = document.getElementById('stats-btn');
-                if (btn) btn.focus();
+                animateModalClose(overlay, () => {
+                    const btn = document.getElementById('stats-btn');
+                    if (btn) btn.focus();
+                });
             }
 
             document.getElementById('stats-close').focus();
@@ -1655,7 +1657,7 @@
                         <div class="interaction-actions">${actionsHTML}</div>
                     </div>
 
-                    <button class="interaction-close" id="interaction-close">Close</button>
+                    <button class="interaction-close" id="interaction-close" aria-label="Close interaction">Close</button>
                 </div>
             `;
 
@@ -1732,9 +1734,10 @@
 
             function closeInteraction() {
                 popModalEscape(closeInteraction);
-                overlay.remove();
-                const trigger = document.getElementById('interact-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('interact-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('interaction-close').addEventListener('click', closeInteraction);
@@ -1867,7 +1870,7 @@
                     <div class="social-section-title">Relationships</div>
                     <div class="social-cards">${relCardsHTML || '<p class="social-empty">Adopt more pets to build relationships!</p>'}</div>
 
-                    <button class="social-close" id="social-close">Close</button>
+                    <button class="social-close" id="social-close" aria-label="Close social hub">Close</button>
                 </div>
             `;
 
@@ -1875,7 +1878,7 @@
 
             function closeSocial() {
                 popModalEscape(closeSocial);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('social-close').focus();
@@ -1928,16 +1931,17 @@
                         <div class="achievements-progress-fill" style="width: ${total > 0 ? (unlockedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="achievements-grid">${cardsHTML}</div>
-                    <button class="achievements-close" id="achievements-close">Close</button>
+                    <button class="achievements-close" id="achievements-close" aria-label="Close achievements">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeAch() {
                 popModalEscape(closeAch);
-                overlay.remove();
-                const trigger = document.getElementById('achievements-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('achievements-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('achievements-close').focus();
@@ -2016,14 +2020,14 @@
                     <div class="daily-tasks-list">${tasksHTML}</div>
                     ${weeklyArcHTML}
                     ${completedCount === totalTasks ? '<div class="daily-all-done">All tasks complete! Great job today!</div>' : ''}
-                    <button class="daily-close" id="daily-close">Close</button>
+                    <button class="daily-close" id="daily-close" aria-label="Close daily checklist">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeDaily() {
                 popModalEscape(closeDaily);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('daily-close').focus();
@@ -2092,16 +2096,17 @@
                         <div class="badges-progress-fill" style="width: ${total > 0 ? (unlockedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="badges-content">${contentHTML}</div>
-                    <button class="badges-close" id="badges-close">Close</button>
+                    <button class="badges-close" id="badges-close" aria-label="Close badges">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeBadges() {
                 popModalEscape(closeBadges);
-                overlay.remove();
-                const trigger = document.getElementById('rewards-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('rewards-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('badges-close').focus();
@@ -2191,16 +2196,17 @@
                         <div class="sticker-book-progress-fill" style="width: ${total > 0 ? (collectedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="sticker-book-pages">${pagesHTML}${progressPipsHTML}</div>
-                    <button class="sticker-book-close" id="sticker-book-close">Close</button>
+                    <button class="sticker-book-close" id="sticker-book-close" aria-label="Close sticker book">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeStickerBook() {
                 popModalEscape(closeStickerBook);
-                overlay.remove();
-                const trigger = document.getElementById('rewards-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('rewards-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('sticker-book-close').focus();
@@ -2268,16 +2274,17 @@
                         <div class="trophy-room-progress-fill" style="width: ${total > 0 ? (earnedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="trophy-shelves">${shelvesHTML}</div>
-                    <button class="trophy-room-close" id="trophy-room-close">Close</button>
+                    <button class="trophy-room-close" id="trophy-room-close" aria-label="Close trophy room">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             function closeTrophyRoom() {
                 popModalEscape(closeTrophyRoom);
-                overlay.remove();
-                const trigger = document.getElementById('rewards-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('rewards-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('trophy-room-close').focus();
@@ -2359,7 +2366,7 @@
                     ` : ''}
                     <div class="streak-milestones-title">Milestones</div>
                     <div class="streak-milestones">${milestonesHTML}</div>
-                    <button class="streak-close" id="streak-close">Close</button>
+                    <button class="streak-close" id="streak-close" aria-label="Close daily streak">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2394,7 +2401,7 @@
 
             function closeStreak() {
                 popModalEscape(closeStreak);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('streak-close').focus();
@@ -2454,7 +2461,7 @@
                             ${canClaimStreak ? '<div class="rewards-hub-card-alert">!</div>' : ''}
                         </button>
                     </div>
-                    <button class="rewards-hub-close" id="rewards-hub-close">Close</button>
+                    <button class="rewards-hub-close" id="rewards-hub-close" aria-label="Close rewards hub">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2467,7 +2474,7 @@
 
             function closeRewardsHub() {
                 popModalEscape(closeRewardsHub);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('rewards-hub-close').focus();
@@ -2476,5 +2483,52 @@
             pushModalEscape(closeRewardsHub);
             overlay._closeOverlay = closeRewardsHub;
             trapFocus(overlay);
+        }
+
+        // D33: Keyboard shortcuts reference modal
+        function showKeyboardShortcutsModal() {
+            const existing = document.querySelector('.keyboard-shortcuts-overlay');
+            if (existing) { if (existing._closeOverlay) popModalEscape(existing._closeOverlay); existing.remove(); }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay keyboard-shortcuts-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Keyboard Shortcuts');
+            overlay.innerHTML = `
+                <div class="modal-content" style="max-width:380px;">
+                    <h2 style="margin:0 0 12px;font-size:1.1rem;">Keyboard Shortcuts</h2>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                        <thead><tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;">Key</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;">Action</th></tr></thead>
+                        <tbody>
+                            <tr><td style="padding:4px 8px;"><kbd>1</kbd></td><td style="padding:4px 8px;">Feed</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>2</kbd></td><td style="padding:4px 8px;">Wash</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>3</kbd></td><td style="padding:4px 8px;">Sleep</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>4</kbd></td><td style="padding:4px 8px;">Pet</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>5</kbd></td><td style="padding:4px 8px;">Play</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>6</kbd></td><td style="padding:4px 8px;">Treat</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>7</kbd></td><td style="padding:4px 8px;">Games</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>8</kbd></td><td style="padding:4px 8px;">Arena</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>9</kbd></td><td style="padding:4px 8px;">Treasure</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>N</kbd></td><td style="padding:4px 8px;">Notification history</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>Esc</kbd></td><td style="padding:4px 8px;">Close modal</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>Tab</kbd></td><td style="padding:4px 8px;">Navigate</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>Enter</kbd> / <kbd>Space</kbd></td><td style="padding:4px 8px;">Activate</td></tr>
+                        </tbody>
+                    </table>
+                    <button class="modal-btn" id="kbd-shortcuts-close" aria-label="Close keyboard shortcuts" style="margin-top:12px;">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            function closeKbd() {
+                popModalEscape(closeKbd);
+                animateModalClose(overlay);
+            }
+            overlay._closeOverlay = closeKbd;
+            document.getElementById('kbd-shortcuts-close').addEventListener('click', closeKbd);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeKbd(); });
+            pushModalEscape(closeKbd);
+            trapFocus(overlay);
+            document.getElementById('kbd-shortcuts-close').focus();
         }
 
