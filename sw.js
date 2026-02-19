@@ -1,5 +1,6 @@
-// Update CACHE_VERSION on each deploy to bust stale caches
-const CACHE_VERSION = 10;
+// Import shared version constant so cache version lives in one place
+importScripts('./js/version.js');
+const CACHE_VERSION = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 11;
 const CACHE_NAME = `pet-care-buddy-v${CACHE_VERSION}`;
 const FONT_CACHE_NAME = `pet-care-buddy-fonts-v${CACHE_VERSION}`;
 
@@ -7,6 +8,7 @@ const ASSETS = [
     './',
     './index.html',
     './css/style.css',
+    './js/version.js',
     './js/utils.js',
     './js/balance.js',
     './js/eventbus.js',
