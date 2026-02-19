@@ -4966,3 +4966,134 @@ function getRoomFlavorText(action, room, petName) {
     const msg = roomPool[Math.floor(Math.random() * roomPool.length)];
     return msg.replace(/\{name\}/g, petName || 'Your pet');
 }
+
+// ==================== PET-TO-PET COMMENTARY ====================
+// When 2+ pets are present, one pet comments about another.
+// Organized by relationship tier (low/mid/high) and personality of the speaker.
+// {speaker} = commenting pet, {target} = the other pet.
+
+const PET_COMMENTARY = {
+    // Low relationship (stranger, acquaintance)
+    low: {
+        lazy: [
+            '{speaker} glances at {target} and yawns. "New friend... or nap-blocker?"',
+            '{speaker} watches {target} from a distance. Too much effort to go say hi.',
+            '{speaker} mutters: "That {target} is very... awake. Exhausting to watch."'
+        ],
+        energetic: [
+            '{speaker} bounces over to {target}! "HI! You\'re NEW! Wanna PLAY?!"',
+            '{speaker} runs circles around {target}! "I have SO much to show you!"',
+            '{speaker} vibrates with excitement near {target}. Making a new friend!'
+        ],
+        curious: [
+            '{speaker} sniffs {target} carefully. "Interesting. Very interesting."',
+            '{speaker} tilts their head at {target}. "What are you? Where are you from?"',
+            '{speaker} takes mental notes about {target}. Research purposes only.'
+        ],
+        shy: [
+            '{speaker} peeks at {target} from behind a cushion. Not ready yet.',
+            '{speaker} whispers: "Is... is {target} nice? They seem nice. Maybe."',
+            '{speaker} hides but keeps one eye on {target}. Curious but cautious.'
+        ],
+        playful: [
+            '{speaker} drops a toy at {target}\'s feet. "Play? PLAY? Please play!"',
+            '{speaker} does a silly dance to get {target}\'s attention!',
+            '{speaker} pokes {target} and runs away giggling. Tag!'
+        ],
+        grumpy: [
+            '{speaker} eyes {target} suspiciously. "Don\'t touch my stuff."',
+            '{speaker} grumbles: "Oh great. More company. Just what I needed."',
+            '{speaker} turns their back on {target}. Playing it cool. Very cool.'
+        ]
+    },
+    // Mid relationship (friend, closeFriend)
+    mid: {
+        lazy: [
+            '{speaker} and {target} nap side by side. Synchronized napping!',
+            '{speaker} nudges {target}: "Wanna lie here and do nothing together?"',
+            '{speaker} shares their warm spot with {target}. That\'s real friendship.'
+        ],
+        energetic: [
+            '{speaker} and {target} chase each other in joyful circles!',
+            '{speaker} challenges {target} to a race! "Ready set GO!"',
+            '{speaker} bounces: "{target}! You\'re the BEST adventure buddy!"'
+        ],
+        curious: [
+            '{speaker} and {target} investigate a sound together. Teamwork!',
+            '{speaker} tells {target} a fun fact. {target} seems impressed!',
+            '{speaker}: "Hey {target}, did you know that—" *enthusiastic explanation*'
+        ],
+        shy: [
+            '{speaker} sits quietly next to {target}. Comfortable silence.',
+            '{speaker} brushes against {target} gently. A small gesture of trust.',
+            '{speaker} whispers a secret to {target}. They lean in to listen.'
+        ],
+        playful: [
+            '{speaker} and {target} invent a brand new game together!',
+            '{speaker} playfully steals {target}\'s toy then gives it right back!',
+            '{speaker}: "Hey {target}, wanna build a pillow fort? I have a PLAN!"'
+        ],
+        grumpy: [
+            '{speaker} pretends to be annoyed by {target}. Sits closer anyway.',
+            '{speaker}: "I don\'t LIKE {target}. I just tolerate them. ...Really well."',
+            '{speaker} shares food with {target} when they think no one is watching.'
+        ]
+    },
+    // High relationship (bestFriend, family)
+    high: {
+        lazy: [
+            '{speaker} and {target} are piled on top of each other napping. A cuddle puddle.',
+            '{speaker} can\'t sleep without {target} nearby. They\'re a bonded pair now.',
+            '{speaker} and {target} breathe in sync. That\'s how close they are.'
+        ],
+        energetic: [
+            '{speaker} and {target} have their own secret celebration dance!',
+            '{speaker}: "{target} is my FAVORITE! We do EVERYTHING together!"',
+            '{speaker} and {target} zoom around in perfect formation. Dynamic duo!'
+        ],
+        curious: [
+            '{speaker} and {target} explore every corner together. Best research team.',
+            '{speaker} explains their latest discovery to {target} with great passion.',
+            '{speaker}: "{target} asks the best questions. We make such a good team!"'
+        ],
+        shy: [
+            '{speaker} nuzzles {target} openly. The shyness melts away with family.',
+            '{speaker} feels brave enough to play — but only with {target}.',
+            '{speaker} sighs happily next to {target}. "You make the world less scary."'
+        ],
+        playful: [
+            '{speaker} and {target} have inside jokes no one else understands!',
+            '{speaker}: "{target} is the ULTIMATE playmate! No one plays better!"',
+            '{speaker} and {target} put on a show together. Standing ovation!'
+        ],
+        grumpy: [
+            '{speaker} ACTUALLY smiles at {target}. Mark the calendar.',
+            '{speaker} growls at everyone EXCEPT {target}. Soft spot detected.',
+            '{speaker}: "If anyone messes with {target}, they answer to ME. Hmph."'
+        ]
+    }
+};
+
+/**
+ * Get a pet-to-pet commentary line.
+ * @param {Object} speaker - The pet making the comment
+ * @param {Object} target - The pet being commented about
+ * @param {string} relationshipLevel - One of the RELATIONSHIP_ORDER levels
+ * @returns {string|null} Commentary text or null
+ */
+function getPetCommentary(speaker, target, relationshipLevel) {
+    if (!speaker || !target) return null;
+    const speakerName = speaker.name || 'Your pet';
+    const targetName = target.name || 'Friend';
+    const personality = speaker.personality || 'playful';
+    // Map relationship level to tier
+    let tier = 'low';
+    if (['friend', 'closeFriend'].includes(relationshipLevel)) tier = 'mid';
+    else if (['bestFriend', 'family'].includes(relationshipLevel)) tier = 'high';
+    const tierPool = PET_COMMENTARY[tier];
+    if (!tierPool) return null;
+    const persPool = tierPool[personality];
+    if (!persPool || persPool.length === 0) return null;
+    const msg = persPool[Math.floor(Math.random() * persPool.length)];
+    return msg.replace(/\{speaker\}/g, speakerName).replace(/\{target\}/g, targetName);
+}

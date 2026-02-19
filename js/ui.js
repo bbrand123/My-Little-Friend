@@ -1502,6 +1502,41 @@
             return pools[Math.floor(Math.random() * pools.length)];
         }
 
+        // Pet-to-pet commentary timer (every 2-3 minutes when 2+ pets exist)
+        let _petCommentaryTimer = null;
+
+        function schedulePetCommentary() {
+            if (_petCommentaryTimer) { clearTimeout(_petCommentaryTimer); _petCommentaryTimer = null; }
+            if (!gameState.pets || gameState.pets.length < 2) return;
+            const delay = 120000 + Math.random() * 60000; // 2-3 minutes
+            _petCommentaryTimer = setTimeout(() => {
+                removeIdleTimer(_petCommentaryTimer);
+                _petCommentaryTimer = null;
+                showPetCommentary();
+                schedulePetCommentary();
+            }, delay);
+            idleAnimTimers.push(_petCommentaryTimer);
+        }
+
+        function showPetCommentary() {
+            if (gameState.phase !== 'pet' || !gameState.pet) return;
+            if (!gameState.pets || gameState.pets.length < 2) return;
+            if (typeof getPetCommentary !== 'function' || typeof getRelationshipLevel !== 'function') return;
+            const activePet = gameState.pet;
+            // Pick a random other pet to comment about
+            const others = gameState.pets.filter(p => p && p.id !== activePet.id);
+            if (others.length === 0) return;
+            const target = others[Math.floor(Math.random() * others.length)];
+            // Get relationship level
+            const relKey = [activePet.id, target.id].sort().join('-');
+            const relData = (gameState.relationships && gameState.relationships[relKey]) || { points: 0 };
+            const relLevel = getRelationshipLevel(relData.points || 0);
+            const commentary = getPetCommentary(activePet, target, relLevel);
+            if (commentary) {
+                showToast(commentary, '#FFB74D');
+            }
+        }
+
         const EARLY_SESSION_LIMIT = 3;
         const EARLY_SESSION_ACTION_LIMIT = 24;
 
@@ -3983,6 +4018,7 @@
             scheduleNeedBasedAnim();
             scheduleSpeechBubble();
             scheduleSpeciesIdleAnim();
+            schedulePetCommentary();
         }
 
         // Blink: random interval between 8-15 seconds (slowed to reduce visual noise)
