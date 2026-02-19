@@ -1344,10 +1344,29 @@
                     if (switchActivePet(idx)) {
                         const np = gameState.pet;
                         _prevStats = np ? { hunger: np.hunger, cleanliness: np.cleanliness, happiness: np.happiness, energy: np.energy } : { hunger: -1, cleanliness: -1, happiness: -1, energy: -1 };
-                        renderPetPhase();
+                        // C25: Crossfade transition when switching pets
+                        const reducedMotion = (document.documentElement.getAttribute('data-reduced-motion') === 'true')
+                            || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                        const petArea = document.querySelector('.pet-area');
+                        if (petArea && !reducedMotion) {
+                            petArea.style.transition = 'opacity 0.15s ease';
+                            petArea.style.opacity = '0';
+                            setTimeout(() => {
+                                renderPetPhase();
+                                const pa2 = document.querySelector('.pet-area');
+                                if (pa2) {
+                                    pa2.style.opacity = '0';
+                                    pa2.style.transition = 'opacity 0.2s ease';
+                                    requestAnimationFrame(() => { pa2.style.opacity = '1'; });
+                                }
+                            }, 150);
+                        } else {
+                            renderPetPhase();
+                        }
                         const petData = getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type];
                         if (petData) {
                             showToast(`Switched to ${escapeHTML(gameState.pet.name || petData.name)}!`, '#4ECDC4');
+                            announce(`Switched to ${gameState.pet.name || petData.name}`);
                         }
                     }
                 });

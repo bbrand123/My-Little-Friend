@@ -438,6 +438,28 @@
             }
         });
 
+        // ==================== C28: TOOLTIP VIEWPORT CLAMPING ====================
+        document.addEventListener('mouseover', (e) => {
+            const btn = e.target.closest('.action-btn');
+            if (!btn) return;
+            const tooltip = btn.querySelector('.action-btn-tooltip');
+            if (!tooltip) return;
+            // Reset position
+            tooltip.style.left = '50%';
+            tooltip.style.transform = 'translateX(-50%) scale(1)';
+            requestAnimationFrame(() => {
+                const rect = tooltip.getBoundingClientRect();
+                if (rect.right > window.innerWidth - 4) {
+                    tooltip.style.left = 'auto';
+                    tooltip.style.right = '0';
+                    tooltip.style.transform = 'scale(1)';
+                } else if (rect.left < 4) {
+                    tooltip.style.left = '0';
+                    tooltip.style.transform = 'scale(1)';
+                }
+            });
+        }, true);
+
         // ==================== BUTTON PRESS FEEDBACK (Item 29) ====================
         document.addEventListener('pointerdown', (e) => {
             const btn = e.target.closest('.action-btn, .core-care-btn');

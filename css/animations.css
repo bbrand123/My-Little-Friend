@@ -398,11 +398,15 @@
     z-index: 10;
     animation: statFloat 1.5s ease-out forwards;
     white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 0 6px rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.4);
+    padding: 1px 6px;
+    border-radius: 8px;
+    color: #fff;
 }
 
-.stat-change-float.positive { color: #43A047; }
-.stat-change-float.negative { color: #E53935; }
+.stat-change-float.positive { color: #b9f6ca; background: rgba(27, 94, 32, 0.5); }
+.stat-change-float.negative { color: #ffcdd2; background: rgba(183, 28, 28, 0.5); }
 
 @keyframes statFloat {
     0% { opacity: 1; transform: translateX(-50%) translateY(0); }
