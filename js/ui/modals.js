@@ -1148,6 +1148,34 @@
                                 </div>
                             </div>`;
                         })() : ''}
+                        ${(() => {
+                            if (!pet || !pet.careHistory || pet.careHistory.length < 2) return '';
+                            const history = pet.careHistory.slice(-100);
+                            const min = Math.max(0, Math.min(...history.map(h => h.average)) - 5);
+                            const max = Math.min(100, Math.max(...history.map(h => h.average)) + 5);
+                            const range = max - min || 1;
+                            const w = 200, h = 40;
+                            const points = history.map((entry, i) => {
+                                const x = (i / (history.length - 1)) * w;
+                                const y = h - ((entry.average - min) / range) * h;
+                                return `${x.toFixed(1)},${y.toFixed(1)}`;
+                            }).join(' ');
+                            const recent = history.slice(-5);
+                            const older = history.slice(-10, -5);
+                            const recentAvg = recent.reduce((s, e) => s + e.average, 0) / recent.length;
+                            const olderAvg = older.length > 0 ? older.reduce((s, e) => s + e.average, 0) / older.length : recentAvg;
+                            const trend = recentAvg > olderAvg + 2 ? 'Improving' : recentAvg < olderAvg - 2 ? 'Declining' : 'Steady';
+                            const trendColor = trend === 'Improving' ? '#43A047' : trend === 'Declining' ? '#E53935' : '#FB8C00';
+                            const lineColor = careQuality === 'excellent' ? '#43A047' : careQuality === 'good' ? '#66BB6A' : careQuality === 'average' ? '#FB8C00' : '#E53935';
+                            return `<div class="care-trend-section">
+                                <div class="care-trend-label" style="font-size:0.8rem;font-weight:700;margin-bottom:4px;">
+                                    Care Trend: <span style="color:${trendColor}">${trend}</span>
+                                </div>
+                                <svg class="care-sparkline" viewBox="0 0 ${w} ${h}" role="img" aria-label="Care quality trend: ${trend.toLowerCase()} over the last ${history.length} sessions" style="width:100%;max-width:220px;height:44px;">
+                                    <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>`;
+                        })()}
                         <div class="care-quality-tip">
                             💡 ${careQualityTips[careQuality] || careQualityTips.average}
                         </div>

@@ -5635,6 +5635,19 @@
         }
 
 
+        .care-trend-section {
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.03);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .care-sparkline {
+            display: block;
+            margin: 0 auto;
+        }
+
         .care-quality-tip {
             margin: 10px 0;
             padding: 10px 14px;
