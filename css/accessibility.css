@@ -1081,6 +1081,64 @@ html[data-reduced-motion="true"] *::after {
     scroll-behavior: auto !important;
 }
 
+/* D29: High Contrast Mode */
+[data-high-contrast="true"] {
+    --focus-color: #0000FF;
+}
+[data-high-contrast="true"] body {
+    color: #000 !important;
+    background: #FFF !important;
+}
+[data-high-contrast="true"][data-theme="dark"] body {
+    color: #FFF !important;
+    background: #000 !important;
+}
+[data-high-contrast="true"] button,
+[data-high-contrast="true"] .action-btn,
+[data-high-contrast="true"] .modal-btn,
+[data-high-contrast="true"] .core-care-btn,
+[data-high-contrast="true"] .top-action-btn,
+[data-high-contrast="true"] .room-btn {
+    border-width: 3px !important;
+    border-style: solid !important;
+    font-weight: 700 !important;
+}
+[data-high-contrast="true"] :focus-visible {
+    outline: 4px solid #0000FF !important;
+    outline-offset: 2px !important;
+}
+[data-high-contrast="true"][data-theme="dark"] :focus-visible {
+    outline-color: #FFD700 !important;
+}
+[data-high-contrast="true"] .toast,
+[data-high-contrast="true"] .modal-content,
+[data-high-contrast="true"] .settings-modal {
+    border: 2px solid #000 !important;
+}
+[data-high-contrast="true"][data-theme="dark"] .toast,
+[data-high-contrast="true"][data-theme="dark"] .modal-content,
+[data-high-contrast="true"][data-theme="dark"] .settings-modal {
+    border-color: #FFF !important;
+}
+
+/* D31: Settings grouped sections */
+.settings-group {
+    border: none;
+    padding: 0;
+    margin: 0 0 8px 0;
+}
+.settings-group-heading {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text-secondary, #666);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+[data-theme="dark"] .settings-group-heading {
+    border-bottom-color: #444;
+}
+
 @media (max-width: 480px) {
     .game-container {
         padding: 14px;

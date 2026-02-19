@@ -2485,3 +2485,50 @@
             trapFocus(overlay);
         }
 
+        // D33: Keyboard shortcuts reference modal
+        function showKeyboardShortcutsModal() {
+            const existing = document.querySelector('.keyboard-shortcuts-overlay');
+            if (existing) { if (existing._closeOverlay) popModalEscape(existing._closeOverlay); existing.remove(); }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay keyboard-shortcuts-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Keyboard Shortcuts');
+            overlay.innerHTML = `
+                <div class="modal-content" style="max-width:380px;">
+                    <h2 style="margin:0 0 12px;font-size:1.1rem;">Keyboard Shortcuts</h2>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                        <thead><tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;">Key</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;">Action</th></tr></thead>
+                        <tbody>
+                            <tr><td style="padding:4px 8px;"><kbd>1</kbd></td><td style="padding:4px 8px;">Feed</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>2</kbd></td><td style="padding:4px 8px;">Wash</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>3</kbd></td><td style="padding:4px 8px;">Sleep</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>4</kbd></td><td style="padding:4px 8px;">Pet</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>5</kbd></td><td style="padding:4px 8px;">Play</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>6</kbd></td><td style="padding:4px 8px;">Treat</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>7</kbd></td><td style="padding:4px 8px;">Games</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>8</kbd></td><td style="padding:4px 8px;">Arena</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>9</kbd></td><td style="padding:4px 8px;">Treasure</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>N</kbd></td><td style="padding:4px 8px;">Notification history</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>Esc</kbd></td><td style="padding:4px 8px;">Close modal</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>Tab</kbd></td><td style="padding:4px 8px;">Navigate</td></tr>
+                            <tr><td style="padding:4px 8px;"><kbd>Enter</kbd> / <kbd>Space</kbd></td><td style="padding:4px 8px;">Activate</td></tr>
+                        </tbody>
+                    </table>
+                    <button class="modal-btn" id="kbd-shortcuts-close" aria-label="Close keyboard shortcuts" style="margin-top:12px;">Close</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            function closeKbd() {
+                popModalEscape(closeKbd);
+                animateModalClose(overlay);
+            }
+            overlay._closeOverlay = closeKbd;
+            document.getElementById('kbd-shortcuts-close').addEventListener('click', closeKbd);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeKbd(); });
+            pushModalEscape(closeKbd);
+            trapFocus(overlay);
+            document.getElementById('kbd-shortcuts-close').focus();
+        }
+

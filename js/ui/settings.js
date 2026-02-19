@@ -35,6 +35,7 @@
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
             const srVerbosityDetailed = (localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed');
             const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
+            const highContrastEnabled = document.documentElement.getAttribute('data-high-contrast') === 'true';
 
             const overlay = document.createElement('div');
             overlay.className = 'settings-overlay';
@@ -45,6 +46,8 @@
                 <div class="settings-modal">
                     <h2 class="settings-title">⚙️ Settings</h2>
                     <div class="settings-list">
+
+                        <fieldset class="settings-group"><legend class="settings-group-heading">Audio</legend>
                         <div class="settings-row">
                             <span class="settings-row-label">🔊 Sound</span>
                             <button class="settings-toggle ${soundEnabled ? 'on' : ''}" id="setting-sound" role="switch" aria-checked="${soundEnabled}" aria-label="Sound">
@@ -87,6 +90,9 @@
                             </div>
                             <input type="range" class="settings-volume-slider" id="setting-music-volume" min="0" max="100" step="5" value="${Math.round(musicVolumeSetting * 100)}" aria-label="Music volume">
                         </div>
+                        </fieldset>
+
+                        <fieldset class="settings-group"><legend class="settings-group-heading">Display</legend>
                         <div class="settings-row">
                             <span class="settings-row-label">${isDark ? '🌙' : '☀️'} Dark Mode</span>
                             <button class="settings-toggle ${isDark ? 'on' : ''}" id="setting-darkmode" role="switch" aria-checked="${isDark}" aria-label="Dark Mode">
@@ -95,11 +101,34 @@
                             <span class="settings-toggle-state" id="state-setting-darkmode">${isDark ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
-                            <span class="settings-row-label">📳 Haptic Feedback</span>
-                            <button class="settings-toggle ${hapticEnabled ? 'on' : ''}" id="setting-haptic" role="switch" aria-checked="${hapticEnabled}" aria-label="Haptic Feedback">
+                            <span class="settings-row-label">🔤 Large Text</span>
+                            <button class="settings-toggle ${document.documentElement.getAttribute('data-text-size') === 'large' ? 'on' : ''}" id="setting-textsize" role="switch" aria-checked="${document.documentElement.getAttribute('data-text-size') === 'large'}" aria-label="Large Text">
                                 <span class="settings-toggle-knob"></span>
                             </button>
-                            <span class="settings-toggle-state" id="state-setting-haptic">${hapticEnabled ? 'On' : 'Off'}</span>
+                            <span class="settings-toggle-state" id="state-setting-textsize">${document.documentElement.getAttribute('data-text-size') === 'large' ? 'On' : 'Off'}</span>
+                        </div>
+                        </fieldset>
+
+                        <fieldset class="settings-group"><legend class="settings-group-heading">Accessibility</legend>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🔲 High Contrast</span>
+                            <button class="settings-toggle ${highContrastEnabled ? 'on' : ''}" id="setting-high-contrast" role="switch" aria-checked="${highContrastEnabled}" aria-label="High Contrast">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-high-contrast">${highContrastEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🌀 Reduced Motion</span>
+                            <button class="settings-toggle ${reducedMotionEnabled ? 'on' : ''}" id="setting-reduced-motion" role="switch" aria-checked="${reducedMotionEnabled}" aria-label="Reduced Motion">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-reduced-motion">${reducedMotionEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row settings-row-verbosity">
+                            <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
+                            <button class="settings-choice ${srVerbosityDetailed ? '' : 'active'}" id="setting-sr-brief" type="button" aria-pressed="${srVerbosityDetailed ? 'false' : 'true'}">Brief</button>
+                            <button class="settings-choice ${srVerbosityDetailed ? 'active' : ''}" id="setting-sr-detailed" type="button" aria-pressed="${srVerbosityDetailed ? 'true' : 'false'}">Detailed</button>
+                            <small class="settings-verbosity-desc" style="display:block;width:100%;font-size:0.78rem;color:var(--color-text-secondary);margin-top:4px;">Brief: Short announcements for actions and events. Detailed: Longer descriptions including stat values and tips.</small>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🗣️ Text-to-Speech</span>
@@ -109,18 +138,18 @@
                             <span class="settings-toggle-state" id="state-setting-tts">${ttsEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
-                            <span class="settings-row-label">🔤 Large Text</span>
-                            <button class="settings-toggle ${document.documentElement.getAttribute('data-text-size') === 'large' ? 'on' : ''}" id="setting-textsize" role="switch" aria-checked="${document.documentElement.getAttribute('data-text-size') === 'large'}" aria-label="Large Text">
-                                <span class="settings-toggle-knob"></span>
-                            </button>
-                            <span class="settings-toggle-state" id="state-setting-textsize">${document.documentElement.getAttribute('data-text-size') === 'large' ? 'On' : 'Off'}</span>
+                            <span class="settings-row-label">🌿 Low Stimulation</span>
+                            <button class="settings-preset-btn" id="setting-low-stim">Apply Preset</button>
                         </div>
+                        </fieldset>
+
+                        <fieldset class="settings-group"><legend class="settings-group-heading">General</legend>
                         <div class="settings-row">
-                            <span class="settings-row-label">🌀 Reduced Motion</span>
-                            <button class="settings-toggle ${reducedMotionEnabled ? 'on' : ''}" id="setting-reduced-motion" role="switch" aria-checked="${reducedMotionEnabled}" aria-label="Reduced Motion">
+                            <span class="settings-row-label">📳 Haptic Feedback</span>
+                            <button class="settings-toggle ${hapticEnabled ? 'on' : ''}" id="setting-haptic" role="switch" aria-checked="${hapticEnabled}" aria-label="Haptic Feedback">
                                 <span class="settings-toggle-knob"></span>
                             </button>
-                            <span class="settings-toggle-state" id="state-setting-reduced-motion">${reducedMotionEnabled ? 'On' : 'Off'}</span>
+                            <span class="settings-toggle-state" id="state-setting-haptic">${hapticEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🔔 Local Reactivation Reminders</span>
@@ -129,16 +158,11 @@
                             </button>
                             <span class="settings-toggle-state" id="state-setting-reminders">${remindersEnabled ? 'On' : 'Off'}</span>
                         </div>
-                        <div class="settings-row settings-row-verbosity">
-                            <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
-                            <button class="settings-choice ${srVerbosityDetailed ? '' : 'active'}" id="setting-sr-brief" type="button" aria-pressed="${srVerbosityDetailed ? 'false' : 'true'}">Brief</button>
-                            <button class="settings-choice ${srVerbosityDetailed ? 'active' : ''}" id="setting-sr-detailed" type="button" aria-pressed="${srVerbosityDetailed ? 'true' : 'false'}">Detailed</button>
-                            <small class="settings-verbosity-desc" style="display:block;width:100%;font-size:0.78rem;color:var(--color-text-secondary);margin-top:4px;">Brief: Short announcements for actions and events. Detailed: Longer descriptions including stat values and tips.</small>
-                        </div>
                         <div class="settings-row">
-                            <span class="settings-row-label">🌿 Low Stimulation</span>
-                            <button class="settings-preset-btn" id="setting-low-stim">Apply Preset</button>
+                            <button class="settings-preset-btn settings-reset-btn" id="setting-reset-defaults" style="color:#D32F2F;border-color:#D32F2F;">Reset All Settings to Defaults</button>
                         </div>
+                        </fieldset>
+
                     </div>
                     <div class="settings-keyboard-hints">
                         <h3 class="settings-hints-title">Keyboard Shortcuts</h3>
@@ -220,9 +244,19 @@
                     showToast(enabled ? '🎧 Sample audio pack enabled' : '🎛️ Sample audio pack disabled', '#A8D8EA');
                 }
             });
+            // D30: Volume slider audio preview (debounced)
+            let _sfxPreviewTimer = null;
             bindVolumeSlider(
                 'setting-sfx-volume',
-                (value) => { if (typeof SoundManager !== 'undefined' && typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(value); }
+                (value) => {
+                    if (typeof SoundManager !== 'undefined' && typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(value);
+                    if (_sfxPreviewTimer) clearTimeout(_sfxPreviewTimer);
+                    _sfxPreviewTimer = setTimeout(() => {
+                        if (typeof SoundManager !== 'undefined' && SoundManager.getEnabled() && SoundManager.playSFX) {
+                            SoundManager.playSFX(SoundManager.sfx.bubblePop || SoundManager.sfx.feed);
+                        }
+                    }, 300);
+                }
             );
             bindVolumeSlider(
                 'setting-ambient-volume',
@@ -341,6 +375,53 @@
                     if (typeof announce === 'function') {
                         announce(presetSummary, { source: 'settings', dedupeMs: 1200 });
                     }
+                });
+            }
+
+            // D29: High Contrast toggle
+            const hcBtn = document.getElementById('setting-high-contrast');
+            if (hcBtn) {
+                hcBtn.addEventListener('click', function() {
+                    const isOn = document.documentElement.getAttribute('data-high-contrast') === 'true';
+                    const newVal = !isOn;
+                    document.documentElement.setAttribute('data-high-contrast', String(newVal));
+                    try { localStorage.setItem('petcare_highContrast', String(newVal)); } catch (e) {}
+                    this.classList.toggle('on', newVal);
+                    this.setAttribute('aria-checked', String(newVal));
+                    setSwitchStateText('setting-high-contrast', newVal);
+                });
+            }
+
+            // D32: Reset all settings to defaults
+            const resetBtn = document.getElementById('setting-reset-defaults');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (!window.confirm('Reset all settings to their defaults? This cannot be undone.')) return;
+                    // Reset theme
+                    document.documentElement.removeAttribute('data-theme');
+                    document.documentElement.removeAttribute('data-text-size');
+                    document.documentElement.setAttribute('data-reduced-motion', 'false');
+                    document.documentElement.setAttribute('data-high-contrast', 'false');
+                    try {
+                        localStorage.removeItem(STORAGE_KEYS.theme);
+                        localStorage.removeItem(STORAGE_KEYS.reducedMotion);
+                        localStorage.removeItem(STORAGE_KEYS.srVerbosity);
+                        localStorage.removeItem(STORAGE_KEYS.hapticOff);
+                        localStorage.removeItem(STORAGE_KEYS.ttsOff);
+                        localStorage.removeItem('petcare_highContrast');
+                        localStorage.removeItem(STORAGE_KEYS.textSize);
+                    } catch (e) {}
+                    if (typeof SoundManager !== 'undefined') {
+                        if (!SoundManager.getEnabled()) SoundManager.toggle();
+                        if (!SoundManager.getMusicEnabled()) SoundManager.toggleMusic();
+                        if (typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(1);
+                        if (typeof SoundManager.setAmbientVolumeSetting === 'function') SoundManager.setAmbientVolumeSetting(1);
+                        if (typeof SoundManager.setMusicVolumeSetting === 'function') SoundManager.setMusicVolumeSetting(1);
+                    }
+                    showToast('Settings reset to defaults.', '#66BB6A');
+                    closeSettings();
+                    // Re-open to reflect changes
+                    setTimeout(() => showSettingsModal(), 300);
                 });
             }
 
@@ -493,6 +574,9 @@
                 if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
                 const reducedMotion = localStorage.getItem(STORAGE_KEYS.reducedMotion);
                 if (reducedMotion === 'true') document.documentElement.setAttribute('data-reduced-motion', 'true');
+                // D29: Restore high-contrast mode
+                const hc = localStorage.getItem('petcare_highContrast');
+                if (hc === 'true') document.documentElement.setAttribute('data-high-contrast', 'true');
                 if (shouldApplyFirstRunDefaults && typeof SoundManager !== 'undefined') {
                     if (typeof SoundManager.getEnabled === 'function' && SoundManager.getEnabled()) SoundManager.toggle();
                     if (typeof SoundManager.getMusicEnabled === 'function' && SoundManager.getMusicEnabled()) SoundManager.toggleMusic();
