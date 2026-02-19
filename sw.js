@@ -12,6 +12,7 @@ const ASSETS = [
     './js/eventbus.js',
     './js/state.js',
     './js/constants.js',
+    './js/modal-manager.js',
     './js/svg.js',
     './js/sound.js',
     './js/game.js',
