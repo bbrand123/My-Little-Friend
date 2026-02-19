@@ -4660,3 +4660,309 @@ function getIdleMonologue(pet) {
     pet._seenMonologues.push(idx);
     return pick;
 }
+
+// ==================== ROOM-SPECIFIC INTERACTION FLAVOR TEXT ====================
+// Keyed by [action][room]. Each entry is 1-2 contextual flavor lines.
+// {name} is replaced at runtime. Supplements or overrides default feedback.
+
+const ROOM_FLAVOR_TEXT = {
+    feed: {
+        bedroom: [
+            '{name} sneaks crumbs into bed. Crumbs everywhere.',
+            '{name} eats a midnight snack on the pillow. No regrets.'
+        ],
+        kitchen: [
+            '{name} climbs up to the counter and eats properly at the table!',
+            'The kitchen smells amazing and {name} is right in the middle of it.'
+        ],
+        bathroom: [
+            '{name} munches next to the sink. A little odd, but clean!',
+            'Eating in the bathroom? {name} calls it "efficient multitasking."'
+        ],
+        backyard: [
+            '{name} has a little picnic on the grass. Nature dining!',
+            '{name} eats outside and the breeze carries the delicious smell everywhere.'
+        ],
+        park: [
+            '{name} has a little picnic under the big oak tree.',
+            'Squirrels watch jealously as {name} enjoys park snacks.'
+        ],
+        garden: [
+            '{name} eats surrounded by fresh herbs. Farm-to-table luxury!',
+            '{name} nibbles next to the tomato plants. Garden-fresh vibes.'
+        ],
+        library: [
+            '{name} eats quietly so as not to disturb the books.',
+            'A few crumbs fall between the pages. {name} looks guilty.'
+        ],
+        arcade: [
+            '{name} eats with one paw while gaming with the other.',
+            'Snacks and high scores — {name} is living the dream.'
+        ],
+        spa: [
+            '{name} enjoys a meal with spa-level relaxation.',
+            'Eating in the spa feels very fancy. {name} approves.'
+        ],
+        observatory: [
+            '{name} munches while stargazing. Cosmic dining experience!',
+            'Dinner under the stars — {name} feels like royalty.'
+        ],
+        workshop: [
+            '{name} takes a snack break between building projects.',
+            '{name} eats carefully, keeping food away from the tools.'
+        ]
+    },
+    wash: {
+        bedroom: [
+            '{name} gets a quick wipe-down on the bed. Towel duty!',
+            'A gentle sponge bath right in the cozy bedroom.'
+        ],
+        kitchen: [
+            '{name} gets a splash bath at the kitchen sink. Efficient!',
+            'The kitchen faucet doubles as a pet shower today.'
+        ],
+        bathroom: [
+            '{name} gets the full spa treatment — warm water and everything!',
+            'Bubbles fill the tub and {name} is in bath heaven.'
+        ],
+        backyard: [
+            '{name} gets a fun hose-down in the backyard! SPLASH!',
+            'The sprinkler doubles as a bath. {name} runs through it laughing!'
+        ],
+        park: [
+            '{name} splashes in the park fountain to get clean!',
+            'A quick dip in the park creek — nature\'s bathtub!'
+        ],
+        garden: [
+            'The garden hose gives {name} a gentle rinse among the flowers.',
+            '{name} gets clean and comes out smelling like the garden.'
+        ],
+        library: [
+            'A quick, careful wipe-down — can\'t splash near the books!',
+            '{name} holds very still for a tidy cleanup. Good manners.'
+        ],
+        arcade: [
+            'A quick cleanup between game rounds. Hygiene achievement unlocked!',
+            '{name} towels off quickly — back to gaming!'
+        ],
+        spa: [
+            'The spa bath is absolute luxury. Warm steam, gentle water, bliss.',
+            '{name} melts into the spa waters. This is what pampering feels like.'
+        ],
+        observatory: [
+            'A gentle wash under the dome. The stars seem to twinkle in approval.',
+            '{name} gets clean while watching constellations. Magical.'
+        ],
+        workshop: [
+            '{name} really needed this wash — workshop dust everywhere!',
+            'Scrubbing off sawdust and metal shavings. {name} feels renewed.'
+        ]
+    },
+    play: {
+        bedroom: [
+            '{name} bounces on the bed like a trampoline! Boing boing!',
+            'Pillow fort! {name} defends the fortress with squeaky battle cries!'
+        ],
+        kitchen: [
+            '{name} slides across the kitchen tiles! Wheeeee!',
+            'Playing between the table legs — {name}\'s own obstacle course!'
+        ],
+        bathroom: [
+            '{name} plays with the shower curtain like it\'s a cape!',
+            'Splashing in tiny puddles — bathroom playtime!'
+        ],
+        backyard: [
+            '{name} zooms around the backyard at full speed!',
+            'The whole backyard is a playground and {name} owns it!'
+        ],
+        park: [
+            '{name} runs through the grass, feeling the wind in their fur!',
+            'The park is huge and {name} wants to play in EVERY corner!'
+        ],
+        garden: [
+            '{name} plays hide and seek among the tall sunflowers!',
+            'Chasing butterflies through the garden beds!'
+        ],
+        library: [
+            '{name} plays quietly with a soft toy between bookshelves.',
+            'A gentle game of peekaboo around the reading chairs!'
+        ],
+        arcade: [
+            'The arcade is basically play paradise for {name}!',
+            '{name} bounces between games, buzzing with excitement!'
+        ],
+        spa: [
+            '{name} plays with bubbles floating through the steam.',
+            'Splish splash — spa play is surprisingly fun!'
+        ],
+        observatory: [
+            '{name} pretends to catch stars through the telescope!',
+            'Playing astronaut — {name} floats in "zero gravity!"'
+        ],
+        workshop: [
+            '{name} builds something amazing with workshop scraps!',
+            'Playing inventor — {name} creates a wobbly masterpiece!'
+        ]
+    },
+    sleep: {
+        bedroom: [
+            '{name} snuggles deep into the softest bed. Perfect sleep spot.',
+            'The bedroom was MADE for sleeping and {name} agrees completely.'
+        ],
+        kitchen: [
+            '{name} dozes off next to the warm oven. Toasty nap!',
+            'A nap by the humming fridge — surprisingly soothing!'
+        ],
+        bathroom: [
+            '{name} curls up on the bath mat. It\'s fluffy enough.',
+            'The gentle sound of dripping water lulls {name} to sleep.'
+        ],
+        backyard: [
+            '{name} naps in a warm patch of grass. Outdoor dreaming!',
+            'A gentle breeze rocks {name} to sleep under the open sky.'
+        ],
+        park: [
+            '{name} finds a shady tree and naps beneath it.',
+            'The sounds of nature create the perfect sleep soundtrack for {name}.'
+        ],
+        garden: [
+            '{name} sleeps among the flowers. They\'ll smell wonderful when they wake!',
+            'A garden nap surrounded by buzzing bees and warm earth.'
+        ],
+        library: [
+            '{name} falls asleep on a pile of soft books. Bookworm dreams!',
+            'The quiet rustle of pages is the perfect lullaby for {name}.'
+        ],
+        arcade: [
+            '{name} passes out mid-game. The high score will have to wait.',
+            'Even gamers need rest. {name} snoozes to 8-bit dream music.'
+        ],
+        spa: [
+            'A spa nap — the most luxurious rest {name} has ever had.',
+            'Warm towels, soft light, and perfect silence. Spa sleep is unmatched.'
+        ],
+        observatory: [
+            '{name} falls asleep watching the night sky. Dreaming among stars.',
+            'The slow rotation of the cosmos lulls {name} into deep sleep.'
+        ],
+        workshop: [
+            '{name} rests on a pile of soft rags. Earned that nap!',
+            'The workshop hum fades as {name} drifts into well-deserved sleep.'
+        ]
+    },
+    groom: {
+        bedroom: [
+            '{name} gets groomed on the bed. Loose fur everywhere!',
+            'A cozy bedroom grooming session with the good brush.'
+        ],
+        kitchen: [
+            '{name} gets a quick brush by the bright kitchen window.',
+            'Great lighting in here for finding every loose hair!'
+        ],
+        bathroom: [
+            'The bathroom mirror lets {name} admire the grooming progress!',
+            'Full grooming station — brush, comb, and bathroom mirror!'
+        ],
+        backyard: [
+            'Outdoor grooming! The breeze carries loose fur away like confetti.',
+            '{name} gets brushed in the sunshine. Fur glowing!'
+        ],
+        park: [
+            '{name} gets primped up for the park crowd. Looking good!',
+            'Birds collect {name}\'s loose fur for their nests. Recycling!'
+        ],
+        garden: [
+            '{name} sits patiently among the flowers for garden grooming.',
+            'Grooming in the garden — {name} emerges smelling like roses.'
+        ]
+    },
+    exercise: {
+        bedroom: [
+            '{name} does laps around the bed. Indoor training!',
+            'Bedroom cardio: jump on bed, jump off bed, repeat!'
+        ],
+        backyard: [
+            '{name} sprints across the backyard — full speed ahead!',
+            'The backyard is the perfect training ground for {name}!'
+        ],
+        park: [
+            '{name} runs the full park trail! What a champion!',
+            'The open fields give {name} room to really stretch those legs!'
+        ],
+        garden: [
+            '{name} weaves between garden rows like an agility course!',
+            'Garden fitness — {name} does squats between the rows.'
+        ],
+        workshop: [
+            '{name} lifts scraps like tiny weights. Workout improvisation!',
+            'The workshop becomes a gym. {name} is getting creative!'
+        ]
+    },
+    cuddle: {
+        bedroom: [
+            'The bed is the perfect cuddle zone. {name} melts into the pillows.',
+            'Blanket-wrapped cuddles in the bedroom. Maximum coziness achieved.'
+        ],
+        kitchen: [
+            '{name} gets warm kitchen hugs. Smells like home and cookies.',
+            'Cuddling by the warm stove — {name} purrs with contentment.'
+        ],
+        backyard: [
+            '{name} cuddles on the porch swing. Gentle rocking, gentle breeze.',
+            'Outdoor cuddles with grass underfoot and sky overhead.'
+        ],
+        park: [
+            'A cozy cuddle on the park bench. People smile as they walk by.',
+            '{name} snuggles close on the picnic blanket. Park cuddle perfection.'
+        ],
+        library: [
+            'Cuddling in a reading nook. {name} listens to your heartbeat like a story.',
+            'The library is quiet and warm. Perfect for a long, peaceful cuddle.'
+        ],
+        spa: [
+            'Spa cuddles in warm towels. {name} has never been more relaxed.',
+            'The spa steam makes everything soft and dreamy for cuddle time.'
+        ]
+    },
+    treat: {
+        kitchen: [
+            '{name} gets their treat right at the source — the kitchen counter!',
+            'Kitchen treats taste extra special. {name} is convinced of this.'
+        ],
+        park: [
+            '{name} enjoys their treat on a park bench. Outdoor indulgence!',
+            'Eating treats in the park — {name} feels like a fancy diner.'
+        ],
+        bedroom: [
+            'A secret treat in bed. {name} savors every crumb.',
+            'Midnight treat in the bedroom — the best kind of snack.'
+        ]
+    },
+    medicine: {
+        bathroom: [
+            'Medicine in the bathroom, just like a real doctor\'s office.',
+            '{name} is brave at the bathroom medicine cabinet.'
+        ],
+        bedroom: [
+            '{name} takes medicine tucked safely in bed. Getting better in comfort.',
+            'Bed rest and medicine — the classic recovery combo.'
+        ],
+        spa: [
+            'The spa makes medicine time feel more like a healing ritual.',
+            'Warm steam helps the medicine work even better for {name}.'
+        ]
+    }
+};
+
+/**
+ * Get room-specific flavor text for a care action.
+ * Returns a string or null if no room-specific text exists.
+ */
+function getRoomFlavorText(action, room, petName) {
+    const actionPool = ROOM_FLAVOR_TEXT[action];
+    if (!actionPool) return null;
+    const roomPool = actionPool[room];
+    if (!roomPool || roomPool.length === 0) return null;
+    const msg = roomPool[Math.floor(Math.random() * roomPool.length)];
+    return msg.replace(/\{name\}/g, petName || 'Your pet');
+}

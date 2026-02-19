@@ -3520,6 +3520,15 @@
                 return;
             }
 
+            // Room-specific flavor text (~30% chance, supplements care feedback)
+            if (typeof getRoomFlavorText === 'function') {
+                const flavorRoom = (gameState && gameState.currentRoom) || 'bedroom';
+                const flavorText = getRoomFlavorText(action, flavorRoom, pet.name || 'Your pet');
+                if (flavorText && Math.random() < 0.30) {
+                    setTimeout(() => showToast(flavorText, '#81C784'), 800);
+                }
+            }
+
             // Check for micro-event (supplementary flavor text ~12% of care actions)
             if (typeof getMicroEvent === 'function') {
                 const currentRoom = (gameState && gameState.currentRoom) || 'bedroom';
