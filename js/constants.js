@@ -966,26 +966,26 @@ const EXPLORATION_BIOMES = {
 };
 
 const EXPLORATION_LOOT = {
-    forestCharm: { id: 'forestCharm', name: 'Forest Charm', emoji: '🍃', rarity: 'common' },
-    mossStone: { id: 'mossStone', name: 'Moss Stone', emoji: '🪨', rarity: 'common' },
-    berryBundle: { id: 'berryBundle', name: 'Berry Bundle', emoji: '🫐', rarity: 'common' },
-    sunShell: { id: 'sunShell', name: 'Sun Shell', emoji: '🐚', rarity: 'common' },
-    seaGlass: { id: 'seaGlass', name: 'Sea Glass', emoji: '🔹', rarity: 'uncommon' },
-    tidePearl: { id: 'tidePearl', name: 'Tide Pearl', emoji: '🫧', rarity: 'rare' },
-    summitCrystal: { id: 'summitCrystal', name: 'Summit Crystal', emoji: '💎', rarity: 'rare' },
-    eagleFeather: { id: 'eagleFeather', name: 'Eagle Feather', emoji: '🪶', rarity: 'uncommon' },
-    emberOre: { id: 'emberOre', name: 'Ember Ore', emoji: '🔥', rarity: 'uncommon' },
-    caveLantern: { id: 'caveLantern', name: 'Cave Lantern', emoji: '🏮', rarity: 'uncommon' },
-    glowMushroom: { id: 'glowMushroom', name: 'Glow Mushroom', emoji: '🍄', rarity: 'common' },
-    runeFragment: { id: 'runeFragment', name: 'Rune Fragment', emoji: '🧩', rarity: 'rare' },
-    cloudRibbon: { id: 'cloudRibbon', name: 'Cloud Ribbon', emoji: '🎐', rarity: 'uncommon' },
-    stardust: { id: 'stardust', name: 'Stardust', emoji: '✨', rarity: 'rare' },
-    bubbleGem: { id: 'bubbleGem', name: 'Bubble Gem', emoji: '🔮', rarity: 'rare' },
-    coralCrown: { id: 'coralCrown', name: 'Coral Crown', emoji: '🪸', rarity: 'uncommon' },
-    windCompass: { id: 'windCompass', name: 'Wind Compass', emoji: '🧭', rarity: 'uncommon' },
-    skyLantern: { id: 'skyLantern', name: 'Sky Lantern', emoji: '🏮', rarity: 'rare' },
-    ancientCoin: { id: 'ancientCoin', name: 'Ancient Coin', emoji: '🪙', rarity: 'uncommon' },
-    mysteryMap: { id: 'mysteryMap', name: 'Mystery Map', emoji: '🗺️', rarity: 'rare' }
+    forestCharm: { id: 'forestCharm', name: 'Forest Charm', emoji: '🍃', rarity: 'common', flavorText: 'A leaf pressed between two smooth stones, warm to the touch even in winter. The forest remembers every creature who walks beneath its canopy, and this charm carries that memory.' },
+    mossStone: { id: 'mossStone', name: 'Moss Stone', emoji: '🪨', rarity: 'common', flavorText: 'Velvety green moss clings to a perfectly round stone. It feels like holding a tiny piece of the forest floor. If you listen closely, you can almost hear the creak of ancient trees.' },
+    berryBundle: { id: 'berryBundle', name: 'Berry Bundle', emoji: '🫐', rarity: 'common', flavorText: 'A cluster of sweet, jewel-bright berries wrapped in a broad leaf. They smell like sunshine and taste like a lazy summer afternoon in the woods.' },
+    sunShell: { id: 'sunShell', name: 'Sun Shell', emoji: '🐚', rarity: 'common', flavorText: 'A spiral shell bleached golden by countless days in the sun. Hold it to your ear and you\'ll hear the ocean humming a lullaby it learned from the tide.' },
+    seaGlass: { id: 'seaGlass', name: 'Sea Glass', emoji: '🔹', rarity: 'uncommon', flavorText: 'Once a sharp shard, now smoothed by decades of tumbling waves into something beautiful. Cool and silky to the touch, it catches the light like a frozen piece of the ocean.' },
+    tidePearl: { id: 'tidePearl', name: 'Tide Pearl', emoji: '🫧', rarity: 'rare', flavorText: 'Born in the deepest part of the reef, this pearl pulses with a soft inner glow. Legend says each one contains a wish made by the sea itself, waiting to be heard.' },
+    summitCrystal: { id: 'summitCrystal', name: 'Summit Crystal', emoji: '💎', rarity: 'rare', flavorText: 'Formed under immense pressure at the mountain\'s heart, this crystal sings when the wind hits it at just the right angle. It\'s cold to the touch but fills you with warmth.' },
+    eagleFeather: { id: 'eagleFeather', name: 'Eagle Feather', emoji: '🪶', rarity: 'uncommon', flavorText: 'Light as a whisper, strong as a promise. This feather drifted down from the highest peak where eagles dance with the clouds. It smells like high altitude and freedom.' },
+    emberOre: { id: 'emberOre', name: 'Ember Ore', emoji: '🔥', rarity: 'uncommon', flavorText: 'A chunk of rust-red ore that stays perpetually warm, as if it remembers the volcanic forge where it was born. Hold it close on cold nights — it never quite goes out.' },
+    caveLantern: { id: 'caveLantern', name: 'Cave Lantern', emoji: '🏮', rarity: 'uncommon', flavorText: 'A small lantern left by cave explorers long ago, still flickering with a mysterious amber light. It hums softly in dark places, as if it\'s happy to be useful again.' },
+    glowMushroom: { id: 'glowMushroom', name: 'Glow Mushroom', emoji: '🍄', rarity: 'common', flavorText: 'A soft, spongy mushroom that emits a gentle blue-green glow. It smells like damp earth and ancient things. In the dark, it turns any room into a fairy grotto.' },
+    runeFragment: { id: 'runeFragment', name: 'Rune Fragment', emoji: '🧩', rarity: 'rare', flavorText: 'A piece of something much larger — carved with symbols no one can read anymore. It tingles when touched, as if the knowledge it carries is trying to jump into your mind.' },
+    cloudRibbon: { id: 'cloudRibbon', name: 'Cloud Ribbon', emoji: '🎐', rarity: 'uncommon', flavorText: 'A wisp of cloud caught and woven into a silky ribbon. It\'s impossibly soft, slightly damp, and smells like rain that hasn\'t fallen yet. It drifts gently even in still air.' },
+    stardust: { id: 'stardust', name: 'Stardust', emoji: '✨', rarity: 'rare', flavorText: 'Tiny particles that shimmer with their own light, collected from where the sky meets the highest peaks. It feels like holding pure possibility in your paws — warm, tingly, and full of wonder.' },
+    bubbleGem: { id: 'bubbleGem', name: 'Bubble Gem', emoji: '🔮', rarity: 'rare', flavorText: 'A perfectly spherical gem that seems to contain a tiny ocean. Tilt it and you see waves; shake it gently and you hear the distant crash of surf. The sea, captured in crystal.' },
+    coralCrown: { id: 'coralCrown', name: 'Coral Crown', emoji: '🪸', rarity: 'uncommon', flavorText: 'A delicate circlet of branching coral in sunset hues. It\'s lighter than it looks and feels slightly textured, like running your paw over tiny ridges of underwater architecture.' },
+    windCompass: { id: 'windCompass', name: 'Wind Compass', emoji: '🧭', rarity: 'uncommon', flavorText: 'Instead of pointing north, this compass needle follows the wind. It spins lazily on calm days and whirls excitedly before storms. A navigator\'s curiosity made real.' },
+    skyLantern: { id: 'skyLantern', name: 'Sky Lantern', emoji: '🏮', rarity: 'rare', flavorText: 'A paper lantern that glows with captured starlight. It floats slightly upward when released, as if it remembers being part of the sky. Its light is warm and whisper-quiet.' },
+    ancientCoin: { id: 'ancientCoin', name: 'Ancient Coin', emoji: '🪙', rarity: 'uncommon', flavorText: 'Worn smooth by countless paws, this coin bears the face of a pet king from a forgotten era. It\'s heavy for its size and always feels warm, as if it carries the memory of every hand that held it.' },
+    mysteryMap: { id: 'mysteryMap', name: 'Mystery Map', emoji: '🗺️', rarity: 'rare', flavorText: 'The ink on this map seems to shift when you\'re not looking directly at it. New paths appear, old ones vanish. It smells like adventure and old parchment, and it crinkles with each unfolding.' }
 };
 
 const BIOME_LOOT_POOLS = {
@@ -5344,4 +5344,74 @@ function getMilestoneReaction(badgeId, personality, petName) {
         return generic[Math.floor(Math.random() * generic.length)].replace(/\{name\}/g, name);
     }
     return null;
+}
+
+// ==================== COLLECTIBLE FLAVOR DESCRIPTIONS ====================
+// 2-3 sentence descriptions for stickers. Whimsical, worldbuilding-rich, accessible.
+// Describe textures, sounds, feelings, not just visuals.
+
+const STICKER_FLAVOR_TEXT = {
+    // Animal stickers
+    happyPup: 'This sticker practically vibrates with tail-wagging energy. Press it and you can almost feel the soft thump-thump of an excited pup greeting you at the door. It smells faintly of warm fur and happiness.',
+    sleepyKitty: 'A sticker so cozy it makes you want to curl up and nap. The printed fur looks impossibly soft, and if you run your finger across it, you swear you can hear a tiny, contented purr.',
+    bouncyBunny: 'This sticker bounces with barely-contained joy. The bunny captured here mid-hop radiates a soft warmth, and the paper has a velvety texture like a rabbit\'s ear.',
+    tinyTurtle: 'Smooth and cool to the touch, like a river stone. This tiny turtle sticker carries the patience of ages and the quiet wisdom of something that takes life one gentle step at a time.',
+    goldenFish: 'Shimmering with an iridescent sheen that shifts from gold to orange as you tilt it. It feels like holding a piece of sunlit water — bright, warm, and perpetually in graceful motion.',
+    sweetBird: 'Light as a feather — literally. This sticker seems to float on the page. Tilt your ear close and you might catch the echo of a dawn chorus, sweet and clear.',
+    cuddlyPanda: 'Impossibly plush-looking, this sticker has a texture that\'s half velvet, half cloud. It radiates the gentle warmth of a panda hug — soft, round, and utterly comforting.',
+    royalPenguin: 'This sticker stands with dignified poise. The penguin\'s tuxedo gleams with a cool sheen, and there\'s a faint crispness to it — like Antarctic air carried in ink.',
+    fuzzyHamster: 'Round, warm, and irresistibly fuzzy. This sticker has a soft texture that invites you to touch it again and again. It carries the scent of cedar shavings and tiny happiness.',
+    happyFrog: 'Smooth and slightly cool, like a lily pad after morning dew. This cheerful frog sticker makes a soft \"ribbit\" sound in your imagination every time you look at it.',
+    spinyHedgehog: 'Surprisingly gentle despite its spiny appearance. Run a finger across it and feel the contrast of soft belly and textured spines. It smells like autumn leaves and earth.',
+    magicUnicorn: 'This sticker shimmers with colors that shouldn\'t exist — swirling pastels that feel warm when you touch them. The air around it smells like wildflowers after rain, and dreams yet to be dreamed.',
+    fierceDragon: 'The paper feels warm near this sticker, as if it radiates actual heat. The dragon\'s scales have a raised texture you can feel, and there\'s a faint sound — like a distant rumble — when you press your ear close.',
+    // Nature stickers
+    sproutSticker: 'Fresh, green, and full of potential. This sticker smells like turned earth and new rain. Touch it and you feel the tiny vibration of life beginning — the unstoppable force of growth.',
+    sunflowerSticker: 'Bright and warm as the flower itself. This sticker follows the light wherever you place it, always turning to face the sun. It smells like summer fields and golden afternoons.',
+    rainbowSticker: 'Seven bands of color that feel different under your finger — each one smooth but distinct. The sticker seems to glow faintly after rain, carrying the promise that storms always pass.',
+    cherryBlossom: 'Delicate pink petals that seem to flutter even though they\'re printed flat. This sticker carries the sweet, ephemeral scent of spring and the gentle reminder that beautiful things are worth waiting for.',
+    snowflakeSticker: 'Cool to the touch, each tiny crystal arm unique. This sticker has a soft sparkle that catches the light and a crisp freshness that makes you think of quiet winter mornings and the first footprints in snow.',
+    // Fun stickers
+    starSticker: 'This star radiates actual warmth and a gentle, pulsing glow. It feels like holding concentrated achievement in your hands. Close your eyes and you can hear the faint chime of success.',
+    trophySticker: 'Heavy with the weight of accomplishment. The golden surface has a satisfying smoothness, and when the light hits it just right, you see your reflection looking proud.',
+    partySticker: 'Pop! Confetti seems to burst from this sticker in every direction. It has a slight fizzy texture, and the joy it carries is contagious. It sounds like laughter captured in paper.',
+    musicSticker: 'Press your ear close and you\'ll swear you hear a melody. This sticker vibrates faintly with rhythm, and its surface has the smooth, flowing feel of a song made tangible.',
+    artSticker: 'Every color in existence seems to live in this tiny sticker. The surface has the bumpy texture of dried paint, and it smells like creativity — sharp, fresh, and full of possibility.',
+    // Special stickers
+    heartSticker: 'Warm. Always warm. This sticker pulses gently, like a heartbeat you can feel through the paper. It carries the comfortable weight of deep, lasting love — the kind that makes a house a home.',
+    crownSticker: 'Regal and luminous, this crown sticker has a satisfying weight and a surface like polished gold. It hums with quiet authority and the unspoken promise that you\'ve earned your place.',
+    sparkleSticker: 'Impossible to look at without smiling. This sticker catches light from angles that shouldn\'t work and throws it back as tiny rainbows. It tingles under your touch.',
+    unicornSticker: 'Mythical and magnificent. This sticker shifts between colors like a soap bubble and feels silky-smooth. The air around it shimmers, and touching it fills you with wonder and gentle magic.',
+    dragonSticker: 'Powerful and ancient. The texture of dragon scales is raised and detailed — you can feel each one. It radiates a deep warmth, and the faintest whiff of smoke and starfire lingers around it.',
+    streakFlame: 'This flame never goes out. The sticker is warm to the touch, and the flickering pattern seems to dance when you move the page. It crackles with the energy of dedication and the heat of commitment.',
+    breedingEgg: 'Smooth, warm, and full of potential. This egg sticker seems to vibrate faintly, as if something inside is getting ready to hatch. It smells like new beginnings and morning light.',
+    dnaSticker: 'The double helix twists with hypnotic precision. Run your finger along it and feel the ridges of genetic code — the blueprint of uniqueness. It tingles with the electricity of creation.',
+    mutantStar: 'This star burns brighter than any other. Its surface shifts between textures — smooth, rough, warm, cool — as if it can\'t decide what it wants to be. That\'s its superpower: it\'s everything at once.',
+    familyTree: 'Deep roots and spreading branches. This sticker has the rough texture of bark and the green softness of leaves. It smells like earth and connection and the quiet strength of belonging.',
+    elderSticker: 'This sticker has the gravitas of centuries. Its surface is smooth from time, like a river stone, and it carries the warmth of accumulated wisdom. It feels like a gentle hand on your shoulder.',
+    memorialSticker: 'A rose that never wilts. This sticker is soft as real petals, and it carries a faint, sweet scent. It\'s a reminder that love doesn\'t end — it transforms into something permanent and beautiful.',
+    wisdomSticker: 'Open this sticker-book and you can almost hear pages turning. The paper texture is rich and creamy, like an ancient manuscript. It smells like old libraries and the quiet joy of understanding.',
+    legendRibbon: 'Silk-smooth and shimmering with achievement. This ribbon sticker flows across the page as if caught in a gentle breeze. It carries the satisfied hum of a journey completed with honor.',
+    moonCrest: 'Cool, luminous, and serene. This crescent sticker glows with borrowed light — silver and blue and infinitely peaceful. Touch it during the quiet hours and feel the calm of a moonlit night.',
+    sunCrest: 'Radiantly warm, this sticker is a tiny sun you can carry. Its golden surface is always bright, and it smells like dawn — fresh, hopeful, and full of the promise of a new day.',
+    tideCrest: 'Fluid and ever-shifting. This ocean sticker has a wave-like texture that seems to move under your fingertip. It smells like salt air and sounds like the eternal rhythm of the sea.',
+    bloomCrest: 'Soft petals unfurl in perpetual bloom. This sticker is velvety-smooth and carries the intoxicating sweetness of a garden in full flower. Spring, captured forever in delicate ink.'
+};
+
+/**
+ * Get the flavor text for a collectible item (loot or sticker).
+ * Checks loot flavorText property first, then STICKER_FLAVOR_TEXT lookup.
+ */
+function getCollectibleFlavorText(itemId, itemType) {
+    if (itemType === 'loot' || itemType === 'exploration') {
+        const loot = EXPLORATION_LOOT[itemId];
+        return (loot && loot.flavorText) || null;
+    }
+    if (itemType === 'sticker') {
+        return STICKER_FLAVOR_TEXT[itemId] || null;
+    }
+    // Try both
+    const loot = EXPLORATION_LOOT[itemId];
+    if (loot && loot.flavorText) return loot.flavorText;
+    return STICKER_FLAVOR_TEXT[itemId] || null;
 }

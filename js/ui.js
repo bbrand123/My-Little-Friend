@@ -7177,12 +7177,16 @@
                     const isCollected = collected[sticker.id] && collected[sticker.id].collected;
                     const rarityData = STICKER_RARITIES[sticker.rarity];
                     const stars = isCollected ? Array(rarityData.stars).fill('⭐').join('') : '';
+                    const flavor = (isCollected && typeof getCollectibleFlavorText === 'function') ? getCollectibleFlavorText(sticker.id, 'sticker') : null;
+                    const flavorHTML = flavor ? `<div class="sticker-flavor">${escapeHTML(flavor)}</div>` : '';
+                    const ariaFlavor = flavor ? ' ' + flavor : '';
                     pagesHTML += `
-                        <div class="sticker-slot ${isCollected ? 'collected' : 'empty'} rarity-${sticker.rarity}" aria-label="${isCollected ? sticker.name : 'Empty slot'}: ${sticker.source}">
+                        <div class="sticker-slot ${isCollected ? 'collected' : 'empty'} rarity-${sticker.rarity}" aria-label="${isCollected ? sticker.name : 'Empty slot'}: ${sticker.source}${ariaFlavor}">
                             <div class="sticker-emoji">${isCollected ? sticker.emoji : '?'}</div>
                             <div class="sticker-name">${isCollected ? sticker.name : '???'}</div>
                             ${isCollected ? `<div class="sticker-rarity" style="color: ${rarityData.color}">${stars}</div>` : ''}
                             <div class="sticker-source">${sticker.source}</div>
+                            ${flavorHTML}
                         </div>
                     `;
                 });
@@ -8319,7 +8323,9 @@
                     .slice(0, 10)
                     .map(([lootId, count]) => {
                         const loot = EXPLORATION_LOOT[lootId] || { emoji: '📦', name: lootId };
-                        return `<li><span aria-hidden="true">${loot.emoji}</span> ${loot.name} x${count}</li>`;
+                        const flavor = (typeof getCollectibleFlavorText === 'function') ? getCollectibleFlavorText(lootId, 'loot') : null;
+                        const titleAttr = flavor ? ` title="${escapeHTML(flavor)}" aria-label="${escapeHTML(loot.name)} x${count}. ${escapeHTML(flavor)}"` : '';
+                        return `<li${titleAttr}><span aria-hidden="true">${loot.emoji}</span> ${loot.name} x${count}</li>`;
                     }).join('');
 
                 const stats = ex.stats || {};
