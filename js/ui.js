@@ -1225,7 +1225,7 @@
         function generateThoughtBubble(pet) {
             if (!pet) return '';
             const threshold = 35; // Show thought when stat drops below this
-            const petName = escapeHTML(pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet'));
+            const petName = getPetDisplayName(pet);
             // Find the most critical need
             const needs = [
                 { stat: 'hunger', value: pet.hunger, icon: '🍎', label: 'hungry' },
@@ -3832,7 +3832,7 @@
                 for (const m of milestones) {
                     if (rounded >= m && lastMilestone < m) {
                         _setGrowthMilestone(pet, m);
-                        const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                        const petName = getPetDisplayName(pet);
                         const nextLabel = GROWTH_STAGES[nextStage].label;
                         if (m === 99) {
                             announce(`${petName} is about to evolve to ${nextLabel}!`, true);
@@ -4294,7 +4294,7 @@
 
             overlay.innerHTML = `
                 <div class="feed-menu">
-                    <h3 class="feed-menu-title">🍽️ Feed ${escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet')}</h3>
+                    <h3 class="feed-menu-title">🍽️ Feed ${getPetDisplayName(pet)}</h3>
                     <p class="feed-menu-subtitle">Choose what to feed your pet</p>
                     <div class="feed-menu-items">${itemsHTML}</div>
                     <button class="feed-menu-close" id="feed-menu-close">Cancel</button>
@@ -8392,7 +8392,7 @@
                 )).join('');
 
                 const npcCards = (ex.npcEncounters || []).slice(0, 8).map((npc) => {
-                    const bond = Math.max(0, Math.min(100, npc.bond || 0));
+                    const bond = clamp(npc.bond || 0, 0, 100);
                     const befriendDisabled = npc.status === 'adopted';
                     const adoptDisabled = npc.status === 'adopted' || !canAdopt || (!npc.adoptable && bond < 100);
                     return `

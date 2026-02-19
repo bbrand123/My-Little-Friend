@@ -190,7 +190,7 @@
             let turnCount = 0;
 
             function renderBattle() {
-                const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                const petName = getPetDisplayName(pet);
                 const oppName = escapeHTML(opponent.name);
                 const playerPct = Math.max(0, Math.round((playerHP / playerMaxHP) * 100));
                 const oppPct = Math.max(0, Math.round((oppHP / oppMaxHP) * 100));
@@ -282,16 +282,7 @@
             }
 
             function restoreBattleLog() {
-                const log = overlay.querySelector('#battle-log');
-                if (log) {
-                    battleLogHistory.forEach(msg => {
-                        const entry = document.createElement('div');
-                        entry.className = 'battle-log-entry';
-                        entry.textContent = msg;
-                        log.appendChild(entry);
-                    });
-                    log.scrollTop = log.scrollHeight;
-                }
+                restoreLog('#battle-log', battleLogHistory, null, overlay);
             }
 
             function executeTurn(moveId) {
@@ -304,7 +295,7 @@
                     turnLocked = false;
                     return;
                 }
-                const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
+                const petName = getPetDisplayName(pet);
                 const oppName = opponent.name;
 
                 // Player turn
@@ -536,7 +527,7 @@
 
                 function renderBossFight() {
                     const currentPet = allPets[currentPetIdx];
-                    const currentPetName = escapeHTML(currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet');
+                    const currentPetName = getPetDisplayName(currentPet);
                     const bossPct = Math.max(0, Math.round((bossHP / bossMaxHP) * 100));
                     const petPct = Math.max(0, Math.round((petHPs[currentPetIdx] / petMaxHPs[currentPetIdx]) * 100));
 
@@ -604,23 +595,14 @@
                 }
 
                 function restoreBossLog() {
-                    const log = overlay.querySelector('#boss-log');
-                    if (log) {
-                        bossLogHistory.forEach(msg => {
-                            const entry = document.createElement('div');
-                            entry.className = 'battle-log-entry';
-                            entry.textContent = msg;
-                            log.appendChild(entry);
-                        });
-                        log.scrollTop = log.scrollHeight;
-                    }
+                    restoreLog('#boss-log', bossLogHistory, null, overlay);
                 }
 
                 function executeBossTurn(moveId) {
                     if (fightOver || bossTurnLocked) return;
                     bossTurnLocked = true;
                     const currentPet = allPets[currentPetIdx];
-                    const petName = currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet';
+                    const petName = getPetDisplayName(currentPet);
                     const move = BATTLE_MOVES[moveId];
                     if (!move) {
                         bossTurnLocked = false;
@@ -859,7 +841,7 @@
             overlay.setAttribute('aria-label', 'Pet Show');
 
             const result = calculateShowScore(pet);
-            const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+            const petName = getPetDisplayName(pet);
 
             // Prevent stat farming by enforcing a cooldown between shows
             const now = Date.now();
@@ -1009,7 +991,7 @@
             const coursePet = { ...pet };
 
             function renderCourse() {
-                const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                const petName = getPetDisplayName(pet);
                 const stage = OBSTACLE_COURSE_STAGES[currentStage];
                 const progress = Math.round((currentStage / OBSTACLE_COURSE_STAGES.length) * 100);
 
@@ -1244,7 +1226,7 @@
                 let fightOver = false;
 
                 function renderRivalFight() {
-                    const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                    const petName = getPetDisplayName(pet);
                     const playerPct = Math.max(0, Math.round((playerHP / playerMaxHP) * 100));
                     const rivalPct = Math.max(0, Math.round((rivalHP / rivalMaxHP) * 100));
 
@@ -1304,15 +1286,8 @@
                 }
                 function restoreRivalLog() {
                     const log = overlay.querySelector('#rival-log');
-                    if (!log) return;
-                    log.innerHTML = '';
-                    _rivalLogHistory.forEach(msg => {
-                        const entry = document.createElement('div');
-                        entry.className = 'battle-log-entry';
-                        entry.textContent = msg;
-                        log.appendChild(entry);
-                    });
-                    log.scrollTop = log.scrollHeight;
+                    if (log) log.innerHTML = '';
+                    restoreLog('#rival-log', _rivalLogHistory, null, overlay);
                 }
 
                 function executeRivalTurn(moveId) {
@@ -1323,7 +1298,7 @@
                         rivalTurnLocked = false;
                         return;
                     }
-                    const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
+                    const petName = getPetDisplayName(pet);
 
                     // Player attack
                     if (move.heal) {

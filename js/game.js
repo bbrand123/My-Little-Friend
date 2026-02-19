@@ -369,10 +369,10 @@
 
         function getPetMiniGameStrength(pet) {
             if (!pet || typeof pet !== 'object') return 0.5;
-            const hunger = Math.max(0, Math.min(100, Number(pet.hunger) || 0));
-            const cleanliness = Math.max(0, Math.min(100, Number(pet.cleanliness) || 0));
-            const happiness = Math.max(0, Math.min(100, Number(pet.happiness) || 0));
-            const energy = Math.max(0, Math.min(100, Number(pet.energy) || 0));
+            const hunger = clamp(Number(pet.hunger) || 0, 0, 100);
+            const cleanliness = clamp(Number(pet.cleanliness) || 0, 0, 100);
+            const happiness = clamp(Number(pet.happiness) || 0, 0, 100);
+            const energy = clamp(Number(pet.energy) || 0, 0, 100);
             return (hunger + cleanliness + happiness + energy) / 400;
         }
 
@@ -446,9 +446,7 @@
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        function clamp(value, min, max) {
-            return Math.max(min, Math.min(max, value));
-        }
+        // clamp() is now defined in utils.js
 
         function applyProbabilisticDelta(value, amount, direction) {
             const safeAmount = Math.max(0, Number(amount) || 0);
@@ -4558,7 +4556,7 @@
                     adjustedPoints = points * avgPersonalityMod * elderMod;
                 }
             }
-            rel.points = Math.max(0, Math.min(300, rel.points + Math.round(adjustedPoints)));
+            rel.points = clamp(rel.points + Math.round(adjustedPoints), 0, 300);
             const newLevel = getRelationshipLevel(rel.points);
             rel.lastInteraction = Date.now();
 
@@ -5256,13 +5254,13 @@
                 if (currentStage !== 'baby') {
                     hapticBuzz(100);
                     showBirthdayCelebration(currentStage, pet);
-                    const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                    const petName = getPetDisplayName(pet);
                     const stageLabel = GROWTH_STAGES[currentStage]?.label || currentStage;
                     addJournalEntry('🎉', `${petName} grew to ${stageLabel} stage!`);
                 }
 
                 // Announce growth stage transition (Item 25)
-                const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                const petName = getPetDisplayName(pet);
                 const stageLabel = GROWTH_STAGES[currentStage]?.label || currentStage;
                 announce(`${petName} has grown to the ${stageLabel} stage!`, true);
 
@@ -6809,7 +6807,7 @@
 
                     // Announce when any stat drops below 20% (threshold crossing)
                     const lowThreshold = neglectThreshold;
-                    const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                    const petName = getPetDisplayName(pet);
                     const lowStats = [];
                     if (pet.hunger < lowThreshold && prevHunger >= lowThreshold) lowStats.push('hunger');
                     if (pet.cleanliness < lowThreshold && prevClean >= lowThreshold) lowStats.push('cleanliness');
@@ -6905,16 +6903,16 @@
                         // Morning energy boost when transitioning to sunrise
                         if (newTimeOfDay === 'sunrise' && previousTime === 'night') {
                             pet.energy = clamp(pet.energy + 15, 0, 100);
-                            const morningPetName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                            const morningPetName = getPetDisplayName(pet);
                             announce(`Good morning! ${morningPetName} wakes up feeling refreshed!`);
                         }
                         // Nighttime sleepiness notification
                         if (newTimeOfDay === 'night') {
-                            announce(`It's getting late! ${pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet')} is getting sleepy...`);
+                            announce(`It's getting late! ${getPetDisplayName(pet)} is getting sleepy...`);
                         }
                         // Sunset wind-down notification
                         if (newTimeOfDay === 'sunset') {
-                            announce(`The sun is setting. ${pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet')} is starting to wind down.`);
+                            announce(`The sun is setting. ${getPetDisplayName(pet)} is starting to wind down.`);
                         }
                     }
 
@@ -6975,7 +6973,7 @@
                     // Notify user of care quality changes (after updates to avoid issues)
                     if (careQualityChange && careQualityChange.changed) {
                         const toData = CARE_QUALITY[careQualityChange.to];
-                        const petName = pet.name || ((getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                        const petName = getPetDisplayName(pet);
 
                         if (careQualityChange.improved) {
                             // Combine quality + evolution into a single toast when applicable

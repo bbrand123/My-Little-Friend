@@ -3033,7 +3033,7 @@
 
         function moveRacingLane(delta) {
             if (!racingState) return;
-            racingState.lane = Math.max(0, Math.min(2, racingState.lane + delta));
+            racingState.lane = clamp(racingState.lane + delta, 0, 2);
             const player = document.getElementById('racing-player');
             if (player) {
                 player.classList.remove('lane-0', 'lane-1', 'lane-2');
