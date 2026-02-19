@@ -1339,6 +1339,13 @@
 
         let _speechBubbleTimer = null;
         let _lastSpeechTime = 0;
+        let _lastUserInteraction = Date.now();
+
+        // Track user interactions to detect idle state for monologues
+        function _trackUserActivity() { _lastUserInteraction = Date.now(); }
+        document.addEventListener('click', _trackUserActivity, { passive: true });
+        document.addEventListener('keydown', _trackUserActivity, { passive: true });
+        document.addEventListener('touchstart', _trackUserActivity, { passive: true });
 
         function scheduleSpeechBubble() {
             if (_speechBubbleTimer) {
@@ -1375,21 +1382,42 @@
             // Don't show if a speech bubble is already visible
             if (petContainer.querySelector('.speech-bubble')) return;
 
-            const mood = getMood(pet);
-            const message = pickSpeechMessage(pet, mood);
+            let message = null;
+            let isMonologue = false;
+
+            // If player has been idle 30+ seconds, try showing an idle monologue
+            const idleMs = Date.now() - _lastUserInteraction;
+            if (idleMs >= 30000 && typeof getIdleMonologue === 'function') {
+                const monologue = getIdleMonologue(pet);
+                if (monologue) {
+                    message = monologue;
+                    isMonologue = true;
+                }
+            }
+
+            // Fallback to regular speech
+            if (!message) {
+                const mood = getMood(pet);
+                message = pickSpeechMessage(pet, mood);
+            }
             if (!message) return;
 
             const bubble = document.createElement('div');
-            bubble.className = 'speech-bubble';
+            bubble.className = isMonologue ? 'speech-bubble speech-bubble-monologue' : 'speech-bubble';
             bubble.setAttribute('aria-hidden', 'true');
             bubble.innerHTML = `<span class="speech-text">${escapeHTML(message)}</span>`;
             petContainer.appendChild(bubble);
+            // Announce monologues for screen readers since they contain richer content
+            if (isMonologue && typeof announce === 'function') {
+                announce(message, { source: 'monologue' });
+            }
 
-            // Remove after display
+            // Monologues stay visible longer due to their length
+            const displayDuration = isMonologue ? 6000 : 3500;
             setTimeout(() => {
                 bubble.classList.add('speech-bubble-fade');
                 setTimeout(() => bubble.remove(), 400);
-            }, 3500);
+            }, displayDuration);
         }
 
         function pickSpeechMessage(pet, mood) {

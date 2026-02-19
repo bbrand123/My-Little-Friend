@@ -4465,3 +4465,198 @@ function getMicroEvent(pet, action, room, season, weather) {
     pet._seenMicroEvents.push(event.id);
     return { text: event.text.replace(/\{name\}/g, name) };
 }
+
+// ==================== PERSONALITY IDLE MONOLOGUES ====================
+// Triggered after 30-60 seconds of player inactivity. Longer and more
+// characterful than standard speech bubbles. 25 per personality = 150 total.
+
+const IDLE_MONOLOGUES = {
+    lazy: [
+        'You know what I love about doing nothing? You can\'t get it wrong.',
+        'I\'ve been thinking about thinking about doing something. Maybe tomorrow.',
+        'The pillow has the perfect indent from my head. Why would I move?',
+        'I counted the ceiling tiles. Then I lost count. Then I napped.',
+        'Some days are for doing. Today is for being. Being horizontal.',
+        'I heard a sound outside. Decided it wasn\'t worth investigating. Good choice.',
+        'Did you know that sloths sleep 20 hours a day? I admire their work ethic.',
+        'I moved three inches to the left. I\'m exhausted. Worth it though — better sun angle.',
+        'My blanket smells like warmth and dreams and a little bit like snacks.',
+        'I have a to-do list. Item one: lie down. Item two: see item one.',
+        'The gentle hum of the house is like a lullaby that never ends.',
+        'I dreamed I was a cloud. Floating. Soft. No responsibilities. It was perfect.',
+        'Sometimes the best adventures are the ones you take in your dreams.',
+        'There\'s a warm spot on the floor and it has my name on it.',
+        'I tried to count sheep but fell asleep before sheep number two.',
+        'The art of relaxation is underappreciated. I\'m basically a master craftsperson.',
+        'I can hear my pillow calling me. It misses me. I should go back.',
+        'You know what\'s great about lying here? Everything is within not-reaching distance.',
+        'I found the coziest position. I shall document it for future generations.',
+        'My personal record for not moving is four hours. I think I can beat it today.',
+        'The soft tick of the clock is my favorite song. Soothing.',
+        'Being lazy isn\'t a flaw. It\'s energy conservation. I\'m basically an environmentalist.',
+        'I watched a dust particle float for ten minutes. Riveting stuff.',
+        'The warmth of this spot is the closest thing to a hug from the sun.',
+        'Some say time you enjoy wasting isn\'t wasted time. I enjoy ALL the time.'
+    ],
+    energetic: [
+        'I\'ve been sitting still for SO LONG! It\'s been like thirty seconds!',
+        'What if we rearranged ALL the furniture?! Right now?! For fun?!',
+        'I can feel the energy buzzing in my paws! It\'s like electricity!',
+        'Okay I just had the BEST idea — what if we ran in circles really fast?!',
+        'My tail is wagging SO hard right now and I don\'t even know why!',
+        'You know what would be great? Everything! All at once! LET\'S GO!',
+        'I wonder if I could jump to the top of that shelf. Only one way to find out!',
+        'I just did seventeen laps of the room. In my head. Now I wanna do them for real!',
+        'Every moment we\'re not playing is a moment that could be PLAYING!',
+        'I have so much energy I think I might vibrate through the floor!',
+        'The air smells like adventure and I want ALL of it!',
+        'What\'s that sound? And that one? And THAT one? Everything is so exciting!',
+        'I bet I could break my personal speed record today. I can FEEL it!',
+        'Sitting still is my biggest challenge. Bigger than any obstacle course!',
+        'My legs are literally bouncing. I can\'t help it. They have a mind of their own!',
+        'Did something move? I SAW something move! Or maybe it was my shadow. STILL EXCITING!',
+        'Fun fact: I have been awake for hours and I have MORE energy than when I started!',
+        'I just want to RUN and JUMP and PLAY and EAT and RUN AGAIN!',
+        'I think the world would be better if everyone bounced more. Just saying!',
+        'If energy were currency, I\'d be the richest creature alive!',
+        'I can hear birds outside. I bet I could outrun them. Wanna see?',
+        'My heart is beating so fast because my body knows FUN is just around the corner!',
+        'I tried to meditate once. Lasted two seconds. New personal best!',
+        'Every single thing in this room could be a toy if you believe hard enough!',
+        'Is it just me or does the air taste like POSSIBILITIES today?!'
+    ],
+    curious: [
+        'I\'ve been wondering — why is the sky blue? I should research this.',
+        'If I stare at this wall long enough, I start to see patterns. Faces, even.',
+        'Did you know that some flowers only bloom at night? Nature is incredible.',
+        'I found a crack in the floor. I\'ve been studying it. It looks like a tiny river.',
+        'I wonder what\'s on the other side of that wall. Another room? Another world?',
+        'The shadows in this room change shape every hour. I\'ve been tracking them.',
+        'If I could read, I\'d read everything. Every book, every label, every sign.',
+        'There\'s a spider web in the corner. The engineering is remarkable.',
+        'I noticed the floorboards creak in a pattern. Fourth, seventh, twelfth.',
+        'What makes dust float? It defies gravity so casually. Fascinating.',
+        'I can smell seven different scents in this room. I\'m cataloging them all.',
+        'The way light bends through the window makes tiny rainbows. Did you see?',
+        'I wonder who lived here before us. What were their stories?',
+        'I\'ve been watching an ant carry a crumb. It\'s inspiring, actually.',
+        'How does the clock know what time it is? I have so many questions.',
+        'The texture of the carpet is different in every spot. I checked.',
+        'I can hear the house settling. Every creak tells a story.',
+        'Did you know that your heartbeat changes speed throughout the day?',
+        'I discovered that if I tilt my head exactly right, sounds get louder on one side.',
+        'I wonder what clouds taste like. Probably not cotton candy, but maybe?',
+        'The pattern on the curtains has 47 repeating elements. I counted twice.',
+        'There\'s a whole ecosystem in the garden I haven\'t even explored yet.',
+        'I wonder if fish know they\'re wet. These are the questions that matter.',
+        'The smell of old books is caused by a chemical compound. I can smell it from here.',
+        'If I could ask the moon one question, I\'d ask what Earth looks like from there.'
+    ],
+    shy: [
+        'It\'s nice when it\'s quiet like this. Just us and the soft sounds of home.',
+        'I know I\'m quiet, but I notice everything. The way the light shifts. Your breathing.',
+        'Sometimes I want to say something but the words get shy too.',
+        'This corner is my safe place. The walls feel like a hug.',
+        'I like when you\'re close but not too close. This distance is just right.',
+        'The shadows are my friends. They\'re quiet, like me.',
+        'I practiced being brave today. I looked out the window for ten whole seconds.',
+        'When the house is still, I can hear my own heartbeat. It\'s soothing.',
+        'I wish I could tell you all the things I feel. But maybe you already know.',
+        'Sometimes courage looks like staying in the room when you want to hide.',
+        'I wrote a tiny poem in my head. It goes: "Home is warm. Home is safe. Home is you."',
+        'The blanket knows all my secrets. It keeps them warm and safe.',
+        'I peered around the corner today. There was nothing scary there. Progress!',
+        'When I close my eyes, I can pretend the world is exactly as small as I need it to be.',
+        'You make the scary things less scary. I hope you know that.',
+        'I like the sound of rain because it means everyone stays inside. Cozy.',
+        'I count my breaths when I feel nervous. In... two... three... out... two... three...',
+        'The softest spot in the room is where I am right now. I chose wisely.',
+        'I don\'t need to be brave every day. Some days, being here is enough.',
+        'I trust you more today than yesterday. Tomorrow I\'ll trust you even more.',
+        'My hiding spot has a perfect view of everything. I can watch without being seen.',
+        'Gentle sounds are my favorite. Wind chimes. Purring. Your footsteps.',
+        'I wanted to explore, but the couch was right here. The couch understood.',
+        'You looked at me and smiled. I looked away. But inside, I smiled too.',
+        'The world is big and loud. But right here, right now, it\'s perfect.'
+    ],
+    playful: [
+        'I just realized that EVERYTHING in this room is a potential toy!',
+        'I\'m plotting my next prank. Don\'t worry. It\'ll be hilarious. For me.',
+        'What if — hear me out — what if socks are tiny sleeping bags for feet?',
+        'I\'ve been practicing my victory dance. It involves seven spins and a boop.',
+        'If life gives you lemons, JUGGLE THEM! That\'s my motto!',
+        'I tried to balance a thing on my nose. Failed. Tried again. Almost. AGAIN!',
+        'The floor is lava! The couch is safe! The table is BONUS POINTS!',
+        'I wonder if I could make a fort out of all the pillows. BRB building.',
+        'My reflection in the window is making faces at me. How dare they!',
+        'I hid something somewhere and now I can\'t remember where. SURPRISE FUTURE ME!',
+        'Every closed door is a mystery. Every open door is an invitation. I love doors!',
+        'I just made up a new game. The rules change every time you play. I always win.',
+        'If fun were a superpower, I\'d be the world\'s mightiest hero!',
+        'I saw a bug and decided we\'re best friends now. I named them Boop.',
+        'There\'s a shadow on the wall that looks like a bunny. I\'ve been having conversations.',
+        'Why walk when you can skip? Why skip when you can CARTWHEEL?!',
+        'I challenged the cushion to a wrestling match. I won. It didn\'t stand a chance.',
+        'Imagination is free and I am SPENDING GENEROUSLY!',
+        'I tried to teach myself a backflip. The score so far: floor 3, me 0.',
+        'Every day is an adventure when you\'re determined to have fun!',
+        'I just winked at a lamp. It didn\'t wink back. Very rude.',
+        'Tag! You\'re it! Wait, you didn\'t notice? TAG! YOU\'RE IT!',
+        'I invented a song. It goes "boop boop bee-boop bap." It\'s a hit.',
+        'The best thing about today is that it\'s not over yet. More fun to be had!',
+        'I wonder what would happen if I just... *pokes thing off the table* Heh heh heh.'
+    ],
+    grumpy: [
+        'I\'m not grumpy. I\'m... selectively enthusiastic. Very selectively.',
+        'This spot is adequate. Not good. Not bad. Adequate. ...Fine, it\'s good.',
+        'I was going to complain about something but I forgot what. So I\'ll just complain about that.',
+        'Everyone thinks I\'m grumpy. I prefer "discerning." Or "realistic."',
+        'I have opinions. Strong ones. You wouldn\'t like them. But they\'re correct.',
+        'The sun is too bright. The shade is too dark. Is there a medium option?',
+        'I don\'t DISLIKE things. I\'m just very honest about my preferences.',
+        'Silence is golden. Napping is platinum. Being left alone is diamond.',
+        'I appreciate being fed. I won\'t SAY I appreciate it, but I do.',
+        'My face says grumpy but my heart says... slightly less grumpy.',
+        'You know what\'s annoying? Most things. But you\'re... tolerable.',
+        'I tried smiling once. My face said no. We agreed to disagree.',
+        'Happiness is overrated. Contentment is underrated. I\'m content. Don\'t make a fuss.',
+        'I\'m going to sit here and judge everything silently. It\'s called having standards.',
+        'If I had a diary it would say "Day 847: Still surrounded by nonsense. Snack was decent."',
+        'The world is loud and chaotic. This corner is quiet and mine. I\'ll stay here.',
+        'I was minding my own business when joy tried to sneak up on me. I caught it. Barely.',
+        'Don\'t let the frown fool you. Deep down, I... also have a frown.',
+        'I have exactly one comfort item and if anyone touches it, there will be consequences.',
+        'Complaining is just caring really loudly about things. I care A LOT.',
+        'I\'m not anti-social. I\'m pro-solitude. There\'s a difference.',
+        'Today\'s mood: cautiously neutral. Don\'t push it.',
+        'I secretly named the dust bunny in the corner. Its name is Gerald. We\'re acquaintances.',
+        'Sometimes I growl to maintain my reputation. It\'s a lot of work.',
+        'You... make this place less terrible. That\'s the nicest thing I\'ll say today.'
+    ]
+};
+
+/**
+ * Get an idle monologue for the pet based on personality.
+ * Tracks seen-history to prevent repeats until full pool cycles.
+ * Returns a monologue string or null if none available.
+ */
+function getIdleMonologue(pet) {
+    if (!pet || !pet.personality) return null;
+    const personality = pet.personality;
+    const pool = IDLE_MONOLOGUES[personality];
+    if (!pool || pool.length === 0) return null;
+    // Initialize seen-history on pet
+    if (!Array.isArray(pet._seenMonologues)) pet._seenMonologues = [];
+    // Filter unseen
+    const unseen = pool.filter((_, i) => !pet._seenMonologues.includes(i));
+    if (unseen.length === 0) {
+        // Reset cycle
+        pet._seenMonologues = [];
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+    // Pick random unseen by finding its original index
+    const pick = unseen[Math.floor(Math.random() * unseen.length)];
+    const idx = pool.indexOf(pick);
+    pet._seenMonologues.push(idx);
+    return pick;
+}
