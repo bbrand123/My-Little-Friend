@@ -250,6 +250,19 @@
             const previousRoom = gameState.currentRoom;
             gameState.currentRoom = roomId;
 
+            // Disable room-switch buttons during transition to prevent double-taps
+            const roomBtns = document.querySelectorAll('.room-btn');
+            roomBtns.forEach(btn => { btn.disabled = true; });
+            setTimeout(() => {
+                document.querySelectorAll('.room-btn').forEach(btn => { btn.disabled = false; });
+            }, 600);
+
+            // Announce room change to screen readers
+            const targetRoom = ROOMS[roomId];
+            if (typeof announce === 'function' && targetRoom) {
+                announce(`Moved to ${targetRoom.name}`);
+            }
+
             // Track room visit for achievements and daily checklist
             trackRoomVisit(roomId);
             if (roomId === 'park') {

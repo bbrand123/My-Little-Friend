@@ -12355,11 +12355,11 @@ body.beginner-ui #explore-btn {
 /* ==================== FEATURE: ROOM TRANSITION ANIMATION (ENHANCED) ==================== */
 
 .pet-area.room-slide-out {
-    animation: roomSlideOut 0.15s ease-in forwards;
+    animation: roomSlideOut 0.25s ease-in forwards;
 }
 
 .pet-area.room-slide-in {
-    animation: roomSlideIn 0.2s ease-out forwards;
+    animation: roomSlideIn 0.3s ease-out forwards;
 }
 
 @keyframes roomSlideOut {
