@@ -1774,6 +1774,16 @@
             100% { opacity: 0; transform: translateY(-10px) scale(0.95); }
         }
 
+        /* A5: Toast slide-out animation for stacking */
+        @keyframes toastSlideOut {
+            0% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(100%); }
+        }
+
+        .toast.toast-exiting {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+
         /* ===== Pet Naming Modal ===== */
         .naming-overlay {
             position: fixed;
@@ -1836,6 +1846,13 @@
         .naming-input:focus {
             border-color: var(--color-secondary);
             box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+            outline: none;
+        }
+
+        .naming-input:focus-visible {
+            outline: 3px solid var(--focus-color, #4A90D9);
+            outline-offset: 2px;
+            box-shadow: none;
         }
 
         .name-char-count {

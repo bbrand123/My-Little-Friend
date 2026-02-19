@@ -344,9 +344,10 @@
 
             function closeSettings() {
                 popModalEscape(closeSettings);
-                overlay.remove();
-                const trigger = document.getElementById('settings-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('settings-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             const initialSettingsFocus = document.getElementById('setting-sound') || document.getElementById('settings-close');

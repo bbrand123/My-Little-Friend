@@ -6,7 +6,7 @@
 
         // ==================== TOAST NOTIFICATIONS ====================
 
-        const MAX_VISIBLE_TOASTS = 1;
+        const MAX_VISIBLE_TOASTS = 3;
 
         // Notification history (keeps last 20 for review)
         const MAX_NOTIFICATION_HISTORY = 20;
@@ -69,9 +69,10 @@
 
             function closeHistory() {
                 popModalEscape(closeHistory);
-                overlay.remove();
-                const trigger = document.getElementById('notif-history-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('notif-history-btn');
+                    if (trigger) trigger.focus();
+                });
             }
             overlay.querySelector('#notif-history-close').addEventListener('click', closeHistory);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHistory(); });
@@ -295,10 +296,14 @@
             if (!container.classList.contains('toast-container')) {
                 container.classList.add('toast-container');
             }
-            const existingToasts = container.querySelectorAll('.toast');
+            const existingToasts = container.querySelectorAll('.toast:not(.toast-exiting)');
             if (existingToasts.length >= MAX_VISIBLE_TOASTS) {
                 const toRemove = existingToasts.length - MAX_VISIBLE_TOASTS + 1;
-                for (let i = 0; i < toRemove; i++) existingToasts[i].remove();
+                for (let i = 0; i < toRemove; i++) {
+                    const old = existingToasts[i];
+                    old.classList.add('toast-exiting');
+                    setTimeout(() => old.remove(), 300);
+                }
             }
             const toast = document.createElement('div');
             toast.className = 'toast';
@@ -483,19 +488,27 @@
                 </div>
             `;
             card.style.setProperty('--reward-card-accent', cardData.color);
+            card.style.cursor = 'pointer';
+            card.title = 'Click to dismiss';
+            card.setAttribute('aria-label', `${escapeHTML(cardData.title)}: ${escapeHTML(cardData.name)}. Click to dismiss.`);
             document.body.appendChild(card);
             if (typeof SoundManager !== 'undefined' && SoundManager.playSFXByName) {
                 SoundManager.playSFXByName('reward-pop', SoundManager.sfx.achievement);
             }
             requestAnimationFrame(() => card.classList.add('show'));
 
-            if (_rewardCardTimer) clearTimeout(_rewardCardTimer);
-            _rewardCardTimer = setTimeout(() => {
+            function dismissRewardCard() {
+                if (_rewardCardTimer) clearTimeout(_rewardCardTimer);
                 card.classList.remove('show');
                 setTimeout(() => {
                     card.remove();
                     showNextRewardCard();
                 }, 240);
-            }, 1800);
+            }
+
+            card.addEventListener('click', dismissRewardCard);
+
+            if (_rewardCardTimer) clearTimeout(_rewardCardTimer);
+            _rewardCardTimer = setTimeout(dismissRewardCard, 3500);
         }
 

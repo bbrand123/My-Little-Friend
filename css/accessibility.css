@@ -211,15 +211,16 @@
 /* Item 22: Save indicator */
 .save-indicator {
     position: fixed;
-    top: 12px;
+    top: auto;
+    bottom: 12px;
     right: 12px;
     padding: 6px 14px;
     border-radius: var(--radius-sm, 6px);
     font-size: 0.85rem;
     font-weight: 700;
-    z-index: 9999;
+    z-index: 1050;
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(8px);
     transition: opacity 0.3s, transform 0.3s;
     pointer-events: none;
     background: #E8F5E9;
@@ -762,6 +763,66 @@
 [data-theme="dark"] .bubblepop-game {
     background: #24243e;
     color: var(--color-text);
+}
+
+/* A1: Dark mode coverage for minigame fields/containers */
+[data-theme="dark"] .fetch-field {
+    background: linear-gradient(180deg, #1a2a3a 0%, #1a2a3a 55%, #2a3a2a 55%, #1e2e1e 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .hideseek-field {
+    background: linear-gradient(180deg, #1e2e1e 0%, #1a2a1a 30%, #162616 60%, #122012 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .bubblepop-field {
+    background: linear-gradient(180deg, #1a2a3a 0%, #152535 30%, #102030 60%, #0d1b28 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .matching-grid {
+    background: linear-gradient(135deg, #2a1e3a 0%, #24183a 50%, #1e1230 100%);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .simonsays-board {
+    background: #1a1a2e;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] .coloring-canvas-wrap {
+    background: #2e2e4a;
+    border-color: #555;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .coloring-palette {
+    background: #24243e;
+}
+[data-theme="dark"] .matching-card-front {
+    background: linear-gradient(135deg, #4a3a6a, #5a3a7a);
+}
+[data-theme="dark"] .matching-card-back {
+    background: #2e2e4a;
+    border-color: #555;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .matching-card.matched .matching-card-back {
+    background: #3a2a4a;
+    border-color: #7a4a9a;
+}
+[data-theme="dark"] .racing-track {
+    background: linear-gradient(180deg, #0d1722 0%, #060d14 100%);
+}
+[data-theme="dark"] .exp-game-shell,
+[data-theme="dark"] .racing-game-shell {
+    background: linear-gradient(180deg, #1a2a3a, #152535);
+    border-color: #444;
+    color: #e0e0e0;
+}
+[data-theme="dark"] .exp-game-hud span {
+    background: #2e2e4a;
+    border-color: #444;
+    color: #e0e0e0;
 }
 
 /* Keyboard shortcut hint badge */

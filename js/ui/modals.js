@@ -1040,9 +1040,10 @@
 
             function closeCodex() {
                 popModalEscape(closeCodex);
-                overlay.remove();
-                const btn = document.getElementById('codex-btn');
-                if (btn) btn.focus();
+                animateModalClose(overlay, () => {
+                    const btn = document.getElementById('codex-btn');
+                    if (btn) btn.focus();
+                });
             }
 
             document.getElementById('codex-close').focus();
@@ -1217,9 +1218,10 @@
 
             function closeStats() {
                 popModalEscape(closeStats);
-                overlay.remove();
-                const btn = document.getElementById('stats-btn');
-                if (btn) btn.focus();
+                animateModalClose(overlay, () => {
+                    const btn = document.getElementById('stats-btn');
+                    if (btn) btn.focus();
+                });
             }
 
             document.getElementById('stats-close').focus();
@@ -1732,9 +1734,10 @@
 
             function closeInteraction() {
                 popModalEscape(closeInteraction);
-                overlay.remove();
-                const trigger = document.getElementById('interact-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('interact-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('interaction-close').addEventListener('click', closeInteraction);
@@ -1875,7 +1878,7 @@
 
             function closeSocial() {
                 popModalEscape(closeSocial);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('social-close').focus();
@@ -1935,9 +1938,10 @@
 
             function closeAch() {
                 popModalEscape(closeAch);
-                overlay.remove();
-                const trigger = document.getElementById('achievements-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('achievements-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('achievements-close').focus();
@@ -2023,7 +2027,7 @@
 
             function closeDaily() {
                 popModalEscape(closeDaily);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('daily-close').focus();
@@ -2099,9 +2103,10 @@
 
             function closeBadges() {
                 popModalEscape(closeBadges);
-                overlay.remove();
-                const trigger = document.getElementById('rewards-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('rewards-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('badges-close').focus();
@@ -2198,9 +2203,10 @@
 
             function closeStickerBook() {
                 popModalEscape(closeStickerBook);
-                overlay.remove();
-                const trigger = document.getElementById('rewards-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('rewards-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('sticker-book-close').focus();
@@ -2275,9 +2281,10 @@
 
             function closeTrophyRoom() {
                 popModalEscape(closeTrophyRoom);
-                overlay.remove();
-                const trigger = document.getElementById('rewards-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('rewards-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             document.getElementById('trophy-room-close').focus();
@@ -2394,7 +2401,7 @@
 
             function closeStreak() {
                 popModalEscape(closeStreak);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('streak-close').focus();
@@ -2467,7 +2474,7 @@
 
             function closeRewardsHub() {
                 popModalEscape(closeRewardsHub);
-                overlay.remove();
+                animateModalClose(overlay);
             }
 
             document.getElementById('rewards-hub-close').focus();
