@@ -3512,6 +3512,13 @@
                         showToast(`${badge.icon} Badge: ${badge.name}!`, badgeColor);
                         queueRewardCard('badge', badge, badgeColor);
                     }, 500);
+                    // Personality reaction to earning this badge
+                    if (typeof getMilestoneReaction === 'function') {
+                        const reaction = getMilestoneReaction(badge.id, pet.personality, pet.name);
+                        if (reaction) {
+                            setTimeout(() => showToast(reaction, '#FFF59D'), 1500);
+                        }
+                    }
                 });
             }
             if (typeof checkPetActionSticker === 'function') {
@@ -3539,6 +3546,13 @@
                         showToast(`${trophy.icon} Trophy: ${trophy.name}!`, '#FFD700');
                         queueRewardCard('trophy', trophy, '#FFD700');
                     }, 900);
+                    // Personality reaction to earning this trophy
+                    if (typeof getMilestoneReaction === 'function') {
+                        const reaction = getMilestoneReaction(trophy.id, pet.personality, pet.name);
+                        if (reaction) {
+                            setTimeout(() => showToast(reaction, '#FFF59D'), 1800);
+                        }
+                    }
                 });
             }
 

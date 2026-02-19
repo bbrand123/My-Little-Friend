@@ -5164,3 +5164,184 @@ function getExplorationNarrative(biomeId, petName) {
     const msg = pool[Math.floor(Math.random() * pool.length)];
     return msg.replace(/\{name\}/g, petName || 'Your pet');
 }
+
+// ==================== MILESTONE PERSONALITY REACTIONS ====================
+// Personality-specific reactions when badges/trophies are earned.
+// Keyed by badge ID, with per-personality lines. Generic fallback per personality.
+
+const MILESTONE_REACTIONS = {
+    // 15 most common badges with personality-specific reactions
+    firstFeedBadge: {
+        lazy: '{name} barely opens one eye. "Cool. Can we eat again now?"',
+        energetic: '{name} EXPLODES with joy! "FIRST MEAL BADGE! YEAHHH!"',
+        curious: '{name} examines the badge. "Fascinating craftsmanship!"',
+        shy: '{name} blushes. "We... we did it together."',
+        playful: '{name} wears the badge as a hat! "Look at meeeee!"',
+        grumpy: '{name} sniffs. "About time we got recognition. Hmph."'
+    },
+    babySteps: {
+        lazy: '{name} yawns at the badge. "Born tired, living the dream."',
+        energetic: '{name} bounces! "I\'m HERE! I\'m REAL! Let\'s DO things!"',
+        curious: '{name} studies their own paws in wonder. "I exist! Amazing!"',
+        shy: '{name} peeks out nervously. "H-hello world..."',
+        playful: '{name} immediately tries to play with the badge!',
+        grumpy: '{name} grumbles. "Great, I\'m born. Now what?"'
+    },
+    growUp: {
+        lazy: '{name}: "Growing up is exhausting. I need a nap to process this."',
+        energetic: '{name}: "I\'m BIGGER now! I can run FASTER! WATCH ME!"',
+        curious: '{name}: "Child stage! So much more I can reach and explore!"',
+        shy: '{name} whispers: "I\'m growing up... I hope I\'m doing it right."',
+        playful: '{name}: "I\'m a KID now! That means MORE games! Right?!"',
+        grumpy: '{name}: "I grew up. Don\'t expect me to be MORE cheerful about it."'
+    },
+    fullyGrown: {
+        lazy: '{name}: "Adult achievement unlocked. Time to professionally nap."',
+        energetic: '{name}: "ADULT POWER! I feel UNSTOPPABLE!"',
+        curious: '{name}: "Adulthood! A whole new chapter to study and understand!"',
+        shy: '{name}: "I\'m... an adult now. That feels... big."',
+        playful: '{name}: "Adult? ADULT?! I refuse to stop having fun though!"',
+        grumpy: '{name}: "Adulthood means I can complain with authority now."'
+    },
+    cleanFreak: {
+        lazy: '{name}: "I was clean this whole time? Without trying? Sweet."',
+        energetic: '{name}: "SPARKLY CLEAN! I could GLOW IN THE DARK!"',
+        curious: '{name}: "Maximum cleanliness! The molecular structure of clean!"',
+        shy: '{name} admires their reflection quietly. Clean feels safe.',
+        playful: '{name}: "I\'m so clean I SQUEAK! Listen! *squeak squeak*"',
+        grumpy: '{name}: "Finally, proper hygiene standards. Was that so hard?"'
+    },
+    happyCamper: {
+        lazy: '{name}: "Happiness is easy when you\'re horizontal."',
+        energetic: '{name}: "MAXIMUM HAPPINESS! I might POP!"',
+        curious: '{name}: "100% happiness! I should document what caused this!"',
+        shy: '{name} smiles the biggest smile. Small but radiant.',
+        playful: '{name} does a victory dance! "HAPPY HAPPY HAPPY!"',
+        grumpy: '{name}: "I\'m... happy? This is suspicious. But nice."'
+    },
+    firstPlay: {
+        lazy: '{name}: "Games are okay. As long as there\'s sitting involved."',
+        energetic: '{name}: "GAME TIME! This is what I was BORN for!"',
+        curious: '{name}: "Games teach hand-eye coordination! Scientifically proven!"',
+        shy: '{name}: "That was fun... can we play again? Just us?"',
+        playful: '{name} is VIBRATING. "MORE GAMES! ALL THE GAMES!"',
+        grumpy: '{name}: "I didn\'t ENJOY it. I was just... participating. Strategically."'
+    },
+    streak3: {
+        lazy: '{name}: "Three days in a row? That\'s basically a marathon for me."',
+        energetic: '{name}: "THREE DAYS! We\'re on FIRE! Don\'t stop now!"',
+        curious: '{name}: "Interesting pattern — consistency yields rewards!"',
+        shy: '{name}: "You came back... three days. That means a lot."',
+        playful: '{name}: "Streak! Streak! We\'re on a ROLL! Literally rolling!"',
+        grumpy: '{name}: "Three days. Adequate dedication. ...Don\'t miss tomorrow."'
+    },
+    greenThumb: {
+        lazy: '{name}: "Food that grows itself? My kind of agriculture."',
+        energetic: '{name}: "WE GREW SOMETHING! FROM THE GROUND! AMAZING!"',
+        curious: '{name}: "The miracle of photosynthesis, right before our eyes!"',
+        shy: '{name} gently touches the harvested crop. "We made this..."',
+        playful: '{name} pretends the crop is a trophy! "Award-winning gardener!"',
+        grumpy: '{name}: "At least SOMETHING around here is productive."'
+    },
+    socialButterfly: {
+        lazy: '{name}: "Two pets means someone else can do things while I nap."',
+        energetic: '{name}: "A FRIEND! MORE energy in the house! YES!"',
+        curious: '{name}: "A companion! Someone to share discoveries with!"',
+        shy: '{name} peeks at the new friend nervously but hopefully.',
+        playful: '{name}: "PLAYMATE! Everything is better with two!"',
+        grumpy: '{name}: "Great. More noise. ...When are they coming over?"'
+    },
+    worldTraveler: {
+        lazy: '{name}: "Visited everywhere. From the couch, mostly."',
+        energetic: '{name}: "EVERY ROOM! I\'ve RUN through all of them!"',
+        curious: '{name}: "Complete room survey! Each one has unique properties!"',
+        shy: '{name}: "I explored... all the rooms. I\'m braver than I thought."',
+        playful: '{name}: "Every room is a new playground! I love this house!"',
+        grumpy: '{name}: "Inspected all rooms. Most are acceptable. Some even decent."'
+    },
+    firstBreed: {
+        lazy: '{name}: "Matchmaking? Sure, as long as I can watch from here."',
+        energetic: '{name}: "BABIES! There are going to be TINY ONES! AHHHH!"',
+        curious: '{name}: "Genetics are FASCINATING! What traits will combine?!"',
+        shy: '{name}: "A new little one? I\'ll be the gentlest big sibling."',
+        playful: '{name}: "TINY PLAYMATE incoming! I can\'t WAIT!"',
+        grumpy: '{name}: "More family members? ...Fine. But they better be quiet."'
+    },
+    elderWise: {
+        lazy: '{name}: "Elder status means I\'m officially too old to move. Perfect."',
+        energetic: '{name}: "Elder but NOT elderly! I\'ve still got MOVES!"',
+        curious: '{name}: "The elder perspective reveals so much I didn\'t see before."',
+        shy: '{name}: "All these years... and I finally feel at home."',
+        playful: '{name}: "Old enough to know better, young enough to do it anyway!"',
+        grumpy: '{name}: "Elder. Earned it. Now everyone has to listen to my opinions."'
+    },
+    nightExplorer: {
+        lazy: '{name}: "Night time is just day time but sleepier. I approve."',
+        energetic: '{name}: "NIGHTTIME! The energy doesn\'t STOP just because it\'s dark!"',
+        curious: '{name}: "Nocturnal exploration reveals a whole different world!"',
+        shy: '{name}: "The night is quiet. I like quiet. This is nice."',
+        playful: '{name}: "Night games! Shadow play! Glow in the dark FUN!"',
+        grumpy: '{name}: "At least it\'s quieter at night. Less commotion."'
+    },
+    fullBelly: {
+        lazy: '{name}: "Maximum fullness. Cannot move. Will not move. Bliss."',
+        energetic: '{name}: "FULL TANK! Maximum fuel! LET\'S GOOOOO!"',
+        curious: '{name}: "100% satiation! The digestive process is remarkable!"',
+        shy: '{name} pats their round tummy contentedly. "...so full."',
+        playful: '{name}: "So full I might roll instead of walk! Wheee!"',
+        grumpy: '{name}: "Acceptable meal quantity. Finally. Took long enough."'
+    }
+};
+
+// Generic fallback reactions by personality (for badges not in the specific list)
+const MILESTONE_GENERIC_REACTIONS = {
+    lazy: [
+        '{name} glances at the achievement and yawns. "Cool... *snore*"',
+        '{name}: "Achievements are nice. Naps are nicer. But this is okay."',
+        '{name} acknowledges the milestone without moving a single muscle.'
+    ],
+    energetic: [
+        '{name} ZOOMS in a victory lap! "WE DID IT! YESSS!"',
+        '{name} can\'t contain the excitement! Bouncing off EVERYTHING!',
+        '{name}: "ACHIEVEMENT! More! I want MORE achievements!"'
+    ],
+    curious: [
+        '{name} studies the new achievement carefully. "Interesting milestone!"',
+        '{name}: "Another data point in our journey! Documenting this."',
+        '{name} wonders what achievement comes NEXT. Always forward!'
+    ],
+    shy: [
+        '{name} smiles quietly at the achievement. Pride, but private.',
+        '{name}: "We did something... special. Together." *tiny happy sound*',
+        '{name} holds the achievement close. It means more than words.'
+    ],
+    playful: [
+        '{name} turns the achievement into a game! "How many can we get?!"',
+        '{name} celebrates with a silly dance! Achievement PARTY!',
+        '{name}: "SCORE! Do we get bonus points for style?!"'
+    ],
+    grumpy: [
+        '{name}: "Achievement. Fine. I SUPPOSE that\'s worth acknowledging."',
+        '{name} pretends not to care. Secretly adds it to their trophy shelf.',
+        '{name}: "Don\'t make a fuss. It\'s just... an accomplishment. Whatever."'
+    ]
+};
+
+/**
+ * Get a personality-specific reaction to a milestone achievement.
+ * Checks specific badge reactions first, then falls back to generic personality pool.
+ */
+function getMilestoneReaction(badgeId, personality, petName) {
+    const name = petName || 'Your pet';
+    const pers = personality || 'playful';
+    // Check specific badge reactions
+    if (MILESTONE_REACTIONS[badgeId] && MILESTONE_REACTIONS[badgeId][pers]) {
+        return MILESTONE_REACTIONS[badgeId][pers].replace(/\{name\}/g, name);
+    }
+    // Generic fallback
+    const generic = MILESTONE_GENERIC_REACTIONS[pers];
+    if (generic && generic.length > 0) {
+        return generic[Math.floor(Math.random() * generic.length)].replace(/\{name\}/g, name);
+    }
+    return null;
+}
