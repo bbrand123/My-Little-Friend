@@ -17,6 +17,54 @@
     .new-highscore-banner {
         animation: none !important;
     }
+    /* B13: Extended reduced-motion coverage */
+    .modal-overlay,
+    .modal-content,
+    .celebration-content,
+    .naming-modal,
+    .settings-modal,
+    .modal-closing .modal-content,
+    .modal-closing .celebration-content {
+        animation: none !important;
+        transition: none !important;
+    }
+    .toast {
+        animation: none !important;
+        transition: none !important;
+    }
+    .toast.toast-exiting {
+        animation: none !important;
+    }
+    .weather-particle,
+    .weather-particles-layer *,
+    .rain-drop,
+    .snow-flake,
+    .ambient-layer * {
+        animation: none !important;
+        transition: none !important;
+    }
+    .confetti-container,
+    .confetti-container *,
+    .fireworks-container,
+    .fireworks-container *,
+    .minigame-celebration,
+    .minigame-celebration * {
+        animation: none !important;
+    }
+    .pet-area.room-slide-out,
+    .pet-area.room-slide-in {
+        animation: none !important;
+    }
+    .emoji-burst,
+    .emoji-burst * {
+        animation: none !important;
+    }
+    .celebration-flash {
+        animation: none !important;
+    }
+    .cloud {
+        animation: none !important;
+    }
 }
 
 

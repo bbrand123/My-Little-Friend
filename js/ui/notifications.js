@@ -61,7 +61,7 @@
                 <div class="modal-content notif-history-modal">
                     <h2 class="notif-history-title">Recent Notifications</h2>
                     <div class="notif-history-list">${items}</div>
-                    <button class="notif-history-close" id="notif-history-close">Close</button>
+                    <button class="notif-history-close" id="notif-history-close" aria-label="Close notification history">Close</button>
                 </div>
             `;
 
@@ -104,7 +104,7 @@
                         <button class="tools-menu-btn" data-tool-action="alerts">🔔 Alerts</button>
                         <button class="tools-menu-btn" data-tool-action="settings">⚙️ Settings</button>
                     </div>
-                    <button class="tools-menu-close" id="tools-menu-close">Close</button>
+                    <button class="tools-menu-close" id="tools-menu-close" aria-label="Close tools menu">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);

@@ -459,7 +459,7 @@
                 <div class="journal-modal">
                     <h2 class="journal-title">📔 Pet Journal</h2>
                     <div class="journal-entries">${entriesHTML}</div>
-                    <button class="journal-close" id="journal-close">Close</button>
+                    <button class="journal-close" id="journal-close" aria-label="Close journal">Close</button>
                 </div>
             `;
 
@@ -540,7 +540,7 @@
                 <div class="diary-modal">
                     <h2 class="diary-title">📖 ${escapeHTML((gameState.pet && gameState.pet.name) || 'Pet')}'s Diary</h2>
                     <div class="diary-entries" role="log" aria-label="Diary entries">${entriesHTML}</div>
-                    <button class="diary-close" id="diary-close">Close</button>
+                    <button class="diary-close" id="diary-close" aria-label="Close diary">Close</button>
                 </div>
             `;
 
@@ -682,7 +682,7 @@
                     ${memorials.length > 0 ? `<button class="modal-btn" id="memorial-garden-btn" style="margin-top:8px;background:#E8F5E9;color:#2E7D32;border:1px solid #C8E6C9;">🌿 Visit Memorial Garden</button>` : ''}
                     ${mentorHTML}
                     ${retireHTML}
-                    <button class="modal-btn cancel" id="memorial-close">Close</button>
+                    <button class="modal-btn cancel" id="memorial-close" aria-label="Close memorial hall">Close</button>
                 </div>
             `;
 
@@ -1033,7 +1033,7 @@
                         ${unlockHTML}
                         <p style="font-size: 0.65rem; color: #888; margin-top: 8px;">Raise pets to adult stage to unlock mythical species!</p>
                     </div>
-                    <button class="codex-close-btn" id="codex-close">Close</button>
+                    <button class="codex-close-btn" id="codex-close" aria-label="Close codex">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -1211,7 +1211,7 @@
                         </div>
                     </div>
 
-                    <button class="stats-close-btn" id="stats-close">Close</button>
+                    <button class="stats-close-btn" id="stats-close" aria-label="Close stats">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -1657,7 +1657,7 @@
                         <div class="interaction-actions">${actionsHTML}</div>
                     </div>
 
-                    <button class="interaction-close" id="interaction-close">Close</button>
+                    <button class="interaction-close" id="interaction-close" aria-label="Close interaction">Close</button>
                 </div>
             `;
 
@@ -1870,7 +1870,7 @@
                     <div class="social-section-title">Relationships</div>
                     <div class="social-cards">${relCardsHTML || '<p class="social-empty">Adopt more pets to build relationships!</p>'}</div>
 
-                    <button class="social-close" id="social-close">Close</button>
+                    <button class="social-close" id="social-close" aria-label="Close social hub">Close</button>
                 </div>
             `;
 
@@ -1931,7 +1931,7 @@
                         <div class="achievements-progress-fill" style="width: ${total > 0 ? (unlockedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="achievements-grid">${cardsHTML}</div>
-                    <button class="achievements-close" id="achievements-close">Close</button>
+                    <button class="achievements-close" id="achievements-close" aria-label="Close achievements">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2020,7 +2020,7 @@
                     <div class="daily-tasks-list">${tasksHTML}</div>
                     ${weeklyArcHTML}
                     ${completedCount === totalTasks ? '<div class="daily-all-done">All tasks complete! Great job today!</div>' : ''}
-                    <button class="daily-close" id="daily-close">Close</button>
+                    <button class="daily-close" id="daily-close" aria-label="Close daily checklist">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2096,7 +2096,7 @@
                         <div class="badges-progress-fill" style="width: ${total > 0 ? (unlockedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="badges-content">${contentHTML}</div>
-                    <button class="badges-close" id="badges-close">Close</button>
+                    <button class="badges-close" id="badges-close" aria-label="Close badges">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2196,7 +2196,7 @@
                         <div class="sticker-book-progress-fill" style="width: ${total > 0 ? (collectedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="sticker-book-pages">${pagesHTML}${progressPipsHTML}</div>
-                    <button class="sticker-book-close" id="sticker-book-close">Close</button>
+                    <button class="sticker-book-close" id="sticker-book-close" aria-label="Close sticker book">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2274,7 +2274,7 @@
                         <div class="trophy-room-progress-fill" style="width: ${total > 0 ? (earnedCount / total) * 100 : 0}%;"></div>
                     </div>
                     <div class="trophy-shelves">${shelvesHTML}</div>
-                    <button class="trophy-room-close" id="trophy-room-close">Close</button>
+                    <button class="trophy-room-close" id="trophy-room-close" aria-label="Close trophy room">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2366,7 +2366,7 @@
                     ` : ''}
                     <div class="streak-milestones-title">Milestones</div>
                     <div class="streak-milestones">${milestonesHTML}</div>
-                    <button class="streak-close" id="streak-close">Close</button>
+                    <button class="streak-close" id="streak-close" aria-label="Close daily streak">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -2461,7 +2461,7 @@
                             ${canClaimStreak ? '<div class="rewards-hub-card-alert">!</div>' : ''}
                         </button>
                     </div>
-                    <button class="rewards-hub-close" id="rewards-hub-close">Close</button>
+                    <button class="rewards-hub-close" id="rewards-hub-close" aria-label="Close rewards hub">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);

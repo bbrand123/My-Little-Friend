@@ -82,7 +82,7 @@
                     const buttonDisabled = !unlocked || !!expedition || (dungeon && dungeon.active);
                     const buttonLabel = !unlocked ? 'Locked' : expedition ? 'Expedition Active' : (dungeon && dungeon.active) ? 'Dungeon Active' : 'Send Expedition';
                     return `
-                        <article class="explore-biome-card ${unlocked ? 'unlocked' : 'locked'} ${discovered ? 'discovered' : ''}">
+                        <article class="explore-biome-card ${unlocked ? 'unlocked' : 'locked'} ${discovered ? 'discovered' : ''}" aria-label="${biome.name} — ${unlocked ? 'Unlocked' : 'Locked'}${discovered ? ', Explored' : ''}">
                             <div class="explore-biome-top">
                                 <span class="explore-biome-icon" aria-hidden="true">${biome.icon}</span>
                                 <div>
@@ -190,7 +190,7 @@
                             <h2>🗺️ Exploration & World</h2>
                             <div class="explore-header-actions">
                                 <button class="modal-btn" id="explore-refresh-btn">Refresh</button>
-                                <button class="modal-btn" id="explore-close-btn">Close</button>
+                                <button class="modal-btn" id="explore-close-btn" aria-label="Close exploration">Close</button>
                             </div>
                         </div>
 
@@ -262,6 +262,7 @@
                             return;
                         }
                         showToast(`🧭 ${res.expedition.petName} departed for ${res.biome.name}!`, '#4ECDC4');
+                        announce(`Expedition to ${res.biome.name} started.`);
                         renderExplorationModal();
                     });
                 });
@@ -331,15 +332,21 @@
                             return;
                         }
                         showToast(`${res.message}`, '#4ECDC4');
+                        // B15: Screen reader announcements for dungeon events
+                        announce(`Room cleared. ${res.message}`);
                         if (res.rewards && res.rewards.length > 0) {
                             const rewardText = res.rewards.map((r) => `${r.data.emoji}x${r.count}`).join(' ');
                             setTimeout(() => showToast(`🎁 Found ${rewardText}`, '#66BB6A'), 200);
+                            const rewardNames = res.rewards.map((r) => `${r.data.name || r.data.emoji} times ${r.count}`).join(', ');
+                            announce(`Found ${rewardNames}!`);
                         }
                         if (res.npc) {
                             setTimeout(() => showToast(`${res.npc.icon} Met ${res.npc.name}!`, '#FFD54F'), 350);
+                            announce(`${res.npc.name} encountered.`);
                         }
                         if (res.cleared) {
                             setTimeout(() => showToast('🏆 Dungeon cleared!', '#FFD700'), 520);
+                            announce('Dungeon cleared!');
                         }
                         updateNeedDisplays();
                         updatePetMood();
@@ -402,9 +409,10 @@
             function closeExplorationModal() {
                 clearExpeditionCountdownTimer();
                 popModalEscape(closeExplorationModal);
-                overlay.remove();
-                const trigger = document.getElementById('explore-btn');
-                if (trigger) trigger.focus();
+                animateModalClose(overlay, () => {
+                    const trigger = document.getElementById('explore-btn');
+                    if (trigger) trigger.focus();
+                });
             }
 
             overlay.addEventListener('click', (e) => {

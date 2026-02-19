@@ -129,10 +129,11 @@
                             </button>
                             <span class="settings-toggle-state" id="state-setting-reminders">${remindersEnabled ? 'On' : 'Off'}</span>
                         </div>
-                        <div class="settings-row">
+                        <div class="settings-row settings-row-verbosity">
                             <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
                             <button class="settings-choice ${srVerbosityDetailed ? '' : 'active'}" id="setting-sr-brief" type="button" aria-pressed="${srVerbosityDetailed ? 'false' : 'true'}">Brief</button>
                             <button class="settings-choice ${srVerbosityDetailed ? 'active' : ''}" id="setting-sr-detailed" type="button" aria-pressed="${srVerbosityDetailed ? 'true' : 'false'}">Detailed</button>
+                            <small class="settings-verbosity-desc" style="display:block;width:100%;font-size:0.78rem;color:var(--color-text-secondary);margin-top:4px;">Brief: Short announcements for actions and events. Detailed: Longer descriptions including stat values and tips.</small>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🌿 Low Stimulation</span>
@@ -143,10 +144,11 @@
                         <h3 class="settings-hints-title">Keyboard Shortcuts</h3>
                         <div class="settings-hint-row"><kbd>1</kbd> Feed &nbsp; <kbd>2</kbd> Wash &nbsp; <kbd>3</kbd> Sleep &nbsp; <kbd>4</kbd> Pet</div>
                         <div class="settings-hint-row"><kbd>5</kbd> Play &nbsp; <kbd>6</kbd> Treat &nbsp; <kbd>7</kbd> Games &nbsp; <kbd>8</kbd> Arena</div>
+                        <div class="settings-hint-row"><kbd>N</kbd> Notification history</div>
                         <div class="settings-hint-row"><kbd>Tab</kbd> Navigate &nbsp; <kbd>Enter</kbd> / <kbd>Space</kbd> Activate</div>
                         <div class="settings-hint-row"><kbd>Escape</kbd> Close current dialog</div>
                     </div>
-                    <button class="settings-close" id="settings-close">Close</button>
+                    <button class="settings-close" id="settings-close" aria-label="Close settings">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -425,6 +427,14 @@
                 e.preventDefault();
                 const btn = document.getElementById(shortcuts[e.key]);
                 if (btn && !btn.disabled) btn.click();
+            }
+
+            // B19: N key opens notification history
+            if (e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                if (typeof showNotificationHistory === 'function') {
+                    showNotificationHistory();
+                }
             }
         });
 
