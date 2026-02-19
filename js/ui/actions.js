@@ -1134,7 +1134,7 @@
                 if (!btn.dataset.originalLabel) {
                     btn.dataset.originalLabel = btn.getAttribute('aria-label') || btn.querySelector('span:not(.btn-icon):not(.action-btn-tooltip):not(.cooldown-count):not(.kbd-hint):not(.room-bonus-badge):not(.feed-crop-badge)')?.textContent.trim() || '';
                 }
-                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ' (cooling down)');
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ` (available in ${Math.ceil(ACTION_COOLDOWN_MS / 1000)} second${Math.ceil(ACTION_COOLDOWN_MS / 1000) !== 1 ? 's' : ''})`);
             });
             if (actionCooldownTimer) {
                 clearTimeout(actionCooldownTimer);
@@ -1193,17 +1193,38 @@
             if (!bubble) return;
             const delta = document.createElement('div');
             delta.className = `stat-bar-delta ${amount > 0 ? 'positive' : 'negative'}`;
-            delta.textContent = `${amount > 0 ? '+' : '−'}${target.label}`;
+            delta.textContent = `${amount > 0 ? '+' : ''}${amount}`;
+            delta.setAttribute('aria-hidden', 'true');
             delta.style.left = `${44 + (Math.random() * 12 - 6)}%`;
             bubble.appendChild(delta);
             setTimeout(() => delta.remove(), 1150);
+        }
+
+        // Debounced aria-live announcements for stat changes (batches decay ticks)
+        let _statChangeAnnounceTimer = null;
+        let _statChangeBatch = {};
+        function _flushStatChangeAnnouncement() {
+            _statChangeAnnounceTimer = null;
+            const entries = Object.entries(_statChangeBatch).filter(([, v]) => v !== 0);
+            _statChangeBatch = {};
+            if (entries.length === 0 || typeof announce !== 'function') return;
+            const parts = entries.map(([key, amount]) => {
+                const target = STAT_DELTA_TARGETS[key];
+                const label = target ? target.label : key;
+                return `${label} ${amount > 0 ? '+' : ''}${amount}`;
+            });
+            announce(parts.join(', '));
         }
 
         function showStatDeltaNearNeedBubbles(deltas) {
             if (!deltas || typeof deltas !== 'object') return;
             Object.entries(deltas).forEach(([key, amount]) => {
                 showNeedBubbleStatDelta(key, amount);
+                // Batch for debounced screen reader announcement
+                _statChangeBatch[key] = (_statChangeBatch[key] || 0) + amount;
             });
+            if (_statChangeAnnounceTimer) clearTimeout(_statChangeAnnounceTimer);
+            _statChangeAnnounceTimer = setTimeout(_flushStatChangeAnnouncement, 2000);
         }
 
         // Map care actions to themed particle emojis
@@ -1248,9 +1269,13 @@
                 btn.classList.remove('cooldown');
                 btn.disabled = false;
                 btn.removeAttribute('aria-disabled');
+                btn.style.removeProperty('--cooldown-progress');
                 if (btn.dataset.originalLabel) {
                     btn.setAttribute('aria-label', btn.dataset.originalLabel);
                 }
+                // Pulse glow to signal availability
+                btn.classList.add('cooldown-ready');
+                setTimeout(() => btn.classList.remove('cooldown-ready'), 600);
             });
         }
 
@@ -1280,7 +1305,7 @@
                 if (!btn.dataset.originalLabel) {
                     btn.dataset.originalLabel = btn.getAttribute('aria-label') || btn.querySelector('span:not(.btn-icon):not(.action-btn-tooltip):not(.cooldown-count):not(.kbd-hint):not(.room-bonus-badge):not(.feed-crop-badge)')?.textContent.trim() || '';
                 }
-                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ' (cooling down)');
+                btn.setAttribute('aria-label', (btn.dataset.originalLabel || '') + ` (available in ${Math.ceil(ACTION_COOLDOWN_MS / 1000)} second${Math.ceil(ACTION_COOLDOWN_MS / 1000) !== 1 ? 's' : ''})`);
             });
 
             if (actionCooldownTimer) {

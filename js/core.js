@@ -369,6 +369,24 @@
             } catch (e) { /* unsupported — silently ignore */ }
         }
 
+        // ==================== SCREEN SHAKE ====================
+
+        function screenShake(intensity, duration) {
+            // Skip entirely if user prefers reduced motion
+            if (document.documentElement.getAttribute('data-reduced-motion') === 'true') return;
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const container = document.querySelector('.game-container');
+            if (!container) return;
+            const px = Math.min(intensity || 2, 4);
+            const ms = Math.min(duration || 250, 400);
+            container.style.setProperty('--shake-intensity', px + 'px');
+            container.style.animationDuration = ms + 'ms';
+            container.classList.remove('screen-shake');
+            void container.offsetWidth;
+            container.classList.add('screen-shake');
+            setTimeout(() => container.classList.remove('screen-shake'), ms);
+        }
+
         // ==================== UTILITY FUNCTIONS ====================
 
         // Get difficulty multiplier for a minigame based on how many times it's been played
@@ -2030,8 +2048,24 @@
             }
         }
 
+        // Dismiss the splash/loading screen after init completes
+        function dismissSplash() {
+            const splash = document.getElementById('splash-screen');
+            if (!splash) return;
+            const minShowTime = 800;
+            const elapsed = performance.now();
+            const remaining = Math.max(0, minShowTime - elapsed);
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 300);
+            }, remaining);
+        }
+
         // Start the game when page loads
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+            dismissSplash();
+        });
 
         // ==================== OFFLINE INDICATOR (Item 42) ====================
         function updateOnlineStatus() {

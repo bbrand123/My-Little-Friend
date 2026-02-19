@@ -183,6 +183,17 @@
             70% { transform: scale(1.12) translateY(-10px); }
         }
 
+        .pet-container.pet-tap-bounce {
+            animation: petTapBounce 0.4s ease-out;
+        }
+
+        @keyframes petTapBounce {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.1) translateY(-4px); }
+            60% { transform: scale(0.97); }
+            100% { transform: scale(1); }
+        }
+
         .pet-container.cuddle-anim {
             animation: cuddleNuzzle 0.9s cubic-bezier(0.45, 0, 0.55, 1);
         }
@@ -407,7 +418,8 @@
             background: conic-gradient(var(--ring-color) calc(var(--progress) * 1%), #e0e0e0 0);
             mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
             -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
-            transition: --progress 0.8s ease, background 0.5s ease;
+            transition: --progress 400ms ease-out, background 0.5s ease;
+            will-change: --progress;
         }
 
         .need-bubble-icon {
@@ -600,9 +612,15 @@
             .action-btn.cooldown::after {
                 background: rgba(0,0,0,0.25);
             }
+            .action-btn.cooldown-ready {
+                animation: none !important;
+            }
         }
         html[data-reduced-motion="true"] .action-btn.cooldown::after {
             background: rgba(0,0,0,0.25);
+        }
+        html[data-reduced-motion="true"] .action-btn.cooldown-ready {
+            animation: none !important;
         }
 
         .action-btn .cooldown-timer {

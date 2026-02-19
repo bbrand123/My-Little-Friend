@@ -9,6 +9,25 @@
             return arr;
         }
 
+        // SVG thumbnail previews for mini-game menu cards
+        const MINI_GAME_THUMBNAILS = {
+            fetch: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="20" cy="16" r="9" fill="#8BC34A" stroke="#558B2F" stroke-width="1.5"/><path d="M14 16h12M20 10v12" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M20 28q-3 4 0 6q3-2 0-6" fill="#A5D6A7" opacity="0.6"/></svg>',
+            hideseek: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><rect x="5" y="18" width="30" height="18" rx="4" fill="#8D6E63"/><circle cx="15" cy="14" r="7" fill="#FFCC80" stroke="#F57C00" stroke-width="1.5"/><circle cx="12" cy="13" r="1.5" fill="#5D4037"/><circle cx="18" cy="13" r="1.5" fill="#5D4037"/></svg>',
+            bubblepop: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="13" cy="15" r="7" fill="none" stroke="#64B5F6" stroke-width="1.5" opacity="0.8"/><circle cx="27" cy="12" r="5" fill="none" stroke="#90CAF9" stroke-width="1.5" opacity="0.7"/><circle cx="20" cy="28" r="6" fill="none" stroke="#42A5F5" stroke-width="1.5" opacity="0.9"/><circle cx="10" cy="14" r="2" fill="#fff" opacity="0.5"/></svg>',
+            matching: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><rect x="4" y="6" width="14" height="18" rx="2" fill="#E1BEE7" stroke="#9C27B0" stroke-width="1"/><rect x="22" y="6" width="14" height="18" rx="2" fill="#E1BEE7" stroke="#9C27B0" stroke-width="1"/><text x="11" y="18" text-anchor="middle" font-size="10">⭐</text><text x="29" y="18" text-anchor="middle" font-size="10">⭐</text><path d="M11 28h18" stroke="#CE93D8" stroke-width="1.5" stroke-dasharray="2 2"/></svg>',
+            simonsays: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><rect x="3" y="3" width="15" height="15" rx="3" fill="#EF5350"/><rect x="22" y="3" width="15" height="15" rx="3" fill="#42A5F5"/><rect x="3" y="22" width="15" height="15" rx="3" fill="#66BB6A"/><rect x="22" y="22" width="15" height="15" rx="3" fill="#FDD835"/></svg>',
+            coloring: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="#F44336"/><circle cx="28" cy="12" r="5" fill="#2196F3"/><circle cx="20" cy="26" r="5" fill="#FFEB3B"/><circle cx="20" cy="18" r="3" fill="#4CAF50" opacity="0.7"/></svg>',
+            racing: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><rect x="4" y="10" width="32" height="20" rx="3" fill="#E0E0E0" stroke="#9E9E9E" stroke-width="1"/><line x1="20" y1="10" x2="20" y2="30" stroke="#fff" stroke-width="2" stroke-dasharray="3 3"/><circle cx="12" cy="20" r="4" fill="#F44336"/><circle cx="28" cy="20" r="4" fill="#2196F3"/></svg>',
+            cooking: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><ellipse cx="20" cy="28" rx="14" ry="8" fill="#795548"/><rect x="8" y="16" width="24" height="14" rx="2" fill="#8D6E63"/><path d="M14 14q0-6 6-6q6 0 6 6" fill="none" stroke="#BCAAA4" stroke-width="2"/><path d="M16 12q-2-4 0-4M20 10q-1-4 1-4M24 12q2-4 0-4" stroke="#B0BEC5" stroke-width="1" fill="none" opacity="0.6"/></svg>',
+            fishing: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><rect x="2" y="24" width="36" height="14" rx="2" fill="#64B5F6" opacity="0.4"/><path d="M30 4v20" stroke="#795548" stroke-width="1.5"/><path d="M30 4l-4 2" stroke="#795548" stroke-width="1.5"/><path d="M26 6q-4 8-6 18" stroke="#90A4AE" stroke-width="0.8" fill="none"/><ellipse cx="18" cy="30" rx="5" ry="3" fill="#FF8A65"/><circle cx="16" cy="29" r="1" fill="#333"/></svg>',
+            rhythm: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="12" cy="28" r="5" fill="#333"/><line x1="17" y1="28" x2="17" y2="8" stroke="#333" stroke-width="2"/><path d="M17 8q6-2 6 2v4q-6 2-6-2" fill="#333"/><circle cx="28" cy="22" r="4" fill="#333"/><line x1="32" y1="22" x2="32" y2="6" stroke="#333" stroke-width="2"/><path d="M32 6q5-2 5 2v3q-5 2-5-2" fill="#333"/></svg>',
+            slider: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><rect x="4" y="4" width="10" height="10" rx="1" fill="#BBDEFB"/><rect x="15" y="4" width="10" height="10" rx="1" fill="#C8E6C9"/><rect x="26" y="4" width="10" height="10" rx="1" fill="#FFE0B2"/><rect x="4" y="15" width="10" height="10" rx="1" fill="#F8BBD0"/><rect x="15" y="15" width="10" height="10" rx="1" fill="#E0E0E0" stroke="#BDBDBD" stroke-width="0.5" stroke-dasharray="2 1"/><rect x="26" y="15" width="10" height="10" rx="1" fill="#D1C4E9"/><rect x="4" y="26" width="10" height="10" rx="1" fill="#FFCCBC"/><rect x="15" y="26" width="10" height="10" rx="1" fill="#B2EBF2"/><rect x="26" y="26" width="10" height="10" rx="1" fill="#DCEDC8"/></svg>',
+            trivia: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="20" cy="18" r="12" fill="#FFF9C4" stroke="#F9A825" stroke-width="1.5"/><path d="M17 14q0-4 3-4t3 4q0 2-3 4v2h0" stroke="#F57F17" stroke-width="1.5" fill="none" stroke-linecap="round"/><circle cx="20" cy="24" r="1" fill="#F57F17"/><rect x="16" y="32" width="8" height="3" rx="1" fill="#F9A825"/></svg>',
+            runner: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="20" cy="8" r="4" fill="#FFAB91"/><path d="M20 12v10M16 16l4 4 4-4M16 28l4-6 4 6" stroke="#FF7043" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="2" y1="34" x2="38" y2="34" stroke="#A5D6A7" stroke-width="2"/></svg>',
+            tournament: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><path d="M14 10h12l-2 14h-8z" fill="#FFD54F" stroke="#F9A825" stroke-width="1"/><path d="M14 10q-6 0-4 6t4 2" fill="none" stroke="#F9A825" stroke-width="1.5"/><path d="M26 10q6 0 4 6t-4 2" fill="none" stroke="#F9A825" stroke-width="1.5"/><rect x="16" y="24" width="8" height="3" rx="1" fill="#F9A825"/><rect x="13" y="27" width="14" height="3" rx="1" fill="#FFE082"/><text x="20" y="20" text-anchor="middle" font-size="8" fill="#F57F17">1</text></svg>',
+            coop: '<svg viewBox="0 0 40 40" class="minigame-thumb" aria-hidden="true"><circle cx="13" cy="14" r="6" fill="#FFCCBC"/><circle cx="27" cy="14" r="6" fill="#B2DFDB"/><path d="M13 20v8M10 24h6" stroke="#FF8A65" stroke-width="2" stroke-linecap="round"/><path d="M27 20v8M24 24h6" stroke="#4DB6AC" stroke-width="2" stroke-linecap="round"/><path d="M17 18q3 4 6 0" stroke="#BDBDBD" stroke-width="1" fill="none"/></svg>'
+        };
+
         const MINI_GAMES = [
             { id: 'fetch', name: 'Fetch', icon: '🎾', description: 'Throw a ball for your pet! Click or press Enter to throw.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
             { id: 'hideseek', name: 'Hide & Seek', icon: '🍪', description: 'Find hidden treats! Use keyboard (Tab + Enter) or pointer.', a11y: 'keyboard', a11yNote: 'Fully keyboard accessible' },
@@ -206,9 +225,13 @@
                 }
                 const a11yNoteHTML = game.a11yNote ? `<div class="minigame-a11y-note"><span class="a11y-icon" aria-hidden="true">⌨️</span> ${game.a11yNote}</div>` : '';
                 const shortDescription = String(game.description || '').split(/[.!?]/)[0] || game.description || '';
+                const thumbSVG = MINI_GAME_THUMBNAILS[game.id] || '';
                 const cardHTML = `
                     <button class="minigame-card" data-game="${game.id}" aria-label="Play ${game.name}${best ? ', best: ' + best : ''}${plays > 0 ? ', difficulty ' + diffLevel + ' of 10' : ''}"${plays > 0 ? ` aria-describedby="diff-${game.id}"` : ''}>
-                        <span class="minigame-card-icon" aria-hidden="true">${game.icon}</span>
+                        <div class="minigame-card-visual" aria-hidden="true">
+                            ${thumbSVG}
+                            <span class="minigame-card-icon">${game.icon}</span>
+                        </div>
                         <span class="minigame-card-name">${game.name}</span>
                         <span class="minigame-card-desc">${shortDescription}</span>
                         ${a11yNoteHTML}
@@ -470,6 +493,11 @@
             updatePetMood();
             updateWellnessBar();
             saveGame();
+
+            // Show floating stat deltas near need bubbles for mini-game rewards
+            if (typeof showStatDeltaNearNeedBubbles === 'function' && statAggregate) {
+                showStatDeltaNearNeedBubbles(statAggregate);
+            }
 
             if (typeof config.onAfterRewards === 'function') {
                 config.onAfterRewards({ score, coinReward, isNewBest, previousBest });

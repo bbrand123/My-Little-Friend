@@ -114,6 +114,7 @@
                 if (collided) {
                     racingState.lives -= 1;
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.hit);
+                    if (typeof screenShake === 'function') screenShake(2, 200);
                     return;
                 }
                 if (obs.y > 108) {

@@ -5,6 +5,24 @@
             initial-value: 50;
         }
 
+        /* Screen shake for impact events */
+        .game-container.screen-shake {
+            animation: screenShake var(--shake-duration, 250ms) ease-out;
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(calc(-1 * var(--shake-intensity, 2px))); }
+            30% { transform: translateX(var(--shake-intensity, 2px)); }
+            45% { transform: translateX(calc(-0.7 * var(--shake-intensity, 2px))); }
+            60% { transform: translateX(calc(0.5 * var(--shake-intensity, 2px))); }
+            75% { transform: translateX(calc(-0.3 * var(--shake-intensity, 2px))); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .game-container.screen-shake { animation: none !important; }
+        }
+
         /* CSS Reset and Base Styles */
         *, *::before, *::after {
             box-sizing: border-box;
@@ -342,6 +360,17 @@
             70% { transform: scale(1.12) translateY(-10px); }
         }
 
+        .pet-container.pet-tap-bounce {
+            animation: petTapBounce 0.4s ease-out;
+        }
+
+        @keyframes petTapBounce {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.1) translateY(-4px); }
+            60% { transform: scale(0.97); }
+            100% { transform: scale(1); }
+        }
+
         .pet-container.cuddle-anim {
             animation: cuddleNuzzle 0.9s cubic-bezier(0.45, 0, 0.55, 1);
         }
@@ -566,7 +595,8 @@
             background: conic-gradient(var(--ring-color) calc(var(--progress) * 1%), #e0e0e0 0);
             mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
             -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
-            transition: --progress 0.8s ease, background 0.5s ease;
+            transition: --progress 400ms ease-out, background 0.5s ease;
+            will-change: --progress;
         }
 
         .need-bubble-icon {
@@ -722,7 +752,7 @@
 
         .action-btn.cooldown {
             pointer-events: none;
-            opacity: 0.55;
+            opacity: 0.6;
             filter: grayscale(0.5) brightness(0.9);
             position: relative;
             overflow: hidden;
@@ -734,15 +764,20 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: rgba(255,255,255,0.35);
-            animation: cooldownSweep 0.6s linear forwards;
+            background: conic-gradient(transparent var(--cooldown-progress, 0%), rgba(0,0,0,0.35) var(--cooldown-progress, 0%));
             border-radius: inherit;
             pointer-events: none;
         }
 
-        @keyframes cooldownSweep {
-            0% { clip-path: inset(0 0 0 0); }
-            100% { clip-path: inset(100% 0 0 0); }
+        /* Pulse glow when cooldown ends and button becomes available */
+        .action-btn.cooldown-ready {
+            animation: cooldownReadyPulse 0.5s ease-out;
+        }
+
+        @keyframes cooldownReadyPulse {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5); }
+            50% { box-shadow: 0 0 8px 4px rgba(76, 175, 80, 0.4); }
+            100% { box-shadow: var(--shadow-subtle, 0 1px 4px rgba(0,0,0,0.1)); }
         }
 
         .action-btn .cooldown-timer {
@@ -2772,8 +2807,37 @@
             box-shadow: var(--shadow-medium);
         }
 
+        .minigame-card-visual {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+        }
+
+        .minigame-thumb {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            animation: minigameThumbIdle 2.5s ease-in-out infinite;
+        }
+
+        @keyframes minigameThumbIdle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .minigame-thumb { animation: none !important; }
+        }
+
         .minigame-card-icon {
-            font-size: 2rem;
+            position: relative;
+            z-index: 1;
+            font-size: 1.3rem;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
         }
 
         .minigame-card-name {
@@ -5589,6 +5653,19 @@
         }
 
 
+        .care-trend-section {
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.03);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .care-sparkline {
+            display: block;
+            margin: 0 auto;
+        }
+
         .care-quality-tip {
             margin: 10px 0;
             padding: 10px 14px;
@@ -5940,6 +6017,7 @@
         .pet-container.sleep-anim,
         .pet-container.groom-anim,
         .pet-container.treat-anim,
+        .pet-container.pet-tap-bounce,
         .pet-container.cuddle-anim,
         .pet-container.exercise-anim,
         .pet-container.heal-anim,
@@ -6053,6 +6131,7 @@
             .pet-container.sleep-anim,
             .pet-container.groom-anim,
             .pet-container.treat-anim,
+            .pet-container.pet-tap-bounce,
             .pet-container.cuddle-anim,
             .pet-container.exercise-anim,
             .pet-container.heal-anim {
@@ -6062,6 +6141,7 @@
             .egg-container { animation: none !important; }
             .action-btn.cooldown .cooldown-count::before { animation: none !important; }
             .action-btn.cooldown::after { animation: none !important; }
+            .action-btn.cooldown-ready { animation: none !important; }
 
             .sparkle-particle,
             .heart-particle,
@@ -12335,11 +12415,11 @@ body.beginner-ui #explore-btn {
 /* ==================== FEATURE: ROOM TRANSITION ANIMATION (ENHANCED) ==================== */
 
 .pet-area.room-slide-out {
-    animation: roomSlideOut 0.15s ease-in forwards;
+    animation: roomSlideOut 0.25s ease-in forwards;
 }
 
 .pet-area.room-slide-in {
-    animation: roomSlideIn 0.2s ease-out forwards;
+    animation: roomSlideIn 0.3s ease-out forwards;
 }
 
 @keyframes roomSlideOut {
@@ -13108,12 +13188,23 @@ body.has-core-care-dock .toast-container {
 }
 
 .stat-bar-delta.positive { color: #2e7d32; }
-.stat-bar-delta.negative { color: #c62828; }
+.stat-bar-delta.negative {
+    color: #c62828;
+    top: auto;
+    bottom: -16px;
+    animation: statBarDeltaFloatDown 1s ease-out forwards;
+}
 
 @keyframes statBarDeltaFloat {
     0% { opacity: 0; transform: translateX(-50%) translateY(2px); }
     20% { opacity: 1; }
     100% { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+}
+
+@keyframes statBarDeltaFloatDown {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-2px); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(18px); }
 }
 
 .coach-checklist {
