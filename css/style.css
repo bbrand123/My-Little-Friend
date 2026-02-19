@@ -5,6 +5,24 @@
             initial-value: 50;
         }
 
+        /* Screen shake for impact events */
+        .game-container.screen-shake {
+            animation: screenShake var(--shake-duration, 250ms) ease-out;
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(calc(-1 * var(--shake-intensity, 2px))); }
+            30% { transform: translateX(var(--shake-intensity, 2px)); }
+            45% { transform: translateX(calc(-0.7 * var(--shake-intensity, 2px))); }
+            60% { transform: translateX(calc(0.5 * var(--shake-intensity, 2px))); }
+            75% { transform: translateX(calc(-0.3 * var(--shake-intensity, 2px))); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .game-container.screen-shake { animation: none !important; }
+        }
+
         /* CSS Reset and Base Styles */
         *, *::before, *::after {
             box-sizing: border-box;

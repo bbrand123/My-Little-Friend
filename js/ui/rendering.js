@@ -1454,6 +1454,7 @@
                     const pet = gameState.pet;
                     setTimeout(() => {
                         if (typeof evolvePet === 'function' && evolvePet(pet)) {
+                            if (typeof screenShake === 'function') screenShake(3, 350);
                             renderPetPhase();
                         } else {
                             evolveBtn.disabled = false;

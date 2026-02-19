@@ -111,6 +111,7 @@
                         }
                         // Haptic alert for critical stat drop
                         hapticPattern('critical');
+                        if (typeof screenShake === 'function') screenShake(3, 300);
 
                         // Show personality-specific low stat reaction
                         if (typeof getLowStatReaction === 'function') {

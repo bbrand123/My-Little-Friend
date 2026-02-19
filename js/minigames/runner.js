@@ -112,6 +112,7 @@
             updateRunnerUI();
             if (hit) {
                 if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.hit);
+                if (typeof screenShake === 'function') screenShake(2, 200);
                 endRunnerGame(true, true);
             }
         }
