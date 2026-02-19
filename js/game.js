@@ -451,8 +451,6 @@
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        // clamp() is now defined in utils.js
-
         function applyProbabilisticDelta(value, amount, direction) {
             const safeAmount = Math.max(0, Number(amount) || 0);
             const whole = Math.floor(safeAmount);
