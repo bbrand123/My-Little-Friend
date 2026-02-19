@@ -5097,3 +5097,70 @@ function getPetCommentary(speaker, target, relationshipLevel) {
     const msg = persPool[Math.floor(Math.random() * persPool.length)];
     return msg.replace(/\{speaker\}/g, speakerName).replace(/\{target\}/g, targetName);
 }
+
+// ==================== EXPLORATION ENCOUNTER NARRATIVES ====================
+// 5 narrative encounter lines per biome, displayed with expedition results.
+// {name} = pet name. Evocative mini-stories describing what happened.
+
+const EXPLORATION_NARRATIVES = {
+    forest: [
+        '{name} followed a trail of glowing mushrooms deep into the woods and found an ancient hollow tree humming with warmth.',
+        'A friendly fox led {name} to a hidden clearing where the trees whispered secrets to the wind.',
+        '{name} crossed a moss-covered bridge over a babbling brook and discovered carvings left by an old traveler.',
+        'The forest canopy parted and golden light rained down. {name} sat in the glow and felt perfectly at peace.',
+        'Deep in the forest, {name} heard a melody — an old wind chime tangled in the branches, still singing after all these years.'
+    ],
+    beach: [
+        '{name} chased the tide out and back, finding treasures the ocean left behind in the wet sand.',
+        'A hermit crab traded shells with {name}! Okay, it was more like {name} found an empty one. But still!',
+        '{name} dug a hole so deep they found a layer of cool, smooth stones that hummed when tapped together.',
+        'The sunset painted the waves gold and {name} stood in the foam, mesmerized by the shifting colors.',
+        '{name} discovered a tide pool full of tiny starfish and anemones. A whole miniature world!'
+    ],
+    mountain: [
+        '{name} climbed through swirling mist and emerged above the clouds. The whole world stretched below.',
+        'At the summit, the wind carried a sound like distant bells. {name}\'s fur stood on end with wonder.',
+        '{name} found a crystal embedded in the cliff face, warm to the touch despite the mountain cold.',
+        'An eagle circled overhead, then dove past {name} so close they felt the rush of its wings.',
+        '{name} discovered an old stone cairn left by previous explorers, each stone smooth from countless hands.'
+    ],
+    cave: [
+        'The cave walls sparkled with minerals that cast tiny rainbows when {name}\'s light hit them.',
+        '{name} followed the sound of dripping water deeper until they found an underground lake, still as glass.',
+        'Glowing lichen lit {name}\'s path through a narrow passage that opened into a vast, echoing chamber.',
+        '{name} found ancient drawings on the cave wall — stick figures of pets who explored here long ago.',
+        'The cave hummed with a low frequency {name} could feel in their bones. Something ancient lived here once.'
+    ],
+    skyIsland: [
+        '{name} leaped between floating islands, each one a garden suspended in endless blue sky.',
+        'The clouds below swirled like ocean waves. {name} reached down and touched one — it was cool and soft.',
+        'A stairway of crystallized light led {name} to a platform where the stars were close enough to hear.',
+        '{name} found a sky garden where flowers grew upside down, their petals reaching toward the ground far below.',
+        'The wind carried the scent of rain and starlight. {name} breathed it in and felt weightless.'
+    ],
+    underwater: [
+        '{name} swam through a coral archway into a cathedral of color — fish of every hue swirled around them.',
+        'Bioluminescent jellyfish drifted past {name} like living lanterns, painting the deep water in soft blue light.',
+        '{name} found a sunken garden where sea anemones swayed in the current like flowers in a gentle breeze.',
+        'An old ship lay on the seabed, its hull home to a thousand tiny creatures. {name} peered through a porthole.',
+        'The ocean floor was carpeted with iridescent shells. {name} could hear the ocean singing through them.'
+    ],
+    skyZone: [
+        '{name} rode an updraft so high they could see the curvature of the horizon. Breathtaking silence up here.',
+        'Wind temples hung suspended in the air, their chimes creating harmonies that {name} felt in their chest.',
+        '{name} discovered a feather shrine where thousands of feathers orbited a glowing crystal in perfect formation.',
+        'The air was thin and crisp. {name} caught a thermal and glided — for a moment, they truly flew.',
+        'Between the clouds, {name} found a pocket of absolute stillness. No wind. No sound. Just peace.'
+    ]
+};
+
+/**
+ * Get an exploration encounter narrative for a biome.
+ * Returns a narrative string with {name} replaced.
+ */
+function getExplorationNarrative(biomeId, petName) {
+    const pool = EXPLORATION_NARRATIVES[biomeId];
+    if (!pool || pool.length === 0) return null;
+    const msg = pool[Math.floor(Math.random() * pool.length)];
+    return msg.replace(/\{name\}/g, petName || 'Your pet');
+}

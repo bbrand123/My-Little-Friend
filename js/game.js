@@ -987,13 +987,20 @@
             if (!silent) {
                 const rewardPreview = rewards.slice(0, 3).map((r) => `${r.data.emoji}x${r.count}`).join(' ');
                 showToast(`🧭 Expedition complete in ${biome.icon} ${biome.name}! ${rewardPreview}`, '#4ECDC4');
+                // Show encounter narrative for this biome
+                if (typeof getExplorationNarrative === 'function') {
+                    const narrative = getExplorationNarrative(expedition.biomeId, expedition.petName || 'Your pet');
+                    if (narrative) {
+                        setTimeout(() => showToast(narrative, '#90CAF9'), 400);
+                    }
+                }
                 if (npc) {
-                    setTimeout(() => showToast(`${npc.icon} You discovered ${npc.name} in the wild!`, '#FFD54F'), 220);
+                    setTimeout(() => showToast(`${npc.icon} You discovered ${npc.name} in the wild!`, '#FFD54F'), 620);
                 }
                 if (newlyUnlocked.length > 0) {
                     newlyUnlocked.forEach((id, idx) => {
                         const b = EXPLORATION_BIOMES[id];
-                        if (b) setTimeout(() => showToast(`${b.icon} ${b.name} unlocked!`, '#81C784'), 420 + idx * 200);
+                        if (b) setTimeout(() => showToast(`${b.icon} ${b.name} unlocked!`, '#81C784'), 820 + idx * 200);
                     });
                 }
             }
