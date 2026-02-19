@@ -1,0 +1,649 @@
+/* Extracted from style.css - Care quality & age display, evolution button, celebration modals, pet care variants, compact growth progress, care quality details, responsive adjustments, mood face indicator, pet speech bubbles, pet journal, personality & preferences, personality badge, elder pet styles */
+
+        /* ==================== CARE QUALITY & AGE DISPLAY ==================== */
+
+        .care-quality-wrap {
+            margin: 15px auto;
+            max-width: 600px;
+            padding: 0 20px;
+        }
+
+        .care-quality-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .care-quality-badge,
+        .pet-age-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 18px;
+            border-radius: var(--radius-md);
+            background: white;
+            box-shadow: var(--shadow-subtle);
+            transition: all 0.3s ease;
+        }
+
+        .care-quality-badge {
+            border: 3px solid transparent;
+        }
+
+        .care-quality-badge.poor {
+            border-color: #EF5350;
+            background: #FFEBEE;
+        }
+
+        .care-quality-badge.average {
+            border-color: #FFB74D;
+            background: #FFF8E1;
+        }
+
+        .care-quality-badge.good {
+            border-color: #66BB6A;
+            background: #E8F5E9;
+        }
+
+        .care-quality-badge.excellent {
+            border-color: #FFD700;
+            background: #FFFDE7;
+        }
+
+        .care-quality-emoji,
+        .pet-age-emoji {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        .care-quality-text,
+        .pet-age-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .care-quality-label,
+        .pet-age-label {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .care-quality-value,
+        .pet-age-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .pet-age-badge {
+            border: 3px solid #9C27B0;
+            background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
+        }
+
+        /* ==================== EVOLUTION BUTTON ==================== */
+
+        .evolution-btn {
+            width: 100%;
+            max-width: 400px;
+            margin: 12px auto;
+            padding: var(--btn-pad-lg);
+            border: none;
+            border-radius: var(--radius-lg);
+            background: #66BB6A;
+            color: white;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow-medium);
+            transition: all 0.3s ease;
+        }
+
+        .evolution-btn:hover {
+            background: #43A047;
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .evolution-btn:active {
+            transform: translateY(0) scale(1);
+        }
+
+        .evolution-badge-display {
+            text-align: center;
+            padding: 10px 20px;
+            margin: 10px auto;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: var(--text-shadow-on-dark);
+        }
+
+
+        /* ==================== CELEBRATION MODALS ==================== */
+
+        .celebration-modal .modal-content {
+            background: #FFF9E6;
+            border: 4px solid #FFD700;
+            box-shadow: var(--shadow-overlay);
+        }
+
+        .evolution-modal .modal-content {
+            background: #E8F5E9;
+            border: 4px solid #66BB6A;
+            box-shadow: var(--shadow-overlay);
+        }
+
+        .celebration-header {
+            margin-bottom: 20px;
+        }
+
+        .celebration-icon {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            animation: bounce-in 0.6s ease-out;
+        }
+
+        @keyframes bounce-in {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .evolution-icon {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .celebration-message {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .rewards-display {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.7);
+            border-radius: var(--radius-md);
+            border: 2px dashed #FFD700;
+        }
+
+        .reward-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #FF6B6B;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .reward-accessories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .reward-item {
+            padding: 6px 12px;
+            background: white;
+            border-radius: var(--radius-sm);
+            border: 2px solid #FFD700;
+            font-size: 1rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .evolution-display {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .evolution-sparkle {
+            font-size: 2rem;
+            margin: 10px 0;
+        }
+
+        .evolution-subtitle {
+            font-size: 1rem;
+            color: #66BB6A;
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        .celebration-btn {
+            background: #FFD700;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            padding: var(--btn-pad-lg);
+            border-radius: var(--radius-md);
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow-medium);
+            transition: all 0.3s ease;
+        }
+
+        .celebration-btn:hover {
+            background: #FFA500;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        /* ==================== PET CARE VARIANTS ==================== */
+
+        .pet-svg.care-shiny {
+            filter: brightness(1.1) saturate(1.2) drop-shadow(0 0 5px rgba(255,215,0,0.3));
+        }
+
+        .pet-svg.care-dull {
+            filter: brightness(0.85) saturate(0.6) grayscale(0.2);
+        }
+
+        .pet-svg.evolved {
+            filter: brightness(1.15) saturate(1.3) drop-shadow(0 0 8px rgba(255,215,0,0.4));
+        }
+
+        /* ==================== COMPACT GROWTH PROGRESS ==================== */
+
+        .growth-compact-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .growth-compact-label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        .growth-compact-bar {
+            flex: 1;
+            height: 6px;
+            background: #E0E0E0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .growth-compact-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #66BB6A 0%, #43A047 100%);
+            transition: width 0.5s ease;
+        }
+
+        .growth-compact-pct {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #66BB6A;
+            min-width: 32px;
+            text-align: right;
+        }
+
+        .growth-compact-arrow {
+            font-size: 0.85rem;
+            color: var(--color-text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .growth-compact-label.mythical {
+            color: #9C27B0;
+        }
+
+
+        /* ==================== CARE QUALITY DETAILS ==================== */
+
+        .care-quality-hint {
+            font-size: 0.7rem;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+            display: block;
+        }
+
+
+        .care-quality-tip {
+            margin: 10px 0;
+            padding: 10px 14px;
+            background: #E3F2FD;
+            border-left: 4px solid #2196F3;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: #1565C0;
+            line-height: 1.4;
+        }
+
+        /* ==================== RESPONSIVE ADJUSTMENTS ==================== */
+
+        @media (max-width: 768px) {
+            .care-quality-row {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .care-quality-badge,
+            .pet-age-badge {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .evolution-btn {
+                font-size: 1rem;
+                padding: var(--btn-pad-lg);
+            }
+
+            .celebration-icon {
+                font-size: 2rem;
+            }
+
+            .celebration-message {
+                font-size: 1rem;
+            }
+
+        }
+
+
+/* ==================== MOOD FACE INDICATOR ==================== */
+.mood-face {
+    display: inline-block;
+    font-size: 1.1em;
+    vertical-align: middle;
+    margin-left: 4px;
+    transition: transform 0.3s ease;
+    cursor: help;
+}
+.mood-face:hover {
+    transform: scale(1.3);
+}
+
+/* ==================== PET SPEECH BUBBLES ==================== */
+.speech-bubble {
+    position: absolute;
+    top: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border-radius: 16px;
+    padding: 6px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    z-index: 5;
+    animation: speechAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid #fff;
+}
+.speech-bubble .speech-text {
+    font-size: 0.8rem;
+    color: #444;
+    font-style: italic;
+}
+.speech-bubble-fade {
+    animation: speechFade 0.4s ease-out forwards;
+}
+@keyframes speechAppear {
+    0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.8); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes speechFade {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.8); }
+}
+[data-theme="dark"] .speech-bubble {
+    background: #2a2a4a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .speech-bubble::after {
+    border-top-color: #2a2a4a;
+}
+[data-theme="dark"] .speech-bubble .speech-text {
+    color: #ddd;
+}
+/* ==================== PET JOURNAL ==================== */
+.journal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-overlay-dialog);
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+    transition: opacity 0.2s ease;
+}
+.journal-modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--modal-padding);
+    max-width: 400px;
+    width: 100%;
+    box-shadow: var(--shadow-overlay);
+    animation: modalPop 0.3s ease;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+.journal-title {
+    font-size: var(--heading-md);
+    margin-bottom: 12px;
+    text-align: center;
+}
+.journal-entries {
+    overflow-y: auto;
+    max-height: 55vh;
+    flex: 1;
+    padding-right: 4px;
+}
+.journal-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.journal-entry:last-child {
+    border-bottom: none;
+}
+.journal-entry-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.journal-entry-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.journal-entry-text {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.3;
+}
+.journal-entry-time {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+}
+.journal-close {
+    margin-top: 12px;
+    padding: var(--btn-pad-md);
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #4ECDC4, #45B7AA);
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+.journal-close:hover,
+.journal-close:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+[data-theme="dark"] .journal-modal {
+    background: #24243e;
+    color: var(--color-text);
+}
+[data-theme="dark"] .journal-entry {
+    border-bottom-color: #3a3a5a;
+}
+[data-theme="dark"] .journal-entry-text {
+    color: #ddd;
+}
+
+/* ==================== PERSONALITY & PREFERENCES IN STATS ==================== */
+.stats-personality-section,
+.stats-prefs-section {
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: #f9f5f0;
+    border-radius: 10px;
+    text-align: left;
+}
+.stats-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: #555;
+}
+.stats-personality-desc {
+    font-size: 0.7rem;
+    color: #777;
+    margin: 0;
+}
+.stats-prefs-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.stats-pref-item {
+    font-size: 0.68rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    display: inline-block;
+}
+.stats-pref-item.fav {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+.stats-pref-item.fear {
+    background: #FFF3E0;
+    color: #E65100;
+}
+[data-theme="dark"] .stats-personality-section,
+[data-theme="dark"] .stats-prefs-section {
+    background: #2a2a4a;
+}
+[data-theme="dark"] .stats-section-title {
+    color: #ccc;
+}
+[data-theme="dark"] .stats-personality-desc {
+    color: #aaa;
+}
+[data-theme="dark"] .stats-pref-item.fav {
+    background: #1a3a1a;
+    color: #81C784;
+}
+[data-theme="dark"] .stats-pref-item.fear {
+    background: #3a2a1a;
+    color: #FFB74D;
+}
+
+/* ==================== PERSONALITY BADGE ==================== */
+.personality-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #7C4DFF;
+    background: rgba(124, 77, 255, 0.1);
+    border: 1px solid rgba(124, 77, 255, 0.2);
+    border-radius: 12px;
+    padding: 1px 8px;
+    margin: 2px auto 0;
+    letter-spacing: 0.3px;
+}
+[data-theme="dark"] .personality-badge {
+    color: #B388FF;
+    background: rgba(179, 136, 255, 0.15);
+    border-color: rgba(179, 136, 255, 0.3);
+}
+
+/* Personality-driven thought bubble variants */
+.thought-bubble.personality-thought {
+    background: #EDE7F6;
+    border: 1px solid #B39DDB;
+    animation: thoughtPulse 3s ease-in-out infinite;
+}
+.thought-bubble.personality-thought::before,
+.thought-bubble.personality-thought::after {
+    background: #EDE7F6;
+}
+.thought-bubble.favorite-thought {
+    background: #FFF3E0;
+    border: 1px solid #FFB74D;
+    animation: thoughtPulse 3s ease-in-out infinite;
+}
+.thought-bubble.favorite-thought::before,
+.thought-bubble.favorite-thought::after {
+    background: #FFF3E0;
+}
+[data-theme="dark"] .thought-bubble.personality-thought {
+    background: #2a1f4a;
+    border-color: #7C4DFF;
+}
+[data-theme="dark"] .thought-bubble.personality-thought::before,
+[data-theme="dark"] .thought-bubble.personality-thought::after {
+    background: #2a1f4a;
+}
+[data-theme="dark"] .thought-bubble.favorite-thought {
+    background: #3a2a1a;
+    border-color: #FFB74D;
+}
+[data-theme="dark"] .thought-bubble.favorite-thought::before,
+[data-theme="dark"] .thought-bubble.favorite-thought::after {
+    background: #3a2a1a;
+}
+
+/* ==================== ELDER PET STYLES ==================== */
+.growth-elder {
+    filter: drop-shadow(0 0 6px rgba(124, 77, 255, 0.3));
+}
+.growth-elder.care-shiny {
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4)) drop-shadow(0 0 12px rgba(124, 77, 255, 0.3));
+}
+

@@ -1,0 +1,218 @@
+// ============================================================
+// growth.js  –  Growth & care quality functions
+// Extracted from game.js (lines 5145-5357)
+// ============================================================
+
+        // ==================== GROWTH & CARE QUALITY FUNCTIONS ====================
+
+        function getPetAge(pet) {
+            if (!pet || !pet.birthdate) return 0;
+            const ageInMs = Date.now() - pet.birthdate;
+            return ageInMs / (1000 * 60 * 60); // Convert to hours
+        }
+
+        function updateCareHistory(pet) {
+            if (!pet) return null;
+            pet.hunger = normalizePetNeedValue(pet.hunger, 70);
+            pet.cleanliness = normalizePetNeedValue(pet.cleanliness, 70);
+            pet.happiness = normalizePetNeedValue(pet.happiness, 70);
+            pet.energy = normalizePetNeedValue(pet.energy, 70);
+
+            // Initialize care history if missing
+            if (!pet.careHistory) pet.careHistory = [];
+
+            // Track previous care quality for change detection
+            const previousQuality = pet.careQuality || 'average';
+
+            // Track current stats
+            const currentAverage = (pet.hunger + pet.cleanliness + pet.happiness + pet.energy) / 4;
+            const timestamp = Date.now();
+
+            // Add to history (keep last 100 entries to calculate trends)
+            pet.careHistory.push({ average: currentAverage, timestamp });
+            if (pet.careHistory.length > 100) {
+                pet.careHistory.shift();
+            }
+
+            // Check for neglect (any stat below 20)
+            // Only update neglectCount every 5 minutes (10 ticks at 30s) to prevent
+            // rapid inflation from the 30-second update cycle
+            let petId = pet.id;
+            if (!Number.isInteger(petId) || petId <= 0) {
+                if (!pet._runtimeNeglectKey) {
+                    Object.defineProperty(pet, '_runtimeNeglectKey', {
+                        value: `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                        writable: false,
+                        configurable: true,
+                        enumerable: false
+                    });
+                }
+                petId = pet._runtimeNeglectKey;
+            }
+            if (!_neglectTickCounters[petId]) _neglectTickCounters[petId] = 0;
+            _neglectTickCounters[petId]++;
+            const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
+            const stageBalance = getStageBalance(stage);
+            const neglectThreshold = stageBalance.neglectThreshold || 20;
+            const isNeglected = pet.hunger < neglectThreshold || pet.cleanliness < neglectThreshold || pet.happiness < neglectThreshold || pet.energy < neglectThreshold;
+            if (_neglectTickCounters[petId] >= 10) {
+                _neglectTickCounters[petId] = 0;
+                if (isNeglected) {
+                    pet.neglectCount = adjustNeglectCount(pet.neglectCount, stageBalance.neglectGainMultiplier || 1, 'up');
+                } else if ((pet.neglectCount || 0) > 0) {
+                    // Later stages recover neglect more slowly.
+                    pet.neglectCount = adjustNeglectCount(pet.neglectCount, stageBalance.neglectRecoveryMultiplier || 1, 'down');
+                }
+            }
+
+            // Calculate overall care quality
+            const recentHistory = pet.careHistory.slice(-20); // Last 20 measurements
+            const averageStats = recentHistory.reduce((sum, entry) => sum + entry.average, 0) / recentHistory.length;
+            const neglectCount = pet.neglectCount || 0;
+
+            // Update care quality
+            const newQuality = getCareQuality(averageStats, neglectCount);
+            pet.careQuality = newQuality;
+
+            // Update care variant based on quality
+            const qualityData = CARE_QUALITY[newQuality];
+            if (qualityData) {
+                pet.careVariant = qualityData.variant;
+            }
+
+            // Return quality change info for notifications
+            if (previousQuality !== newQuality) {
+                return {
+                    changed: true,
+                    from: previousQuality,
+                    to: newQuality,
+                    improved: getCareQualityLevel(newQuality) > getCareQualityLevel(previousQuality)
+                };
+            }
+
+            return { changed: false };
+        }
+
+        // Helper to get numeric level for care quality comparison
+        function getCareQualityLevel(quality) {
+            const levels = { poor: 0, average: 1, good: 2, excellent: 3 };
+            return levels[quality] || 0;
+        }
+
+        const _milestoneCheckInProgress = {};
+        function checkGrowthMilestone(pet) {
+            if (!pet) return false;
+
+            const ageInHours = getPetAge(pet);
+            const currentStage = getGrowthStage(pet.careActions, ageInHours, pet.careQuality || 'average');
+            const lastStage = pet.lastGrowthStage || 'baby';
+
+            if (currentStage !== lastStage) {
+                // Guard against duplicate celebration if called multiple times
+                const milestoneKey = pet.id != null ? String(pet.id) : '__active__';
+                if (_milestoneCheckInProgress[milestoneKey]) return false;
+                _milestoneCheckInProgress[milestoneKey] = true;
+                setTimeout(() => { delete _milestoneCheckInProgress[milestoneKey]; }, 100);
+                pet.growthStage = currentStage;
+                pet.lastGrowthStage = currentStage;
+
+                // Show birthday celebration
+                if (currentStage !== 'baby') {
+                    hapticBuzz(100);
+                    showBirthdayCelebration(currentStage, pet);
+                    const petName = getPetDisplayName(pet);
+                    const stageLabel = GROWTH_STAGES[currentStage]?.label || currentStage;
+                    addJournalEntry('🎉', `${petName} grew to ${stageLabel} stage!`);
+                }
+
+                // Announce growth stage transition (Item 25)
+                const petName = getPetDisplayName(pet);
+                const stageLabel = GROWTH_STAGES[currentStage]?.label || currentStage;
+                announce(`${petName} has grown to the ${stageLabel} stage!`, true);
+
+                // Update adults raised counter
+                if (currentStage === 'adult') {
+                    gameState.adultsRaised = (gameState.adultsRaised || 0) + 1;
+
+                    // Notify if pet can now evolve (adult + excellent care)
+                    if (canEvolve(pet)) {
+                        setTimeout(() => {
+                            showToast('⭐ Your pet can now evolve! Look for the Evolve button.', '#FFD700');
+                        }, 2000);
+                    }
+
+                    // Check if any mythical pets just got unlocked
+                    Object.keys(PET_TYPES).forEach(typeKey => {
+                        const typeData = PET_TYPES[typeKey];
+                        if (typeData.mythical && gameState.adultsRaised === typeData.unlockRequirement) {
+                            setTimeout(() => {
+                                showToast(`${typeData.emoji} ${typeData.name} unlocked! A mythical pet is now available!`, '#DDA0DD');
+                            }, 1500);
+                        }
+                    });
+                }
+
+                // Track elders raised
+                if (currentStage === 'elder') {
+                    if (typeof gameState.eldersRaised !== 'number') gameState.eldersRaised = 0;
+                    gameState.eldersRaised++;
+                    // Grant elder sticker
+                    if (typeof grantSticker === 'function') grantSticker('elderSticker');
+                }
+
+                saveGame();
+                return true;
+            }
+
+            return false;
+        }
+
+        function canEvolve(pet) {
+            if (!pet) return false;
+            if (pet.evolutionStage === 'evolved') return false;
+            if (pet.growthStage !== 'adult' && pet.growthStage !== 'elder') return false;
+
+            const qualityData = CARE_QUALITY[pet.careQuality];
+            if (!qualityData || !qualityData.canEvolve) return false;
+
+            const recentHistory = Array.isArray(pet.careHistory) ? pet.careHistory.slice(-20) : [];
+            const historyAvg = recentHistory.length > 0
+                ? recentHistory.reduce((sum, entry) => sum + (Number(entry.average) || 0), 0) / recentHistory.length
+                : ((Number(pet.hunger) || 0) + (Number(pet.cleanliness) || 0) + (Number(pet.happiness) || 0) + (Number(pet.energy) || 0)) / 4;
+            const neglectCount = Number(pet.neglectCount) || 0;
+            const performanceScore = historyAvg - (neglectCount * 3.5);
+
+            // Keep evolution tied to excellent, active care performance instead of passive waiting.
+            return performanceScore >= 78 && neglectCount <= 4;
+        }
+
+        function evolvePet(pet) {
+            if (!canEvolve(pet)) return false;
+
+            const evolutionData = PET_EVOLUTIONS[pet.type];
+            if (!evolutionData) return false;
+
+            pet.evolutionStage = 'evolved';
+
+            // Store evolution title separately so the user-chosen name is preserved
+            pet.evolutionTitle = evolutionData.name;
+
+            // Show evolution celebration
+            showEvolutionCelebration(pet, evolutionData);
+            addJournalEntry('✨', `${pet.name || 'Pet'} evolved into ${evolutionData.name}!`);
+
+            saveGame();
+            return true;
+        }
+
+        // Get time icon based on time of day
+        function getTimeIcon(timeOfDay) {
+            switch (timeOfDay) {
+                case 'sunrise': return '🌅';
+                case 'day': return '☀️';
+                case 'sunset': return '🌇';
+                case 'night': return '🌙';
+                default: return '☀️';
+            }
+        }
+

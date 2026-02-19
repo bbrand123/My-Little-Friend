@@ -1,0 +1,1233 @@
+/* Extracted from style.css - Page structure, game-container, header, pet display area, pet container, pet SVG, egg styles, needs section, action buttons, tooltips, particles, day/night cycle */
+
+        /* Main Game Container */
+        .game-container {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-medium);
+            padding: 20px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            border: none;
+            margin: 0;
+        }
+
+        /* Header */
+        .game-header {
+            margin-bottom: 10px;
+        }
+
+        .game-title {
+            font-size: var(--heading-lg);
+            font-weight: 900;
+            color: var(--color-primary);
+            text-shadow: var(--text-shadow-decorative);
+            margin-bottom: 5px;
+            letter-spacing: 0.02em;
+        }
+
+        .game-title::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-accent), var(--color-secondary));
+            border-radius: 3px;
+            margin: 6px auto 0;
+        }
+
+        /* Pet Display Area */
+        .pet-area {
+            background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+            border-radius: var(--radius);
+            padding: 20px 20px 25px;
+            margin: 8px 0;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            transition: background 0.5s ease;
+            box-shadow: none;
+        }
+
+        /* Ground and flower pseudo-elements hidden by default */
+        .pet-area::after,
+        .pet-area::before {
+            display: none;
+        }
+
+        /* Re-enable ::after for room-specific ground styles */
+        .pet-area[class*="room-"]::after {
+            content: '';
+            display: block;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30%;
+            z-index: 0;
+            border-radius: 0 0 var(--radius) var(--radius);
+        }
+
+        /* Re-enable ::before for sunset warm overlay */
+        .pet-area.sunset::before {
+            display: block;
+        }
+
+        /* Hide default ::before decor when room system is active */
+        .pet-area[class*="room-"]::before {
+            content: '';
+            display: none;
+        }
+
+        /* Re-enable sunset overlay even when room class is present */
+        .pet-area[class*="room-"].sunset::before {
+            display: block;
+        }
+
+        /* Floating clouds — static positioning, no animation */
+        .cloud {
+            position: absolute;
+            z-index: 0;
+            opacity: 0.7;
+            font-size: 1.6rem;
+            pointer-events: none;
+        }
+
+        .cloud:nth-child(2) {
+            font-size: 1.2rem;
+            opacity: 0.5;
+        }
+
+        /* Pet Container */
+        .pet-container {
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s ease;
+            display: block;
+            margin: 0 auto;
+            border: none;
+            background: transparent;
+            padding: 0;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .pet-container:focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 6px;
+            border-radius: var(--radius-md);
+        }
+
+        .pet-container.bounce {
+            animation: bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .pet-container.wiggle {
+            animation: wiggle 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .pet-container.sparkle {
+            animation: sparkle 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .pet-container.sleep-anim {
+            animation: sleepBob 1s cubic-bezier(0.45, 0, 0.55, 1);
+        }
+
+        .pet-container.groom-anim {
+            animation: groomPreen 0.8s ease-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.1); filter: brightness(1.3); }
+        }
+
+        @keyframes sleepBob {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-5px) rotate(-3deg); }
+            75% { transform: translateY(-5px) rotate(3deg); }
+        }
+
+        @keyframes groomPreen {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(-5deg); }
+            50% { transform: scale(1.08) rotate(0deg); }
+            75% { transform: scale(1.05) rotate(5deg); }
+        }
+
+        .pet-container.treat-anim {
+            animation: treatBounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes treatBounce {
+            0%, 100% { transform: scale(1) translateY(0); }
+            30% { transform: scale(1.1) translateY(-15px); }
+            50% { transform: scale(1.05) translateY(-5px); }
+            70% { transform: scale(1.12) translateY(-10px); }
+        }
+
+        .pet-container.cuddle-anim {
+            animation: cuddleNuzzle 0.9s cubic-bezier(0.45, 0, 0.55, 1);
+        }
+
+        @keyframes cuddleNuzzle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            15% { transform: scale(1.08) rotate(-3deg); }
+            30% { transform: scale(1.12) rotate(2deg); }
+            45% { transform: scale(1.1) rotate(-2deg); }
+            60% { transform: scale(1.12) rotate(1deg); }
+            75% { transform: scale(1.08) rotate(-1deg); }
+        }
+
+        .pet-container.exercise-anim {
+            animation: exerciseRun 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        @keyframes exerciseRun {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-15px) translateY(-5px); }
+            40% { transform: translateX(15px) translateY(-8px); }
+            60% { transform: translateX(-10px) translateY(-3px); }
+            80% { transform: translateX(10px) translateY(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* Pet SVG Styles */
+        .pet-svg {
+            width: 150px;
+            height: 150px;
+            transition: width 0.8s cubic-bezier(0.34, 1.2, 0.64, 1),
+                        height 0.8s cubic-bezier(0.34, 1.2, 0.64, 1),
+                        transform 0.4s ease-out;
+        }
+
+        .pet-svg.growth-baby {
+            width: 90px;
+            height: 90px;
+        }
+
+        .pet-svg.growth-child {
+            width: 120px;
+            height: 120px;
+        }
+
+        .pet-svg.growth-adult {
+            width: 150px;
+            height: 150px;
+        }
+
+        .pet-svg.growth-elder {
+            width: 145px;
+            height: 145px;
+        }
+
+        /* Egg Styles */
+        .egg-container {
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            background: transparent;
+            border: none;
+            padding: 10px;
+            border-radius: var(--radius-lg);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .egg-container:hover,
+        .egg-container:focus {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .egg-container:active {
+            transform: scale(0.95);
+        }
+
+        .egg-svg {
+            width: 120px;
+            height: 160px;
+        }
+
+        .egg-crack {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .egg-shake {
+            animation: eggShake 0.3s ease;
+        }
+
+        @keyframes eggShake {
+            0%, 100% { transform: rotate(0deg); }
+            20% { transform: rotate(-5deg); }
+            40% { transform: rotate(5deg); }
+            60% { transform: rotate(-5deg); }
+            80% { transform: rotate(5deg); }
+        }
+
+        .hatch-message {
+            font-size: var(--heading-md);
+            color: var(--color-text);
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .tap-hint {
+            font-size: 1.2rem;
+            color: var(--color-text);
+            margin-top: 10px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Egg progress dots */
+        .egg-progress {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .egg-progress-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.1);
+            border: 2px solid rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .egg-progress-dot.filled {
+            background: var(--color-accent);
+            border-color: #F5C518;
+            box-shadow: 0 0 6px rgba(255, 230, 109, 0.6);
+            transform: scale(1.15);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Pet Name Display */
+        .pet-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            z-index: 2;
+        }
+
+        .pet-name {
+            font-size: var(--heading-md);
+            color: var(--color-primary);
+            font-weight: bold;
+            margin-top: 8px;
+            text-shadow: var(--text-shadow-decorative);
+        }
+
+
+
+        /* Growth progress bar */
+        .growth-progress-wrap {
+            margin-top: 6px;
+            text-align: center;
+            z-index: 2;
+            position: relative;
+        }
+
+
+        /* Mythical tag in naming modal */
+        .naming-modal-mythical {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #9C27B0;
+            background: linear-gradient(135deg, rgba(221, 160, 221, 0.3), rgba(135, 206, 235, 0.3));
+            border: 1.5px solid rgba(221, 160, 221, 0.5);
+            border-radius: var(--radius-lg);
+            padding: 2px 14px;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+
+        /* Needs Section - Compact Circular Indicators */
+        .needs-section {
+            margin: 12px 0 8px; /* Standardized spacing (was 10px 0 5px) */
+            padding-bottom: 16px; /* Standardized spacing (was 14px) */
+        }
+
+        .needs-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .need-bubble {
+            position: relative;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            transition: transform 0.2s ease;
+        }
+
+        .need-bubble:hover {
+            transform: scale(1.1);
+        }
+
+        .need-bubble:focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 4px;
+        }
+
+        .need-bubble-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(var(--ring-color) calc(var(--progress) * 1%), #e0e0e0 0);
+            mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 4.5px));
+            transition: --progress 0.8s ease, background 0.5s ease;
+        }
+
+        .need-bubble-icon {
+            font-size: 1.5rem;
+            z-index: 1;
+            line-height: 1;
+        }
+
+        .need-bubble-value {
+            position: absolute;
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--color-text);
+            white-space: nowrap;
+            pointer-events: none;
+            max-width: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .need-bubble-label {
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem; /* Accessible minimum */
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .need-bubble.low .need-bubble-icon {
+            animation: needPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes needPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        @media (max-width: 600px) {
+            .need-bubble {
+                width: 64px;
+                height: 64px;
+            }
+        }
+
+        /* Action Buttons - Horizontal Scrolling Strip */
+        .actions-section {
+            margin-top: 10px;
+        }
+
+        .action-scroll {
+            display: flex;
+            gap: 10px;
+            padding: 8px 4px 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .action-btn {
+            min-width: 68px;
+            min-height: 68px;
+            width: 68px;
+            height: 68px;
+            flex-shrink: 0;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            transition: all 0.25s ease-out;
+            box-shadow: var(--shadow-subtle);
+            color: var(--button-label-color);
+            text-shadow: none;
+            font-family: inherit;
+            touch-action: manipulation; /* Prevent double-tap zoom delay on mobile */
+        }
+
+        .action-btn .btn-icon {
+            color: #111;
+        }
+
+        .cooldown-count {
+            display: none;
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .action-btn.cooldown .cooldown-count {
+            display: block;
+        }
+
+        .action-btn.cooldown .cooldown-count::before {
+            content: '⏳';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            z-index: 3;
+            animation: cooldownPulse 0.6s ease-out forwards;
+        }
+
+        @keyframes cooldownPulse {
+            0% { opacity: 0.9; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.85); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+        }
+
+        .action-btn:hover,
+        .action-btn:focus {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .action-btn:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .top-action-btn[aria-disabled="true"],
+        .room-btn[aria-disabled="true"],
+        .modal-btn:disabled,
+        .tools-menu-btn:disabled,
+        .minigame-card:disabled,
+        .core-care-btn:disabled {
+            opacity: 0.58;
+            cursor: not-allowed;
+            filter: grayscale(0.2);
+        }
+
+        .action-btn.cooldown {
+            pointer-events: none;
+            opacity: 0.55;
+            filter: grayscale(0.5) brightness(0.9);
+            position: relative;
+            overflow: hidden;
+            transition: opacity 0.15s ease, filter 0.15s ease;
+            border: 2px dashed rgba(0,0,0,0.3) !important;
+        }
+
+        .action-btn.cooldown::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.35);
+            animation: cooldownSweep 0.6s linear forwards;
+            border-radius: inherit;
+            pointer-events: none;
+        }
+
+        @keyframes cooldownSweep {
+            0% { clip-path: inset(0 0 0 0); }
+            100% { clip-path: inset(100% 0 0 0); }
+        }
+
+        .action-btn .cooldown-timer {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.9);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .action-btn.feed {
+            background: var(--color-button-feed);
+            border-bottom: 3px solid rgba(0,0,0,0.15);
+        }
+
+        .action-btn.wash {
+            background: var(--color-button-wash);
+            border-bottom: 3px dashed rgba(0,0,0,0.15);
+        }
+
+        .action-btn.play {
+            background: var(--color-button-play);
+            border-bottom: 3px dotted rgba(0,0,0,0.15);
+        }
+
+        .action-btn.sleep {
+            background: var(--color-button-sleep);
+        }
+
+        .action-btn.medicine {
+            background: var(--color-button-medicine);
+        }
+
+        .action-btn.groom {
+            background: var(--color-button-groom);
+        }
+
+        .action-btn.exercise {
+            background: var(--color-button-exercise);
+            border-bottom: 3px double rgba(0,0,0,0.15);
+        }
+
+        .action-btn.treat {
+            background: var(--color-button-treat);
+        }
+
+        .action-btn.pet-cuddle {
+            background: var(--color-button-pet);
+        }
+
+        .btn-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+
+
+        /* Pop animation reused by minigame highlights */
+        @keyframes feedbackPop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* New Pet Button - subtle to reduce accidental clicks */
+        .new-pet-btn {
+            margin-top: 12px;
+            padding: 8px 18px;
+            font-size: 0.9rem;
+            background: #F5F8FB;
+            color: #34495E;
+            border: 1.5px dashed #8CA2B6;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            position: relative;
+            z-index: 5;
+        }
+
+        .new-pet-btn:hover,
+        .new-pet-btn:focus {
+            color: #0F5E73;
+            border-color: #0F5E73;
+            background: #E7F5F8;
+            transform: translateY(-1px);
+        }
+
+        /* Screen Reader Only */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Live Region for Screen Readers */
+        .live-region {
+            position: absolute;
+            left: -10000px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        /* Consolidated floating stat change summary bubble */
+        .stat-change-summary {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            background: rgba(255,255,255,0.92);
+            border-radius: var(--radius-sm);
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            font-weight: 900;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+            box-shadow: var(--shadow-subtle);
+            animation: summaryFloat 2s ease-out forwards;
+        }
+
+        /* Visual reaction bubble — accompanies pet voice SFX */
+        .pet-reaction-bubble {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 1.4rem;
+            pointer-events: none;
+            z-index: 10;
+            animation: reactionPop 1.1s ease-out forwards;
+            line-height: 1;
+        }
+
+        @keyframes reactionPop {
+            0% { opacity: 0; transform: scale(0.3) translateY(0); }
+            20% { opacity: 1; transform: scale(1.2) translateY(-8px); }
+            40% { transform: scale(1) translateY(-12px); }
+            100% { opacity: 0; transform: scale(0.8) translateY(-30px); }
+        }
+
+        .stat-change-summary .positive { color: #2E7D32; }
+        .stat-change-summary .negative { color: #C62828; }
+
+        @keyframes summaryFloat {
+            0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(0.85); }
+            15%  { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1.05); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.95); }
+        }
+
+        /* Overall pet wellness bar */
+        .wellness-bar-wrap {
+            margin: 8px 0 4px; /* Standardized spacing (was 6px 0 2px) */
+            padding: 0 4px;
+        }
+
+        .wellness-bar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .wellness-bar-label {
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #4E5D67;
+        }
+
+        .wellness-bar-value {
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: #2F3D45;
+            transition: color 0.5s ease;
+        }
+
+        .wellness-bar {
+            width: 100%;
+            height: 8px;
+            background: #e8e8e8;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .wellness-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s ease, background 0.8s ease;
+            background: linear-gradient(90deg, #66BB6A, #81C784);
+        }
+
+        .wellness-bar-fill.good {
+            background: linear-gradient(90deg, #66BB6A, #81C784);
+        }
+
+        .wellness-bar-fill.okay {
+            background: linear-gradient(90deg, #FFB74D, #FFA726);
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 4px,
+                rgba(255,255,255,0.25) 4px,
+                rgba(255,255,255,0.25) 8px
+            );
+        }
+
+        .wellness-bar-fill.low {
+            background: linear-gradient(90deg, #EF5350, #E53935);
+            background-image: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 3px,
+                rgba(255,255,255,0.3) 3px,
+                rgba(255,255,255,0.3) 6px
+            );
+        }
+
+        /* Action button tooltips */
+        .action-btn {
+            position: relative;
+        }
+
+        .action-btn-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            background: rgba(45, 52, 54, 0.92);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1350;
+            text-shadow: none;
+            letter-spacing: 0.02em;
+        }
+
+        /* Night-mode: lighter tooltip background for contrast against dark pet area */
+        .pet-area.nighttime .action-btn-tooltip,
+        [data-theme="dark"] .action-btn-tooltip {
+            background: rgba(100, 110, 120, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .pet-area.nighttime .action-btn-tooltip::after,
+        [data-theme="dark"] .action-btn-tooltip::after {
+            border-top-color: rgba(100, 110, 120, 0.95);
+        }
+
+        .action-btn-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(45, 52, 54, 0.92);
+        }
+
+        .action-btn:hover .action-btn-tooltip,
+        .action-btn:focus .action-btn-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        /* Item 20: On touch-only devices, show tooltips on focus (tap) */
+        @media (hover: none) {
+            .action-btn:focus .action-btn-tooltip {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+            .action-btn:active .action-btn-tooltip {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+        }
+
+        .action-btn.cooldown:hover,
+        .action-btn.cooldown:focus {
+            transform: none;
+            box-shadow: var(--shadow-subtle);
+        }
+        .action-btn.cooldown .action-btn-tooltip {
+            display: none !important;
+        }
+
+        /* Garden crop ready badge on mini-games button area */
+        .garden-ready-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #FF5252;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.7rem; /* Standardized font size */
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: var(--shadow-subtle);
+            animation: badgePop 0.3s ease;
+            z-index: 5;
+        }
+
+        @keyframes badgePop {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Garden countdown timer */
+        .garden-plot-timer {
+            font-size: 0.75rem; /* Accessible minimum */
+            color: rgba(255,255,255,0.85);
+            font-weight: 700;
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+            font-family: 'Courier New', 'Menlo', 'Consolas', monospace;
+        }
+
+        /* Section visual separators */
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent);
+            margin: 8px 0;
+        }
+
+        /* Sparkle Effect */
+        .sparkles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .sparkle-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--color-accent);
+            border-radius: 50%;
+            animation: sparkleFloat 1s ease-out forwards;
+        }
+
+        @keyframes sparkleFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-50px);
+            }
+        }
+
+        /* Hearts for Play */
+        .heart-particle {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: heartFloat 1s ease-out forwards;
+        }
+
+        @keyframes heartFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.5) translateY(-60px);
+            }
+        }
+
+        /* Bubbles for Wash */
+        .bubble-particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            border: 2px solid rgba(100,200,255,0.5);
+            animation: bubbleFloat 1.2s ease-out forwards;
+        }
+
+        @keyframes bubbleFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) translateY(-70px);
+            }
+        }
+
+        /* Zzz particles for Sleep */
+        .zzz-particle {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #9575CD;
+            animation: zzzFloat 1.5s ease-out forwards;
+        }
+
+        @keyframes zzzFloat {
+            0% {
+                opacity: 1;
+                transform: scale(0.5) translateY(0) translateX(0);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1) translateY(-30px) translateX(10px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.2) translateY(-60px) translateX(20px);
+            }
+        }
+
+        /* Star particles for Sleep */
+        .star-particle {
+            position: absolute;
+            font-size: 1.2rem;
+            animation: starTwinkle 1.2s ease-out forwards;
+        }
+
+        @keyframes starTwinkle {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5) rotate(360deg);
+            }
+        }
+
+        /* Medicine healing particles */
+        .medicine-particle {
+            position: absolute;
+            font-size: 1.3rem;
+            animation: medicineFloat 1.3s ease-out forwards;
+        }
+
+        @keyframes medicineFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-20px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-50px);
+            }
+        }
+
+        .pet-container.heal-anim {
+            animation: healPulse 0.8s ease;
+        }
+
+        @keyframes healPulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            25% { transform: scale(1.05); filter: brightness(1.1) hue-rotate(10deg); }
+            50% { transform: scale(1.08); filter: brightness(1.2) hue-rotate(0deg); }
+            75% { transform: scale(1.05); filter: brightness(1.1) hue-rotate(-10deg); }
+        }
+
+        /* Grooming particles */
+        .groom-particle {
+            position: absolute;
+            font-size: 1.3rem;
+            animation: groomFloat 1.3s ease-out forwards;
+        }
+
+        @keyframes groomFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(0) rotate(0deg);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-15px) rotate(10deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-45px) rotate(-10deg);
+            }
+        }
+
+        .exercise-particle {
+            position: absolute;
+            font-size: 1.3rem;
+            animation: exerciseFloat 1.3s ease-out forwards;
+        }
+
+        @keyframes exerciseFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(0) translateX(0);
+            }
+            30% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-10px) translateX(10px);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-40px) translateX(-15px);
+            }
+        }
+
+        /* Treat particles */
+        .treat-particle {
+            position: absolute;
+            font-size: 1.4rem;
+            animation: treatFloat 1.4s ease-out forwards;
+        }
+
+        @keyframes treatFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(0) rotate(0deg);
+            }
+            25% {
+                opacity: 1;
+                transform: scale(1.3) translateY(-15px) rotate(15deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.6) translateY(-55px) rotate(-15deg);
+            }
+        }
+
+        /* Cuddle/petting particles */
+        .cuddle-particle {
+            position: absolute;
+            font-size: 1.4rem;
+            animation: cuddleFloat 1.4s ease-out forwards;
+        }
+
+        @keyframes cuddleFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(0) rotate(0deg);
+            }
+            20% {
+                opacity: 1;
+                transform: scale(1.2) translateY(-10px) rotate(-10deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.4) translateY(-25px) rotate(5deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-55px) rotate(-5deg);
+            }
+        }
+
+        /* Pettable pet area cursor */
+        .pet-container.pettable {
+            cursor: pointer;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+
+        .pet-container.pettable:hover {
+            filter: brightness(1.08) drop-shadow(0 0 6px rgba(255, 180, 162, 0.5));
+            transform: scale(1.05);
+        }
+
+        .pet-container.pettable:active {
+            transform: scale(0.97);
+        }
+
+        .pet-container.pettable::after {
+            content: 'Tap to pet!';
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: rgba(0,0,0,0.45);
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .pet-container.pettable:hover::after {
+            opacity: 1;
+        }
+
+        /* Day/Night cycle styles */
+        .pet-area.daytime {
+            background: linear-gradient(180deg, #87CEEB, #98FB98);
+        }
+
+        .pet-area.sunset {
+            background: linear-gradient(180deg, #FF7E5F, #FEB47B);
+        }
+
+        .pet-area.nighttime {
+            background: linear-gradient(180deg, #1a1a2e, #0f3460);
+        }
+
+        .pet-area.nighttime::after {
+            background: linear-gradient(180deg, #2d4a22, #1a3015);
+        }
+
+        .pet-area.sunrise {
+            background: linear-gradient(180deg, #ffecd2, #fcb69f);
+        }
+

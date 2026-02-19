@@ -8,18 +8,18 @@
             let currentEarcon = null;
             let currentRoom = null;
             let hasInteracted = false;
-            let isEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_soundEnabled'); return v !== 'false'; } catch (e) { return true; } })();
+            let isEnabled = (() => { try { const v = localStorage.getItem(STORAGE_KEYS.soundEnabled); return v !== 'false'; } catch (e) { return true; } })();
             let _audioSupported = true; // Item 39: Track Web Audio API support
 
             // Item 37: Per-category volume controls (0.0 to 1.0)
-            let sfxVolume = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_sfxVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
-            let ambientVolume = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_ambientVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
-            let musicVolumeSetting = (() => { try { const v = parseFloat(localStorage.getItem('petCareBuddy_musicVolume')); return isNaN(v) ? 1.0 : Math.max(0, Math.min(1, v)); } catch (e) { return 1.0; } })();
-            let samplePackEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_samplePackEnabled'); return v !== 'false'; } catch (e) { return true; } })();
+            let sfxVolume = (() => { try { const v = parseFloat(localStorage.getItem(STORAGE_KEYS.sfxVolume)); return isNaN(v) ? 1.0 : clamp(v, 0, 1); } catch (e) { return 1.0; } })();
+            let ambientVolume = (() => { try { const v = parseFloat(localStorage.getItem(STORAGE_KEYS.ambientVolume)); return isNaN(v) ? 1.0 : clamp(v, 0, 1); } catch (e) { return 1.0; } })();
+            let musicVolumeSetting = (() => { try { const v = parseFloat(localStorage.getItem(STORAGE_KEYS.musicVolume)); return isNaN(v) ? 1.0 : clamp(v, 0, 1); } catch (e) { return 1.0; } })();
+            let samplePackEnabled = (() => { try { const v = localStorage.getItem(STORAGE_KEYS.samplePackEnabled); return v !== 'false'; } catch (e) { return true; } })();
 
-            const EARCON_VOLUME = 0.3; // 30% volume to not interfere with screen readers
-            const FADE_DURATION = 0.8; // seconds for fade in/out
-            const LOOP_DURATION = 2.5; // seconds per loop
+            const EARCON_VOLUME = GAME_BALANCE.sound.earconVolume; // 30% volume to not interfere with screen readers
+            const FADE_DURATION = GAME_BALANCE.sound.fadeDuration; // seconds for fade in/out
+            const LOOP_DURATION = GAME_BALANCE.sound.loopDuration; // seconds per loop
 
             // Optional lightweight sample pack (bundled local assets)
             const SAMPLE_SFX_FILES = {
@@ -117,7 +117,7 @@
                     osc.onended = () => { osc.disconnect(); filter.disconnect(); bubbleGain.disconnect(); };
 
                     if (!stopped) {
-                        timerId = setTimeout(playBubble, 200 + Math.random() * 500);
+                        timerId = setTimeout(playBubble, GAME_BALANCE.sound.bubbleDelayBase + Math.random() * GAME_BALANCE.sound.bubbleDelayVariance);
                     }
                 }
 
@@ -162,7 +162,7 @@
                     osc.onended = () => { osc.disconnect(); chimeGain.disconnect(); };
 
                     if (!stopped) {
-                        timerId = setTimeout(playChime, 800 + Math.random() * 1500);
+                        timerId = setTimeout(playChime, GAME_BALANCE.sound.chimeDelayBase + Math.random() * GAME_BALANCE.sound.chimeDelayVariance);
                     }
                 }
 
@@ -551,7 +551,7 @@
                         enterRoom(roomToRestore);
                     }
                 }
-                try { localStorage.setItem('petCareBuddy_soundEnabled', isEnabled ? 'true' : 'false'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.soundEnabled, isEnabled ? 'true' : 'false'); } catch (e) {}
                 return isEnabled;
             }
 
@@ -562,12 +562,12 @@
             function clampVolumeSetting(value) {
                 const n = parseFloat(value);
                 if (isNaN(n)) return 1.0;
-                return Math.max(0, Math.min(1, n));
+                return clamp(n, 0, 1);
             }
 
             function setSfxVolumeSetting(value) {
                 sfxVolume = clampVolumeSetting(value);
-                try { localStorage.setItem('petCareBuddy_sfxVolume', String(sfxVolume)); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.sfxVolume, String(sfxVolume)); } catch (e) {}
                 return sfxVolume;
             }
 
@@ -577,7 +577,7 @@
 
             function setAmbientVolumeSetting(value) {
                 ambientVolume = clampVolumeSetting(value);
-                try { localStorage.setItem('petCareBuddy_ambientVolume', String(ambientVolume)); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.ambientVolume, String(ambientVolume)); } catch (e) {}
                 if (audioCtx && currentEarcon && currentEarcon.gainNode) {
                     const target = EARCON_VOLUME * ambientVolume;
                     currentEarcon.gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
@@ -592,9 +592,9 @@
 
             function setMusicVolumeSetting(value) {
                 musicVolumeSetting = clampVolumeSetting(value);
-                try { localStorage.setItem('petCareBuddy_musicVolume', String(musicVolumeSetting)); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.musicVolume, String(musicVolumeSetting)); } catch (e) {}
                 if (currentSampleMusic) {
-                    currentSampleMusic.volume = Math.max(0, Math.min(1, MUSIC_VOLUME * musicVolumeSetting * 2.8));
+                    currentSampleMusic.volume = clamp(MUSIC_VOLUME * musicVolumeSetting * 2.8, 0, 1);
                 }
                 if (audioCtx && currentMusicLoop && currentMusicLoop.gainNode) {
                     const target = MUSIC_VOLUME * musicVolumeSetting;
@@ -689,7 +689,7 @@
                 try {
                     const el = new Audio(src);
                     el.preload = 'auto';
-                    el.volume = Math.max(0, Math.min(1, getSfxVolume() * 1.25));
+                    el.volume = clamp(getSfxVolume() * 1.25, 0, 1);
                     el.playbackRate = Math.max(0.9, Math.min(1.1, 1 + ((Math.random() - 0.5) * 0.06)));
                     const maybePromise = el.play();
                     if (maybePromise && typeof maybePromise.catch === 'function') {
@@ -1214,7 +1214,7 @@
             // Adapts to room and time of day for ambient atmosphere
 
             const MUSIC_VOLUME = 0.08; // Very quiet background
-            let musicEnabled = (() => { try { const v = localStorage.getItem('petCareBuddy_musicEnabled'); return v !== 'false'; } catch (e) { return true; } })();
+            let musicEnabled = (() => { try { const v = localStorage.getItem(STORAGE_KEYS.musicEnabled); return v !== 'false'; } catch (e) { return true; } })();
             let currentMusicLoop = null;
             let currentSampleMusic = null;
 
@@ -1274,7 +1274,7 @@
                     const el = new Audio(src);
                     el.loop = true;
                     el.preload = 'auto';
-                    el.volume = Math.max(0, Math.min(1, MUSIC_VOLUME * musicVolumeSetting * 2.8));
+                    el.volume = clamp(MUSIC_VOLUME * musicVolumeSetting * 2.8, 0, 1);
                     currentSampleMusic = el;
                     const maybePromise = el.play();
                     if (maybePromise && typeof maybePromise.catch === 'function') {
@@ -1418,7 +1418,7 @@
                         startMusic(room, timeOfDay);
                     }
                 }
-                try { localStorage.setItem('petCareBuddy_musicEnabled', musicEnabled ? 'true' : 'false'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.musicEnabled, musicEnabled ? 'true' : 'false'); } catch (e) {}
                 return musicEnabled;
             }
 
@@ -1428,7 +1428,7 @@
                 const next = !!enabled;
                 if (samplePackEnabled === next) return samplePackEnabled;
                 samplePackEnabled = next;
-                try { localStorage.setItem('petCareBuddy_samplePackEnabled', samplePackEnabled ? 'true' : 'false'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.samplePackEnabled, samplePackEnabled ? 'true' : 'false'); } catch (e) {}
 
                 if (!samplePackEnabled) {
                     stopSampleMusic();

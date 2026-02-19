@@ -17,9 +17,9 @@
 
             // Adjust brightness using additive approach so zero channels can be brightened
             const amt = Math.round(255 * percent / 100);
-            const newR = Math.max(0, Math.min(255, r + amt));
-            const newG = Math.max(0, Math.min(255, g + amt));
-            const newB = Math.max(0, Math.min(255, b + amt));
+            const newR = clamp(r + amt, 0, 255);
+            const newG = clamp(g + amt, 0, 255);
+            const newB = clamp(b + amt, 0, 255);
 
             // Convert back to hex
             const toHex = (n) => {
@@ -60,7 +60,7 @@
             }
 
             // Adjust saturation
-            s = Math.max(0, Math.min(1, s * (1 + percent / 100)));
+            s = clamp(s * (1 + percent / 100), 0, 1);
 
             // Convert HSL back to RGB
             const hue2rgb = (p, q, t) => {

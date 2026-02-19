@@ -90,11 +90,11 @@
         function getCompetitionRewardMultiplier(pet, difficultyScale) {
             const stageWeight = getStageRewardWeight((pet && pet.growthStage) || 'baby');
             const power = Math.max(0, Number(calculateBattleStat(pet)) || 0);
-            const powerNorm = Math.max(0.45, Math.min(1.6, power / 72));
-            const powerDamp = Math.max(0.85, 1.08 - ((powerNorm - 1) * 0.24));
+            const powerNorm = Math.max(GAME_BALANCE.combat.powerNormMin, Math.min(GAME_BALANCE.combat.powerNormMax, power / GAME_BALANCE.combat.powerNormDivisor));
+            const powerDamp = Math.max(GAME_BALANCE.combat.powerDampMin, GAME_BALANCE.combat.powerDampBase - ((powerNorm - 1) * GAME_BALANCE.combat.powerDampFactor));
             const difficulty = Math.max(0.75, Number(difficultyScale) || 1);
-            const difficultyWeight = Math.max(0.88, Math.min(1.24, 0.92 + (difficulty - 1) * 0.22));
-            return Math.max(0.8, Math.min(1.3, stageWeight * powerDamp * difficultyWeight));
+            const difficultyWeight = Math.max(GAME_BALANCE.combat.difficultyWeightMin, Math.min(GAME_BALANCE.combat.difficultyWeightMax, GAME_BALANCE.combat.difficultyWeightBase + (difficulty - 1) * GAME_BALANCE.combat.difficultyWeightFactor));
+            return Math.max(GAME_BALANCE.combat.rewardMultMin, Math.min(GAME_BALANCE.combat.rewardMultMax, stageWeight * powerDamp * difficultyWeight));
         }
 
         function calculateMoveDamage(move, attacker, defender) {
@@ -122,11 +122,11 @@
                 defenderTypes.push(...(defenderTypeData.parentTypes || defenderTypeData.parents));
             }
             if (defenderTypes.some(dt => advantages.includes(dt))) {
-                damage = Math.round(damage * 1.3);
+                damage = Math.round(damage * GAME_BALANCE.combat.typeAdvantageMultiplier);
             }
 
             // Add some randomness (+/- 15%)
-            const variance = 0.85 + Math.random() * 0.3;
+            const variance = GAME_BALANCE.combat.damageVarianceMin + Math.random() * GAME_BALANCE.combat.damageVarianceRange;
             damage = Math.round(damage * variance);
 
             return Math.max(1, damage);
@@ -135,7 +135,7 @@
         function selectAIMove(aiPet, aiHP, aiMaxHP) {
             const moves = Object.keys(BATTLE_MOVES);
             // AI logic: heal when low HP, otherwise attack
-            if (aiHP < aiMaxHP * 0.3 && Math.random() < 0.6) {
+            if (aiHP < aiMaxHP * GAME_BALANCE.combat.aiHealThreshold && Math.random() < GAME_BALANCE.combat.aiHealProbability) {
                 return BATTLE_MOVES.rest;
             }
             // Pick random attack move (exclude rest most of the time)
@@ -190,7 +190,7 @@
             let turnCount = 0;
 
             function renderBattle() {
-                const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                const petName = getPetDisplayName(pet);
                 const oppName = escapeHTML(opponent.name);
                 const playerPct = Math.max(0, Math.round((playerHP / playerMaxHP) * 100));
                 const oppPct = Math.max(0, Math.round((oppHP / oppMaxHP) * 100));
@@ -282,16 +282,7 @@
             }
 
             function restoreBattleLog() {
-                const log = overlay.querySelector('#battle-log');
-                if (log) {
-                    battleLogHistory.forEach(msg => {
-                        const entry = document.createElement('div');
-                        entry.className = 'battle-log-entry';
-                        entry.textContent = msg;
-                        log.appendChild(entry);
-                    });
-                    log.scrollTop = log.scrollHeight;
-                }
+                restoreLog('#battle-log', battleLogHistory, null, overlay);
             }
 
             function executeTurn(moveId) {
@@ -304,7 +295,7 @@
                     turnLocked = false;
                     return;
                 }
-                const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
+                const petName = getPetDisplayName(pet);
                 const oppName = opponent.name;
 
                 // Player turn
@@ -536,7 +527,7 @@
 
                 function renderBossFight() {
                     const currentPet = allPets[currentPetIdx];
-                    const currentPetName = escapeHTML(currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet');
+                    const currentPetName = getPetDisplayName(currentPet);
                     const bossPct = Math.max(0, Math.round((bossHP / bossMaxHP) * 100));
                     const petPct = Math.max(0, Math.round((petHPs[currentPetIdx] / petMaxHPs[currentPetIdx]) * 100));
 
@@ -604,23 +595,14 @@
                 }
 
                 function restoreBossLog() {
-                    const log = overlay.querySelector('#boss-log');
-                    if (log) {
-                        bossLogHistory.forEach(msg => {
-                            const entry = document.createElement('div');
-                            entry.className = 'battle-log-entry';
-                            entry.textContent = msg;
-                            log.appendChild(entry);
-                        });
-                        log.scrollTop = log.scrollHeight;
-                    }
+                    restoreLog('#boss-log', bossLogHistory, null, overlay);
                 }
 
                 function executeBossTurn(moveId) {
                     if (fightOver || bossTurnLocked) return;
                     bossTurnLocked = true;
                     const currentPet = allPets[currentPetIdx];
-                    const petName = currentPet.name || (getAllPetTypeData(currentPet.type) || {}).name || 'Pet';
+                    const petName = getPetDisplayName(currentPet);
                     const move = BATTLE_MOVES[moveId];
                     if (!move) {
                         bossTurnLocked = false;
@@ -859,7 +841,7 @@
             overlay.setAttribute('aria-label', 'Pet Show');
 
             const result = calculateShowScore(pet);
-            const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+            const petName = getPetDisplayName(pet);
 
             // Prevent stat farming by enforcing a cooldown between shows
             const now = Date.now();
@@ -1009,7 +991,7 @@
             const coursePet = { ...pet };
 
             function renderCourse() {
-                const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                const petName = getPetDisplayName(pet);
                 const stage = OBSTACLE_COURSE_STAGES[currentStage];
                 const progress = Math.round((currentStage / OBSTACLE_COURSE_STAGES.length) * 100);
 
@@ -1244,7 +1226,7 @@
                 let fightOver = false;
 
                 function renderRivalFight() {
-                    const petName = escapeHTML(pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet');
+                    const petName = getPetDisplayName(pet);
                     const playerPct = Math.max(0, Math.round((playerHP / playerMaxHP) * 100));
                     const rivalPct = Math.max(0, Math.round((rivalHP / rivalMaxHP) * 100));
 
@@ -1304,15 +1286,8 @@
                 }
                 function restoreRivalLog() {
                     const log = overlay.querySelector('#rival-log');
-                    if (!log) return;
-                    log.innerHTML = '';
-                    _rivalLogHistory.forEach(msg => {
-                        const entry = document.createElement('div');
-                        entry.className = 'battle-log-entry';
-                        entry.textContent = msg;
-                        log.appendChild(entry);
-                    });
-                    log.scrollTop = log.scrollHeight;
+                    if (log) log.innerHTML = '';
+                    restoreLog('#rival-log', _rivalLogHistory, null, overlay);
                 }
 
                 function executeRivalTurn(moveId) {
@@ -1323,7 +1298,7 @@
                         rivalTurnLocked = false;
                         return;
                     }
-                    const petName = pet.name || (getAllPetTypeData(pet.type) || {}).name || 'Pet';
+                    const petName = getPetDisplayName(pet);
 
                     // Player attack
                     if (move.heal) {

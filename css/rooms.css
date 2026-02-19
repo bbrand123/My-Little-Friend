@@ -1,0 +1,694 @@
+/* Extracted from style.css - Garden styles, seed picker, animated background elements per room, room art layers */
+
+        /* ==================== GARDEN STYLES ==================== */
+
+        .garden-section {
+            margin: 8px 0;
+            padding: 12px;
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            border-radius: var(--radius);
+            border: 2px solid #A5D6A7;
+        }
+
+        .garden-title {
+            font-size: 1rem;
+            color: #2E7D32;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .garden-plots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .garden-plot {
+            background: linear-gradient(180deg, #8D6E63 0%, #6D4C41 100%);
+            border-radius: var(--radius-md);
+            padding: 10px 6px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid #5D4037;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .garden-plot:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .garden-plot:focus-visible {
+            outline: 3px solid #FFD54F;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 5px rgba(255, 213, 79, 0.3);
+        }
+
+        .garden-plot.empty {
+            background: linear-gradient(180deg, #A1887F, #8D6E63);
+            border-style: dashed;
+            opacity: 0.8;
+        }
+
+        .garden-plot.locked {
+            background: linear-gradient(180deg, #616161, #424242);
+            border-color: #333;
+            opacity: 0.55;
+            cursor: help;
+            position: relative;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .garden-plot.locked:hover {
+            opacity: 0.75;
+            transform: scale(1.02);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+        }
+
+        .garden-plot.locked .garden-plot-label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.85);
+            font-weight: 600;
+        }
+
+        .garden-plot.locked .garden-plot-emoji {
+            font-size: 1.4rem;
+            animation: lockedPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes lockedPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .garden-plot.growing {
+            background: linear-gradient(180deg, #795548, #5D4037);
+        }
+
+        .garden-plot.ready {
+            background: linear-gradient(180deg, #66BB6A, #43A047);
+            border-color: #2E7D32;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+        }
+
+        .garden-plot-emoji {
+            font-size: 1.6rem;
+            margin-bottom: 2px;
+        }
+
+        .garden-plot-label {
+            font-size: 0.7rem;
+            color: white;
+            font-weight: bold;
+            text-shadow: var(--text-shadow-on-dark);
+        }
+
+        .garden-plot-status {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.9);
+            font-weight: 700;
+            text-shadow: var(--text-shadow-on-dark);
+            margin-top: 2px;
+        }
+
+        .garden-plot-progress {
+            width: 80%;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .garden-plot-progress-fill {
+            height: 100%;
+            background: #FFD54F;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .garden-plot-remove {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.35);
+            color: white;
+            font-size: 0.7rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .garden-plot:hover .garden-plot-remove,
+        .garden-plot:focus-within .garden-plot-remove {
+            opacity: 1;
+        }
+
+        .garden-plot-remove:hover {
+            background: #EF5350;
+        }
+
+        .garden-plot-remove:focus-visible {
+            opacity: 1;
+            outline: 2px solid #FFD54F;
+            outline-offset: 1px;
+        }
+
+        .remove-crop-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--z-overlay-dialog);
+            animation: fadeIn 0.2s ease;
+        }
+
+        .remove-crop-dialog {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            max-width: 280px;
+            width: 85%;
+            text-align: center;
+            box-shadow: var(--shadow-overlay);
+        }
+
+        .remove-crop-message {
+            font-size: 1rem;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .remove-crop-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .remove-crop-btn {
+            padding: var(--btn-pad-md);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .remove-crop-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .remove-crop-btn.cancel {
+            background: #E0E0E0;
+            color: #333;
+        }
+
+        .remove-crop-btn.confirm {
+            background: #EF5350;
+            color: white;
+        }
+
+        .remove-crop-btn:focus-visible {
+            outline: 3px solid #FFD54F;
+            outline-offset: 2px;
+        }
+
+        .garden-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .garden-btn {
+            padding: var(--btn-pad-sm);
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .garden-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .garden-btn.plant-btn {
+            background: #66BB6A;
+            color: white;
+        }
+
+        .garden-btn.water-btn {
+            background: #4FC3F7;
+            color: white;
+        }
+
+        .garden-btn.harvest-btn {
+            background: #FFB74D;
+            color: white;
+        }
+
+        .garden-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .garden-inventory {
+            margin-top: 8px;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.6);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .garden-inventory-items {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .garden-inventory-item {
+            background: white;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        /* Seed picker overlay */
+        .seed-picker-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--z-overlay-dialog);
+            animation: fadeIn 0.2s ease;
+        }
+
+        .seed-picker {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-overlay);
+        }
+
+        .seed-picker-title {
+            font-size: var(--heading-sm);
+            margin-bottom: 12px;
+            color: #2E7D32;
+        }
+
+        .seed-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .seed-option {
+            padding: var(--btn-pad-md);
+            border: 2px solid #E0E0E0;
+            border-radius: var(--radius-md);
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .seed-option:hover {
+            border-color: #66BB6A;
+            background: #E8F5E9;
+            transform: translateY(-2px);
+        }
+
+        .seed-option-emoji {
+            font-size: 1.4rem;
+        }
+
+        .seed-option-name {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .seed-option-time {
+            font-size: 0.7rem;
+            color: var(--color-text-secondary);
+        }
+
+        .seed-picker-close {
+            padding: var(--btn-pad-md);
+            border: none;
+            border-radius: var(--radius-sm);
+            background: #EF5350;
+            color: white;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .seed-picker-close:hover {
+            background: #E53935;
+        }
+
+
+/* ==================== FEATURE: ANIMATED BACKGROUND ELEMENTS PER ROOM ==================== */
+
+.ambient-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.ambient-element {
+    position: absolute;
+    font-size: 1.2rem;
+    opacity: 0.35;
+    pointer-events: none;
+    will-change: transform;
+}
+
+/* Park: floating clouds */
+.room-park .ambient-element.amb-cloud {
+    animation: ambCloudDrift 18s linear infinite;
+    font-size: 1.8rem;
+    opacity: 0.25;
+}
+.room-park .ambient-element.amb-cloud:nth-child(2) { animation-duration: 24s; animation-delay: -6s; top: 18%; font-size: 1.4rem; }
+.room-park .ambient-element.amb-cloud:nth-child(3) { animation-duration: 30s; animation-delay: -12s; top: 8%; }
+
+@keyframes ambCloudDrift {
+    0% { transform: translateX(-60px); }
+    100% { transform: translateX(calc(100% + 60px)); }
+}
+
+/* Backyard: butterflies */
+.room-backyard .ambient-element.amb-butterfly {
+    animation: ambButterflyFloat 8s ease-in-out infinite;
+    font-size: 1rem;
+    opacity: 0.5;
+}
+.room-garden .ambient-element.amb-butterfly {
+    animation: ambButterflyFloat 9s ease-in-out infinite;
+    font-size: 1rem;
+    opacity: 0.58;
+}
+.room-backyard .ambient-element.amb-butterfly:nth-child(2) { animation-delay: -3s; animation-duration: 10s; }
+.room-backyard .ambient-element.amb-butterfly:nth-child(3) { animation-delay: -6s; animation-duration: 12s; }
+
+@keyframes ambButterflyFloat {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(30px, -15px) rotate(10deg); }
+    50% { transform: translate(60px, 5px) rotate(-5deg); }
+    75% { transform: translate(30px, -10px) rotate(8deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.ambient-element.amb-firefly {
+    font-size: 0.8rem;
+    opacity: 0.2;
+    animation: ambFireflyGlow 4s ease-in-out infinite;
+}
+
+@keyframes ambFireflyGlow {
+    0%, 100% { transform: translateY(0px) scale(0.9); opacity: 0.16; }
+    35% { transform: translateY(-8px) scale(1.02); opacity: 0.62; }
+    70% { transform: translateY(-3px) scale(0.95); opacity: 0.32; }
+}
+
+/* Bathroom: drifting bubbles */
+.room-bathroom .ambient-element.amb-bubble {
+    animation: ambBubbleRise 6s ease-in-out infinite;
+    font-size: 0.9rem;
+    opacity: 0.4;
+}
+.room-bathroom .ambient-element.amb-bubble:nth-child(2) { animation-delay: -2s; animation-duration: 8s; left: 70%; }
+.room-bathroom .ambient-element.amb-bubble:nth-child(3) { animation-delay: -4s; animation-duration: 7s; left: 40%; }
+
+@keyframes ambBubbleRise {
+    0% { transform: translateY(0) scale(1); opacity: 0.4; }
+    50% { transform: translateY(-40px) scale(1.1); opacity: 0.5; }
+    100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+}
+
+/* Kitchen: steam wisps */
+.room-kitchen .ambient-element.amb-steam {
+    animation: ambSteamRise 5s ease-out infinite;
+    font-size: 1rem;
+    opacity: 0.3;
+}
+.room-kitchen .ambient-element.amb-steam:nth-child(2) { animation-delay: -1.5s; animation-duration: 6s; left: 65%; }
+.room-kitchen .ambient-element.amb-steam:nth-child(3) { animation-delay: -3s; animation-duration: 7s; left: 35%; }
+
+@keyframes ambSteamRise {
+    0% { transform: translateY(0) scale(1); opacity: 0.3; }
+    60% { transform: translateY(-50px) scale(1.3); opacity: 0.15; }
+    100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+}
+
+/* Bedroom: floating ZZZs at night */
+.room-bedroom .ambient-element.amb-zzz {
+    animation: ambZzzFloat 4s ease-in-out infinite;
+    font-size: 1rem;
+    opacity: 0.3;
+}
+.room-bedroom .ambient-element.amb-zzz:nth-child(2) { animation-delay: -1.5s; font-size: 0.8rem; left: 60%; }
+.room-bedroom .ambient-element.amb-zzz:nth-child(3) { animation-delay: -3s; font-size: 1.2rem; left: 30%; }
+
+@keyframes ambZzzFloat {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+    20% { opacity: 0.3; }
+    80% { opacity: 0.3; }
+    100% { transform: translateY(-60px) rotate(15deg); opacity: 0; }
+}
+
+/* Garden: growing sparkles */
+.room-garden .ambient-element.amb-sparkle {
+    animation: ambGardenSparkle 3s ease-in-out infinite;
+    font-size: 0.8rem;
+    opacity: 0.4;
+}
+.room-garden .ambient-element.amb-sparkle:nth-child(2) { animation-delay: -1s; left: 75%; }
+.room-garden .ambient-element.amb-sparkle:nth-child(3) { animation-delay: -2s; left: 45%; }
+
+@keyframes ambGardenSparkle {
+    0%, 100% { transform: scale(0.8); opacity: 0.2; }
+    50% { transform: scale(1.2); opacity: 0.5; }
+}
+
+/* Night stars twinkling for outdoor rooms */
+.pet-area.nighttime .ambient-element.amb-star {
+    animation: ambStarTwinkle 2s ease-in-out infinite;
+    font-size: 0.6rem;
+    opacity: 0.6;
+}
+.pet-area.nighttime .ambient-element.amb-star:nth-child(2) { animation-delay: -0.7s; }
+.pet-area.nighttime .ambient-element.amb-star:nth-child(3) { animation-delay: -1.4s; }
+
+@keyframes ambStarTwinkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 0.8; transform: scale(1.2); }
+}
+
+
+/* ==================== ROOM ART LAYERS ==================== */
+.room-art-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.28;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+
+.room-art-layer.room-art-front {
+    opacity: 0.16;
+    mix-blend-mode: soft-light;
+}
+
+.pet-area.room-bedroom .room-art-back {
+    background:
+        url('../assets/props/room-art/bedroom-back.svg'),
+        radial-gradient(35px 25px at 18% 24%, rgba(255,255,255,0.55), transparent 72%),
+        radial-gradient(30px 22px at 82% 18%, rgba(255,240,220,0.5), transparent 70%);
+}
+
+.pet-area.room-kitchen .room-art-back {
+    background:
+        url('../assets/props/room-art/kitchen-back.svg'),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.3) 0 10px, rgba(0,0,0,0.04) 10px 20px),
+        linear-gradient(180deg, transparent, rgba(255,255,255,0.2));
+}
+
+.pet-area.room-bathroom .room-art-back {
+    background:
+        url('../assets/props/room-art/bathroom-back.svg'),
+        radial-gradient(14px 14px at 20% 74%, rgba(255,255,255,0.45), transparent 72%),
+        radial-gradient(12px 12px at 72% 66%, rgba(255,255,255,0.42), transparent 70%),
+        radial-gradient(20px 20px at 48% 78%, rgba(255,255,255,0.35), transparent 74%);
+}
+
+.pet-area.room-backyard .room-art-back,
+.pet-area.room-garden .room-art-back {
+    background:
+        url('../assets/props/room-art/backyard-back.svg'),
+        radial-gradient(10px 8px at 14% 84%, rgba(255,220,130,0.36), transparent 70%),
+        radial-gradient(12px 9px at 39% 82%, rgba(255,150,160,0.28), transparent 70%),
+        radial-gradient(10px 8px at 66% 86%, rgba(170,220,150,0.3), transparent 70%),
+        radial-gradient(12px 9px at 84% 81%, rgba(255,190,120,0.3), transparent 70%);
+}
+
+.pet-area.room-garden .room-art-back {
+    background:
+        url('../assets/props/room-art/garden-back.svg'),
+        radial-gradient(10px 8px at 14% 84%, rgba(255,220,130,0.36), transparent 70%),
+        radial-gradient(12px 9px at 39% 82%, rgba(255,150,160,0.28), transparent 70%),
+        radial-gradient(10px 8px at 66% 86%, rgba(170,220,150,0.3), transparent 70%),
+        radial-gradient(12px 9px at 84% 81%, rgba(255,190,120,0.3), transparent 70%);
+}
+
+.pet-area.room-park .room-art-back {
+    background:
+        url('../assets/props/room-art/park-back.svg'),
+        radial-gradient(34px 22px at 20% 20%, rgba(255,255,255,0.45), transparent 72%),
+        radial-gradient(38px 26px at 72% 16%, rgba(255,255,255,0.4), transparent 72%),
+        linear-gradient(180deg, transparent 52%, rgba(255,255,255,0.2));
+}
+
+.pet-area.room-library .room-art-back {
+    background:
+        url('../assets/props/room-art/library-back.svg'),
+        repeating-linear-gradient(90deg, rgba(120, 86, 58, 0.18) 0 10px, rgba(72, 48, 33, 0.14) 10px 20px),
+        linear-gradient(180deg, rgba(255,255,255,0.14), transparent 48%);
+}
+
+.pet-area.room-arcade .room-art-back {
+    background:
+        url('../assets/props/room-art/arcade-back.svg'),
+        repeating-linear-gradient(90deg, rgba(255, 64, 129, 0.11) 0 8px, rgba(124, 77, 255, 0.11) 8px 16px),
+        linear-gradient(180deg, rgba(255,255,255,0.12), transparent 42%);
+}
+
+.pet-area.room-spa .room-art-back {
+    background:
+        url('../assets/props/room-art/spa-back.svg'),
+        radial-gradient(18px 18px at 16% 74%, rgba(255,255,255,0.28), transparent 70%),
+        radial-gradient(20px 20px at 74% 76%, rgba(255,255,255,0.24), transparent 70%),
+        linear-gradient(180deg, rgba(255,255,255,0.1), transparent 46%);
+}
+
+.pet-area.room-observatory .room-art-back {
+    background:
+        url('../assets/props/room-art/observatory-back.svg'),
+        radial-gradient(2px 2px at 22% 10%, rgba(255,255,255,0.5), transparent 4px),
+        radial-gradient(2px 2px at 56% 16%, rgba(255,255,255,0.45), transparent 4px),
+        radial-gradient(2px 2px at 80% 12%, rgba(255,255,255,0.5), transparent 4px),
+        linear-gradient(180deg, rgba(255,255,255,0.1), transparent 50%);
+}
+
+.pet-area.room-workshop .room-art-back {
+    background:
+        url('../assets/props/room-art/workshop-back.svg'),
+        repeating-linear-gradient(45deg, rgba(110, 90, 78, 0.2) 0 10px, rgba(74, 58, 48, 0.16) 10px 20px),
+        linear-gradient(180deg, rgba(255,255,255,0.1), transparent 45%);
+}
+
+.pet-area[class*="room-"] .room-art-front {
+    background:
+        url('../assets/props/room-art/shared-front.svg'),
+        var(--room-wallpaper-overlay),
+        linear-gradient(180deg, rgba(255,255,255,0.18), transparent 46%),
+        repeating-linear-gradient(120deg, transparent 0 12px, rgba(255,255,255,0.09) 12px 22px);
+}
+
+.pet-area.daytime .room-art-layer.room-art-back {
+    background-color: rgba(255, 244, 214, 0.08);
+}
+
+.pet-area.sunset .room-art-layer.room-art-back {
+    background-color: rgba(255, 153, 102, 0.16);
+}
+
+.pet-area.nighttime .room-art-layer.room-art-back {
+    background-color: rgba(18, 24, 44, 0.24);
+}
+
+.pet-area.sunrise .room-art-layer.room-art-back {
+    background-color: rgba(255, 205, 148, 0.12);
+}
+
+.pet-area.pet-theme-aquarium .room-art-front {
+    background:
+        radial-gradient(circle at 14% 22%, rgba(130, 210, 255, 0.22), transparent 24%),
+        radial-gradient(circle at 72% 28%, rgba(130, 210, 255, 0.18), transparent 26%),
+        repeating-linear-gradient(180deg, transparent 0 10px, rgba(120, 200, 255, 0.08) 10px 18px),
+        var(--room-wallpaper-overlay);
+}
+
+.pet-area.pet-theme-aquarium .pet-container .pet-svg {
+    filter: drop-shadow(0 0 10px rgba(95, 190, 255, 0.3));
+}
+
+.pet-area.pet-theme-nest .room-art-front {
+    background:
+        radial-gradient(12px 8px at 22% 72%, rgba(170, 120, 80, 0.22), transparent 70%),
+        radial-gradient(14px 9px at 68% 78%, rgba(170, 120, 80, 0.22), transparent 70%),
+        repeating-linear-gradient(30deg, rgba(130, 90, 50, 0.12) 0 6px, transparent 6px 16px),
+        var(--room-wallpaper-overlay);
+}
+
+.pet-area.pet-theme-nest .pet-container .pet-svg {
+    filter: drop-shadow(0 0 8px rgba(160, 100, 60, 0.22));
+}
+
+[data-theme="dark"] .room-art-layer {
+    opacity: 0.18;
+}
+

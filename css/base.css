@@ -1,0 +1,162 @@
+/* Extracted from style.css - CSS reset, :root custom properties, scrollbar styles, @property declarations, base body styles, skip links, focus styles */
+
+        /* Registered custom properties for animated stat bars */
+        @property --progress {
+            syntax: '<number>';
+            inherits: false;
+            initial-value: 50;
+        }
+
+        /* CSS Reset and Base Styles */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Firefox scrollbar styling */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,0.2) transparent;
+        }
+        [data-theme="dark"] * {
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+
+        :root {
+            /* Harmonized pastel color palette */
+            --color-bg: #FFF8F0;
+            --color-primary: #C54545;
+            --color-secondary: #1B8A80;
+            --color-accent: #FFE066;
+            --color-happy: #7ED68A;
+            --color-neutral: #FFB84D;
+            --color-sad: #FF7B7B;
+            --color-text: #2D3436;
+            --color-text-light: #FFFFFF;
+            --color-button-feed: #FF9A5C;
+            --color-button-wash: #62C8F2;
+            --color-button-play: #7ED68A;
+            --color-button-sleep: #A688D6;
+            --color-button-medicine: #F2A0B8;
+            --color-button-groom: #C9A0E0;
+            --color-button-exercise: #FFB862;
+            --color-button-treat: #FF8FB8;
+            --color-button-pet: #FFBBA8;
+            --color-hunger: #FF8A5C;
+            --color-clean: #4DB8E8;
+            --color-happy-bar: #66BB6A;
+            --color-energy: #FFD54F;
+            --shadow: 0 8px 30px rgba(0,0,0,0.08);
+            --radius: 20px;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --color-text-secondary: #666;
+            --color-text-tertiary: #5F6368;
+            --focus-outline: 3px solid #7C6BFF;
+            --text-size-floor: 0.78rem;
+            --button-label-color: #1D2528;
+
+            /* Consistent modal spacing */
+            --modal-padding: 24px;
+
+            /* Elevation / shadow system */
+            --shadow-subtle: 0 2px 6px rgba(0,0,0,0.10);
+            --shadow-medium: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-overlay: 0 10px 40px rgba(0,0,0,0.20);
+
+            /* Heading sizes */
+            --heading-lg: 1.8rem;   /* Page / game title */
+            --heading-md: 1.4rem;   /* Modal titles, section heads */
+            --heading-sm: 1.2rem;   /* Sub-section titles */
+
+            /* Standard button padding */
+            --btn-pad-lg: 14px 28px;   /* Primary CTA / modal buttons */
+            --btn-pad-md: 10px 20px;   /* Secondary / close buttons */
+            --btn-pad-sm: 6px 14px;    /* Tertiary / inline buttons */
+
+            /* Decorative text shadow */
+            --text-shadow-decorative: 1px 1px 0 var(--color-accent);
+            --text-shadow-on-dark: 1px 1px 2px rgba(0,0,0,0.3);
+
+            /* Z-index layering system */
+            --z-overlay: 1000;        /* Base overlays: codex, stats, feed menu */
+            --z-overlay-game: 1100;   /* Minigame overlays (opened from menu) */
+            --z-overlay-dialog: 1200; /* Confirmation dialogs: naming, seed picker, remove crop */
+            --z-overlay-alert: 1300;  /* Top-level alerts: minigame exit confirmation */
+        }
+
+        body {
+            font-family: 'Nunito', 'Comic Sans MS', 'Chalkboard', 'Arial Rounded MT Bold', sans-serif;
+            background: var(--color-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            color: var(--color-text);
+            line-height: 1.4;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        body.modal-open.minigame-menu-open {
+            overflow-x: hidden;
+            overflow-y: auto;
+            touch-action: auto;
+        }
+
+        /* Skip link for keyboard users */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #7A1F2D;
+            color: white;
+            padding: 10px 20px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            z-index: 100;
+            border-radius: 0 0 10px 0;
+            font-weight: bold;
+            text-decoration: none;
+            border: 2px solid #4F101B;
+        }
+
+        .skip-link:focus {
+            top: 0;
+            outline: var(--focus-outline);
+        }
+
+        .skip-link-rooms {
+            left: 180px;
+        }
+
+        .skip-link-status {
+            left: 340px;
+        }
+
+        /* Focus styles for accessibility — only show outline on keyboard navigation */
+        *:focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 3px;
+        }
+
+        [role="dialog"] button:focus-visible,
+        [role="dialog"] [href]:focus-visible,
+        [role="dialog"] input:focus-visible,
+        [role="dialog"] select:focus-visible,
+        [role="dialog"] textarea:focus-visible,
+        [role="alertdialog"] button:focus-visible,
+        [role="alertdialog"] [href]:focus-visible,
+        [role="alertdialog"] input:focus-visible {
+            outline: var(--focus-outline);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(124, 107, 255, 0.25);
+        }

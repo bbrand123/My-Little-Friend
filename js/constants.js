@@ -1837,7 +1837,7 @@ const _modalFocusRestoreByCloseFn = new WeakMap();
 
 function isBriefScreenReaderMode() {
     try {
-        return localStorage.getItem('petCareBuddy_srVerbosity') !== 'detailed';
+        return localStorage.getItem(STORAGE_KEYS.srVerbosity) !== 'detailed';
     } catch (e) {
         return true;
     }
