@@ -519,6 +519,24 @@
             }
         });
 
+        // ==================== E35: SCROLL FADE INDICATORS ====================
+        function updateScrollFadeIndicators() {
+            const wrap = document.querySelector('.actions-scroll-wrap');
+            if (!wrap) return;
+            const scrollable = wrap.querySelector('.actions-row') || wrap;
+            const atStart = scrollable.scrollLeft <= 2;
+            const atEnd = scrollable.scrollLeft + scrollable.clientWidth >= scrollable.scrollWidth - 2;
+            wrap.classList.toggle('scrolled-start', !atStart);
+            wrap.classList.toggle('scrolled-end', atEnd);
+        }
+        document.addEventListener('scroll', (e) => {
+            if (e.target && e.target.closest && e.target.closest('.actions-scroll-wrap, .actions-row')) {
+                updateScrollFadeIndicators();
+            }
+        }, true);
+        const _scrollFadeObserver = new MutationObserver(() => { requestAnimationFrame(updateScrollFadeIndicators); });
+        _scrollFadeObserver.observe(document.body, { childList: true, subtree: true });
+
         // ==================== C28: TOOLTIP VIEWPORT CLAMPING ====================
         document.addEventListener('mouseover', (e) => {
             const btn = e.target.closest('.action-btn');
