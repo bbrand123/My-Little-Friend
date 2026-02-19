@@ -786,6 +786,10 @@
             }
 
             const petDisplayName = escapeHTML(pet.name || petData.name);
+            const petAccessories = pet.accessories || [];
+            const accessoryDesc = petAccessories.length > 0 && typeof ACCESSORIES !== 'undefined'
+                ? '. Wearing ' + petAccessories.map(id => (ACCESSORIES[id] && ACCESSORIES[id].name) || id).join(', ')
+                : '';
             const explorationAlerts = typeof getExplorationAlertCount === 'function' ? getExplorationAlertCount() : 0;
             const treasureActionLabel = typeof getTreasureActionLabel === 'function'
                 ? getTreasureActionLabel(currentRoom)
@@ -919,7 +923,7 @@
                         return `<div class="room-memories" aria-label="Room memories" style="position:absolute;bottom:4px;left:4px;display:flex;gap:4px;z-index:1;opacity:0.85;">${memories.map(m => `<span class="room-memory-icon" title="${escapeHTML(m.description)}" style="font-size:1.1rem;cursor:help;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${m.emoji}</span>`).join('')}</div>`;
                     })()}
                     <div class="sparkles" id="sparkles"></div>
-                    <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Pet your ${petDisplayName}">
+                    <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Pet your ${petDisplayName}${accessoryDesc}">
                         ${generateThoughtBubble(pet)}
                         ${generatePetSVG(pet, mood)}
                         ${generateNeedsAttentionDot(pet)}
@@ -1492,7 +1496,7 @@
             const petContainer = document.getElementById('pet-container');
             if (petContainer) {
                 petContainer.classList.add('pettable');
-                petContainer.setAttribute('aria-label', `Pet your ${petDisplayName}`);
+                petContainer.setAttribute('aria-label', `Pet your ${petDisplayName}${accessoryDesc}`);
                 petContainer.addEventListener('click', handlePetTap);
             }
 
