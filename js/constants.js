@@ -3684,3 +3684,653 @@ const CARETAKER_PET_SPEECHES = {
     belovedKeeper: ['My Beloved Keeper is amazing!', 'Everyone wishes they had a Keeper like mine!'],
     legendaryCaretaker: ['My Caretaker is LEGENDARY!', 'I have the greatest Caretaker in the whole world!']
 };
+
+// ==================== EXPANDED FEEDBACK MESSAGE POOLS ====================
+// Each action has: default (8-10), personality overrides (2-3 each), growth stage overrides (2-3 each)
+// Selection priority: personality+stage → personality → stage → default random
+
+const EXPANDED_FEEDBACK = {
+    feed: {
+        default: [
+            'Yummy! That hit the spot!',
+            'Munch munch munch... so good!',
+            '*happy chomping sounds* Delicious!',
+            'That was the best meal ever!',
+            'Tummy feels warm and full now!',
+            'Nom nom! Every bite was wonderful!',
+            'So satisfying — can still taste the yumminess!',
+            'That smelled incredible and tasted even better!',
+            'All gone! Licked the bowl clean!',
+            '*contented sigh* Perfectly full.'
+        ],
+        personality: {
+            lazy: [
+                '*eats slowly* Mmm... no rush... this is nice...',
+                'Food delivered right to me... life is good... *yawn*',
+                'Eating is my favorite activity. Zero movement required.'
+            ],
+            energetic: [
+                'CHOMP CHOMP CHOMP! Done! What\'s next?!',
+                'Fuel UP! Gonna need this energy! LET\'S GO!',
+                'Ate that in record time! Personal best!'
+            ],
+            curious: [
+                'Interesting flavor profile! What spices are in this?',
+                'I wonder where this food comes from? So many tastes to explore!',
+                '*inspects each bite carefully* Fascinating texture!'
+            ],
+            shy: [
+                '*quietly nibbles* ...thank you for the food...',
+                '*eats in a cozy corner, tail wagging softly* This is really nice...',
+                '...you remembered what I like? That\'s... really sweet.'
+            ],
+            playful: [
+                '*tosses food in the air and catches it* Wheee! Tasty!',
+                'Bet I can finish before you count to three! NOM!',
+                'Food fight! Just kidding... but maybe? Hehe!'
+            ],
+            grumpy: [
+                'Fine. It\'s adequate. *secretly goes back for seconds*',
+                '*grumbles* I GUESS the seasoning was acceptable.',
+                'Don\'t watch me eat. ...Is there more?'
+            ]
+        },
+        stage: {
+            baby: [
+                '*tiny happy squeaks* Num num num!',
+                '*milk dribbles everywhere* Goo goo! More pease!',
+                '*bounces in high chair* Yummy yummy in my tummy!'
+            ],
+            child: [
+                'That was SO good! Can I have dessert too? Please please please?',
+                'I\'m getting big and strong from all this yummy food!',
+                'I tried something new today and it was actually really good!'
+            ],
+            adult: [
+                'A well-balanced meal. I appreciate good nutrition.',
+                'Nothing like a proper meal after a long day.',
+                'I\'ve really developed a taste for home cooking.'
+            ],
+            elder: [
+                'Reminds me of meals when I was young... good times.',
+                '*savors each bite slowly* You learn to enjoy the little things.',
+                'Thousands of meals, and each one still brings me joy.'
+            ]
+        }
+    },
+    wash: {
+        default: [
+            'So clean! Squeaky squeaky!',
+            'Sparkly fresh from ears to toes!',
+            'Ahh, that warm water felt amazing!',
+            'Fresh as a daisy and twice as sweet!',
+            '*shakes off water everywhere* Whoops! But so clean!',
+            'The bubbles were the best part!',
+            'Squeaky clean and smelling wonderful!',
+            'That scrub-a-dub felt SO nice!',
+            '*sniffs self happily* I smell like flowers!',
+            'Nothing beats the feeling of being all clean!'
+        ],
+        personality: {
+            lazy: [
+                '*sits in warm bath, half asleep* This is basically a warm nap...',
+                'Do I have to get OUT of the bath? It\'s so comfy in here...',
+                'The warm water is making me sleeeepy...'
+            ],
+            energetic: [
+                'SPLASH SPLASH SPLASH! Bath time is play time!',
+                'Bubble fight! PEW PEW PEW! *splashes everywhere*',
+                'That was speed-cleaning! New bath record! YEAH!'
+            ],
+            curious: [
+                'Why do bubbles float? And why are they rainbow-colored? Fascinating!',
+                '*examines soap closely* What makes it so slippery? I must know!',
+                'Did you know water spirals different directions in different hemispheres?'
+            ],
+            shy: [
+                '*peeks out from behind shower curtain* ...is it over?',
+                '*wrapped in towel like a burrito* ...this part is nice though.',
+                'The warm water is calming... I feel safe.'
+            ],
+            playful: [
+                '*makes bubble beard* Look! I\'m a wizard! Bubble magic!',
+                '*slides across wet floor* WHEEEEE! Bath time parkour!',
+                'I made a bubble crown AND a bubble mustache! How do I look?'
+            ],
+            grumpy: [
+                '*tolerates bath with maximum grumpiness* ...fine. I GUESS I needed this.',
+                'I didn\'t need a bath. I had a perfectly good layer of... character.',
+                '*reluctantly admits* Okay. Being clean does feel... slightly better. Hmph.'
+            ]
+        },
+        stage: {
+            baby: [
+                '*splish splash splish!* Bubba! Bubba!',
+                '*giggles at rubber ducky* Ducky fwend!',
+                '*tiny paws paddle in the water* Wheee so warm!'
+            ],
+            child: [
+                'Can we do the bubble mountain again? That was awesome!',
+                'I made a mohawk with the soap suds! Look look!',
+                'Bath time used to be scary but now it\'s actually kinda fun!'
+            ],
+            adult: [
+                'A proper bath — just what I needed to unwind.',
+                'Clean fur is happy fur. I feel like a new pet.',
+                'There\'s something meditative about a good wash.'
+            ],
+            elder: [
+                'A warm bath soothes these old bones wonderfully.',
+                'I remember when I used to splash around like a youngster... *chuckles*',
+                'Gentle warm water and good company. Simple pleasures.'
+            ]
+        }
+    },
+    play: {
+        default: [
+            'So much fun! Let\'s do that again!',
+            'Wheee! That was the BEST!',
+            'My heart is so full of happy right now!',
+            '*bouncing with joy* Again again again!',
+            'That was incredible! High five!',
+            'Best. Playtime. EVER!',
+            'I\'m so happy I could burst!',
+            'Nothing in the world beats playing together!',
+            '*tail wagging furiously* SO MUCH FUN!',
+            'Can every moment be playtime? Please?'
+        ],
+        personality: {
+            lazy: [
+                'That was... actually worth getting up for. *flops down*',
+                '*played for exactly two minutes* Okay that\'s my daily exercise done.',
+                'Fun but... nap-level tired now. Worth it though.'
+            ],
+            energetic: [
+                'MORE MORE MORE! I could play FOREVER!',
+                'THAT WAS AMAZING! Again! No wait — something NEW! No — again!',
+                'I\'m not even a LITTLE bit tired! Round two?!'
+            ],
+            curious: [
+                'Playing teaches me so much about the world! Every game is a lesson!',
+                'What if we invented a NEW game? I have seventeen ideas!',
+                'I noticed something cool during play — did YOU see it too?'
+            ],
+            shy: [
+                '*quiet smile* ...I really liked playing with just you.',
+                'That was fun... can we do it again? Just us two?',
+                '*happy but soft-spoken* I feel brave when we play together.'
+            ],
+            playful: [
+                'BEST DAY EVER! And I say that every day! Because it\'s always true!',
+                '*cartwheels* Did you SEE that move?! I\'m basically a LEGEND!',
+                'Life is a game and I am WINNING!'
+            ],
+            grumpy: [
+                'That was... tolerable. Maybe even slightly above tolerable. MAYBE.',
+                '*trying very hard not to smile* It wasn\'t THAT fun. Stop looking at me.',
+                'I only played because YOU wanted to. Not because I enjoyed it. *tail wag*'
+            ]
+        },
+        stage: {
+            baby: [
+                '*squeals with delight* WHEEEE! Pway pway!',
+                '*claps tiny paws* Mooore! Mooore!',
+                '*rolls around giggling* Hehehehe!'
+            ],
+            child: [
+                'I got better at that! Did you notice? Did you see?!',
+                'When I grow up I\'m gonna be the best player EVER!',
+                'Can we play until the stars come out? Pleeeease?'
+            ],
+            adult: [
+                'Good game! A healthy mix of fun and exercise.',
+                'Playing keeps the spirit young, no matter how old you get.',
+                'Always good to take a break and just enjoy the moment.'
+            ],
+            elder: [
+                'These old joints still have some play left in them!',
+                'I may be slower, but I still know all the best tricks.',
+                'Playing with you takes me back to my younger days. Cherished moments.'
+            ]
+        }
+    },
+    sleep: {
+        default: [
+            'So cozy! Best nap ever!',
+            '*yawns and stretches* What a wonderful rest!',
+            'Sweet dreams came and went... all good ones!',
+            'Zzz... oh! I\'m awake! I feel fantastic!',
+            'That sleep was like floating on clouds!',
+            'Recharged and ready to go!',
+            'The coziest snooze in all the land!',
+            '*blinks sleepily* Five more min— oh wait, I feel great!',
+            'Wrapped in warmth and comfort. Perfect rest.',
+            'Dreamed of wonderful things. Feeling refreshed!'
+        ],
+        personality: {
+            lazy: [
+                'That was the BEST nap. Can I have another one?',
+                '*still half asleep* I have perfected the art of sleeping.',
+                'Sleep is my superpower and I am VERY powerful.'
+            ],
+            energetic: [
+                '*springs awake* I\'M UP! LET\'S DO THINGS!',
+                'Okay nap over FULLY CHARGED let\'s GOOO!',
+                'Sleeping is hard when you have THIS much energy! But I tried!'
+            ],
+            curious: [
+                'I had the most fascinating dream about faraway places!',
+                'Did you know some animals sleep with one eye open? Amazing!',
+                'I was dreaming about how stars are born. Beautiful.'
+            ],
+            shy: [
+                '*curled up in the smallest ball* ...that was the safest I\'ve felt.',
+                '*peeks out from blanket* Is it still quiet? Good... that was nice.',
+                'I sleep best when I know you\'re nearby.'
+            ],
+            playful: [
+                '*sleep-runs* I was chasing dream butterflies! Almost caught one!',
+                'I dreamed I could fly! And there were TRAMPOLINES everywhere!',
+                '*rolls out of bed* Nap\'s over! Fun time NOW!'
+            ],
+            grumpy: [
+                'Don\'t talk to me yet. I need three more minutes of consciousness warm-up.',
+                '*woke up on the wrong side of the bed ON PURPOSE*',
+                'That nap was acceptable. The pillow was adequate. ...I liked the blanket.'
+            ]
+        },
+        stage: {
+            baby: [
+                '*tiny snores* Zzzzz... *yawns* Baba...',
+                '*snuggles into blanket* Cozy cozy...',
+                '*sucks thumb in sleep* ...sweet baby dreams...'
+            ],
+            child: [
+                'I dreamed I was a superhero! With LASER eyes!',
+                'Do I HAVE to nap? ...Okay fine. ...That was actually really nice.',
+                '*sleeptalks* No, the ice cream goes on TOP of the...'
+            ],
+            adult: [
+                'A proper rest. I feel completely restored.',
+                'Nothing like quality sleep to put things in perspective.',
+                'Well-rested and ready for whatever comes next.'
+            ],
+            elder: [
+                'These bones appreciate a good rest more than ever.',
+                'I dreamed of old friends and warm memories.',
+                'Sleep comes easier when you\'re at peace with the world.'
+            ]
+        }
+    },
+    medicine: {
+        default: [
+            'All better! Feeling good as new!',
+            'That medicine worked wonders!',
+            'The yucky taste is gone and I feel fantastic!',
+            'Healthy and strong again! Thank you!',
+            'Already feeling so much better!',
+            'The healing warmth is spreading through me!',
+            'From under the weather to on top of the world!',
+            'That tingly medicine feeling means it\'s working!',
+            'Bouncing back already! Nothing keeps me down!',
+            'Thank you for taking care of me when I needed it most.'
+        ],
+        personality: {
+            lazy: [
+                '*takes medicine without moving from spot* At least I don\'t have to get up.',
+                'Being healthy means I can nap in peace. Win-win.',
+                '*medicine kicks in* Ohh... energy returning... nap energy, that is.'
+            ],
+            energetic: [
+                '*medicine kicks in* WHOOO! I feel TURBO-CHARGED!',
+                'HEALTH RESTORED! POWER LEVEL: MAXIMUM!',
+                'Being sick was BORING! I\'m BACK, baby!'
+            ],
+            curious: [
+                'What exactly IS in that medicine? The science of healing is fascinating!',
+                'I can feel my cells regenerating! Probably. I read about that once.',
+                'Did you know honey has natural healing properties? Nature is amazing!'
+            ],
+            shy: [
+                '*takes medicine quietly* ...thank you for being gentle.',
+                'I was scared, but you made it okay. I feel better now.',
+                '*whispers* The medicine tastes bad but your kindness makes it better.'
+            ],
+            playful: [
+                '*makes funny face at medicine taste* BLEH! ...but also YAY health!',
+                'I turned taking medicine into a game! I won! And I\'m healthy!',
+                'Quick, give me a treat to wash away the taste! ...please? Hehe!'
+            ],
+            grumpy: [
+                'I didn\'t need medicine. I was FINE. ...okay maybe I needed it a little.',
+                '*makes disgusted face* Awful taste. Acceptable results. Hmph.',
+                'If being healthy means enduring that taste, I suppose it\'s... worth it.'
+            ]
+        },
+        stage: {
+            baby: [
+                '*tiny whimper then brightens* Oh! All bettew!',
+                '*sniffles then smiles* Mama-medicine! Yay!',
+                '*was scared but now giggling* Not yucky! Well, a LITTLE yucky!'
+            ],
+            child: [
+                'I was SO brave! Did you see? I didn\'t even cry! ...much.',
+                'Does being brave about medicine mean I get a sticker?',
+                'I held still the WHOLE time! I\'m like a medicine superhero!'
+            ],
+            adult: [
+                'Preventive care is important. Thank you for looking after me.',
+                'A little medicine now saves a lot of trouble later.',
+                'I trust you to know what\'s best for my health.'
+            ],
+            elder: [
+                'At my age, a little medicine is just part of the routine. I\'m grateful.',
+                'This old body has weathered many storms. A bit of medicine and I\'m right again.',
+                'Thank you for keeping this old soul in good health.'
+            ]
+        }
+    },
+    groom: {
+        default: [
+            'So fluffy and fabulous!',
+            'Looking sharp! Feeling even sharper!',
+            'Nice and tidy from head to tail!',
+            'Is that a mirror? Because I look AMAZING!',
+            'Freshly groomed and feeling fantastic!',
+            'Every hair in its place! Magnificent!',
+            'The brushing felt sooo nice on my fur!',
+            'I feel like royalty after that grooming session!',
+            'Soft, smooth, and absolutely gorgeous!',
+            'That grooming was like a mini spa day!'
+        ],
+        personality: {
+            lazy: [
+                '*sits still effortlessly* See? Being lazy makes me the PERFECT grooming client.',
+                'Grooming requires no effort on my part. My favorite kind of activity.',
+                '*purrs during brushing* This is basically a massage. I approve.'
+            ],
+            energetic: [
+                '*holds still for exactly 0.3 seconds* DONE? Can I go? CAN I GO?!',
+                'I look FAST now! Aerodynamic! ZOOM-READY!',
+                'Quick groom! Speed brush! Let\'s GO GO GO!'
+            ],
+            curious: [
+                'Is this a natural-bristle brush? The texture is quite interesting!',
+                'Did you know some animals groom each other to build social bonds?',
+                '*examines loose fur* Fascinating. My fur has so many layers!'
+            ],
+            shy: [
+                '*sits very still, enjoying the gentle touch* ...this is really nice.',
+                'I like when you brush gently. It feels like you care.',
+                '*quiet purr* The soft brushing makes me feel safe.'
+            ],
+            playful: [
+                '*tries to catch the brush* It\'s a game! Brush tag!',
+                'Make me look EXTRA cute! Wait — I\'m already extra cute!',
+                '*poses dramatically after grooming* How do I look? Fabulous? I KNEW it!'
+            ],
+            grumpy: [
+                'I look presentable now. That\'s the best compliment you\'re getting.',
+                '*endures grooming stoically* ...I suppose I DO look better. Whatever.',
+                'Don\'t make a fuss. I allow grooming because SOMEONE has to maintain standards.'
+            ]
+        },
+        stage: {
+            baby: [
+                '*tiny paws bat at the brush* Ooh! Tickly!',
+                '*giggles while being brushed* Dat feels funny!',
+                '*the world\'s smallest floof* So pwetty!'
+            ],
+            child: [
+                'I wanna look my best! Make me extra fluffy!',
+                'Will I be even fluffier when I grow up?',
+                'Grooming day is makeover day! I love it!'
+            ],
+            adult: [
+                'Good grooming is self-respect. I look and feel great.',
+                'A proper grooming routine makes all the difference.',
+                'Clean and presentable — ready for anything!'
+            ],
+            elder: [
+                'A gentle brush through old fur feels absolutely lovely.',
+                'I may have a few grey hairs, but I still clean up nicely!',
+                'Grooming has been a comfort since I was a baby. Some things never change.'
+            ]
+        }
+    },
+    exercise: {
+        default: [
+            'Great workout! Feeling the burn!',
+            'Phew! What an amazing run!',
+            'Heart pumping, muscles working — YES!',
+            'That was one heck of a workout!',
+            'Sweat, stretch, and smile! Perfect exercise!',
+            'My legs feel like jelly but my heart is full!',
+            'Runner\'s high activated! Everything is wonderful!',
+            'Breathe in, breathe out — what a rush!',
+            'Muscles I didn\'t know I had are saying hello!',
+            'Exercise done! Endorphins flowing!'
+        ],
+        personality: {
+            lazy: [
+                '*walked to the mailbox and back* That counts as exercise, right?',
+                'I stretched. In bed. That\'s basically yoga.',
+                '*did one push-up* I\'m basically an athlete now. Nap time.'
+            ],
+            energetic: [
+                'THAT WAS NOTHING! I could run a MARATHON! TWICE!',
+                'CAN\'T STOP WON\'T STOP! MORE LAPS! MORE!',
+                'I just set FIVE personal records and I\'m not even TIRED!'
+            ],
+            curious: [
+                'Did you know exercise creates new brain cells? I can feel myself getting smarter!',
+                'I tracked my steps! And my heart rate! The data is FASCINATING!',
+                'What muscles does this work? I want to understand the biomechanics!'
+            ],
+            shy: [
+                '*exercised in a quiet corner* I prefer working out alone... but with you nearby.',
+                'I did it! I actually did it! *quiet pride*',
+                '*soft panting* That was a lot... but I feel stronger.'
+            ],
+            playful: [
+                '*turns exercise into a dance party* Who says workouts can\'t be FUN?!',
+                'I invented a new exercise! It\'s called bouncy-spin-jump! TEN POINTS!',
+                'Race you! On your mark, get set — I already started! Hahaha!'
+            ],
+            grumpy: [
+                '*finished workout while complaining the entire time* There. Happy?',
+                'Exercise is just moving around for no reason. ...But I do feel better. Hmph.',
+                'I ran because I WANTED to, not because you asked. Coincidence.'
+            ]
+        },
+        stage: {
+            baby: [
+                '*toddles around in circles* Wheee! Wobble wobble!',
+                '*tiny legs going as fast as they can* Zoom zoom!',
+                '*tumbles over, gets back up* Again! Again!'
+            ],
+            child: [
+                'I can run SO fast now! Watch me! WATCH!',
+                'I bet I\'m the fastest kid in the whole house!',
+                'Exercise is how I\'m gonna get big and strong!'
+            ],
+            adult: [
+                'Maintaining fitness feels like investing in the future.',
+                'A good workout clears the mind and strengthens the body.',
+                'Consistent exercise is the foundation of a healthy life.'
+            ],
+            elder: [
+                'A gentle walk does wonders for these old legs.',
+                'I may be slower these days, but I still enjoy the movement.',
+                'At my age, every step is a celebration of what this body can still do.'
+            ]
+        }
+    },
+    treat: {
+        default: [
+            'Yummy treat! That was heavenly!',
+            'Oh WOW! That was the most special snack EVER!',
+            'Treat time is the best time!',
+            'My taste buds are doing a happy dance!',
+            '*closes eyes in pure bliss* Mmmmmmmm!',
+            'That treat made my whole day!',
+            'Can treats count as a food group? Asking for a friend.',
+            'A little sweetness makes everything better!',
+            'Treat received! Happiness levels: MAXIMUM!',
+            'The crunch! The flavor! The JOY! Perfect treat!'
+        ],
+        personality: {
+            lazy: [
+                'Treats that come to me? Living the dream...',
+                '*eats treat without lifting head from pillow* Efficiency.',
+                'This is the only thing worth opening my eyes for.'
+            ],
+            energetic: [
+                'TREAT?! TREAT TREAT TREAT TREAT! *ZOOM*',
+                'Sugar rush incoming in 3... 2... 1... WHEEEEE!',
+                'NOM! Can I have another?! And another?! AND ANOTHER?!'
+            ],
+            curious: [
+                'What IS this flavor? It\'s complex with notes of... hmm, fascinating!',
+                'I detect at least seven distinct flavors in this treat. Remarkable!',
+                'Is this a new recipe? The texture is different from last time — in a good way!'
+            ],
+            shy: [
+                '*takes treat gently* ...for me? You\'re too kind...',
+                '*nibbles treat quietly in corner* ...this is really, really good.',
+                '*blushes* I don\'t deserve such a nice treat... but thank you.'
+            ],
+            playful: [
+                '*does a trick for the treat* TA-DA! Treat earned! NOM!',
+                '*juggles treat before eating it* Dinner AND a show!',
+                'I did a backflip for this treat! Okay, a TINY backflip! It counts!'
+            ],
+            grumpy: [
+                '*takes treat* This changes nothing between us. *eats it instantly*',
+                'I\'m only eating this because it would be rude to refuse. *scarfs it*',
+                'Bribery will get you everywhere. ...I mean NOWHERE. Give me another one.'
+            ]
+        },
+        stage: {
+            baby: [
+                '*teeny tiny nom nom* Tweeeeat! Yay!',
+                '*eyes go wide, mouth drops open* OOOOH! Nummy!',
+                '*sticky paws, sticky face, huge smile* Yummy tweat!'
+            ],
+            child: [
+                'BEST TREAT EVER! Can I have one more? Just one? A tiny one?',
+                'I\'m saving a tiny piece for later! ...okay I ate it. No regrets!',
+                'Treats are proof that the world is a wonderful place!'
+            ],
+            adult: [
+                'A well-earned treat. Sometimes you just need to indulge a little.',
+                'Savoring this moment — a treat is best enjoyed slowly.',
+                'Quality over quantity. And that was very high quality.'
+            ],
+            elder: [
+                'A sweet treat to warm these old bones. Life\'s little luxuries.',
+                'I\'ve had countless treats, but the joy never fades.',
+                'At my age, every treat is a treasure to be savored.'
+            ]
+        }
+    },
+    cuddle: {
+        default: [
+            'So cozy! Snuggle heaven!',
+            '*melts into your arms* This is where I belong.',
+            'Warmth, safety, and love. Perfect cuddle!',
+            'Heart-to-heart snuggles are the best medicine!',
+            '*purrs contentedly* Don\'t let go just yet...',
+            'Cuddles make everything better in the world!',
+            'I could stay like this forever and ever!',
+            'Your hugs are the coziest place in the universe!',
+            '*nuzzles closer* Just a little longer, please.',
+            'Love feels like warm sunshine wrapped in a hug!'
+        ],
+        personality: {
+            lazy: [
+                '*already asleep in your arms* Best. Cuddle. Position. Ever.',
+                'Cuddling is basically napping with company. I approve wholeheartedly.',
+                'If cuddling were a sport, I\'d be an Olympic champion.'
+            ],
+            energetic: [
+                '*vibrating with happy energy* CUDDLE POWER UP! *bounces in your lap*',
+                'Speed-cuddle! MAXIMUM affection in minimum time! I LOVE YOU!',
+                '*can\'t sit still but refuses to leave your arms* WIGGLY CUDDLES!'
+            ],
+            curious: [
+                'Did you know cuddling releases oxytocin? I can FEEL the bonding hormones!',
+                'Your heartbeat is 72 beats per minute. I counted. It\'s comforting.',
+                'I\'m studying the optimal cuddle position. For science. *snuggles closer*'
+            ],
+            shy: [
+                '*inches closer, then a little more, then a LOT more* ...hi.',
+                '*buries face in your chest* ...this is the safest place in the world.',
+                'I know I\'m shy but... I really, really needed this. Thank you.'
+            ],
+            playful: [
+                '*smooshes face against yours* BOOP! Cuddle boop! Boop boop!',
+                'Cuddles are just two-player napping! And I\'m winning!',
+                '*wraps around you like a koala* You\'re stuck with me now! FOREVER!'
+            ],
+            grumpy: [
+                '*tense at first, then slowly relaxes* ...I\'m not cuddling. I\'m... resting near you.',
+                'This means nothing. I just happen to be cold. *snuggles deeper*',
+                'Tell anyone about this and I\'ll deny it. *reluctant purr*'
+            ]
+        },
+        stage: {
+            baby: [
+                '*tiny paws grab your finger* Baba... cozy...',
+                '*snuggles into the crook of your arm* *content baby sounds*',
+                '*falls asleep in your arms instantly* ...so small, so warm.'
+            ],
+            child: [
+                'You\'re the best hugger in the whole world! Don\'t tell anyone, it\'s our secret!',
+                'Can we cuddle AND watch the stars? Double cozy!',
+                'I love cuddle time because it means you love me!'
+            ],
+            adult: [
+                'Nothing grounds me quite like a good cuddle.',
+                'In a busy world, these quiet moments together mean everything.',
+                'Comfort, connection, contentment — all in a single hug.'
+            ],
+            elder: [
+                'After all these years, your warmth still means the world to me.',
+                'Hold me close. These moments are what life is all about.',
+                'The best thing about growing old is knowing who your people are.'
+            ]
+        }
+    }
+};
+
+/**
+ * Get an expanded feedback message for a care action.
+ * Selection priority: personality-specific (35%), stage-specific (25%), default (40%).
+ * Falls back to default pool if specific pools are unavailable.
+ */
+function getExpandedFeedbackMessage(action, personality, stage) {
+    const pool = EXPANDED_FEEDBACK[action];
+    if (!pool) {
+        // Fallback to legacy pool
+        const legacy = FEEDBACK_MESSAGES[action];
+        return legacy ? legacy[Math.floor(Math.random() * legacy.length)] : '';
+    }
+    const persPool = (pool.personality && pool.personality[personality]) || [];
+    const stagePool = (pool.stage && pool.stage[stage]) || [];
+    const defaultPool = pool.default || [];
+    const roll = Math.random();
+    // 35% personality-specific, 25% stage-specific, 40% default
+    if (roll < 0.35 && persPool.length > 0) {
+        return persPool[Math.floor(Math.random() * persPool.length)];
+    }
+    if (roll < 0.60 && stagePool.length > 0) {
+        return stagePool[Math.floor(Math.random() * stagePool.length)];
+    }
+    if (defaultPool.length > 0) {
+        return defaultPool[Math.floor(Math.random() * defaultPool.length)];
+    }
+    // Final fallback to legacy
+    const legacy = FEEDBACK_MESSAGES[action];
+    return legacy ? legacy[Math.floor(Math.random() * legacy.length)] : '';
+}

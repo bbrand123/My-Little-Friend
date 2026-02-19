@@ -3072,7 +3072,9 @@
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
             gameState.totalFeedCount++;
-            const msg = randomFromArray(FEEDBACK_MESSAGES.feed);
+            const msg = (typeof getExpandedFeedbackMessage === 'function')
+                ? getExpandedFeedbackMessage('feed', pet.personality, pet.growthStage)
+                : randomFromArray(FEEDBACK_MESSAGES.feed);
             const petContainer = document.getElementById('pet-container');
             const sparkles = document.getElementById('sparkles');
             if (petContainer) petContainer.classList.add('bounce', 'pet-munch-loop');
@@ -3180,7 +3182,9 @@
                     const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
                     const washBonus = Math.round((17 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.wash);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('wash', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.wash);
                     if (washPref < 1) message = `😨 ${pet.name || 'Pet'} didn't enjoy that... ${message}`;
                     else if (washPref > 1) message = `💕 ${pet.name || 'Pet'} loved that! ${message}`;
                     if (petContainer) petContainer.classList.add('sparkle', 'pet-scrub-shake');
@@ -3195,7 +3199,9 @@
                     const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
                     const playBonus = Math.round((17 + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.play);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('play', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.play);
                     if (playPref < 1) message = `😨 ${pet.name || 'Pet'} wasn't into it... ${message}`;
                     else if (playPref > 1) message = `💕 ${pet.name || 'Pet'} LOVED playing! ${message}`;
                     if (petContainer) petContainer.classList.add('wiggle', 'pet-happy-bounce');
@@ -3239,7 +3245,9 @@
                     pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * rewardCareMult), 0, 100);
                     pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * rewardCareMult), 0, 100);
                     pet.energy = clamp(pet.energy + Math.round(10 * medMod * rewardCareMult), 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.medicine);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('medicine', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.medicine);
                     if (medPref < 1) message = `😨 ${pet.name || 'Pet'} doesn't like medicine! ${message}`;
                     if (petContainer) petContainer.classList.add('heal-anim');
                     if (sparkles) createMedicineParticles(sparkles);
@@ -3258,7 +3266,9 @@
                     const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.groom);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('groom', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.groom);
                     if (groomPref < 1) message = `😨 ${pet.name || 'Pet'} squirmed through grooming! ${message}`;
                     else if (groomPref > 1) message = `💕 ${pet.name || 'Pet'} loved the pampering! ${message}`;
                     if (petContainer) petContainer.classList.add('groom-anim');
@@ -3277,7 +3287,9 @@
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.exercise);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('exercise', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.exercise);
                     if (exPref < 1) message = `😨 ${pet.name || 'Pet'} got tired quickly! ${message}`;
                     else if (exPref > 1) message = `💕 ${pet.name || 'Pet'} had an amazing workout! ${message}`;
                     if (petContainer) petContainer.classList.add('exercise-anim');
@@ -3298,9 +3310,12 @@
                     }
                     pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * rewardCareMult), 0, 100);
                     pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * rewardCareMult), 0, 100);
-                    message = `${treat.emoji} ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                    const treatMsg = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('treat', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.treat);
+                    message = `${treat.emoji} ${treatMsg}`;
                     if (prefs && treat.name === prefs.favoriteTreat) {
-                        message = `${treat.emoji} 💕 FAVORITE treat! ${randomFromArray(FEEDBACK_MESSAGES.treat)}`;
+                        message = `${treat.emoji} 💕 FAVORITE treat! ${treatMsg}`;
                     }
                     if (petContainer) petContainer.classList.add('treat-anim');
                     if (sparkles) createTreatParticles(sparkles, treat.emoji);
@@ -3316,7 +3331,9 @@
                     // Petting/Cuddling - direct affection boosts happiness and energy
                     pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult * rewardCareMult), 0, 100);
                     pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * rewardCareMult), 0, 100);
-                    message = randomFromArray(FEEDBACK_MESSAGES.cuddle);
+                    message = (typeof getExpandedFeedbackMessage === 'function')
+                        ? getExpandedFeedbackMessage('cuddle', pet.personality, pet.growthStage)
+                        : randomFromArray(FEEDBACK_MESSAGES.cuddle);
                     if (cuddlePref < 1) message = `😨 ${pet.name || 'Pet'} squirmed away! ${message}`;
                     else if (cuddleMod > 1.2) message = `💕 ${pet.name || 'Pet'} melted into your arms! ${message}`;
                     if (petContainer) petContainer.classList.add('cuddle-anim');
