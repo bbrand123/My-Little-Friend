@@ -90,11 +90,11 @@
         function getCompetitionRewardMultiplier(pet, difficultyScale) {
             const stageWeight = getStageRewardWeight((pet && pet.growthStage) || 'baby');
             const power = Math.max(0, Number(calculateBattleStat(pet)) || 0);
-            const powerNorm = Math.max(0.45, Math.min(1.6, power / 72));
-            const powerDamp = Math.max(0.85, 1.08 - ((powerNorm - 1) * 0.24));
+            const powerNorm = Math.max(GAME_BALANCE.combat.powerNormMin, Math.min(GAME_BALANCE.combat.powerNormMax, power / GAME_BALANCE.combat.powerNormDivisor));
+            const powerDamp = Math.max(GAME_BALANCE.combat.powerDampMin, GAME_BALANCE.combat.powerDampBase - ((powerNorm - 1) * GAME_BALANCE.combat.powerDampFactor));
             const difficulty = Math.max(0.75, Number(difficultyScale) || 1);
-            const difficultyWeight = Math.max(0.88, Math.min(1.24, 0.92 + (difficulty - 1) * 0.22));
-            return Math.max(0.8, Math.min(1.3, stageWeight * powerDamp * difficultyWeight));
+            const difficultyWeight = Math.max(GAME_BALANCE.combat.difficultyWeightMin, Math.min(GAME_BALANCE.combat.difficultyWeightMax, GAME_BALANCE.combat.difficultyWeightBase + (difficulty - 1) * GAME_BALANCE.combat.difficultyWeightFactor));
+            return Math.max(GAME_BALANCE.combat.rewardMultMin, Math.min(GAME_BALANCE.combat.rewardMultMax, stageWeight * powerDamp * difficultyWeight));
         }
 
         function calculateMoveDamage(move, attacker, defender) {
@@ -122,11 +122,11 @@
                 defenderTypes.push(...(defenderTypeData.parentTypes || defenderTypeData.parents));
             }
             if (defenderTypes.some(dt => advantages.includes(dt))) {
-                damage = Math.round(damage * 1.3);
+                damage = Math.round(damage * GAME_BALANCE.combat.typeAdvantageMultiplier);
             }
 
             // Add some randomness (+/- 15%)
-            const variance = 0.85 + Math.random() * 0.3;
+            const variance = GAME_BALANCE.combat.damageVarianceMin + Math.random() * GAME_BALANCE.combat.damageVarianceRange;
             damage = Math.round(damage * variance);
 
             return Math.max(1, damage);
@@ -135,7 +135,7 @@
         function selectAIMove(aiPet, aiHP, aiMaxHP) {
             const moves = Object.keys(BATTLE_MOVES);
             // AI logic: heal when low HP, otherwise attack
-            if (aiHP < aiMaxHP * 0.3 && Math.random() < 0.6) {
+            if (aiHP < aiMaxHP * GAME_BALANCE.combat.aiHealThreshold && Math.random() < GAME_BALANCE.combat.aiHealProbability) {
                 return BATTLE_MOVES.rest;
             }
             // Pick random attack move (exclude rest most of the time)

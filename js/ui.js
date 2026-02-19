@@ -85,7 +85,7 @@
 
         // ==================== NEEDS ATTENTION DOT (Feature 4) ====================
         function generateNeedsAttentionDot(pet) {
-            const threshold = 30;
+            const threshold = GAME_BALANCE.petCare.needsAttentionThreshold;
             const hasLow = pet.hunger < threshold || pet.cleanliness < threshold ||
                            pet.happiness < threshold || pet.energy < threshold;
             if (!hasLow) return '';
@@ -98,7 +98,7 @@
             if (!pet) return;
             const container = document.getElementById('pet-container');
             if (!container) return;
-            const threshold = 30;
+            const threshold = GAME_BALANCE.petCare.needsAttentionThreshold;
             const hasLow = pet.hunger < threshold || pet.cleanliness < threshold ||
                            pet.happiness < threshold || pet.energy < threshold;
             let dot = container.querySelector('.needs-attention-dot');
@@ -253,7 +253,7 @@
 
         function getFavorites() {
             try {
-                const saved = localStorage.getItem('petCareBuddy_favorites');
+                const saved = localStorage.getItem(STORAGE_KEYS.favorites);
                 if (saved) return JSON.parse(saved);
             } catch (e) {}
             return [null, null, null];
@@ -261,7 +261,7 @@
 
         function saveFavorites(favs) {
             try {
-                localStorage.setItem('petCareBuddy_favorites', JSON.stringify(favs));
+                localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favs));
             } catch (e) {}
         }
 
@@ -374,7 +374,7 @@
             });
         }
 
-        const MORE_ACTIONS_PREF_KEY = 'petCareBuddy_moreActionsExpanded';
+        const MORE_ACTIONS_PREF_KEY = STORAGE_KEYS.moreActionsExpanded;
 
         function getMoreActionsExpandedPref() {
             try {
@@ -721,7 +721,7 @@
                             (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
                         const newTheme = isDark ? 'light' : 'dark';
                         html.setAttribute('data-theme', newTheme);
-                        try { localStorage.setItem('petCareBuddy_theme', newTheme); } catch (e) {}
+                        try { localStorage.setItem(STORAGE_KEYS.theme, newTheme); } catch (e) {}
                         // Update button state
                         darkModeBtn.setAttribute('aria-pressed', newTheme === 'dark' ? 'true' : 'false');
                         const iconSpan = darkModeBtn.querySelector('.top-action-btn-icon');
@@ -1124,7 +1124,7 @@
 
             const ttsEnabled = () => {
                 try {
-                    return localStorage.getItem('petCareBuddy_ttsOff') !== 'true';
+                    return localStorage.getItem(STORAGE_KEYS.ttsOff) !== 'true';
                 } catch (e) {
                     return true;
                 }
@@ -1542,17 +1542,17 @@
 
         function markPetSessionSeen() {
             try {
-                if (sessionStorage.getItem('petCareBuddy_petSessionSeen') === 'true') return;
-                const raw = localStorage.getItem('petCareBuddy_petSessions');
+                if (sessionStorage.getItem(STORAGE_KEYS.petSessionSeen) === 'true') return;
+                const raw = localStorage.getItem(STORAGE_KEYS.petSessions);
                 const count = Number.parseInt(raw || '0', 10);
-                localStorage.setItem('petCareBuddy_petSessions', String(Number.isFinite(count) ? count + 1 : 1));
-                sessionStorage.setItem('petCareBuddy_petSessionSeen', 'true');
+                localStorage.setItem(STORAGE_KEYS.petSessions, String(Number.isFinite(count) ? count + 1 : 1));
+                sessionStorage.setItem(STORAGE_KEYS.petSessionSeen, 'true');
             } catch (e) {}
         }
 
         function getPetSessionCount() {
             try {
-                const raw = localStorage.getItem('petCareBuddy_petSessions');
+                const raw = localStorage.getItem(STORAGE_KEYS.petSessions);
                 const count = Number.parseInt(raw || '0', 10);
                 return Number.isFinite(count) ? count : 0;
             } catch (e) {
@@ -2418,7 +2418,7 @@
 
         function getShownHints() {
             try {
-                const raw = localStorage.getItem('petCareBuddy_onboardingShown');
+                const raw = localStorage.getItem(STORAGE_KEYS.onboardingShown);
                 return raw ? JSON.parse(raw) : {};
             } catch (e) { return {}; }
         }
@@ -2427,7 +2427,7 @@
             try {
                 const shown = getShownHints();
                 shown[hintId] = true;
-                localStorage.setItem('petCareBuddy_onboardingShown', JSON.stringify(shown));
+                localStorage.setItem(STORAGE_KEYS.onboardingShown, JSON.stringify(shown));
             } catch (e) {}
         }
 
@@ -2739,7 +2739,7 @@
             /unavailable/i,
             /need/i
         ];
-        const COACH_CHECKLIST_MINIMIZED_KEY = 'petCareBuddy_coachChecklistMinimized';
+        const COACH_CHECKLIST_MINIMIZED_KEY = STORAGE_KEYS.coachChecklistMinimized;
 
         function isNarrowViewport() {
             return window.matchMedia('(max-width: 720px)').matches;
@@ -2921,6 +2921,22 @@
             }
         }
 
+        // ==================== EVENT BUS SUBSCRIPTIONS ====================
+        // Wire EventBus to UI notification functions so game logic
+        // can emit events instead of calling UI functions directly.
+        if (typeof EventBus !== 'undefined' && typeof EVENTS !== 'undefined') {
+            EventBus.on(EVENTS.TOAST_REQUESTED, function (data) {
+                if (data && data.message) {
+                    showToast(data.message, data.color || data.type, data.options);
+                }
+            });
+            EventBus.on(EVENTS.ANNOUNCEMENT_REQUESTED, function (data) {
+                if (data && data.message && typeof announce === 'function') {
+                    announce(data.message, data.options || data.assertive || false);
+                }
+            });
+        }
+
         const REWARD_CARD_META = {
             achievement: { title: 'Achievement Unlocked', fallbackIcon: '🏆' },
             badge: { title: 'Badge Earned', fallbackIcon: '🎖️' },
@@ -3006,7 +3022,7 @@
         // Track button cooldowns
         let actionCooldown = false;
         let actionCooldownTimer = null;
-        const ACTION_COOLDOWN_MS = 600;
+        const ACTION_COOLDOWN_MS = GAME_BALANCE.timing.actionCooldownMs;
         let _lastCooldownAnnouncement = 0;
         const _cooldownToastByKey = {};
 
@@ -3132,7 +3148,7 @@
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
             const focusMult = (typeof getCareFocusMultiplier === 'function') ? getCareFocusMultiplier('feed', pet, focusSnapshot) : 1.0;
             const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
-            const feedBonus = Math.round((17 + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult * rewardCareMult);
+            const feedBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult * rewardCareMult);
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
@@ -3245,7 +3261,7 @@
                     const washPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'wash') : 1;
                     const washWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
-                    const washBonus = Math.round((17 + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
+                    const washBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('wash', pet.personality, pet.growthStage)
@@ -3262,7 +3278,7 @@
                     const playPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'play') : 1;
                     const playWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
                     const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
-                    const playBonus = Math.round((17 + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
+                    const playBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('play', pet.personality, pet.growthStage)
@@ -3348,7 +3364,7 @@
                     const exFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('exercise', pet, beforeStats) : 1.0;
                     // Exercise - take walks or play fetch
                     const exMod = exPersonality * exPref;
-                    const exBonus = Math.round((17 + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult * rewardCareMult);
+                    const exBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
@@ -8691,10 +8707,10 @@
                 : 1;
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
                 (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            const hapticEnabled = !(localStorage.getItem('petCareBuddy_hapticOff') === 'true');
-            const ttsEnabled = !(localStorage.getItem('petCareBuddy_ttsOff') === 'true');
+            const hapticEnabled = !(localStorage.getItem(STORAGE_KEYS.hapticOff) === 'true');
+            const ttsEnabled = !(localStorage.getItem(STORAGE_KEYS.ttsOff) === 'true');
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
-            const srVerbosityDetailed = (localStorage.getItem('petCareBuddy_srVerbosity') === 'detailed');
+            const srVerbosityDetailed = (localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed');
             const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
 
             const overlay = document.createElement('div');
@@ -8900,7 +8916,7 @@
                 const wasDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
                 const newTheme = wasDark ? 'light' : 'dark';
                 html.setAttribute('data-theme', newTheme);
-                try { localStorage.setItem('petCareBuddy_theme', newTheme); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.theme, newTheme); } catch (e) {}
                 this.classList.toggle('on', newTheme === 'dark');
                 this.setAttribute('aria-checked', String(newTheme === 'dark'));
                 setSwitchStateText('setting-darkmode', newTheme === 'dark');
@@ -8915,7 +8931,7 @@
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
                 setSwitchStateText('setting-haptic', isOn);
-                try { localStorage.setItem('petCareBuddy_hapticOff', isOn ? 'false' : 'true'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.hapticOff, isOn ? 'false' : 'true'); } catch (e) {}
                 if (!isOn && navigator.vibrate) navigator.vibrate(0);
             });
 
@@ -8924,7 +8940,7 @@
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
                 setSwitchStateText('setting-tts', isOn);
-                try { localStorage.setItem('petCareBuddy_ttsOff', isOn ? 'false' : 'true'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.ttsOff, isOn ? 'false' : 'true'); } catch (e) {}
                 if (!isOn && 'speechSynthesis' in window) window.speechSynthesis.cancel();
             });
 
@@ -8934,7 +8950,7 @@
                 this.setAttribute('aria-checked', String(isOn));
                 setSwitchStateText('setting-textsize', isOn);
                 document.documentElement.setAttribute('data-text-size', isOn ? 'large' : 'normal');
-                try { localStorage.setItem('petCareBuddy_textSize', isOn ? 'large' : 'normal'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.textSize, isOn ? 'large' : 'normal'); } catch (e) {}
             });
 
             document.getElementById('setting-reduced-motion').addEventListener('click', function() {
@@ -8942,7 +8958,7 @@
                 this.setAttribute('aria-checked', String(isOn));
                 setSwitchStateText('setting-reduced-motion', isOn);
                 document.documentElement.setAttribute('data-reduced-motion', isOn ? 'true' : 'false');
-                try { localStorage.setItem('petCareBuddy_reducedMotion', isOn ? 'true' : 'false'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.reducedMotion, isOn ? 'true' : 'false'); } catch (e) {}
             });
 
             document.getElementById('setting-reminders').addEventListener('click', function() {
@@ -8976,7 +8992,7 @@
                     srDetailed.classList.toggle('active', mode === 'detailed');
                     srBrief.setAttribute('aria-pressed', mode === 'brief' ? 'true' : 'false');
                     srDetailed.setAttribute('aria-pressed', mode === 'detailed' ? 'true' : 'false');
-                    try { localStorage.setItem('petCareBuddy_srVerbosity', mode); } catch (e) {}
+                    try { localStorage.setItem(STORAGE_KEYS.srVerbosity, mode); } catch (e) {}
                 };
                 srBrief.addEventListener('click', () => setSrVerbosity('brief'));
                 srDetailed.addEventListener('click', () => setSrVerbosity('detailed'));
@@ -8986,8 +9002,8 @@
             if (lowStim) {
                 lowStim.addEventListener('click', () => {
                     document.documentElement.setAttribute('data-reduced-motion', 'true');
-                    try { localStorage.setItem('petCareBuddy_reducedMotion', 'true'); } catch (e) {}
-                    try { localStorage.setItem('petCareBuddy_srVerbosity', 'brief'); } catch (e) {}
+                    try { localStorage.setItem(STORAGE_KEYS.reducedMotion, 'true'); } catch (e) {}
+                    try { localStorage.setItem(STORAGE_KEYS.srVerbosity, 'brief'); } catch (e) {}
                     const ttsBtn = document.getElementById('setting-tts');
                     if (ttsBtn && ttsBtn.classList.contains('on')) ttsBtn.click();
                     const soundBtn = document.getElementById('setting-sound');
@@ -9105,21 +9121,21 @@
         // ==================== TEXT SIZE RESTORE (Item 30) ====================
         (function restoreTextSize() {
             try {
-                const firstRunDefaultsKey = 'petCareBuddy_firstRunA11yDefaultsV1';
-                const hasSaveData = !!localStorage.getItem('petCareBuddy');
+                const firstRunDefaultsKey = STORAGE_KEYS.firstRunA11yDefaults;
+                const hasSaveData = !!localStorage.getItem(STORAGE_KEYS.gameSave);
                 const shouldApplyFirstRunDefaults = !hasSaveData && localStorage.getItem(firstRunDefaultsKey) !== 'true';
                 if (shouldApplyFirstRunDefaults) {
-                    if (localStorage.getItem('petCareBuddy_reducedMotion') === null) localStorage.setItem('petCareBuddy_reducedMotion', 'true');
-                    if (localStorage.getItem('petCareBuddy_srVerbosity') === null) localStorage.setItem('petCareBuddy_srVerbosity', 'brief');
-                    if (localStorage.getItem('petCareBuddy_soundEnabled') === null) localStorage.setItem('petCareBuddy_soundEnabled', 'false');
-                    if (localStorage.getItem('petCareBuddy_musicEnabled') === null) localStorage.setItem('petCareBuddy_musicEnabled', 'false');
-                    if (localStorage.getItem('petCareBuddy_samplePackEnabled') === null) localStorage.setItem('petCareBuddy_samplePackEnabled', 'false');
-                    if (localStorage.getItem('petCareBuddy_coachChecklistMinimized') === null) localStorage.setItem('petCareBuddy_coachChecklistMinimized', 'true');
+                    if (localStorage.getItem(STORAGE_KEYS.reducedMotion) === null) localStorage.setItem(STORAGE_KEYS.reducedMotion, 'true');
+                    if (localStorage.getItem(STORAGE_KEYS.srVerbosity) === null) localStorage.setItem(STORAGE_KEYS.srVerbosity, 'brief');
+                    if (localStorage.getItem(STORAGE_KEYS.soundEnabled) === null) localStorage.setItem(STORAGE_KEYS.soundEnabled, 'false');
+                    if (localStorage.getItem(STORAGE_KEYS.musicEnabled) === null) localStorage.setItem(STORAGE_KEYS.musicEnabled, 'false');
+                    if (localStorage.getItem(STORAGE_KEYS.samplePackEnabled) === null) localStorage.setItem(STORAGE_KEYS.samplePackEnabled, 'false');
+                    if (localStorage.getItem(STORAGE_KEYS.coachChecklistMinimized) === null) localStorage.setItem(STORAGE_KEYS.coachChecklistMinimized, 'true');
                     localStorage.setItem(firstRunDefaultsKey, 'true');
                 }
-                const size = localStorage.getItem('petCareBuddy_textSize');
+                const size = localStorage.getItem(STORAGE_KEYS.textSize);
                 if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
-                const reducedMotion = localStorage.getItem('petCareBuddy_reducedMotion');
+                const reducedMotion = localStorage.getItem(STORAGE_KEYS.reducedMotion);
                 if (reducedMotion === 'true') document.documentElement.setAttribute('data-reduced-motion', 'true');
                 if (shouldApplyFirstRunDefaults && typeof SoundManager !== 'undefined') {
                     if (typeof SoundManager.getEnabled === 'function' && SoundManager.getEnabled()) SoundManager.toggle();
@@ -9147,7 +9163,7 @@
         }
 
         // ==================== NON-BLOCKING COACH CHECKLIST ====================
-        const COACH_CHECKLIST_STORAGE_KEY = 'petCareBuddy_coachChecklist';
+        const COACH_CHECKLIST_STORAGE_KEY = STORAGE_KEYS.coachChecklist;
         const COACH_CHECKLIST_STEPS = [
             { id: 'feed_once', label: 'Feed once', icon: '🍎' },
             { id: 'play_once', label: 'Play once', icon: '⚽' },
@@ -9188,7 +9204,7 @@
 
         function markCoachChecklistProgress(stepOrAction) {
             try {
-                if (localStorage.getItem('petCareBuddy_tutorialDone') === 'true') return;
+                if (localStorage.getItem(STORAGE_KEYS.tutorialDone) === 'true') return;
             } catch (e) {}
             const state = getCoachChecklistState();
             let changed = false;
@@ -9221,7 +9237,7 @@
 
             saveCoachChecklistState(state);
             if (isCoachChecklistComplete(state)) {
-                try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.tutorialDone, 'true'); } catch (e) {}
                 removeCoachChecklist();
                 showToast('✅ Coach checklist complete!', '#66BB6A', { announce: false });
                 if (typeof announce === 'function') announce('Quick Start complete.', { source: 'coach', dedupeMs: 2200 });
@@ -9246,7 +9262,7 @@
                 return;
             }
             try {
-                if (localStorage.getItem('petCareBuddy_tutorialDone') === 'true') {
+                if (localStorage.getItem(STORAGE_KEYS.tutorialDone) === 'true') {
                     removeCoachChecklist();
                     return;
                 }
@@ -9254,7 +9270,7 @@
 
             const state = getCoachChecklistState();
             if (isCoachChecklistComplete(state)) {
-                try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+                try { localStorage.setItem(STORAGE_KEYS.tutorialDone, 'true'); } catch (e) {}
                 removeCoachChecklist();
                 return;
             }
@@ -9300,7 +9316,7 @@
             const skipBtn = panel.querySelector('[data-coach-skip]');
             if (skipBtn) {
                 skipBtn.addEventListener('click', () => {
-                    try { localStorage.setItem('petCareBuddy_tutorialDone', 'true'); } catch (e) {}
+                    try { localStorage.setItem(STORAGE_KEYS.tutorialDone, 'true'); } catch (e) {}
                     removeCoachChecklist();
                     if (typeof announce === 'function') announce('Quick Start skipped.', { source: 'coach', dedupeMs: 2200 });
                 });
@@ -9317,7 +9333,7 @@
         if (_origRenderPetPhase) {
             // Defer tutorial check to after first render
             setTimeout(() => {
-                if (gameState.phase === 'pet' && !localStorage.getItem('petCareBuddy_tutorialDone')) {
+                if (gameState.phase === 'pet' && !localStorage.getItem(STORAGE_KEYS.tutorialDone)) {
                     showTutorial();
                 }
             }, 2000);

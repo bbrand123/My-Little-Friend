@@ -10,7 +10,7 @@
 
         function createDefaultEconomyState() {
             return {
-                coins: 240,
+                coins: GAME_BALANCE.economy.startingCoins,
                 starterSeedGranted: true,
                 // Rec 2: Persistent player ID for cross-slot self-trade prevention
                 playerId: generatePlayerId(),
@@ -184,6 +184,11 @@
             lastSeasonalEventCheck: 0
         };
 
+        // Initialize StateManager with the gameState reference
+        if (typeof StateManager !== 'undefined') {
+            StateManager.init(gameState);
+        }
+
         function createDefaultCompetitionState() {
             return {
                 battlesWon: 0,
@@ -317,7 +322,7 @@
         // Short vibration on supported mobile devices for tactile satisfaction
         function isHapticsEnabled() {
             try {
-                return localStorage.getItem('petCareBuddy_hapticOff') !== 'true';
+                return localStorage.getItem(STORAGE_KEYS.hapticOff) !== 'true';
             } catch (e) {
                 return true;
             }
@@ -362,9 +367,9 @@
         function getMinigameDifficulty(gameId) {
             const plays = (gameState.minigamePlayCounts && gameState.minigamePlayCounts[gameId]) || 0;
             // So replaying keeps challenge fresh without becoming punishingly steep.
-            const replayDifficulty = 1 + Math.min(plays, 8) * 0.08;
+            const replayDifficulty = 1 + Math.min(plays, GAME_BALANCE.minigames.maxReplayDifficultyPlays) * GAME_BALANCE.minigames.replayDifficultyStep;
             const easeMultiplier = getMiniGameEaseMultiplier(gameState.pet);
-            return Math.max(0.65, Math.min(1.85, Number((replayDifficulty * easeMultiplier).toFixed(2))));
+            return Math.max(GAME_BALANCE.minigames.difficultyMin, Math.min(GAME_BALANCE.minigames.difficultyMax, Number((replayDifficulty * easeMultiplier).toFixed(2))));
         }
 
         function getPetMiniGameStrength(pet) {
@@ -378,7 +383,7 @@
 
         function getMiniGameEaseMultiplier(pet) {
             const strength = getPetMiniGameStrength(pet);
-            return Math.max(0.82, Math.min(1.12, 0.82 + (strength * 0.3)));
+            return Math.max(GAME_BALANCE.minigames.easeMultMin, Math.min(GAME_BALANCE.minigames.easeMultMax, GAME_BALANCE.minigames.easeMultMin + (strength * GAME_BALANCE.minigames.easeMultRange)));
         }
 
         // Increment play count for a minigame
@@ -834,7 +839,7 @@
 
         function getTreasureCooldownRemaining(roomId) {
             const ex = ensureExplorationState();
-            const cooldownMs = 90000;
+            const cooldownMs = GAME_BALANCE.timing.treasureCooldownMs;
             const lastAt = ex.roomTreasureCooldowns[roomId] || 0;
             return Math.max(0, (lastAt + cooldownMs) - Date.now());
         }
@@ -951,8 +956,8 @@
 
             const targetPet = (gameState.pets || []).find((p) => p && p.id === expedition.petId) || gameState.pet;
             if (targetPet) {
-                targetPet.happiness = clamp(targetPet.happiness + 10, 0, 100);
-                targetPet.energy = clamp(targetPet.energy - 6, 0, 100);
+                targetPet.happiness = clamp(targetPet.happiness + GAME_BALANCE.petCare.expeditionHappinessGain, 0, 100);
+                targetPet.energy = clamp(targetPet.energy - GAME_BALANCE.petCare.expeditionEnergyCost, 0, 100);
             }
 
             let npc = null;
@@ -1091,7 +1096,7 @@
                 log: [],
                 rewards: [],
                 startedAt: Date.now(),
-                roomCooldownMs: 18000,
+                roomCooldownMs: GAME_BALANCE.timing.dungeonRoomCooldownMs,
                 nextRoomAt: Date.now()
             };
             saveGame();
@@ -1184,7 +1189,7 @@
             if (dungeon.log.length > 15) dungeon.log = dungeon.log.slice(0, 15);
 
             dungeon.currentIndex++;
-            dungeon.nextRoomAt = Date.now() + Math.max(12000, dungeon.roomCooldownMs || 18000);
+            dungeon.nextRoomAt = Date.now() + Math.max(12000, dungeon.roomCooldownMs || GAME_BALANCE.timing.dungeonRoomCooldownMs);
             let cleared = false;
             let clearRewards = [];
             if (dungeon.currentIndex >= dungeon.rooms.length) {
@@ -1222,7 +1227,7 @@
             if (npc.status === 'adopted') return { ok: false, reason: 'already-adopted' };
 
             const now = Date.now();
-            const cooldownMs = 8000;
+            const cooldownMs = GAME_BALANCE.timing.npcBefriendCooldownMs;
             if (npc.lastBefriendAt && now - npc.lastBefriendAt < cooldownMs) {
                 return { ok: false, reason: 'cooldown', remainingMs: cooldownMs - (now - npc.lastBefriendAt) };
             }
@@ -1275,11 +1280,11 @@
         // ==================== ECONOMY & TRADING ====================
 
         function getAuctionHouseStorageKey() {
-            return 'petCareBuddy_auctionHouse';
+            return STORAGE_KEYS.auctionHouse;
         }
 
         function getAuctionSlotStorageKey() {
-            return 'petCareBuddy_auctionSlotId';
+            return STORAGE_KEYS.auctionSlotId;
         }
 
         function getAuctionSlotLabel(slotId) {
@@ -2530,7 +2535,7 @@
 
         function getAnnouncementVerbosity() {
             try {
-                return localStorage.getItem('petCareBuddy_srVerbosity') === 'detailed' ? 'detailed' : 'brief';
+                return localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed' ? 'detailed' : 'brief';
             } catch (e) {
                 return 'brief';
             }
@@ -3803,7 +3808,7 @@
 
         function hasExternalSaveChangeSinceLastSave() {
             try {
-                const current = localStorage.getItem('petCareBuddy');
+                const current = localStorage.getItem(STORAGE_KEYS.gameSave);
                 return current !== _lastSavedStorageSnapshot;
             } catch (e) {
                 return false;
@@ -3830,7 +3835,7 @@
                 if (hadOfflineChanges) delete gameState._offlineChanges;
                 try {
                     const serialized = JSON.stringify(gameState);
-                    localStorage.setItem('petCareBuddy', serialized);
+                    localStorage.setItem(STORAGE_KEYS.gameSave, serialized);
                     _lastSavedStorageSnapshot = serialized;
                 } finally {
                     if (hadOfflineChanges) gameState._offlineChanges = offlineChanges;
@@ -3871,7 +3876,7 @@
         function loadGame() {
             let _needsSaveAfterLoad = false;
             try {
-                const saved = localStorage.getItem('petCareBuddy');
+                const saved = localStorage.getItem(STORAGE_KEYS.gameSave);
                 if (saved) {
                     const parsed = JSON.parse(saved);
 
@@ -4223,7 +4228,7 @@
                     if (_needsSaveAfterLoad) {
                         try {
                             const migrated = JSON.stringify(parsed);
-                            localStorage.setItem('petCareBuddy', migrated);
+                            localStorage.setItem(STORAGE_KEYS.gameSave, migrated);
                             _lastSavedStorageSnapshot = migrated;
                         } catch (e) {}
                     } else {
@@ -4266,7 +4271,7 @@
             `;
             document.body.appendChild(overlay);
             document.getElementById('recovery-fresh').addEventListener('click', () => {
-                try { localStorage.removeItem('petCareBuddy'); } catch(e) {}
+                try { localStorage.removeItem(STORAGE_KEYS.gameSave); } catch(e) {}
                 _lastSavedStorageSnapshot = null;
                 suppressUnloadAutosaveForReload();
                 overlay.remove();
@@ -4344,7 +4349,7 @@
                             return;
                         }
                         const imported = JSON.stringify(data);
-                        localStorage.setItem('petCareBuddy', imported);
+                        localStorage.setItem(STORAGE_KEYS.gameSave, imported);
                         _lastSavedStorageSnapshot = imported;
                         suppressUnloadAutosaveForReload();
                         showToast('Save data imported! Reloading...', '#66BB6A');
@@ -5667,7 +5672,7 @@
             const careActions = Number(pet.careActions) || 0;
             if (careActions >= 24) return false;
             try {
-                const raw = localStorage.getItem('petCareBuddy_petSessions');
+                const raw = localStorage.getItem(STORAGE_KEYS.petSessions);
                 const sessions = Number.parseInt(raw || '0', 10);
                 return (Number.isFinite(sessions) ? sessions : 0) < 3;
             } catch (e) {
@@ -7274,7 +7279,7 @@
         function init() {
             // Initialize dark mode from saved preference
             try {
-                const savedTheme = localStorage.getItem('petCareBuddy_theme');
+                const savedTheme = localStorage.getItem(STORAGE_KEYS.theme);
                 if (savedTheme) {
                     document.documentElement.setAttribute('data-theme', savedTheme);
                     const meta = document.querySelector('meta[name="theme-color"]');
@@ -7482,7 +7487,7 @@
 
                 // Show tutorial on first visit
                 try {
-                    const tutorialSeen = localStorage.getItem('petCareBuddy_tutorialDone');
+                    const tutorialSeen = localStorage.getItem(STORAGE_KEYS.tutorialDone);
                     if (!tutorialSeen && !saved) {
                         setTimeout(showTutorial, 500);
                     }
