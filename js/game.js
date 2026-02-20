@@ -7497,6 +7497,10 @@
 
         // Dismiss the splash/loading screen after init completes (or fails)
         function dismissSplash() {
+            if (typeof window !== 'undefined' && typeof window.dismissSplashScreen === 'function') {
+                window.dismissSplashScreen();
+                return;
+            }
             const splash = document.getElementById('splash-screen');
             if (!splash) return;
             const minShowTime = 800;

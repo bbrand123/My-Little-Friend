@@ -55,6 +55,40 @@
             #splash-screen p { color: #e0e0e0 !important; }
         }
     </style>
+    <script>
+        (function setupSplashFallback() {
+            const MIN_SHOW_MS = 800;
+            const HARD_TIMEOUT_MS = 5000;
+            const startedAt = Date.now();
+            let dismissed = false;
+
+            function dismissSplashScreen(options) {
+                if (dismissed) return;
+                const opts = options || {};
+                const splash = document.getElementById('splash-screen');
+                if (!splash) {
+                    dismissed = true;
+                    return;
+                }
+                const elapsed = Date.now() - startedAt;
+                const waitMs = opts.skipMinDelay ? 0 : Math.max(0, MIN_SHOW_MS - elapsed);
+                dismissed = true;
+                setTimeout(() => {
+                    splash.setAttribute('aria-hidden', 'true');
+                    splash.style.pointerEvents = 'none';
+                    splash.style.opacity = '0';
+                    setTimeout(() => {
+                        if (splash.parentNode) splash.remove();
+                    }, 320);
+                }, waitMs);
+            }
+
+            window.dismissSplashScreen = dismissSplashScreen;
+            document.addEventListener('DOMContentLoaded', () => dismissSplashScreen(), { once: true });
+            window.addEventListener('load', () => dismissSplashScreen(), { once: true });
+            setTimeout(() => dismissSplashScreen({ skipMinDelay: true }), HARD_TIMEOUT_MS);
+        })();
+    </script>
 
     <a href="#game-content" class="skip-link">Skip to game</a>
     <a href="#care-actions" class="skip-link skip-link-secondary" hidden aria-hidden="true" tabindex="-1">Skip to care actions</a>
