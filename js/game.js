@@ -1,3 +1,4 @@
+	        // Changelog (Retention pass): Added streak protection + optional prestige celebration, Journey/Bond/novelty systems, softer economy decay, reactivation memory hooks, and local reminder-center triggers.
         // ==================== GAME STATE ====================
 
         // Cross-file flags (also declared in ui.js) — redeclare here for load-order safety
@@ -64,6 +65,63 @@
                 familyLegacy: { points: 0, tier: 1, title: 'Founding Family' }
             };
         }
+
+	        function createDefaultRetentionMetaState() {
+	            return {
+	                version: 2,
+	                streakProtection: {
+	                    freezeTokens: 0,
+	                    autoUseFreeze: true,
+                    lastOutcome: '',
+                    lastMissedDays: 0,
+                    lastFreezeUsed: 0,
+                    lastCheckpointFloor: 0,
+                    lastProcessedDate: ''
+                },
+	                journey: {
+	                    tokens: 0,
+	                    startedAtDate: null,
+	                    objectiveProgress: {},
+	                    completedObjectives: {},
+	                    chapterCompletions: {},
+	                    trackCompletions: {},
+	                    claimedRewards: {},
+	                    lastProgressAt: 0
+	                },
+                bond: {
+                    xp: 0,
+                    level: 1,
+                    claimedMilestones: []
+                },
+	                novelty: {
+	                    claimedSchedule: {},
+	                    lastWeeklyEventKey: '',
+	                    lastClaimedJourneyDay: 0
+	                },
+	                reminderCenter: {
+	                    items: [],
+	                    promptDismissed: false,
+	                    lastPromptSession: 0,
+	                    lastDigestDate: ''
+	                },
+	                reactivation: {
+	                    lastSeenDate: null,
+	                    awayDays: 0,
+	                    lastActivity: '',
+	                    pendingRecap: null,
+	                    lastDialogueDate: '',
+	                    lastRecapShownDate: ''
+	                },
+	                onboarding: {
+	                    sessionGuideSkipped: false,
+	                    reminderPromptSeen: false
+	                },
+	                debug: {
+	                    enabled: false,
+	                    panelOpen: false
+	                }
+	            };
+	        }
 
         function createDefaultGardenState(now) {
             const ts = Number.isFinite(now) ? now : Date.now();
@@ -185,6 +243,7 @@
             reminders: createDefaultReminderState(),
             rewardModifiers: [],
             mastery: createDefaultMasteryState(),
+            meta: createDefaultRetentionMetaState(),
             goalLadder: null,
             // Competition system
             competition: {
@@ -338,6 +397,111 @@
             if (typeof state.mastery.familyLegacy.title !== 'string') state.mastery.familyLegacy.title = defaults.familyLegacy.title;
             return state.mastery;
         }
+
+        function ensureRetentionMetaState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            const defaults = createDefaultRetentionMetaState();
+            if (!state.meta || typeof state.meta !== 'object' || Array.isArray(state.meta)) {
+                state.meta = defaults;
+                return state.meta;
+            }
+            if (typeof state.meta.version !== 'number') state.meta.version = defaults.version;
+            if (!state.meta.streakProtection || typeof state.meta.streakProtection !== 'object') state.meta.streakProtection = defaults.streakProtection;
+            if (!Number.isFinite(state.meta.streakProtection.freezeTokens)) state.meta.streakProtection.freezeTokens = 0;
+            state.meta.streakProtection.freezeTokens = Math.max(0, Math.floor(state.meta.streakProtection.freezeTokens));
+            if (typeof state.meta.streakProtection.autoUseFreeze !== 'boolean') state.meta.streakProtection.autoUseFreeze = true;
+            if (typeof state.meta.streakProtection.lastOutcome !== 'string') state.meta.streakProtection.lastOutcome = '';
+            if (!Number.isFinite(state.meta.streakProtection.lastMissedDays)) state.meta.streakProtection.lastMissedDays = 0;
+            if (!Number.isFinite(state.meta.streakProtection.lastFreezeUsed)) state.meta.streakProtection.lastFreezeUsed = 0;
+            if (!Number.isFinite(state.meta.streakProtection.lastCheckpointFloor)) state.meta.streakProtection.lastCheckpointFloor = 0;
+            if (typeof state.meta.streakProtection.lastProcessedDate !== 'string') state.meta.streakProtection.lastProcessedDate = '';
+
+	            if (!state.meta.journey || typeof state.meta.journey !== 'object') state.meta.journey = defaults.journey;
+	            if (!Number.isFinite(state.meta.journey.tokens)) state.meta.journey.tokens = 0;
+	            state.meta.journey.tokens = Math.max(0, Math.floor(state.meta.journey.tokens));
+	            if (typeof state.meta.journey.startedAtDate !== 'string' && state.meta.journey.startedAtDate !== null) state.meta.journey.startedAtDate = null;
+	            if (!state.meta.journey.objectiveProgress || typeof state.meta.journey.objectiveProgress !== 'object') state.meta.journey.objectiveProgress = {};
+	            if (!state.meta.journey.completedObjectives || typeof state.meta.journey.completedObjectives !== 'object') state.meta.journey.completedObjectives = {};
+	            if (!state.meta.journey.chapterCompletions || typeof state.meta.journey.chapterCompletions !== 'object') state.meta.journey.chapterCompletions = {};
+	            if (!state.meta.journey.trackCompletions || typeof state.meta.journey.trackCompletions !== 'object') state.meta.journey.trackCompletions = {};
+	            if (!state.meta.journey.claimedRewards || typeof state.meta.journey.claimedRewards !== 'object') state.meta.journey.claimedRewards = {};
+	            if (!Number.isFinite(state.meta.journey.lastProgressAt)) state.meta.journey.lastProgressAt = 0;
+
+            if (!state.meta.bond || typeof state.meta.bond !== 'object') state.meta.bond = defaults.bond;
+            if (!Number.isFinite(state.meta.bond.xp)) state.meta.bond.xp = 0;
+            if (!Number.isFinite(state.meta.bond.level)) state.meta.bond.level = 1;
+            state.meta.bond.level = Math.max(1, Math.floor(state.meta.bond.level));
+            if (!Array.isArray(state.meta.bond.claimedMilestones)) state.meta.bond.claimedMilestones = [];
+
+	            if (!state.meta.novelty || typeof state.meta.novelty !== 'object') state.meta.novelty = defaults.novelty;
+	            if (!state.meta.novelty.claimedSchedule || typeof state.meta.novelty.claimedSchedule !== 'object') state.meta.novelty.claimedSchedule = {};
+	            if (typeof state.meta.novelty.lastWeeklyEventKey !== 'string') state.meta.novelty.lastWeeklyEventKey = '';
+	            if (!Number.isFinite(state.meta.novelty.lastClaimedJourneyDay)) state.meta.novelty.lastClaimedJourneyDay = 0;
+
+	            if (!state.meta.reminderCenter || typeof state.meta.reminderCenter !== 'object') state.meta.reminderCenter = defaults.reminderCenter;
+	            if (!Array.isArray(state.meta.reminderCenter.items)) state.meta.reminderCenter.items = [];
+	            if (typeof state.meta.reminderCenter.promptDismissed !== 'boolean') state.meta.reminderCenter.promptDismissed = false;
+	            if (!Number.isFinite(state.meta.reminderCenter.lastPromptSession)) state.meta.reminderCenter.lastPromptSession = 0;
+	            if (typeof state.meta.reminderCenter.lastDigestDate !== 'string') state.meta.reminderCenter.lastDigestDate = '';
+
+	            if (!state.meta.reactivation || typeof state.meta.reactivation !== 'object') state.meta.reactivation = defaults.reactivation;
+	            if (typeof state.meta.reactivation.lastSeenDate !== 'string' && state.meta.reactivation.lastSeenDate !== null) state.meta.reactivation.lastSeenDate = null;
+	            if (!Number.isFinite(state.meta.reactivation.awayDays)) state.meta.reactivation.awayDays = 0;
+	            if (typeof state.meta.reactivation.lastActivity !== 'string') state.meta.reactivation.lastActivity = '';
+	            if (typeof state.meta.reactivation.lastDialogueDate !== 'string') state.meta.reactivation.lastDialogueDate = '';
+	            if (typeof state.meta.reactivation.lastRecapShownDate !== 'string') state.meta.reactivation.lastRecapShownDate = '';
+	            if (state.meta.reactivation.pendingRecap !== null && typeof state.meta.reactivation.pendingRecap !== 'object') state.meta.reactivation.pendingRecap = null;
+
+	            if (!state.meta.onboarding || typeof state.meta.onboarding !== 'object') state.meta.onboarding = defaults.onboarding;
+	            if (typeof state.meta.onboarding.sessionGuideSkipped !== 'boolean') state.meta.onboarding.sessionGuideSkipped = false;
+	            if (typeof state.meta.onboarding.reminderPromptSeen !== 'boolean') state.meta.onboarding.reminderPromptSeen = false;
+
+	            if (!state.meta.debug || typeof state.meta.debug !== 'object') state.meta.debug = defaults.debug;
+	            if (typeof state.meta.debug.enabled !== 'boolean') state.meta.debug.enabled = false;
+	            if (typeof state.meta.debug.panelOpen !== 'boolean') state.meta.debug.panelOpen = false;
+	            return state.meta;
+	        }
+
+        function isRetentionDebugEnabled() {
+            const meta = ensureRetentionMetaState();
+            if (meta.debug && meta.debug.enabled) return true;
+            return !!(typeof RETENTION_DEV_FLAGS !== 'undefined' && RETENTION_DEV_FLAGS && RETENTION_DEV_FLAGS.enabled === true);
+        }
+
+	        function retentionDebugLog(message, data) {
+	            if (!isRetentionDebugEnabled()) return;
+	            if (data === undefined) {
+	                console.log('[RetentionDebug]', message);
+	            } else {
+	                console.log('[RetentionDebug]', message, data);
+	            }
+	        }
+
+	        function setRetentionDebugEnabled(enabled) {
+	            const meta = ensureRetentionMetaState();
+	            meta.debug.enabled = !!enabled;
+	            saveGame();
+	            return meta.debug.enabled;
+	        }
+
+	        function getRetentionDebugSnapshot() {
+	            const status = getStreakProtectionStatus();
+	            const journey = getJourneyStatus();
+	            const reminderItems = getReminderCenterItems();
+	            const meta = ensureRetentionMetaState();
+	            return {
+	                streak: status,
+	                journey: {
+	                    day: journey.day,
+	                    chapter: journey.chapter ? journey.chapter.id : '',
+	                    chapterPct: journey.chapterPct,
+	                    tokens: journey.tokens
+	                },
+	                reminderItems: reminderItems.length,
+	                noveltyLastDay: meta.novelty.lastClaimedJourneyDay || 0,
+	                awayDays: meta.reactivation.awayDays || 0
+	            };
+	        }
 
         function isGardenDebugEnabled() {
             return !!(typeof GARDEN_SYSTEM_BALANCE !== 'undefined' && GARDEN_SYSTEM_BALANCE.debugLogging);
@@ -993,7 +1157,7 @@
             return { ok: true, abandoned };
         }
 
-        function startExpedition(biomeId, durationId) {
+	        function startExpedition(biomeId, durationId) {
             const ex = ensureExplorationState();
             updateExplorationUnlocks(true);
             if (ex.expedition) return { ok: false, reason: 'already-running' };
@@ -1006,18 +1170,20 @@
             if (!pet) return { ok: false, reason: 'no-pet' };
 
             const now = Date.now();
-            ex.expedition = {
+	            ex.expedition = {
                 biomeId,
                 petId: pet.id,
                 petName: pet.name || ((typeof getAllPetTypeData === 'function' && getAllPetTypeData(pet.type) ? getAllPetTypeData(pet.type).name : 'Pet')),
                 durationId: duration.id,
                 startedAt: now,
                 endAt: now + duration.ms,
-                lootMultiplier: duration.lootMultiplier
-            };
-            saveGame();
-            return { ok: true, expedition: ex.expedition, biome: EXPLORATION_BIOMES[biomeId], duration };
-        }
+	                lootMultiplier: duration.lootMultiplier
+	            };
+	            recordRetentionActivity('expedition');
+	            if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('start_expedition');
+	            saveGame();
+	            return { ok: true, expedition: ex.expedition, biome: EXPLORATION_BIOMES[biomeId], duration };
+	        }
 
         function resolveExpeditionIfReady(forceResolve, silent) {
             const ex = ensureExplorationState();
@@ -1061,13 +1227,16 @@
             if (ex.expeditionHistory.length > 15) ex.expeditionHistory = ex.expeditionHistory.slice(0, 15);
             ex.expedition = null;
 
-            if (typeof incrementDailyProgress === 'function') {
-                incrementDailyProgress('expeditionCount');
-                incrementDailyProgress('discoveryEvents');
-                incrementDailyProgress('masteryPoints', 2);
-            }
+	            if (typeof incrementDailyProgress === 'function') {
+	                incrementDailyProgress('expeditionCount');
+	                incrementDailyProgress('discoveryEvents');
+	                incrementDailyProgress('masteryPoints', 2);
+	            }
+	            addBondXp(2, 'Expedition complete');
+	            recordRetentionActivity('expedition');
+	            evaluateJourneyProgress('expedition-complete');
 
-            const newlyUnlocked = updateExplorationUnlocks(true);
+	            const newlyUnlocked = updateExplorationUnlocks(true);
             refreshMasteryTracks();
             saveGame();
 
@@ -1853,23 +2022,60 @@
             return { ok: true, item, balance: getCoinBalance() };
         }
 
-        // Rec 11: Coin decay system — daily tax on hoarded coins above threshold
-        function applyCoinDecay() {
-            const eco = ensureEconomyState();
-            const threshold = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.coinDecayThreshold === 'number')
-                ? ECONOMY_BALANCE.coinDecayThreshold : 1000;
-            const rate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.coinDecayRate === 'number')
-                ? ECONOMY_BALANCE.coinDecayRate : 0.005;
-            if (eco.coins <= threshold) return 0;
-            const excess = eco.coins - threshold;
-            const tax = Math.max(1, Math.floor(excess * rate));
-            eco.coins -= tax;
-            eco.totalSpent = (eco.totalSpent || 0) + tax;
-            if (typeof showToast === 'function') {
-                showToast(`🏦 Coin maintenance: -${tax} coins (balance over ${threshold})`, '#90A4AE');
-            }
-            return tax;
-        }
+	        // Rec 11: Coin decay system — daily tax on hoarded coins above threshold
+	        function applyCoinDecay() {
+	            const eco = ensureEconomyState();
+	            const threshold = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.coinDecayThreshold === 'number')
+	                ? ECONOMY_BALANCE.coinDecayThreshold : 1000;
+	            const rate = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.coinDecayRate === 'number')
+	                ? ECONOMY_BALANCE.coinDecayRate : 0.005;
+	            const protectedWallet = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.coinDecayProtectedWallet))
+	                ? Math.max(0, Math.floor(ECONOMY_BALANCE.coinDecayProtectedWallet))
+	                : Math.floor(threshold * 0.45);
+	            const decayFloor = Math.max(threshold, protectedWallet);
+	            if (eco.coins <= decayFloor) return 0;
+	            const previousChecklist = gameState.dailyChecklist || null;
+	            const progress = previousChecklist && previousChecklist.progress ? previousChecklist.progress : {};
+	            const engagedActions = Math.max(0,
+	                Math.floor(progress.feedCount || 0) +
+	                Math.floor(progress.totalCareActions || 0) +
+	                Math.floor(progress.minigameCount || 0) +
+	                Math.floor(progress.harvestCount || 0) +
+	                Math.floor(progress.expeditionCount || 0)
+	            );
+	            const completedDaily = !!(previousChecklist && Array.isArray(previousChecklist.tasks) && previousChecklist.tasks.length > 0 && previousChecklist.tasks.every((task) => task.done));
+	            let finalRate = rate;
+	            if (completedDaily) {
+	                const dailyReduction = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.coinDecayDailyCompleteReduction))
+	                    ? ECONOMY_BALANCE.coinDecayDailyCompleteReduction
+	                    : 0.4;
+	                finalRate *= Math.max(0.1, Math.min(1, dailyReduction));
+	            } else if (engagedActions >= 8) {
+	                const engagedReduction = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.coinDecayEngagedReduction))
+	                    ? ECONOMY_BALANCE.coinDecayEngagedReduction
+	                    : 0.65;
+	                finalRate *= Math.max(0.15, Math.min(1, engagedReduction));
+	            }
+	            const minTax = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.coinDecayMinTax))
+	                ? Math.max(0, Math.floor(ECONOMY_BALANCE.coinDecayMinTax))
+	                : 1;
+	            const excess = eco.coins - decayFloor;
+	            const tax = Math.max(minTax, Math.floor(excess * finalRate));
+	            if (tax <= 0) return 0;
+	            eco.coins -= tax;
+	            eco.totalSpent = (eco.totalSpent || 0) + tax;
+	            if (completedDaily || engagedActions >= 8) {
+	                addJourneyTokens(1, 'Daily economy protection');
+	                addBondXp(1, 'Consistent daily care');
+	            }
+	            if (typeof showToast === 'function') {
+	                const modeCopy = completedDaily
+	                    ? 'Daily complete discount active.'
+	                    : (engagedActions >= 8 ? 'Active-care discount active.' : 'Hoarding maintenance applied.');
+	                showToast(`🏦 Coin maintenance: -${tax} coins. ${modeCopy}`, '#90A4AE');
+	            }
+	            return tax;
+	        }
 
         // Rec 10: Check if a shop item is available in the current season
         function isShopItemAvailable(itemId) {
@@ -2205,11 +2411,16 @@
                 gameState._dailyMinigameEarnings = 0;
                 gameState._dailyMinigameEarningsDay = today;
             }
-            const remaining = Math.max(0, dailyCap - gameState._dailyMinigameEarnings);
-            if (remaining <= 0) {
-                if (typeof showToast === 'function') showToast('Daily minigame coin cap reached! Play for fun or try again tomorrow.', '#90A4AE');
-                return 0;
-            }
+	            const remaining = Math.max(0, dailyCap - gameState._dailyMinigameEarnings);
+	            if (remaining <= 0) {
+	                if (gameState._dailyMinigameCapConsolationDay !== today) {
+	                    gameState._dailyMinigameCapConsolationDay = today;
+	                    addBondXp(1, 'Minigame cap consolation');
+	                    addJourneyTokens(1, 'Minigame cap consolation');
+	                }
+	                if (typeof showToast === 'function') showToast('Daily minigame coin cap reached! Play for fun or try again tomorrow.', '#90A4AE');
+	                return 0;
+	            }
             tuned = Math.min(tuned, remaining);
             gameState._dailyMinigameEarnings += tuned;
 
@@ -2705,10 +2916,10 @@
 
         // ==================== ACHIEVEMENT SYSTEM ====================
 
-        function checkAchievements() {
+	        function checkAchievements() {
             if (!gameState.achievements) gameState.achievements = {};
             const newUnlocks = [];
-            for (const [id, ach] of Object.entries(ACHIEVEMENTS)) {
+	            for (const [id, ach] of Object.entries(ACHIEVEMENTS)) {
                 if (gameState.achievements[id]) continue; // Already unlocked
                 try {
                     if (ach.check(gameState)) {
@@ -2716,10 +2927,14 @@
                         newUnlocks.push(ach);
                         addJournalEntry('🏆', `Achievement unlocked: ${ach.name}!`);
                     }
-                } catch (e) { /* safe guard */ }
-            }
-            return newUnlocks;
-        }
+	                } catch (e) { /* safe guard */ }
+	            }
+	            if (newUnlocks.length > 0) {
+	                evaluateJourneyProgress('achievements');
+	                recordRetentionActivity('collection');
+	            }
+	            return newUnlocks;
+	        }
 
         function getAchievementCount() {
             if (!gameState.achievements) return 0;
@@ -2747,6 +2962,622 @@
             const weekNo = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
             return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
         }
+
+        function parseLocalDateString(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return null;
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+            if (!m) return null;
+            const y = Number(m[1]);
+            const mon = Number(m[2]) - 1;
+            const d = Number(m[3]);
+            const dt = new Date(y, mon, d);
+            if (Number.isNaN(dt.getTime())) return null;
+            return dt;
+        }
+
+        function getCalendarDayDiff(fromDateStr, toDateStr) {
+            const from = parseLocalDateString(fromDateStr);
+            const to = parseLocalDateString(toDateStr);
+            if (!from || !to) return 0;
+            const fromMid = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+            const toMid = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+            return Math.max(0, Math.floor((toMid - fromMid) / 86400000));
+        }
+
+        function getStreakCheckpoints() {
+            const cfg = (typeof STREAK_PROTECTION_CONFIG !== 'undefined' && STREAK_PROTECTION_CONFIG) ? STREAK_PROTECTION_CONFIG : null;
+            const checkpoints = cfg && Array.isArray(cfg.checkpointDays) ? cfg.checkpointDays : [7, 14, 30];
+            return checkpoints.filter((d) => Number.isFinite(d) && d > 0).sort((a, b) => a - b);
+        }
+
+        function getLastReachedCheckpoint(streakDays) {
+            const safe = Math.max(0, Number(streakDays) || 0);
+            const checkpoints = getStreakCheckpoints();
+            let last = 0;
+            checkpoints.forEach((cp) => {
+                if (safe >= cp) last = cp;
+            });
+            return last;
+        }
+
+        function getStreakCheckpointFloor(streakDays) {
+            const lastCheckpoint = getLastReachedCheckpoint(streakDays);
+            if (lastCheckpoint <= 0) return 1;
+            const cfg = (typeof STREAK_PROTECTION_CONFIG !== 'undefined' && STREAK_PROTECTION_CONFIG) ? STREAK_PROTECTION_CONFIG : null;
+            const offset = Number.isFinite(cfg && cfg.checkpointFallbackOffset) ? Math.max(0, Math.floor(cfg.checkpointFallbackOffset)) : 1;
+            return Math.max(1, lastCheckpoint - offset);
+        }
+
+	        function addStreakFreezeTokens(amount, reason) {
+	            const meta = ensureRetentionMetaState();
+	            const grant = Math.max(0, Math.floor(Number(amount) || 0));
+	            if (grant <= 0) return 0;
+            meta.streakProtection.freezeTokens = Math.max(0, Math.floor(meta.streakProtection.freezeTokens || 0)) + grant;
+            if (typeof addJournalEntry === 'function') {
+                addJournalEntry('🧊', `Earned ${grant} Streak Freeze token${grant === 1 ? '' : 's'}${reason ? ` (${reason})` : ''}.`);
+            }
+	            retentionDebugLog('Streak freeze tokens granted', { grant, reason, total: meta.streakProtection.freezeTokens });
+	            return grant;
+	        }
+
+	        function getCodexUnlockedCount() {
+	            const adultsRaised = Math.max(0, Math.floor(gameState.adultsRaised || 0));
+	            const allTypes = Object.keys(PET_TYPES || {});
+	            return allTypes.filter((typeId) => {
+	                const data = PET_TYPES[typeId];
+	                if (!data) return false;
+	                if (!data.mythical) return true;
+	                return adultsRaised >= Math.max(0, Math.floor(data.unlockRequirement || 0));
+	            }).length;
+	        }
+
+	        function getJourneyStartDate() {
+	            const meta = ensureRetentionMetaState();
+	            if (typeof meta.journey.startedAtDate === 'string' && meta.journey.startedAtDate) {
+	                return meta.journey.startedAtDate;
+	            }
+	            let fallback = getTodayString();
+	            if (gameState.pet && Number.isFinite(gameState.pet.birthdate)) {
+	                const birth = new Date(gameState.pet.birthdate);
+	                if (!Number.isNaN(birth.getTime())) {
+	                    fallback = `${birth.getFullYear()}-${String(birth.getMonth() + 1).padStart(2, '0')}-${String(birth.getDate()).padStart(2, '0')}`;
+	                }
+	            }
+	            meta.journey.startedAtDate = fallback;
+	            return fallback;
+	        }
+
+	        function getJourneyDay() {
+	            const start = getJourneyStartDate();
+	            const today = getTodayString();
+	            const diff = getCalendarDayDiff(start, today);
+	            return Math.max(1, diff + 1);
+	        }
+
+	        function getJourneyChapterForDay(day) {
+	            const safeDay = Math.max(1, Math.floor(Number(day) || 1));
+	            const chapters = Array.isArray(JOURNEY_CHAPTERS) ? JOURNEY_CHAPTERS : [];
+	            return chapters.find((chapter) => chapter && safeDay >= chapter.dayStart && safeDay <= chapter.dayEnd) || chapters[chapters.length - 1] || null;
+	        }
+
+	        function getJourneyChapterById(chapterId) {
+	            const chapters = Array.isArray(JOURNEY_CHAPTERS) ? JOURNEY_CHAPTERS : [];
+	            return chapters.find((chapter) => chapter && chapter.id === chapterId) || null;
+	        }
+
+	        function getJourneyMetricSnapshot() {
+	            const meta = ensureRetentionMetaState();
+	            const pets = Array.isArray(gameState.pets) && gameState.pets.length > 0
+	                ? gameState.pets.filter(Boolean)
+	                : (gameState.pet ? [gameState.pet] : []);
+	            const totalCareActions = pets.reduce((sum, pet) => sum + Math.max(0, Math.floor(pet.careActions || 0)), 0);
+	            const playCounts = gameState.minigamePlayCounts || {};
+	            const totalMinigamePlays = Object.values(playCounts).reduce((sum, value) => sum + Math.max(0, Math.floor(value || 0)), 0);
+	            const ex = ensureExplorationState();
+	            const mastery = ensureMasteryState();
+	            const discoveredBiomesCount = Object.values(ex.discoveredBiomes || {}).filter(Boolean).length;
+	            const relationships = gameState.relationships || {};
+	            const maxRelationshipPoints = Object.values(relationships).reduce((max, rel) => Math.max(max, Math.max(0, Math.floor((rel && rel.points) || 0))), 0);
+	            return {
+	                totalFeedCount: Math.max(0, Math.floor(gameState.totalFeedCount || 0)),
+	                totalCareActions,
+	                totalDailyCompletions: Math.max(0, Math.floor(gameState.totalDailyCompletions || 0)),
+	                streakCurrent: Math.max(0, Math.floor((gameState.streak && gameState.streak.current) || 0)),
+	                maxRelationshipPoints,
+	                totalMinigamePlays,
+	                expeditionsCompleted: Math.max(0, Math.floor((ex.stats && ex.stats.expeditionsCompleted) || 0)),
+	                totalHarvests: Math.max(0, Math.floor((gameState.garden && gameState.garden.totalHarvests) || 0)),
+	                discoveredBiomesCount,
+	                battleCount: Math.max(0, Math.floor(gameState.totalBattles || Math.floor(((mastery.competitionSeason && mastery.competitionSeason.points) || 0) / 20))),
+	                codexUnlockedCount: getCodexUnlockedCount(),
+	                badgeCount: getBadgeCount(),
+	                achievementCount: getAchievementCount(),
+	                stickerCount: getStickerCount(),
+	                trophyCount: getTrophyCount(),
+	                bondXp: Math.max(0, Math.floor((meta.bond && meta.bond.xp) || 0))
+	            };
+	        }
+
+	        function grantJourneyRewardPayload(reward, sourceLabel) {
+	            if (!reward || typeof reward !== 'object') return;
+	            if (reward.tokens) addJourneyTokens(reward.tokens, sourceLabel || 'Journey');
+	            if (reward.collectible && typeof grantBundleCollectible === 'function') {
+	                grantBundleCollectible(reward.collectible);
+	            }
+	            if (reward.type === 'sticker' && reward.id && typeof grantSticker === 'function') {
+	                grantSticker(reward.id);
+	            }
+	            if (reward.type === 'unlockBiome' && reward.biomeId) {
+	                ensureExplorationState();
+	                if (gameState.exploration && gameState.exploration.biomeUnlocks && Object.prototype.hasOwnProperty.call(gameState.exploration.biomeUnlocks, reward.biomeId)) {
+	                    gameState.exploration.biomeUnlocks[reward.biomeId] = true;
+	                    gameState.exploration.discoveredBiomes[reward.biomeId] = true;
+	                }
+	            }
+	            if (reward.story && typeof addJournalEntry === 'function') {
+	                addJournalEntry('📖', reward.story);
+	            }
+	            if (reward.type === 'journal' && reward.text && typeof addJournalEntry === 'function') {
+	                addJournalEntry('📝', reward.text);
+	            }
+	        }
+
+	        function addJourneyTokens(amount, reason) {
+	            const meta = ensureRetentionMetaState();
+	            const add = Math.max(0, Math.floor(Number(amount) || 0));
+	            if (add <= 0) return 0;
+	            meta.journey.tokens = Math.max(0, Math.floor(meta.journey.tokens || 0)) + add;
+	            meta.journey.lastProgressAt = Date.now();
+	            retentionDebugLog('Journey tokens granted', { add, reason, total: meta.journey.tokens });
+	            return add;
+	        }
+
+	        function spendJourneyTokens(amount) {
+	            const meta = ensureRetentionMetaState();
+	            const cost = Math.max(0, Math.floor(Number(amount) || 0));
+	            if (cost <= 0) return { ok: true, spent: 0, balance: meta.journey.tokens || 0 };
+	            if ((meta.journey.tokens || 0) < cost) {
+	                return { ok: false, reason: 'insufficient-tokens', balance: meta.journey.tokens || 0 };
+	            }
+	            meta.journey.tokens -= cost;
+	            return { ok: true, spent: cost, balance: meta.journey.tokens };
+	        }
+
+	        function redeemJourneyTokenReward(rewardId) {
+	            const id = String(rewardId || '');
+	            if (!id) return { ok: false, reason: 'invalid-reward' };
+	            if (id === 'story') {
+	                const spend = spendJourneyTokens(5);
+	                if (!spend.ok) return { ok: false, reason: spend.reason, needed: 5, balance: spend.balance };
+	                if (typeof addJournalEntry === 'function') {
+	                    addJournalEntry('📚', 'Journey token memory unlocked: your pet remembers your quiet routines.');
+	                }
+	                saveGame();
+	                return { ok: true, rewardId: id, message: 'Story memory unlocked.', balance: spend.balance };
+	            }
+	            if (id === 'cosmetic') {
+	                const spend = spendJourneyTokens(8);
+	                if (!spend.ok) return { ok: false, reason: spend.reason, needed: 8, balance: spend.balance };
+	                const cosmeticPool = ['sparkleSticker', 'heartSticker', 'legendRibbon', 'moonCrest', 'sunCrest', 'bloomCrest'];
+	                const choice = cosmeticPool.find((stickerId) => !(gameState.stickers && gameState.stickers[stickerId] && gameState.stickers[stickerId].collected))
+	                    || cosmeticPool[hashDailySeed(`journey-cosmetic:${getTodayString()}`) % cosmeticPool.length];
+	                if (typeof grantSticker === 'function') grantSticker(choice);
+	                saveGame();
+	                return { ok: true, rewardId: id, stickerId: choice, message: `${STICKERS[choice].emoji} ${STICKERS[choice].name} unlocked.`, balance: spend.balance };
+	            }
+	            if (id === 'bond') {
+	                const spend = spendJourneyTokens(6);
+	                if (!spend.ok) return { ok: false, reason: spend.reason, needed: 6, balance: spend.balance };
+	                addBondXp(12, 'Journey token bond reward');
+	                saveGame();
+	                return { ok: true, rewardId: id, message: 'Bond XP increased.', balance: spend.balance };
+	            }
+	            if (id === 'codex') {
+	                const spend = spendJourneyTokens(7);
+	                if (!spend.ok) return { ok: false, reason: spend.reason, needed: 7, balance: spend.balance };
+	                const locked = Object.entries(PET_TYPES || {})
+	                    .filter(([typeId, data]) => data && data.mythical && !isPetTypeUnlocked(typeId))
+	                    .map(([typeId]) => typeId);
+	                if (locked.length > 0) {
+	                    const unlockType = locked[hashDailySeed(`journey-codex:${getTodayString()}`) % locked.length];
+	                    const req = Math.max(0, Math.floor((PET_TYPES[unlockType] && PET_TYPES[unlockType].unlockRequirement) || 0));
+	                    gameState.adultsRaised = Math.max(gameState.adultsRaised || 0, req);
+	                    if (typeof addJournalEntry === 'function') {
+	                        addJournalEntry('📖', `Codex insight unlocked: ${PET_TYPES[unlockType].name} is now discoverable.`);
+	                    }
+	                }
+	                saveGame();
+	                return { ok: true, rewardId: id, message: 'Codex insight unlocked.', balance: spend.balance };
+	            }
+	            return { ok: false, reason: 'invalid-reward' };
+	        }
+
+	        function getBondLevelForXp(xpValue) {
+	            const milestones = Array.isArray(BOND_XP_MILESTONES) ? BOND_XP_MILESTONES : [];
+	            const safeXp = Math.max(0, Math.floor(Number(xpValue) || 0));
+	            let level = 1;
+	            milestones.forEach((milestone) => {
+	                if (safeXp >= Math.max(0, Math.floor(milestone.xp || 0))) {
+	                    level = Math.max(level, Math.floor(milestone.level || level));
+	                }
+	            });
+	            return level;
+	        }
+
+	        function addBondXp(amount, reason) {
+	            const meta = ensureRetentionMetaState();
+	            const add = Math.max(0, Math.floor(Number(amount) || 0));
+	            if (add <= 0) return { added: 0, xp: meta.bond.xp || 0, level: meta.bond.level || 1, leveledUp: false };
+	            const previousLevel = Math.max(1, Math.floor(meta.bond.level || 1));
+	            meta.bond.xp = Math.max(0, Math.floor(meta.bond.xp || 0)) + add;
+	            meta.bond.level = getBondLevelForXp(meta.bond.xp);
+	            const leveledUp = meta.bond.level > previousLevel;
+	            if (leveledUp) {
+	                const milestones = Array.isArray(BOND_XP_MILESTONES) ? BOND_XP_MILESTONES : [];
+	                milestones
+	                    .filter((milestone) => milestone.level > previousLevel && milestone.level <= meta.bond.level)
+	                    .forEach((milestone) => {
+	                        const key = `bond_${milestone.level}`;
+	                        if (!meta.bond.claimedMilestones.includes(key)) {
+	                            meta.bond.claimedMilestones.push(key);
+	                            grantJourneyRewardPayload(milestone.reward, `Bond Level ${milestone.level}`);
+	                        }
+	                    });
+	                if (typeof showToast === 'function') {
+	                    showToast(`💞 Bond Level ${meta.bond.level} reached!`, '#EC407A');
+	                }
+	            }
+	            retentionDebugLog('Bond XP updated', { add, reason, xp: meta.bond.xp, level: meta.bond.level });
+	            return { added: add, xp: meta.bond.xp, level: meta.bond.level, leveledUp };
+	        }
+
+	        function evaluateJourneyProgress(triggerSource) {
+	            const meta = ensureRetentionMetaState();
+	            const chapters = Array.isArray(JOURNEY_CHAPTERS) ? JOURNEY_CHAPTERS : [];
+	            if (chapters.length === 0) return { completedObjectives: [], completedChapters: [] };
+	            const currentDay = getJourneyDay();
+	            const snapshot = getJourneyMetricSnapshot();
+	            const completedObjectives = [];
+	            const completedChapters = [];
+	            chapters.forEach((chapter) => {
+	                if (currentDay < Math.max(1, Math.floor(chapter.dayStart || 1))) return;
+	                const objectives = Array.isArray(chapter.objectives) ? chapter.objectives : [];
+	                objectives.forEach((objective) => {
+	                    const metricValue = Math.max(0, Math.floor(snapshot[objective.metric] || 0));
+	                    meta.journey.objectiveProgress[objective.id] = metricValue;
+	                    if (metricValue >= (objective.target || 0) && !meta.journey.completedObjectives[objective.id]) {
+	                        meta.journey.completedObjectives[objective.id] = {
+	                            at: Date.now(),
+	                            source: triggerSource || 'progress'
+	                        };
+	                        const rewardTokens = Math.max(1, Math.floor(objective.tokenReward || (JOURNEY_TOKEN_REWARD_TABLE && JOURNEY_TOKEN_REWARD_TABLE.objectiveComplete) || 2));
+	                        addJourneyTokens(rewardTokens, objective.label || objective.id);
+	                        if (objective.track === 'bond') addBondXp(3, objective.id);
+	                        completedObjectives.push(objective);
+	                    }
+	                });
+	                const chapterDone = objectives.length > 0 && objectives.every((objective) => !!meta.journey.completedObjectives[objective.id]);
+	                if (chapterDone && !meta.journey.chapterCompletions[chapter.id]) {
+	                    meta.journey.chapterCompletions[chapter.id] = { at: Date.now() };
+	                    const chapterReward = chapter.chapterReward || {};
+	                    const fallbackTokens = (JOURNEY_TOKEN_REWARD_TABLE && JOURNEY_TOKEN_REWARD_TABLE.chapterComplete) || 4;
+	                    addJourneyTokens(Math.max(1, Math.floor(chapterReward.tokens || fallbackTokens)), `${chapter.label} complete`);
+	                    grantJourneyRewardPayload(chapterReward, chapter.label || chapter.id);
+	                    if (typeof addJournalEntry === 'function') {
+	                        addJournalEntry('🧭', `${chapter.label} complete.`);
+	                    }
+	                    completedChapters.push(chapter);
+	                }
+	                ['bond', 'mastery', 'collection'].forEach((trackId) => {
+	                    const trackObjectives = objectives.filter((objective) => objective.track === trackId);
+	                    if (trackObjectives.length === 0) return;
+	                    const key = `${chapter.id}:${trackId}`;
+	                    const trackDone = trackObjectives.every((objective) => !!meta.journey.completedObjectives[objective.id]);
+	                    if (trackDone && !meta.journey.trackCompletions[key]) {
+	                        meta.journey.trackCompletions[key] = { at: Date.now() };
+	                        addJourneyTokens(1, `${trackId} track complete`);
+	                    }
+	                });
+	            });
+	            if (completedObjectives.length > 0 || completedChapters.length > 0) {
+	                meta.journey.lastProgressAt = Date.now();
+	                saveGame();
+	            }
+	            return { completedObjectives, completedChapters };
+	        }
+
+	        function getJourneyStatus() {
+	            const meta = ensureRetentionMetaState();
+	            const day = getJourneyDay();
+	            const chapter = getJourneyChapterForDay(day);
+	            const chapters = Array.isArray(JOURNEY_CHAPTERS) ? JOURNEY_CHAPTERS : [];
+	            const tracks = ['bond', 'mastery', 'collection'];
+	            const trackProgress = {};
+	            tracks.forEach((trackId) => {
+	                const allTrackObjectives = chapters.flatMap((entry) => (entry.objectives || []).filter((objective) => objective.track === trackId));
+	                const completed = allTrackObjectives.filter((objective) => !!meta.journey.completedObjectives[objective.id]).length;
+	                trackProgress[trackId] = {
+	                    completed,
+	                    total: allTrackObjectives.length,
+	                    pct: allTrackObjectives.length > 0 ? Math.round((completed / allTrackObjectives.length) * 100) : 0
+	                };
+	            });
+	            const chapterObjectives = chapter ? (chapter.objectives || []) : [];
+	            const chapterCompleted = chapterObjectives.filter((objective) => !!meta.journey.completedObjectives[objective.id]).length;
+	            const chapterPct = chapterObjectives.length > 0 ? Math.round((chapterCompleted / chapterObjectives.length) * 100) : 0;
+	            const nextObjective = chapterObjectives.find((objective) => !meta.journey.completedObjectives[objective.id]) || null;
+	            const novelty = getNextNoveltyUnlock(day);
+	            const snapshot = getJourneyMetricSnapshot();
+	            const chapterObjectiveStates = chapterObjectives.map((objective) => {
+	                const value = Math.max(0, Math.floor(snapshot[objective.metric] || 0));
+	                const target = Math.max(1, Math.floor(objective.target || 1));
+	                return {
+	                    ...objective,
+	                    value: Math.min(value, target),
+	                    target,
+	                    done: !!meta.journey.completedObjectives[objective.id]
+	                };
+	            });
+	            return {
+	                day,
+	                chapter,
+	                chapterCompleted,
+	                chapterTotal: chapterObjectives.length,
+	                chapterPct,
+	                nextObjective,
+	                chapterObjectives: chapterObjectiveStates,
+	                tokens: Math.max(0, Math.floor(meta.journey.tokens || 0)),
+	                bondXp: Math.max(0, Math.floor(meta.bond.xp || 0)),
+	                bondLevel: Math.max(1, Math.floor(meta.bond.level || 1)),
+	                trackProgress,
+	                novelty
+	            };
+	        }
+
+	        function getJourneyChapterStates() {
+	            const meta = ensureRetentionMetaState();
+	            const day = getJourneyDay();
+	            const chapters = Array.isArray(JOURNEY_CHAPTERS) ? JOURNEY_CHAPTERS : [];
+	            return chapters.map((chapter) => {
+	                const objectives = Array.isArray(chapter.objectives) ? chapter.objectives : [];
+	                const completed = objectives.filter((objective) => !!meta.journey.completedObjectives[objective.id]).length;
+	                return {
+	                    id: chapter.id,
+	                    label: chapter.label,
+	                    dayStart: chapter.dayStart,
+	                    dayEnd: chapter.dayEnd,
+	                    unlocked: day >= Math.max(1, Math.floor(chapter.dayStart || 1)),
+	                    complete: !!meta.journey.chapterCompletions[chapter.id],
+	                    completed,
+	                    total: objectives.length,
+	                    pct: objectives.length > 0 ? Math.round((completed / objectives.length) * 100) : 0
+	                };
+	            });
+	        }
+
+	        function getNextNoveltyUnlock(day) {
+	            const schedule = (typeof NOVELTY_SCHEDULE !== 'undefined' && NOVELTY_SCHEDULE && Array.isArray(NOVELTY_SCHEDULE.earlyUnlocks))
+	                ? NOVELTY_SCHEDULE.earlyUnlocks
+	                : [];
+	            const safeDay = Math.max(1, Math.floor(Number(day) || getJourneyDay()));
+	            const meta = ensureRetentionMetaState();
+	            return schedule.find((entry) => entry.day >= safeDay && !meta.novelty.claimedSchedule[entry.id]) || null;
+	        }
+
+	        function recordRetentionActivity(activityKey) {
+	            const meta = ensureRetentionMetaState();
+	            const key = typeof activityKey === 'string' ? activityKey : '';
+	            if (!key) return;
+	            meta.reactivation.lastActivity = key;
+	        }
+
+	        function addReminderCenterItem(type, title, body, action) {
+	            const meta = ensureRetentionMetaState();
+	            const list = meta.reminderCenter.items;
+	            const today = getTodayString();
+	            const dedupeKey = `${type}:${today}`;
+	            if (list.some((item) => item && item.dedupeKey === dedupeKey)) return null;
+	            const entry = {
+	                id: `rem_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+	                type: type || 'general',
+	                title: title || 'Reminder',
+	                body: body || '',
+	                action: action || null,
+	                createdAt: Date.now(),
+	                date: today,
+	                dedupeKey
+	            };
+	            list.unshift(entry);
+	            const maxItems = (typeof REMINDER_CENTER_CONFIG !== 'undefined' && Number.isFinite(REMINDER_CENTER_CONFIG.maxItems))
+	                ? Math.max(5, Math.floor(REMINDER_CENTER_CONFIG.maxItems))
+	                : 12;
+	            if (list.length > maxItems) list.splice(maxItems);
+	            return entry;
+	        }
+
+	        function getReminderCenterItems() {
+	            const meta = ensureRetentionMetaState();
+	            return Array.isArray(meta.reminderCenter.items) ? [...meta.reminderCenter.items] : [];
+	        }
+
+	        function dismissReminderCenterItem(itemId) {
+	            const meta = ensureRetentionMetaState();
+	            const before = meta.reminderCenter.items.length;
+	            meta.reminderCenter.items = meta.reminderCenter.items.filter((item) => item && item.id !== itemId);
+	            if (meta.reminderCenter.items.length !== before) saveGame();
+	        }
+
+	        function openReminderCenterAction(itemId) {
+	            const meta = ensureRetentionMetaState();
+	            const item = (meta.reminderCenter.items || []).find((entry) => entry && entry.id === itemId);
+	            if (!item || !item.action) return false;
+	            const actionType = item.action.type;
+	            if (actionType === 'streak' && typeof showStreakModal === 'function') {
+	                showStreakModal();
+	                return true;
+	            }
+	            if (actionType === 'explore' && typeof showExplorationModal === 'function') {
+	                showExplorationModal();
+	                return true;
+	            }
+	            if (actionType === 'garden' && typeof switchRoom === 'function') {
+	                switchRoom('garden');
+	                return true;
+	            }
+	            if (actionType === 'breeding' && typeof showToolsMenu === 'function') {
+	                const trigger = document.getElementById('tools-btn') || document.body;
+	                showToolsMenu(trigger);
+	                return true;
+	            }
+	            if (actionType === 'journey' && typeof showJourneyModal === 'function') {
+	                showJourneyModal();
+	                return true;
+	            }
+	            return false;
+	        }
+
+	        function dismissReminderPrompt() {
+	            const meta = ensureRetentionMetaState();
+	            meta.reminderCenter.promptDismissed = true;
+	            meta.onboarding.reminderPromptSeen = true;
+	            saveGame();
+	        }
+
+	        function shouldShowReminderPrompt() {
+	            const meta = ensureRetentionMetaState();
+	            const reminders = ensureReminderState();
+	            if (reminders.enabled) return false;
+	            if (meta.reminderCenter.promptDismissed || meta.onboarding.reminderPromptSeen) return false;
+	            try {
+	                const raw = localStorage.getItem(STORAGE_KEYS.petSessions);
+	                const sessions = Number.parseInt(raw || '0', 10);
+	                return Number.isFinite(sessions) && sessions > 0 && sessions <= 2;
+	            } catch (e) {
+	                return false;
+	            }
+	        }
+
+	        function markReminderPromptSeen() {
+	            const meta = ensureRetentionMetaState();
+	            meta.onboarding.reminderPromptSeen = true;
+	            meta.reminderCenter.lastPromptSession = Date.now();
+	            saveGame();
+	        }
+
+	        function applyNoveltyReward(entry) {
+	            if (!entry || !entry.reward) return;
+	            const reward = entry.reward;
+	            if (reward.type === 'sticker' && reward.id && typeof grantSticker === 'function') {
+	                grantSticker(reward.id);
+	            } else if (reward.type === 'journal' && reward.text && typeof addJournalEntry === 'function') {
+	                addJournalEntry('📜', reward.text);
+	            } else if (reward.type === 'unlockBiome' && reward.biomeId) {
+	                ensureExplorationState();
+	                if (gameState.exploration.biomeUnlocks && Object.prototype.hasOwnProperty.call(gameState.exploration.biomeUnlocks, reward.biomeId)) {
+	                    gameState.exploration.biomeUnlocks[reward.biomeId] = true;
+	                    gameState.exploration.discoveredBiomes[reward.biomeId] = true;
+	                }
+	            }
+	            addJourneyTokens((JOURNEY_TOKEN_REWARD_TABLE && JOURNEY_TOKEN_REWARD_TABLE.noveltyUnlock) || 2, entry.title || 'Novelty unlock');
+	        }
+
+	        function evaluateNoveltyScheduler(triggerSource) {
+	            const meta = ensureRetentionMetaState();
+	            const noveltyCfg = (typeof NOVELTY_SCHEDULE !== 'undefined' && NOVELTY_SCHEDULE) ? NOVELTY_SCHEDULE : {};
+	            const day = getJourneyDay();
+	            const unlocked = [];
+	            const earlyUnlocks = Array.isArray(noveltyCfg.earlyUnlocks) ? noveltyCfg.earlyUnlocks : [];
+	            earlyUnlocks.forEach((entry) => {
+	                if (!entry || !entry.id || day < Math.max(1, Math.floor(entry.day || 1))) return;
+	                if (meta.novelty.claimedSchedule[entry.id]) return;
+	                meta.novelty.claimedSchedule[entry.id] = { at: Date.now(), source: triggerSource || 'scheduler' };
+	                applyNoveltyReward(entry);
+	                addReminderCenterItem('novelty', entry.title || 'New unlock', entry.subtitle || 'A new reward is ready.', { type: 'journey' });
+	                unlocked.push(entry);
+	            });
+	            if (day > 14) {
+	                const weekIndex = Math.max(0, Math.floor((day - 15) / 7));
+	                const weekKey = `day${day}:w${weekIndex + 1}`;
+	                if (meta.novelty.lastWeeklyEventKey !== weekKey) {
+	                    const spikes = Array.isArray(noveltyCfg.weeklySpikes) ? noveltyCfg.weeklySpikes : [];
+	                    if (spikes.length > 0) {
+	                        const selected = spikes[hashDailySeed(`novelty:${weekKey}`) % spikes.length];
+	                        const eventId = `${selected.id}:${weekKey}`;
+	                        if (!meta.novelty.claimedSchedule[eventId]) {
+	                            meta.novelty.claimedSchedule[eventId] = { at: Date.now(), source: triggerSource || 'weekly-spike' };
+	                            if (selected.reward) {
+	                                if (selected.reward.type === 'sticker' && selected.reward.id && typeof grantSticker === 'function') {
+	                                    grantSticker(selected.reward.id);
+	                                }
+	                                addJourneyTokens(3, `${selected.label} event`);
+	                            }
+	                            addReminderCenterItem('eventSpike', `${selected.icon || '✨'} ${selected.label}`, 'Weekly event rewards are active this week.', { type: 'journey' });
+	                            unlocked.push(selected);
+	                        }
+	                    }
+	                    meta.novelty.lastWeeklyEventKey = weekKey;
+	                }
+	            }
+	            meta.novelty.lastClaimedJourneyDay = Math.max(meta.novelty.lastClaimedJourneyDay || 0, day);
+	            if (unlocked.length > 0) saveGame();
+	            return unlocked;
+	        }
+
+	        function updateReactivationStateOnLogin() {
+	            const meta = ensureRetentionMetaState();
+	            const today = getTodayString();
+	            const lastSeen = meta.reactivation.lastSeenDate;
+	            const awayDays = lastSeen ? getCalendarDayDiff(lastSeen, today) : 0;
+	            meta.reactivation.awayDays = Math.max(0, awayDays);
+	            if (awayDays > 0) {
+	                meta.reactivation.pendingRecap = {
+	                    at: Date.now(),
+	                    awayDays,
+	                    lastActivity: meta.reactivation.lastActivity || '',
+	                    streak: (gameState.streak && gameState.streak.current) || 0,
+	                    bondLevel: (meta.bond && meta.bond.level) || 1,
+	                    journeyDay: getJourneyDay()
+	                };
+	            }
+	            meta.reactivation.lastSeenDate = today;
+	            return awayDays;
+	        }
+
+	        function getReactiveReturnDialogue() {
+	            const meta = ensureRetentionMetaState();
+	            const awayDays = Math.max(0, Math.floor(meta.reactivation.awayDays || 0));
+	            if (awayDays <= 0) return '';
+	            const today = getTodayString();
+	            if (meta.reactivation.lastDialogueDate === today) return '';
+	            const cfg = (typeof REACTIVATION_DIALOGUE !== 'undefined' && REACTIVATION_DIALOGUE) ? REACTIVATION_DIALOGUE : {};
+	            const buckets = Array.isArray(cfg.awayBuckets) ? cfg.awayBuckets : [];
+	            const sorted = [...buckets].sort((a, b) => (a.minDays || 0) - (b.minDays || 0));
+	            let line = '';
+	            sorted.forEach((bucket) => {
+	                if (awayDays >= (bucket.minDays || 0) && Array.isArray(bucket.lines) && bucket.lines.length > 0) {
+	                    line = bucket.lines[hashDailySeed(`react:${today}:${bucket.minDays}`) % bucket.lines.length];
+	                }
+	            });
+	            if (!line) {
+	                const generic = Array.isArray(cfg.generic) ? cfg.generic : [];
+	                if (generic.length > 0) line = generic[hashDailySeed(`react-generic:${today}`) % generic.length];
+	            }
+	            const lastActivity = meta.reactivation.lastActivity || '';
+	            const activityLine = (cfg.byActivity && cfg.byActivity[lastActivity]) ? cfg.byActivity[lastActivity] : '';
+	            const bondLevel = Math.max(1, Math.floor((meta.bond && meta.bond.level) || 1));
+	            const bondLine = bondLevel >= 3 ? 'Our bond still feels strong.' : '';
+	            const fullLine = [line, activityLine, bondLine].filter(Boolean).join(' ');
+	            meta.reactivation.lastDialogueDate = today;
+	            return fullLine;
+	        }
+
+	        function consumeReturnRecap() {
+	            const meta = ensureRetentionMetaState();
+	            const recap = meta.reactivation.pendingRecap;
+	            meta.reactivation.pendingRecap = null;
+	            meta.reactivation.lastRecapShownDate = getTodayString();
+	            return recap;
+	        }
 
         function getStageRank(stage) {
             const order = ['baby', 'child', 'adult', 'elder'];
@@ -3019,10 +3850,12 @@
             return completed;
         }
 
-        function initDailyChecklist() {
-            const today = getTodayString();
-            if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
-                // Generate diary entry for previous day before resetting
+	        function initDailyChecklist() {
+	            const today = getTodayString();
+	            let resetToday = false;
+	            if (!gameState.dailyChecklist || gameState.dailyChecklist.date !== today) {
+	                resetToday = true;
+	                // Generate diary entry for previous day before resetting
                 if (gameState.dailyChecklist && gameState.dailyChecklist.date && gameState.pet) {
                     if (typeof generateDiaryEntry === 'function') {
                         try {
@@ -3069,93 +3902,122 @@
                     stage,
                     progress: { feedCount: 0, minigameCount: 0, harvestCount: 0, parkVisits: 0, totalCareActions: 0, expeditionCount: 0, battleCount: 0, hatchCount: 0, masteryPoints: 0, bondEvents: 0, discoveryEvents: 0 },
                     tasks: taskList.map((t) => buildDailyTaskEntry(t, stage)),
-                    _completionCounted: false,
-                    _rewardGranted: false
-                };
-            }
-            initWeeklyArc();
-            return gameState.dailyChecklist;
-        }
+	                    _completionCounted: false,
+	                    _rewardGranted: false
+	                };
+	            }
+	            initWeeklyArc();
+	            if (resetToday) {
+	                evaluateJourneyProgress('daily-reset');
+	                evaluateNoveltyScheduler('daily-reset');
+	            }
+	            return gameState.dailyChecklist;
+	        }
 
-        function incrementDailyProgress(key, amount) {
-            const cl = initDailyChecklist();
-            if (!cl.progress[key]) cl.progress[key] = 0;
-            cl.progress[key] += (amount ?? 1);
-            // Check completions
-            const templates = getDailyTaskTemplateMap();
-            const newlyCompleted = [];
-            cl.tasks.forEach((task) => {
-                if (!task || task.done || task.trackKey !== key) return;
-                const scaledTarget = Number(task.target || 1);
-                if ((cl.progress[key] || 0) >= scaledTarget) {
-                    task.done = true;
-                    newlyCompleted.push({
-                        ...(templates[task.id] || task),
-                        icon: task.icon || (templates[task.id] && templates[task.id].icon) || '✅',
-                        target: scaledTarget,
-                        name: task.name
-                    });
-                }
-            });
-            incrementWeeklyArcProgress(key, amount);
-            // Track daily completion count for trophies
-            if (typeof trackDailyCompletion === 'function') trackDailyCompletion();
-            return newlyCompleted;
-        }
+	        function incrementDailyProgress(key, amount) {
+	            const cl = initDailyChecklist();
+	            if (!cl.progress[key]) cl.progress[key] = 0;
+	            cl.progress[key] += (amount ?? 1);
+	            const activityMap = {
+	                feedCount: 'care',
+	                totalCareActions: 'care',
+	                minigameCount: 'minigame',
+	                harvestCount: 'harvest',
+	                expeditionCount: 'expedition',
+	                battleCount: 'battle',
+	                hatchCount: 'daily',
+	                discoveryEvents: 'expedition'
+	            };
+	            if (activityMap[key]) recordRetentionActivity(activityMap[key]);
+	            // Check completions
+	            const templates = getDailyTaskTemplateMap();
+	            const newlyCompleted = [];
+	            cl.tasks.forEach((task) => {
+	                if (!task || task.done || task.trackKey !== key) return;
+	                const scaledTarget = Number(task.target || 1);
+	                if ((cl.progress[key] || 0) >= scaledTarget) {
+	                    task.done = true;
+	                    newlyCompleted.push({
+	                        ...(templates[task.id] || task),
+	                        icon: task.icon || (templates[task.id] && templates[task.id].icon) || '✅',
+	                        target: scaledTarget,
+	                        name: task.name
+	                    });
+	                }
+	            });
+	            incrementWeeklyArcProgress(key, amount);
+	            evaluateJourneyProgress(`daily:${key}`);
+	            // Track daily completion count for trophies
+	            if (typeof trackDailyCompletion === 'function') trackDailyCompletion();
+	            return newlyCompleted;
+	        }
 
-        function isDailyComplete() {
-            const cl = initDailyChecklist();
-            return cl.tasks.every(t => t.done);
-        }
+	        function isDailyComplete() {
+	            const cl = initDailyChecklist();
+	            return cl.tasks.every(t => t.done);
+	        }
 
-        // Track daily completions count (for trophies)
-        function trackDailyCompletion() {
-            if (isDailyComplete()) {
-                // Only count once per day
-                const cl = gameState.dailyChecklist;
-                if (cl && !cl._completionCounted) {
-                    cl._completionCounted = true;
-                    if (typeof gameState.totalDailyCompletions !== 'number') gameState.totalDailyCompletions = 0;
-                    gameState.totalDailyCompletions++;
-                    if (!cl._rewardGranted) {
-                        cl._rewardGranted = true;
-                        const bundled = applyRewardBundle('dailyFinish', 'Daily Tasks');
-                        const stage = (cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : 'baby';
-                        const stageMult = Math.max(1, Number(getStageBalance(stage).dailyTaskMultiplier) || 1);
-                        const stageBonusCoins = Math.max(0, Math.round((stageMult - 1) * 45));
-                        // Recommendation #7: Mastery rank daily bonus (+1 coin if Family Legacy tier 2+)
-                        const masteryDailyBonus = typeof getMasteryDailyBonus === 'function' ? getMasteryDailyBonus() : 0;
-                        // Recommendation #10: Elder legacy passive income
-                        // Each retired elder pet adds +2 coins/day, non-elder retired pets add +1 coin/day
-                        let elderLegacyBonus = 0;
-                        if (Array.isArray(gameState.memorials)) {
-                            gameState.memorials.forEach(m => {
-                                elderLegacyBonus += (m.growthStage === 'elder') ? 2 : 1;
-                            });
-                        }
-                        const totalBonusCoins = stageBonusCoins + masteryDailyBonus + elderLegacyBonus;
-                        if (totalBonusCoins > 0) {
-                            addCoins(totalBonusCoins, 'Daily Tasks (Stage + Mastery + Legacy Bonus)', true);
-                        }
-                        if (bundled && typeof showToast === 'function') {
-                            const modifierText = bundled.modifier ? ` + ${bundled.modifier.emoji} ${bundled.modifier.name}` : '';
-                            const elderText = elderLegacyBonus > 0 ? ` + ${elderLegacyBonus} elder legacy` : '';
-                            const bonusText = (stageBonusCoins > 0 || elderLegacyBonus > 0) ? ` + ${stageBonusCoins + elderLegacyBonus} bonus` : '';
-                            showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${bonusText}${modifierText}`, '#FFD700');
-                        } else {
-                            const dailyRewardBase = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
-                                ? ECONOMY_BALANCE.dailyCompletionReward
-                                : 85;
-                            const dailyReward = dailyRewardBase + totalBonusCoins;
-                            const payout = addCoins(dailyReward, 'Daily Tasks', true);
-                            if (payout > 0 && typeof showToast === 'function') {
-                                showToast(`📋 Daily tasks complete! Earned ${payout} coins.`, '#FFD700');
-                            }
-                        }
-                    }
-                }
-            }
-        }
+	        // Track daily completions count (for trophies)
+	        function trackDailyCompletion() {
+	            if (isDailyComplete()) {
+	                // Only count once per day
+	                const cl = gameState.dailyChecklist;
+	                if (cl && !cl._completionCounted) {
+	                    cl._completionCounted = true;
+	                    if (typeof gameState.totalDailyCompletions !== 'number') gameState.totalDailyCompletions = 0;
+	                    gameState.totalDailyCompletions++;
+	                    if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('complete_daily');
+	                    if (!cl._rewardGranted) {
+	                        cl._rewardGranted = true;
+	                        const bundled = applyRewardBundle('dailyFinish', 'Daily Tasks');
+	                        const stage = (cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : 'baby';
+	                        const stageMult = Math.max(1, Number(getStageBalance(stage).dailyTaskMultiplier) || 1);
+	                        const stageBonusCoins = Math.max(0, Math.round((stageMult - 1) * 45));
+	                        // Recommendation #7: Mastery rank daily bonus (+1 coin if Family Legacy tier 2+)
+	                        const masteryDailyBonus = typeof getMasteryDailyBonus === 'function' ? getMasteryDailyBonus() : 0;
+	                        // Recommendation #10: Elder legacy passive income
+	                        // Each retired elder pet adds +2 coins/day, non-elder retired pets add +1 coin/day
+	                        let elderLegacyBonus = 0;
+	                        if (Array.isArray(gameState.memorials)) {
+	                            gameState.memorials.forEach(m => {
+	                                elderLegacyBonus += (m.growthStage === 'elder') ? 2 : 1;
+	                            });
+	                        }
+	                        const totalBonusCoins = stageBonusCoins + masteryDailyBonus + elderLegacyBonus;
+	                        if (totalBonusCoins > 0) {
+	                            addCoins(totalBonusCoins, 'Daily Tasks (Stage + Mastery + Legacy Bonus)', true);
+	                        }
+	                        if (bundled && typeof showToast === 'function') {
+	                            const modifierText = bundled.modifier ? ` + ${bundled.modifier.emoji} ${bundled.modifier.name}` : '';
+	                            const bonusText = (stageBonusCoins > 0 || elderLegacyBonus > 0) ? ` + ${stageBonusCoins + elderLegacyBonus} bonus` : '';
+	                            showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${bonusText}${modifierText}`, '#FFD700');
+	                        } else {
+	                            const dailyRewardBase = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
+	                                ? ECONOMY_BALANCE.dailyCompletionReward
+	                                : 85;
+	                            const dailyReward = dailyRewardBase + totalBonusCoins;
+	                            const payout = addCoins(dailyReward, 'Daily Tasks', true);
+	                            if (payout > 0 && typeof showToast === 'function') {
+	                                showToast(`📋 Daily tasks complete! Earned ${payout} coins.`, '#FFD700');
+	                            }
+	                        }
+	                        addJourneyTokens((JOURNEY_TOKEN_REWARD_TABLE && JOURNEY_TOKEN_REWARD_TABLE.dailyComplete) || 2, 'Daily completion');
+	                        addBondXp(4, 'Daily completion');
+	                        if (typeof grantSticker === 'function') {
+	                            const dropPool = ['partySticker', 'musicSticker', 'artSticker'];
+	                            const dropId = dropPool[hashDailySeed(`daily-drop:${getTodayString()}`) % dropPool.length];
+	                            if (Math.random() < 0.25 && grantSticker(dropId) && typeof showToast === 'function') {
+	                                showToast(`🎨 Bonus drop: ${STICKERS[dropId].emoji} ${STICKERS[dropId].name}`, '#BA68C8');
+	                            }
+	                        }
+	                        if (typeof addJournalEntry === 'function' && Math.random() < 0.4) {
+	                            addJournalEntry('📘', 'Daily reflection: your consistency strengthened your bond today.');
+	                        }
+	                    }
+	                    evaluateJourneyProgress('daily-complete');
+	                }
+	            }
+	        }
 
         // Track room visits for achievements
         function trackRoomVisit(roomId) {
@@ -3250,19 +4112,22 @@
 
         // ==================== GOAL LADDER ====================
 
-        function getGoalLadder() {
-            const cl = initDailyChecklist();
-            const arc = initWeeklyArc();
-            const mastery = refreshMasteryTracks();
-            const nowTask = (cl.tasks || []).find((task) => !task.done) || null;
+	        function getGoalLadder() {
+	            const cl = initDailyChecklist();
+	            const arc = initWeeklyArc();
+	            const mastery = refreshMasteryTracks();
+	            const journey = getJourneyStatus();
+	            const nowTask = (cl.tasks || []).find((task) => !task.done) || null;
             const nowProgress = nowTask ? `${Math.min(cl.progress[nowTask.trackKey] || 0, nowTask.target)}/${nowTask.target}` : 'Done';
             const modeTasks = (cl.tasks || []).filter((task) => task.lane === 'mode');
             const pendingMode = modeTasks.find((task) => !task.done);
             const nextTask = pendingMode || nowTask;
             const nextProgress = nextTask ? `${Math.min(cl.progress[nextTask.trackKey] || 0, nextTask.target)}/${nextTask.target}` : 'Done';
-            const longTerm = arc && !arc.completed
-                ? `${arc.icon || '🏅'} ${arc.theme}: ${((arc.tasks || []).filter((t) => t.done).length)}/${(arc.tasks || []).length}`
-                : `🏛️ Legacy Tier ${mastery.familyLegacy.tier}: ${mastery.familyLegacy.title}`;
+	            const longTerm = journey && journey.chapter
+	                ? `🧭 ${journey.chapter.label}: ${journey.chapterCompleted}/${journey.chapterTotal}`
+	                : (arc && !arc.completed
+	                    ? `${arc.icon || '🏅'} ${arc.theme}: ${((arc.tasks || []).filter((t) => t.done).length)}/${(arc.tasks || []).length}`
+	                    : `🏛️ Legacy Tier ${mastery.familyLegacy.tier}: ${mastery.familyLegacy.title}`);
 
             gameState.goalLadder = {
                 generatedAt: Date.now(),
@@ -3319,38 +4184,48 @@
             }).catch(() => 'denied');
         }
 
-        function maybeSendLocalReminder(key, title, body) {
-            const reminders = ensureReminderState();
-            if (!reminders.enabled) return false;
-            const today = getTodayString();
-            if (reminders.lastSent && reminders.lastSent[key] === today) return false;
-            reminders.lastSent[key] = today;
-            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                try { new Notification(title, { body, icon: 'icon-192.png' }); } catch (e) {}
-            } else if (typeof showToast === 'function') {
-                showToast(`${title} ${body}`, '#FFA726');
-            }
-            return true;
-        }
+	        function maybeSendLocalReminder(key, title, body) {
+	            const reminders = ensureReminderState();
+	            if (!reminders.enabled) return false;
+	            const today = getTodayString();
+	            if (reminders.lastSent && reminders.lastSent[key] === today) return false;
+	            reminders.lastSent[key] = today;
+	            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+	                try { new Notification(title, { body, icon: 'icon-192.png' }); } catch (e) {}
+	            } else if (typeof showToast === 'function') {
+	                showToast(`${title} ${body}`, '#FFA726');
+	            }
+	            return true;
+	        }
 
-        function checkReminderSignals() {
-            const reminders = ensureReminderState();
-            if (!reminders.enabled) return;
-            const streak = gameState.streak || {};
-            const lastPlay = streak.lastPlayDate;
-            const today = getTodayString();
-            if (lastPlay && lastPlay !== today) {
-                maybeSendLocalReminder('streakRisk', '🔥 Streak risk!', 'Log in to protect your streak.');
-            }
-            const expedition = ((gameState.exploration || {}).expedition) || null;
-            if (expedition && Date.now() >= (expedition.endAt || 0)) {
-                maybeSendLocalReminder('expeditionReady', '🧭 Expedition ready', 'Collect your expedition rewards.');
-            }
-            const hatched = Array.isArray(gameState.hatchedBreedingEggs) ? gameState.hatchedBreedingEggs.length : 0;
-            if (hatched > 0) {
-                maybeSendLocalReminder('hatchReady', '🥚 Hatch ready', 'A new family member is ready to hatch.');
-            }
-        }
+	        function queueReminderSignal(key, title, body, action) {
+	            addReminderCenterItem(key, title, body, action || null);
+	            maybeSendLocalReminder(key, title, body);
+	        }
+
+	        function checkReminderSignals() {
+	            const streak = gameState.streak || {};
+	            const lastPlay = streak.lastPlayDate;
+	            const today = getTodayString();
+	            const now = new Date();
+	            const riskHour = (typeof REMINDER_CENTER_CONFIG !== 'undefined' && Number.isFinite(REMINDER_CENTER_CONFIG.streakRiskHourLocal))
+	                ? Math.max(0, Math.min(23, Math.floor(REMINDER_CENTER_CONFIG.streakRiskHourLocal)))
+	                : 20;
+	            if ((streak.current || 0) > 0 && lastPlay && lastPlay !== today && now.getHours() >= riskHour) {
+	                queueReminderSignal('streakRisk', '🔥 Streak at risk', 'Today is your last chance to protect your streak.', { type: 'streak' });
+	            }
+	            const expedition = ((gameState.exploration || {}).expedition) || null;
+	            if (expedition && Date.now() >= (expedition.endAt || 0)) {
+	                queueReminderSignal('expeditionReady', '🧭 Expedition complete', 'Collect your expedition rewards.', { type: 'explore' });
+	            }
+	            const hatched = Array.isArray(gameState.hatchedBreedingEggs) ? gameState.hatchedBreedingEggs.length : 0;
+	            if (hatched > 0) {
+	                queueReminderSignal('hatchReady', '🥚 Egg hatch ready', 'A new family member is ready to hatch.', { type: 'breeding' });
+	            }
+	            if (typeof getReadyCropCount === 'function' && getReadyCropCount() > 0) {
+	                queueReminderSignal('harvestReady', '🌾 Harvest ready', 'Crops or honey are ready to collect.', { type: 'garden' });
+	            }
+	        }
 
         function startReminderMonitor() {
             if (localReminderInterval) clearInterval(localReminderInterval);
@@ -3359,22 +4234,26 @@
             }, 60 * 1000);
         }
 
-        // ==================== BADGES ====================
+	        // ==================== BADGES ====================
 
-        function checkBadges() {
-            if (!gameState.badges) gameState.badges = {};
-            const newUnlocks = [];
-            for (const [id, badge] of Object.entries(BADGES)) {
-                if (gameState.badges[id]) continue;
-                try {
-                    if (badge.check(gameState)) {
-                        gameState.badges[id] = { unlocked: true, unlockedAt: Date.now() };
-                        newUnlocks.push(badge);
-                    }
-                } catch (e) { /* safe guard */ }
-            }
-            return newUnlocks;
-        }
+	        function checkBadges() {
+	            if (!gameState.badges) gameState.badges = {};
+	            const newUnlocks = [];
+	            for (const [id, badge] of Object.entries(BADGES)) {
+	                if (gameState.badges[id]) continue;
+	                try {
+	                    if (badge.check(gameState)) {
+	                        gameState.badges[id] = { unlocked: true, unlockedAt: Date.now() };
+	                        newUnlocks.push(badge);
+	                    }
+	                } catch (e) { /* safe guard */ }
+	            }
+	            if (newUnlocks.length > 0) {
+	                evaluateJourneyProgress('badges');
+	                recordRetentionActivity('collection');
+	            }
+	            return newUnlocks;
+	        }
 
         function getBadgeCount() {
             if (!gameState.badges) return 0;
@@ -3435,7 +4314,7 @@
             return rewards;
         }
 
-        function checkStickers() {
+	        function checkStickers() {
             if (!gameState.stickers) gameState.stickers = {};
             const newStickers = [];
 
@@ -3582,31 +4461,39 @@
                 dragon: { action: 'feed', stickerId: 'fierceDragon' }
             };
 
-            const mapping = stickerMap[type];
-            if (mapping && mapping.action === action && STICKERS[mapping.stickerId]) {
-                if (grantSticker(mapping.stickerId)) {
-                    newStickers.push(STICKERS[mapping.stickerId]);
-                }
-            }
-            return newStickers;
-        }
+	            const mapping = stickerMap[type];
+	            if (mapping && mapping.action === action && STICKERS[mapping.stickerId]) {
+	                if (grantSticker(mapping.stickerId)) {
+	                    newStickers.push(STICKERS[mapping.stickerId]);
+	                }
+	            }
+	            if (newStickers.length > 0) {
+	                evaluateJourneyProgress('stickers');
+	                recordRetentionActivity('collection');
+	            }
+	            return newStickers;
+	        }
 
         // ==================== TROPHIES ====================
 
-        function checkTrophies() {
+	        function checkTrophies() {
             if (!gameState.trophies) gameState.trophies = {};
             const newTrophies = [];
-            for (const [id, trophy] of Object.entries(TROPHIES)) {
+	            for (const [id, trophy] of Object.entries(TROPHIES)) {
                 if (gameState.trophies[id]) continue;
                 try {
                     if (trophy.check(gameState)) {
                         gameState.trophies[id] = { earned: true, earnedAt: Date.now() };
                         newTrophies.push(trophy);
                     }
-                } catch (e) { /* safe guard */ }
-            }
-            return newTrophies;
-        }
+	                } catch (e) { /* safe guard */ }
+	            }
+	            if (newTrophies.length > 0) {
+	                evaluateJourneyProgress('trophies');
+	                recordRetentionActivity('collection');
+	            }
+	            return newTrophies;
+	        }
 
         function getTrophyCount() {
             if (!gameState.trophies) return 0;
@@ -3615,48 +4502,123 @@
 
         // ==================== DAILY STREAKS ====================
 
+        function getNextStreakMilestone(streakDays) {
+            const safe = Math.max(0, Math.floor(Number(streakDays) || 0));
+            const milestones = Array.isArray(STREAK_MILESTONES) ? STREAK_MILESTONES : [];
+            return milestones.find((milestone) => milestone && safe < (milestone.days || 0)) || null;
+        }
+
+        function getStreakProtectionStatus() {
+            const streak = gameState.streak || { current: 0, longest: 0 };
+            const meta = ensureRetentionMetaState();
+            const protection = meta.streakProtection || {};
+            const current = Math.max(0, Math.floor(streak.current || 0));
+            const nextMilestone = getNextStreakMilestone(current);
+            const lastCheckpoint = getLastReachedCheckpoint(current);
+            const checkpointFloor = getStreakCheckpointFloor(current);
+            return {
+                current,
+                longest: Math.max(current, Math.floor(streak.longest || 0)),
+                freezeTokens: Math.max(0, Math.floor(protection.freezeTokens || 0)),
+                autoUseFreeze: protection.autoUseFreeze !== false,
+                checkpoint: lastCheckpoint,
+                checkpointFloor,
+                nextMilestone: nextMilestone ? { days: nextMilestone.days, label: nextMilestone.label } : null,
+                daysToMilestone: nextMilestone ? Math.max(0, nextMilestone.days - current) : 0,
+                lastOutcome: protection.lastOutcome || '',
+                lastMissedDays: Math.max(0, Math.floor(protection.lastMissedDays || 0)),
+                lastFreezeUsed: Math.max(0, Math.floor(protection.lastFreezeUsed || 0))
+            };
+        }
+
+        function setStreakFreezeAutoUse(enabled) {
+            const meta = ensureRetentionMetaState();
+            const next = !!enabled;
+            meta.streakProtection.autoUseFreeze = next;
+            saveGame();
+            return next;
+        }
+
+        function buyStreakFreezeToken(quantity) {
+            const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+            const unitCost = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.streakFreezeTokenCost))
+                ? Math.max(1, Math.floor(ECONOMY_BALANCE.streakFreezeTokenCost))
+                : 120;
+            const totalCost = unitCost * qty;
+            const spend = spendCoins(totalCost, 'Streak Freeze', true);
+            if (!spend.ok) return { ok: false, reason: spend.reason, needed: totalCost, balance: spend.balance };
+            const granted = addStreakFreezeTokens(qty, 'Shop purchase');
+            saveGame();
+            return { ok: true, quantity: granted, cost: totalCost, balance: getCoinBalance(), freezeTokens: getStreakProtectionStatus().freezeTokens };
+        }
+
         function updateStreak() {
             if (!gameState.streak) {
                 gameState.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
             }
             const streak = gameState.streak;
+            const meta = ensureRetentionMetaState();
+            const protection = meta.streakProtection;
             if (!streak.prestige || typeof streak.prestige !== 'object') {
                 streak.prestige = { cycleMonth: '', cycleBest: 0, lifetimeTier: 0, completedCycles: 0, claimedMonthlyReward: '' };
             }
             const today = getTodayString();
             const monthKey = getCurrentMonthKey();
 
-            // Monthly prestige loop after day 30: reset cycle progress while preserving tier.
+            // Monthly prestige celebration after day 30: rewards rotate monthly with no streak wipe.
             if (streak.prestige.cycleMonth && streak.prestige.cycleMonth !== monthKey && (streak.current || 0) >= 30) {
                 streak.prestige.completedCycles = (streak.prestige.completedCycles || 0) + 1;
                 streak.prestige.lifetimeTier = Math.max(streak.prestige.lifetimeTier || 0, Math.floor((streak.prestige.completedCycles || 0) / 2));
-                streak.current = 0;
-                streak.claimedMilestones = [];
-                streak.todayBonusClaimed = false;
                 streak.prestige.claimedMonthlyReward = '';
+                protection.lastOutcome = 'Monthly prestige celebration is ready. Your streak progress stayed intact.';
             }
             if (!streak.prestige.cycleMonth) streak.prestige.cycleMonth = monthKey;
             if (streak.prestige.cycleMonth !== monthKey) streak.prestige.cycleMonth = monthKey;
 
             if (streak.lastPlayDate === today) {
                 // Already updated today
-                return;
+                protection.lastProcessedDate = today;
+                return getStreakProtectionStatus();
             }
 
-            // Check if last play was yesterday
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+            let outcome = '';
+            let missedDays = 0;
+            let freezeUsed = 0;
+            let checkpointFloor = getStreakCheckpointFloor(streak.current || 0);
 
-            if (streak.lastPlayDate === yesterdayStr) {
-                // Streak continues
-                streak.current++;
-            } else if (streak.lastPlayDate === null) {
-                // First time playing
+            if (streak.lastPlayDate === null) {
                 streak.current = 1;
+                outcome = 'Welcome in. Your first streak day is active.';
             } else {
-                // Streak broken
-                streak.current = 1;
+                const elapsedDays = getCalendarDayDiff(streak.lastPlayDate, today);
+                if (elapsedDays <= 1) {
+                    streak.current = Math.max(1, (streak.current || 0) + 1);
+                    outcome = 'Streak continued. Nice consistency.';
+                } else {
+                    missedDays = Math.max(1, elapsedDays - 1);
+                    let remainingMissed = missedDays;
+                    if (protection.autoUseFreeze && protection.freezeTokens > 0) {
+                        freezeUsed = Math.min(remainingMissed, Math.floor(protection.freezeTokens));
+                        protection.freezeTokens = Math.max(0, Math.floor(protection.freezeTokens) - freezeUsed);
+                        remainingMissed -= freezeUsed;
+                    }
+                    if (remainingMissed <= 0) {
+                        streak.current = Math.max(1, (streak.current || 0) + 1);
+                        outcome = `Streak protected with ${freezeUsed} freeze token${freezeUsed === 1 ? '' : 's'} — you kept your momentum.`;
+                    } else {
+                        const cfg = (typeof STREAK_PROTECTION_CONFIG !== 'undefined' && STREAK_PROTECTION_CONFIG) ? STREAK_PROTECTION_CONFIG : {};
+                        const decayPerDay = Number.isFinite(cfg.softDecayPerMissedDay) ? Math.max(1, Math.floor(cfg.softDecayPerMissedDay)) : 2;
+                        const maxDecay = Number.isFinite(cfg.maxSoftDecayPerLogin) ? Math.max(decayPerDay, Math.floor(cfg.maxSoftDecayPerLogin)) : decayPerDay * 4;
+                        const softDecay = Math.min(maxDecay, decayPerDay * remainingMissed);
+                        checkpointFloor = getStreakCheckpointFloor(streak.current || 0);
+                        streak.current = Math.max(checkpointFloor, Math.max(1, (streak.current || 0) - softDecay));
+                        if (freezeUsed > 0) {
+                            outcome = `Used ${freezeUsed} freeze token${freezeUsed === 1 ? '' : 's'}. Soft decay applied, but your checkpoint protected most progress.`;
+                        } else {
+                            outcome = 'Soft decay applied after missed days. Your checkpoint kept your streak alive.';
+                        }
+                    }
+                }
             }
 
             streak.lastPlayDate = today;
@@ -3665,11 +4627,27 @@
                 streak.longest = streak.current;
             }
             streak.prestige.cycleBest = Math.max(streak.prestige.cycleBest || 0, streak.current || 0);
+            protection.lastOutcome = outcome;
+            protection.lastMissedDays = missedDays;
+            protection.lastFreezeUsed = freezeUsed;
+            protection.lastCheckpointFloor = checkpointFloor;
+            protection.lastProcessedDate = today;
+            retentionDebugLog('Streak updated', {
+                current: streak.current,
+                missedDays,
+                freezeUsed,
+                checkpointFloor,
+                freezeTokens: protection.freezeTokens,
+                outcome
+            });
+            return getStreakProtectionStatus();
         }
 
         function claimStreakBonus() {
             const streak = gameState.streak;
             if (!streak || streak.todayBonusClaimed) return null;
+            const meta = ensureRetentionMetaState();
+            const protection = meta.streakProtection;
 
             const bonus = getStreakBonus(streak.current);
             if (bonus.happiness === 0 && bonus.energy === 0) return null;
@@ -3680,19 +4658,25 @@
                 pet.energy = clamp(pet.energy + bonus.energy, 0, 100);
             }
 
-            streak.todayBonusClaimed = true;
+	            streak.todayBonusClaimed = true;
+	            addBondXp(2, 'Streak bonus');
+	            addJourneyTokens(1, 'Streak claim');
 
             // Check for unclaimed milestone rewards
             const unclaimedMilestones = [];
             if (!Array.isArray(streak.claimedMilestones)) streak.claimedMilestones = [];
             let hitMilestoneToday = false;
+            let freezeTokensAwarded = 0;
             for (const milestone of STREAK_MILESTONES) {
                 if (streak.current >= milestone.days && !streak.claimedMilestones.includes(milestone.days)) {
                     streak.claimedMilestones.push(milestone.days);
                     const bundle = milestone.bundleId ? applyRewardBundle(milestone.bundleId, `Streak ${milestone.days}`) : null;
+                    const freezeGranted = addStreakFreezeTokens(milestone.freezeTokens || 0, milestone.label || `Day ${milestone.days}`);
+                    freezeTokensAwarded += freezeGranted;
                     unclaimedMilestones.push({
                         ...milestone,
-                        bundle
+                        bundle,
+                        freezeGranted
                     });
                     hitMilestoneToday = true;
                 }
@@ -3716,23 +4700,33 @@
                 if (rewards.length > 0 && streak.prestige.claimedMonthlyReward !== monthKey) {
                     const idx = hashDailySeed(`prestige:${monthKey}`) % rewards.length;
                     prestigeReward = rewards[idx];
-                    // Recommendation #8: Prestige escalation — +20 coins per completed cycle, cap 400
+                    // Optional monthly celebration reward with streak-safe progression.
                     const prestigeBaseCoins = prestigeReward.coins || 280;
                     const prestigeEscalation = Math.min(400, prestigeBaseCoins + ((streak.prestige.completedCycles || 0) * 20));
                     if (prestigeEscalation > 0) addCoins(prestigeEscalation, `${prestigeReward.icon} Prestige`, true);
                     if (prestigeReward.modifierId) addGameplayModifier(prestigeReward.modifierId, `${prestigeReward.icon} Prestige`);
                     if (prestigeReward.collectible) grantBundleCollectible(prestigeReward.collectible);
                     streak.prestige.claimedMonthlyReward = monthKey;
-                    streak.prestige.completedCycles = Math.max(1, streak.prestige.completedCycles || 0);
-                    streak.prestige.lifetimeTier = Math.max(streak.prestige.lifetimeTier || 0, Math.floor((streak.prestige.completedCycles || 0) / 2));
                     if (typeof addJournalEntry === 'function') {
-                        addJournalEntry('🌠', `Prestige reward unlocked: ${prestigeReward.icon} ${prestigeReward.label}.`);
+                        addJournalEntry('🌠', `Prestige celebration claimed: ${prestigeReward.icon} ${prestigeReward.label}.`);
                     }
                 }
             }
+	            if (freezeTokensAwarded > 0) {
+	                protection.lastOutcome = `Earned ${freezeTokensAwarded} Streak Freeze token${freezeTokensAwarded === 1 ? '' : 's'} from milestones.`;
+	            }
+	            evaluateJourneyProgress('streak-claim');
 
-            saveGame();
-            return { bonus, milestones: unclaimedMilestones, prestigeReward, streakDripCoins: streakDripCoins || 0 };
+	            saveGame();
+            return {
+                bonus,
+                milestones: unclaimedMilestones,
+                prestigeReward,
+                streakDripCoins: streakDripCoins || 0,
+                freezeTokensAwarded,
+                freezeTokens: Math.max(0, Math.floor(protection.freezeTokens || 0)),
+                status: getStreakProtectionStatus()
+            };
         }
 
         // ==================== PET MEMORIAL SYSTEM ====================
@@ -3923,6 +4917,7 @@
                 ensureEconomyState();
                 ensureMiniGameExpansionState();
                 ensureGardenSystemsState();
+                ensureRetentionMetaState();
                 // Sync active pet to pets array before saving
                 syncActivePetToArray();
                 gameState.lastUpdate = Date.now();
@@ -4190,6 +5185,14 @@
                         parsed.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
                     }
                     if (!Array.isArray(parsed.streak.claimedMilestones)) parsed.streak.claimedMilestones = [];
+                    if (!parsed.streak.prestige || typeof parsed.streak.prestige !== 'object') {
+                        parsed.streak.prestige = { cycleMonth: '', cycleBest: 0, lifetimeTier: 0, completedCycles: 0, claimedMonthlyReward: '' };
+                    }
+                    if (typeof parsed.streak.prestige.cycleMonth !== 'string') parsed.streak.prestige.cycleMonth = '';
+                    if (!Number.isFinite(parsed.streak.prestige.cycleBest)) parsed.streak.prestige.cycleBest = 0;
+                    if (!Number.isFinite(parsed.streak.prestige.lifetimeTier)) parsed.streak.prestige.lifetimeTier = 0;
+                    if (!Number.isFinite(parsed.streak.prestige.completedCycles)) parsed.streak.prestige.completedCycles = 0;
+                    if (typeof parsed.streak.prestige.claimedMonthlyReward !== 'string') parsed.streak.prestige.claimedMonthlyReward = '';
                     if (typeof parsed.totalMedicineUses !== 'number') parsed.totalMedicineUses = 0;
                     if (typeof parsed.totalGroomCount !== 'number') parsed.totalGroomCount = 0;
                     if (typeof parsed.totalDailyCompletions !== 'number') parsed.totalDailyCompletions = 0;
@@ -4215,6 +5218,9 @@
                     if (!Array.isArray(parsed.journal)) parsed.journal = [];
                     ensureExplorationState(parsed);
                     ensureEconomyState(parsed);
+                    ensureReminderState(parsed);
+                    ensureMasteryState(parsed);
+                    ensureRetentionMetaState(parsed);
                     updateExplorationUnlocks(true, parsed);
 
                     // Strip transient _neglectTickCounter from pet objects (old saves)
@@ -8434,10 +9440,13 @@
             ensureEconomyState();
             ensureMiniGameExpansionState();
             ensureGardenSystemsState();
-            ensureReminderState();
-            ensureMasteryState();
-            updateExplorationUnlocks(true);
-            resolveExpeditionIfReady(false, true);
+	            ensureReminderState();
+	            ensureMasteryState();
+	            ensureRetentionMetaState();
+	            getJourneyStartDate();
+	            const awayDays = updateReactivationStateOnLogin();
+	            updateExplorationUnlocks(true);
+	            resolveExpeditionIfReady(false, true);
 
             // Initialize achievement/daily systems
             if (!gameState.achievements) gameState.achievements = {};
@@ -8456,6 +9465,9 @@
                 gameState.streak = { current: 0, longest: 0, lastPlayDate: null, todayBonusClaimed: false, claimedMilestones: [] };
             }
             if (!Array.isArray(gameState.streak.claimedMilestones)) gameState.streak.claimedMilestones = [];
+            if (!gameState.streak.prestige || typeof gameState.streak.prestige !== 'object') {
+                gameState.streak.prestige = { cycleMonth: '', cycleBest: 0, lifetimeTier: 0, completedCycles: 0, claimedMonthlyReward: '' };
+            }
             if (typeof gameState.totalMedicineUses !== 'number') gameState.totalMedicineUses = 0;
             if (typeof gameState.totalGroomCount !== 'number') gameState.totalGroomCount = 0;
             if (typeof gameState.totalDailyCompletions !== 'number') gameState.totalDailyCompletions = 0;
@@ -8469,12 +9481,14 @@
             if (!gameState.previousWeather) gameState.previousWeather = 'sunny';
             if (typeof gameState.lastSeasonalEventCheck !== 'number') gameState.lastSeasonalEventCheck = 0;
 
-            // Update daily streak
-            updateStreak();
-            refreshMasteryTracks();
-            getGoalLadder();
-            runLoginMemoryHooks();
-            checkReminderSignals();
+	            // Update daily streak
+	            const streakStatus = updateStreak();
+	            evaluateJourneyProgress('login');
+	            const noveltyUnlocks = evaluateNoveltyScheduler('login');
+	            refreshMasteryTracks();
+	            getGoalLadder();
+	            runLoginMemoryHooks();
+	            checkReminderSignals();
             startReminderMonitor();
             // Run initial unlock checks and surface newly-qualified items.
             const startupAchievements = checkAchievements() || [];
@@ -8483,6 +9497,14 @@
             const startupStickers = checkStickers() || [];
             // Save after streak/unlock initialization
             saveGame();
+            if (streakStatus && streakStatus.lastOutcome && (streakStatus.lastMissedDays > 0 || streakStatus.lastFreezeUsed > 0)) {
+                setTimeout(() => {
+                    const tokenHint = streakStatus.freezeTokens > 0
+                        ? ` You have ${streakStatus.freezeTokens} freeze token${streakStatus.freezeTokens === 1 ? '' : 's'} left.`
+                        : '';
+                    showToast(`💛 ${streakStatus.lastOutcome}${tokenHint}`, '#66BB6A');
+                }, 520);
+            }
             let startupToastDelay = 900;
             startupAchievements.forEach((ach) => {
                 setTimeout(() => showToast(`${ach.icon} Achievement: ${ach.name}!`, '#FFD700'), startupToastDelay);
@@ -8514,28 +9536,43 @@
             }
             repairPetIdsAndNextId(gameState);
 
-            if (gameState.phase === 'pet' && gameState.pet) {
-                renderPetPhase();
+	            if (gameState.phase === 'pet' && gameState.pet) {
+	                renderPetPhase();
                 // Ensure garden timer is running even if renderPetPhase() skipped
                 // its timer-start logic (e.g. _petPhaseTimersRunning was stale).
                 if (!gardenGrowInterval) {
                     startGardenGrowTimer();
                 }
-                const petData = getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type];
-                if (petData) {
+	                const petData = getAllPetTypeData(gameState.pet.type) || PET_TYPES[gameState.pet.type];
+	                if (petData) {
                     const mood = getMood(gameState.pet);
                     const weatherData = WEATHER_TYPES[gameState.weather];
                     const seasonData = SEASONS[gameState.season];
                     const moodGreeting = mood === 'happy' ? 'is so happy to see you!' :
                                          mood === 'sad' ? 'missed you and needs some care!' :
                                          'is glad you\'re back!';
-                    announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
-                }
-                if (gameState.goalLadder && gameState.goalLadder.now && gameState.goalLadder.next) {
-                    setTimeout(() => {
-                        showToast(`🧭 Now: ${gameState.goalLadder.now.label} · Next: ${gameState.goalLadder.next.label}`, '#42A5F5');
-                    }, 900);
-                }
+	                    announce(`Welcome back! Your ${petData.name} ${moodGreeting}`);
+	                }
+	                if (awayDays > 0) {
+	                    const reactiveLine = getReactiveReturnDialogue();
+	                    if (reactiveLine) {
+	                        setTimeout(() => {
+	                            showToast(`🐾 ${reactiveLine}`, '#8BC34A');
+	                        }, 420);
+	                    }
+	                }
+	                if (Array.isArray(noveltyUnlocks) && noveltyUnlocks.length > 0) {
+	                    noveltyUnlocks.slice(0, 2).forEach((unlock, idx) => {
+	                        setTimeout(() => {
+	                            showToast(`✨ New unlock: ${unlock.title || unlock.label || 'Journey novelty'}`, '#7E57C2');
+	                        }, 700 + (idx * 220));
+	                    });
+	                }
+	                if (gameState.goalLadder && gameState.goalLadder.now && gameState.goalLadder.next) {
+	                    setTimeout(() => {
+	                        showToast(`🧭 Now: ${gameState.goalLadder.now.label} · Next: ${gameState.goalLadder.next.label}`, '#42A5F5');
+	                    }, 900);
+	                }
                 // Show welcome-back summary modal if pet was away for a while (Feature 7)
                 if (gameState._offlineChanges) {
                     const oc = gameState._offlineChanges;
@@ -8564,10 +9601,18 @@
                     saveGame();
                     gameState._hadOfflineChangesOnLoad = hadOfflineChanges;
                 } else {
-                    gameState._hadOfflineChangesOnLoad = false;
-                }
-                // Show streak notification if bonus available (only if no welcome-back modal shown)
-                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed && !gameState._hadOfflineChangesOnLoad) {
+	                    gameState._hadOfflineChangesOnLoad = false;
+	                }
+	                const returnRecap = consumeReturnRecap();
+	                if (returnRecap && typeof showReturnMemoryRecapModal === 'function') {
+	                    setTimeout(() => showReturnMemoryRecapModal(returnRecap), 640);
+	                } else if (returnRecap && awayDays > 1) {
+	                    setTimeout(() => {
+	                        showToast(`📘 While you were away: ${returnRecap.awayDays} days passed. Journey day ${returnRecap.journeyDay}.`, '#5C6BC0');
+	                    }, 640);
+	                }
+	                // Show streak notification if bonus available (only if no welcome-back modal shown)
+	                if (gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed && !gameState._hadOfflineChangesOnLoad) {
                     setTimeout(() => {
                         showToast(`🔥 ${gameState.streak.current}-day streak! Tap Rewards to claim bonus!`, '#FF6D00');
                     }, 1500);

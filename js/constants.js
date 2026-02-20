@@ -1,3 +1,4 @@
+// Changelog (Retention pass): Added streak protection constants (freeze tokens, checkpoints, soft decay), journey scaffolding hooks, novelty schedule hooks, and reminder trigger config.
 // ==================== GROWTH STAGES ====================
 
 const GROWTH_STAGES = {
@@ -1721,7 +1722,14 @@ const ECONOMY_BALANCE = {
     auctionPerSlotListingCap: 12,
     // Rec 11: Coin decay — daily tax on balances above threshold
     coinDecayThreshold: 1000,
-    coinDecayRate: 0.005
+    coinDecayRate: 0.005,
+    // Retention: Keep a protected wallet and reduce decay for active players.
+    coinDecayProtectedWallet: 450,
+    coinDecayEngagedReduction: 0.65,
+    coinDecayDailyCompleteReduction: 0.4,
+    coinDecayMinTax: 1,
+    // Retention: Optional streak freeze token sink
+    streakFreezeTokenCost: 120
 };
 
 const ECONOMY_SHOP_ITEMS = {
@@ -2844,14 +2852,181 @@ const TROPHY_SHELVES = {
 
 const STREAK_MILESTONES = [
     { days: 1, bundleId: 'streakDay1', label: 'Day 1', description: 'Welcome back! Functional + cosmetic bundle.' },
-    { days: 3, bundleId: 'streakDay3', label: '3-Day Streak', description: 'On a roll!' },
+    { days: 3, bundleId: 'streakDay3', label: '3-Day Streak', description: 'On a roll!', freezeTokens: 1 },
     { days: 5, bundleId: 'streakDay5', label: '5-Day Streak', description: 'Dedicated caretaker!' },
-    { days: 7, bundleId: 'streakDay7', label: 'Week Streak', description: 'A whole week!' },
+    { days: 7, bundleId: 'streakDay7', label: 'Week Streak', description: 'A whole week!', freezeTokens: 1 },
     { days: 10, bundleId: 'streakDay10', label: '10-Day Streak', description: 'Super dedicated!' },
-    { days: 14, bundleId: 'streakDay14', label: '2-Week Streak', description: 'True devotion!' },
-    { days: 21, bundleId: 'streakDay21', label: '3-Week Streak', description: 'Incredible commitment!' },
-    { days: 30, bundleId: 'streakDay30', label: 'Monthly Streak', description: 'Legendary caretaker!' }
+    { days: 14, bundleId: 'streakDay14', label: '2-Week Streak', description: 'True devotion!', freezeTokens: 1 },
+    { days: 21, bundleId: 'streakDay21', label: '3-Week Streak', description: 'Incredible commitment!', freezeTokens: 1 },
+    { days: 30, bundleId: 'streakDay30', label: 'Monthly Streak', description: 'Legendary caretaker!', freezeTokens: 2 }
 ];
+
+const STREAK_PROTECTION_CONFIG = {
+    freezeMilestoneDays: [3, 7, 14, 21, 30],
+    checkpointDays: [7, 14, 30],
+    checkpointFallbackOffset: 1, // Falls back to checkpoint minus one day.
+    softDecayPerMissedDay: 2,
+    maxSoftDecayPerLogin: 8
+};
+
+const RETENTION_DEV_FLAGS = {
+    enabled: false,
+    showDebugPanel: false
+};
+
+const JOURNEY_TRACKS = {
+    bond: { id: 'bond', label: 'Bond', icon: '💞' },
+    mastery: { id: 'mastery', label: 'Mastery', icon: '🧠' },
+    collection: { id: 'collection', label: 'Collection', icon: '📚' }
+};
+
+const JOURNEY_CHAPTERS = [
+    {
+        id: 'chapter1',
+        label: 'Week 1: Settle In',
+        dayStart: 1,
+        dayEnd: 7,
+        objectives: [
+            { id: 'j_bond_1_feed', track: 'bond', metric: 'totalFeedCount', target: 6, tokenReward: 2, label: 'Feed your pet 6 times' },
+            { id: 'j_bond_1_care', track: 'bond', metric: 'totalCareActions', target: 16, tokenReward: 2, label: 'Do 16 care actions' },
+            { id: 'j_bond_1_daily', track: 'bond', metric: 'totalDailyCompletions', target: 1, tokenReward: 3, label: 'Complete 1 Daily checklist' },
+            { id: 'j_mastery_1_games', track: 'mastery', metric: 'totalMinigamePlays', target: 4, tokenReward: 2, label: 'Play 4 mini-games' },
+            { id: 'j_mastery_1_explore', track: 'mastery', metric: 'expeditionsCompleted', target: 1, tokenReward: 3, label: 'Complete 1 expedition' },
+            { id: 'j_mastery_1_harvest', track: 'mastery', metric: 'totalHarvests', target: 1, tokenReward: 2, label: 'Harvest 1 crop' },
+            { id: 'j_collection_1_codex', track: 'collection', metric: 'codexUnlockedCount', target: 2, tokenReward: 2, label: 'Unlock 2 codex species' },
+            { id: 'j_collection_1_badge', track: 'collection', metric: 'badgeCount', target: 1, tokenReward: 2, label: 'Earn 1 badge' },
+            { id: 'j_collection_1_sticker', track: 'collection', metric: 'stickerCount', target: 1, tokenReward: 2, label: 'Collect 1 sticker' }
+        ],
+        chapterReward: {
+            tokens: 4,
+            collectible: { type: 'sticker', id: 'sproutSticker' },
+            story: 'Chapter complete: your pet now trusts your daily rhythm.'
+        }
+    },
+    {
+        id: 'chapter2',
+        label: 'Week 2: Build Momentum',
+        dayStart: 8,
+        dayEnd: 14,
+        objectives: [
+            { id: 'j_bond_2_streak', track: 'bond', metric: 'streakCurrent', target: 7, tokenReward: 3, label: 'Reach a 7-day streak' },
+            { id: 'j_bond_2_relation', track: 'bond', metric: 'maxRelationshipPoints', target: 70, tokenReward: 3, label: 'Reach 70 relationship points' },
+            { id: 'j_bond_2_daily', track: 'bond', metric: 'totalDailyCompletions', target: 3, tokenReward: 3, label: 'Complete 3 Daily checklists' },
+            { id: 'j_mastery_2_games', track: 'mastery', metric: 'totalMinigamePlays', target: 10, tokenReward: 2, label: 'Play 10 mini-games' },
+            { id: 'j_mastery_2_explore', track: 'mastery', metric: 'expeditionsCompleted', target: 3, tokenReward: 3, label: 'Complete 3 expeditions' },
+            { id: 'j_mastery_2_discovery', track: 'mastery', metric: 'discoveredBiomesCount', target: 3, tokenReward: 3, label: 'Discover 3 biomes' },
+            { id: 'j_collection_2_badges', track: 'collection', metric: 'badgeCount', target: 3, tokenReward: 2, label: 'Earn 3 badges' },
+            { id: 'j_collection_2_achievements', track: 'collection', metric: 'achievementCount', target: 4, tokenReward: 2, label: 'Unlock 4 achievements' },
+            { id: 'j_collection_2_stickers', track: 'collection', metric: 'stickerCount', target: 3, tokenReward: 2, label: 'Collect 3 stickers' }
+        ],
+        chapterReward: {
+            tokens: 5,
+            collectible: { type: 'sticker', id: 'heartSticker' },
+            story: 'Chapter complete: your pet starts anticipating your return.'
+        }
+    },
+    {
+        id: 'chapter3',
+        label: 'Week 3: Deepen Mastery',
+        dayStart: 15,
+        dayEnd: 21,
+        objectives: [
+            { id: 'j_bond_3_actions', track: 'bond', metric: 'totalCareActions', target: 40, tokenReward: 3, label: 'Do 40 care actions' },
+            { id: 'j_bond_3_xp', track: 'bond', metric: 'bondXp', target: 80, tokenReward: 3, label: 'Reach 80 Bond XP' },
+            { id: 'j_bond_3_streak', track: 'bond', metric: 'streakCurrent', target: 14, tokenReward: 3, label: 'Reach a 14-day streak' },
+            { id: 'j_mastery_3_harvest', track: 'mastery', metric: 'totalHarvests', target: 6, tokenReward: 2, label: 'Harvest 6 crops' },
+            { id: 'j_mastery_3_expeditions', track: 'mastery', metric: 'expeditionsCompleted', target: 5, tokenReward: 3, label: 'Complete 5 expeditions' },
+            { id: 'j_mastery_3_battles', track: 'mastery', metric: 'battleCount', target: 3, tokenReward: 3, label: 'Finish 3 arena battles' },
+            { id: 'j_collection_3_badges', track: 'collection', metric: 'badgeCount', target: 5, tokenReward: 2, label: 'Earn 5 badges' },
+            { id: 'j_collection_3_trophies', track: 'collection', metric: 'trophyCount', target: 2, tokenReward: 3, label: 'Earn 2 trophies' },
+            { id: 'j_collection_3_species', track: 'collection', metric: 'codexUnlockedCount', target: 4, tokenReward: 3, label: 'Unlock 4 codex species' }
+        ],
+        chapterReward: {
+            tokens: 6,
+            collectible: { type: 'sticker', id: 'legendRibbon' },
+            story: 'Chapter complete: your shared routines now feel like tradition.'
+        }
+    },
+    {
+        id: 'chapter4',
+        label: 'Week 4: Legacy',
+        dayStart: 22,
+        dayEnd: 30,
+        objectives: [
+            { id: 'j_bond_4_daily', track: 'bond', metric: 'totalDailyCompletions', target: 7, tokenReward: 3, label: 'Complete 7 Daily checklists' },
+            { id: 'j_bond_4_xp', track: 'bond', metric: 'bondXp', target: 140, tokenReward: 4, label: 'Reach 140 Bond XP' },
+            { id: 'j_bond_4_streak', track: 'bond', metric: 'streakCurrent', target: 21, tokenReward: 4, label: 'Reach a 21-day streak' },
+            { id: 'j_mastery_4_games', track: 'mastery', metric: 'totalMinigamePlays', target: 20, tokenReward: 3, label: 'Play 20 mini-games' },
+            { id: 'j_mastery_4_expedition', track: 'mastery', metric: 'expeditionsCompleted', target: 8, tokenReward: 3, label: 'Complete 8 expeditions' },
+            { id: 'j_mastery_4_discovery', track: 'mastery', metric: 'discoveredBiomesCount', target: 5, tokenReward: 3, label: 'Discover 5 biomes' },
+            { id: 'j_collection_4_ach', track: 'collection', metric: 'achievementCount', target: 8, tokenReward: 3, label: 'Unlock 8 achievements' },
+            { id: 'j_collection_4_badges', track: 'collection', metric: 'badgeCount', target: 7, tokenReward: 3, label: 'Earn 7 badges' },
+            { id: 'j_collection_4_stickers', track: 'collection', metric: 'stickerCount', target: 6, tokenReward: 3, label: 'Collect 6 stickers' }
+        ],
+        chapterReward: {
+            tokens: 8,
+            collectible: { type: 'sticker', id: 'bloomCrest' },
+            story: 'Chapter complete: your 30-day bond has become a lasting legacy.'
+        }
+    }
+];
+
+const JOURNEY_TOKEN_REWARD_TABLE = {
+    chapterComplete: 4,
+    objectiveComplete: 2,
+    dailyComplete: 2,
+    noveltyUnlock: 2
+};
+
+const BOND_XP_MILESTONES = [
+    { level: 1, xp: 0, label: 'Acquainted', reward: { type: 'journal', text: 'Your pet begins recognizing your routine.' } },
+    { level: 2, xp: 45, label: 'Trusted Friend', reward: { type: 'sticker', id: 'heartSticker' } },
+    { level: 3, xp: 95, label: 'Steady Companion', reward: { type: 'journal', text: 'Your pet waits by the door when you are away.' } },
+    { level: 4, xp: 160, label: 'Soul Partner', reward: { type: 'sticker', id: 'crownSticker' } }
+];
+
+const NOVELTY_SCHEDULE = {
+    earlyUnlocks: [
+        { id: 'novelty_day2', day: 2, title: 'Pet Dialogue Pack', subtitle: 'New playful dialogue lines unlocked.', reward: { type: 'journal', text: 'Your pet learned new ways to express affection.' } },
+        { id: 'novelty_day4', day: 4, title: 'Story Snippet', subtitle: 'A memory page appears in your journal.', reward: { type: 'journal', text: 'You found a handwritten memory tucked into the diary.' } },
+        { id: 'novelty_day6', day: 6, title: 'Cosmetic Drop', subtitle: 'A special sticker joins your collection.', reward: { type: 'sticker', id: 'sparkleSticker' } },
+        { id: 'novelty_day8', day: 8, title: 'Codex Note', subtitle: 'A new codex hint appears.', reward: { type: 'journal', text: 'Codex update: hidden species clues were added.' } },
+        { id: 'novelty_day10', day: 10, title: 'Biome Teaser', subtitle: 'A distant biome signal has appeared.', reward: { type: 'unlockBiome', biomeId: 'mountain' } },
+        { id: 'novelty_day12', day: 12, title: 'Cosmetic Drop', subtitle: 'An event ribbon has arrived.', reward: { type: 'sticker', id: 'legendRibbon' } },
+        { id: 'novelty_day14', day: 14, title: 'Dialogue Set', subtitle: 'Your pet unlocks comeback voice lines.', reward: { type: 'journal', text: 'Your pet now reacts more personally when you return.' } }
+    ],
+    weeklySpikes: [
+        { id: 'spike_starlight', label: 'Starlight Week', icon: '🌌', reward: { type: 'sticker', id: 'moonCrest' } },
+        { id: 'spike_blossom', label: 'Bloom Surge', icon: '🌸', reward: { type: 'sticker', id: 'bloomCrest' } },
+        { id: 'spike_tidal', label: 'Tidal Echo', icon: '🌊', reward: { type: 'sticker', id: 'tideCrest' } }
+    ]
+};
+
+const REACTIVATION_DIALOGUE = {
+    generic: [
+        'I missed our routine, but I saved your spot.',
+        'You came back. I knew you would.',
+        'Welcome home. We can pick up right where we left off.'
+    ],
+    awayBuckets: [
+        { minDays: 1, lines: ['I noticed you were away yesterday. I am happy you are back.'] },
+        { minDays: 3, lines: ['It felt quiet without you for a few days. Thank you for coming back.'] },
+        { minDays: 7, lines: ['A whole week felt long. I held onto our memories for you.'] }
+    ],
+    byActivity: {
+        expedition: 'The expedition gear is still packed. Want to head out again?',
+        harvest: 'Your garden waited patiently. The crops look ready for us.',
+        minigame: 'I kept thinking about our game streak. One more round?',
+        daily: 'I saved your checklist rhythm. We can restart gently.',
+        care: 'I missed our little care routine. It always made me feel safe.'
+    }
+};
+
+const REMINDER_CENTER_CONFIG = {
+    maxItems: 12,
+    streakRiskHourLocal: 20,
+    dedupePerDay: true
+};
 
 const STREAK_PRESTIGE_REWARDS = [
     { id: 'auroraLoop', label: 'Aurora Loop', icon: '🌌', collectible: { type: 'sticker', id: 'moonCrest' }, coins: 280, modifierId: 'luckyPaws' },
