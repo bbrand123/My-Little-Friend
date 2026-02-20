@@ -1170,64 +1170,283 @@ function getSeasonalWeather(season) {
 
 const GARDEN_CROPS = {
     carrot: {
+        id: 'carrot',
         name: 'Carrot',
         seedEmoji: '🥕',
         stages: ['🟫', '🌱', '🌿', '🥕'],
         growTime: 3, // grow ticks needed per stage
+        plantType: 'crop',
+        harvestYield: 1,
         hungerValue: 15,
         happinessValue: 5,
         energyValue: 0,
-        seasonBonus: ['spring', 'autumn']
+        seasonBonus: ['spring', 'autumn'],
+        seasons: ['spring', 'summer', 'autumn', 'winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.08,
+        compostYield: 1
     },
     tomato: {
+        id: 'tomato',
         name: 'Tomato',
         seedEmoji: '🍅',
         stages: ['🟫', '🌱', '🌿', '🍅'],
         growTime: 4,
+        plantType: 'crop',
+        harvestYield: 1,
         hungerValue: 18,
         happinessValue: 8,
         energyValue: 0,
-        seasonBonus: ['summer']
+        seasonBonus: ['summer'],
+        seasons: ['spring', 'summer', 'autumn', 'winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.09,
+        compostYield: 1
     },
     strawberry: {
+        id: 'strawberry',
         name: 'Strawberry',
         seedEmoji: '🍓',
         stages: ['🟫', '🌱', '🌿', '🍓'],
         growTime: 5,
+        plantType: 'crop',
+        harvestYield: 1,
         hungerValue: 20,
         happinessValue: 12,
         energyValue: 0,
-        seasonBonus: ['spring', 'summer']
+        seasonBonus: ['spring', 'summer'],
+        seasons: ['spring', 'summer', 'autumn', 'winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.1,
+        compostYield: 1
     },
     pumpkin: {
+        id: 'pumpkin',
         name: 'Pumpkin',
         seedEmoji: '🎃',
         stages: ['🟫', '🌱', '🌿', '🎃'],
         growTime: 6,
+        plantType: 'crop',
+        harvestYield: 2,
         hungerValue: 25,
         happinessValue: 10,
         energyValue: 0,
-        seasonBonus: ['autumn']
+        seasonBonus: ['autumn'],
+        seasons: ['spring', 'summer', 'autumn', 'winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.11,
+        compostYield: 2
     },
     sunflower: {
+        id: 'sunflower',
         name: 'Sunflower',
         seedEmoji: '🌻',
         stages: ['🟫', '🌱', '🌿', '🌻'],
         growTime: 4,
+        plantType: 'crop',
+        harvestYield: 1,
         hungerValue: 5,
         happinessValue: 20,
         energyValue: 0,
-        seasonBonus: ['summer', 'spring']
+        seasonBonus: ['summer', 'spring'],
+        seasons: ['spring', 'summer', 'autumn', 'winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.07,
+        compostYield: 1
     },
     apple: {
+        id: 'apple',
         name: 'Apple',
         seedEmoji: '🍎',
         stages: ['🟫', '🌱', '🌳', '🍎'],
-        growTime: 7,
+        growTime: 8,
+        plantType: 'fruitTree',
+        firstMatureMinutes: 30,
+        harvestCooldownMinutes: 360,
+        harvestYield: 2,
         hungerValue: 10,
         happinessValue: 0,
         energyValue: 15,
-        seasonBonus: ['autumn']
+        seasonBonus: ['autumn'],
+        seasons: ['spring', 'summer', 'autumn', 'winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.06,
+        compostYield: 2
+    },
+    candyCorn: {
+        id: 'candyCorn',
+        name: 'Candy Corn',
+        seedEmoji: '🍬',
+        stages: ['🟫', '🌱', '🌾', '🍬'],
+        growTime: 5,
+        plantType: 'crop',
+        harvestYield: 1,
+        hungerValue: 12,
+        happinessValue: 16,
+        energyValue: 4,
+        seasonBonus: ['autumn'],
+        seasons: ['autumn'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.1,
+        compostYield: 1
+    },
+    snowberry: {
+        id: 'snowberry',
+        name: 'Snowberry',
+        seedEmoji: '🫐',
+        stages: ['🟫', '🌱', '❄️', '🫐'],
+        growTime: 6,
+        plantType: 'crop',
+        harvestYield: 1,
+        hungerValue: 14,
+        happinessValue: 10,
+        energyValue: 10,
+        seasonBonus: ['winter'],
+        seasons: ['winter'],
+        defaultUnlocked: true,
+        pestRiskPerDay: 0.05,
+        compostYield: 1
+    },
+    sunblush: {
+        id: 'sunblush',
+        name: 'Sunblush Melon',
+        seedEmoji: '🍈',
+        stages: ['🟫', '🌱', '🍃', '🍈'],
+        growTime: 7,
+        plantType: 'crop',
+        harvestYield: 2,
+        hungerValue: 24,
+        happinessValue: 12,
+        energyValue: 8,
+        seasonBonus: ['summer', 'autumn'],
+        seasons: ['summer', 'autumn'],
+        defaultUnlocked: false,
+        pestRiskPerDay: 0.09,
+        compostYield: 2,
+        discoveryRecipe: 'cross_recipe_sunblush'
+    }
+};
+
+const FLOWER_GARDEN_PLANTS = {
+    rose: {
+        id: 'rose',
+        name: 'Rose',
+        emoji: '🌹',
+        plantType: 'flower',
+        stages: ['🟫', '🌱', '🌿', '🌹'],
+        firstMatureMinutes: 18,
+        moodPerMinute: 0.012,
+        trimItem: 'petals',
+        trimYield: 1,
+        compostYield: 1,
+        seasons: ['spring', 'summer', 'autumn'],
+        defaultUnlocked: true
+    },
+    tulip: {
+        id: 'tulip',
+        name: 'Tulip',
+        emoji: '🌷',
+        plantType: 'flower',
+        stages: ['🟫', '🌱', '🌿', '🌷'],
+        firstMatureMinutes: 14,
+        moodPerMinute: 0.01,
+        trimItem: 'petals',
+        trimYield: 1,
+        compostYield: 1,
+        seasons: ['spring'],
+        defaultUnlocked: true
+    },
+    lavender: {
+        id: 'lavender',
+        name: 'Lavender',
+        emoji: '🪻',
+        plantType: 'flower',
+        stages: ['🟫', '🌱', '🌿', '🪻'],
+        firstMatureMinutes: 16,
+        moodPerMinute: 0.011,
+        trimItem: 'petals',
+        trimYield: 1,
+        compostYield: 1,
+        seasons: ['spring', 'summer'],
+        defaultUnlocked: true
+    }
+};
+
+const MUSHROOM_CAVE_PLANTS = {
+    glowcap: {
+        id: 'glowcap',
+        name: 'Glowcap Mushroom',
+        emoji: '🍄',
+        plantType: 'fungi',
+        stages: ['🪨', '🌫️', '🍄', '🍄'],
+        firstMatureMinutes: 40,
+        harvestYield: 1,
+        hungerValue: 0,
+        happinessValue: 8,
+        energyValue: 12,
+        seasons: ['autumn', 'winter'],
+        defaultUnlocked: true,
+        requiresDampness: true,
+        requiresFertilizer: false,
+        compostYield: 2,
+        pestRiskPerDay: 0.03
+    },
+    moonmorel: {
+        id: 'moonmorel',
+        name: 'Moonmorel',
+        emoji: '🌘',
+        plantType: 'fungi',
+        stages: ['🪨', '🌫️', '🌘', '🌘'],
+        firstMatureMinutes: 55,
+        harvestYield: 2,
+        hungerValue: 0,
+        happinessValue: 14,
+        energyValue: 18,
+        seasons: ['winter'],
+        defaultUnlocked: true,
+        requiresDampness: true,
+        requiresFertilizer: true,
+        compostYield: 3,
+        pestRiskPerDay: 0.02
+    }
+};
+
+const GARDEN_CROSSBREED_RECIPES = [
+    {
+        id: 'cross_recipe_sunblush',
+        parentA: 'carrot',
+        parentB: 'strawberry',
+        result: 'sunblush',
+        chance: 0.22
+    }
+];
+
+const GARDEN_SYSTEM_BALANCE = {
+    debugLogging: false,
+    offSeasonGrowthMultiplier: 0.35,
+    offSeasonYieldMultiplier: 0.75,
+    fertilizerGrowthBoost: 0.2,
+    fertilizerYieldBonus: 1,
+    maxFertilizerChargesPerPlot: 2,
+    wateredDurationMs: 2 * 60 * 60 * 1000,
+    sprinklerIntervalMs: 6 * 60 * 60 * 1000,
+    sprinklerRadius: 2,
+    scarecrowRadius: 2,
+    scarecrowRiskReduction: 0.65,
+    pestDurationMs: 6 * 60 * 60 * 1000,
+    flowerMood: {
+        maxMoodPerDay: 24,
+        diminishingRate: 0.76
+    },
+    compost: {
+        queueLimit: 8,
+        baseDurationMs: 30 * 60 * 1000
+    },
+    beehive: {
+        baseHoneyPerHour: 0.5,
+        flowerBoostPerFlower: 0.12,
+        maxFlowerBoost: 1.0,
+        capacity: 20
     }
 };
 
@@ -1419,6 +1638,79 @@ const ECONOMY_SHOP_ITEMS = {
             cropId: 'apple',
             quantity: 2,
             description: 'Slow but high-value tree seeds.'
+        },
+        candyCornSeeds: {
+            id: 'candyCornSeeds',
+            name: 'Candy Corn Seeds',
+            emoji: '🍬',
+            basePrice: 30,
+            cropId: 'candyCorn',
+            quantity: 2,
+            description: 'Autumn-only sweet crop seeds.'
+        },
+        snowberrySeeds: {
+            id: 'snowberrySeeds',
+            name: 'Snowberry Seeds',
+            emoji: '🫐',
+            basePrice: 34,
+            cropId: 'snowberry',
+            quantity: 2,
+            description: 'Winter-only cold climate berries.'
+        },
+        sunblushSeeds: {
+            id: 'sunblushSeeds',
+            name: 'Sunblush Seeds',
+            emoji: '🍈',
+            basePrice: 42,
+            cropId: 'sunblush',
+            quantity: 1,
+            description: 'A mysterious hybrid variety.',
+            requiresDiscovery: true
+        },
+        roseBulbs: {
+            id: 'roseBulbs',
+            name: 'Rose Bulbs',
+            emoji: '🌹',
+            cropId: 'rose',
+            basePrice: 22,
+            quantity: 2,
+            description: 'Decorative flower garden bulbs.'
+        },
+        tulipBulbs: {
+            id: 'tulipBulbs',
+            name: 'Tulip Bulbs',
+            emoji: '🌷',
+            cropId: 'tulip',
+            basePrice: 20,
+            quantity: 2,
+            description: 'Spring flower bulbs for mood boosts.'
+        },
+        lavenderSeeds: {
+            id: 'lavenderSeeds',
+            name: 'Lavender Seeds',
+            emoji: '🪻',
+            cropId: 'lavender',
+            basePrice: 24,
+            quantity: 2,
+            description: 'Calming decorative flower seeds.'
+        },
+        glowcapSpores: {
+            id: 'glowcapSpores',
+            name: 'Glowcap Spores',
+            emoji: '🍄',
+            cropId: 'glowcap',
+            basePrice: 46,
+            quantity: 1,
+            description: 'Spores for the Mushroom Cave.'
+        },
+        moonmorelSpores: {
+            id: 'moonmorelSpores',
+            name: 'Moonmorel Spores',
+            emoji: '🌘',
+            cropId: 'moonmorel',
+            basePrice: 60,
+            quantity: 1,
+            description: 'Rare fungal spores that need fertilizer.'
         }
     },
     decorations: {
@@ -1657,6 +1949,14 @@ const SEASONAL_SHOP_AVAILABILITY = {
     pumpkinSeeds: ['autumn'],
     sunflowerSeeds: ['spring', 'summer'],
     appleSeeds: ['summer', 'autumn'],
+    candyCornSeeds: ['autumn'],
+    snowberrySeeds: ['winter'],
+    sunblushSeeds: ['summer', 'autumn'],
+    roseBulbs: ['spring', 'summer', 'autumn'],
+    tulipBulbs: ['spring'],
+    lavenderSeeds: ['spring', 'summer'],
+    glowcapSpores: ['autumn', 'winter'],
+    moonmorelSpores: ['winter'],
     // Accessories — always available
     ribbonBow: ['spring', 'summer', 'autumn', 'winter'],
     sunglasses: ['spring', 'summer'],
@@ -1668,11 +1968,28 @@ const SEASONAL_SHOP_AVAILABILITY = {
     toyDecor: ['spring', 'summer', 'autumn', 'winter']
 };
 
-const MAX_GARDEN_PLOTS = 6;
+const GARDEN_BASE_PLOTS = 6;
+const MAX_GARDEN_PLOTS = 16;
+const GARDEN_EXPANSION_TIERS = [
+    {
+        id: 'expansionTier1',
+        name: 'Orchard Row',
+        additionalPlots: 4,
+        costCoins: 850,
+        requiredHarvests: 30
+    },
+    {
+        id: 'expansionTier2',
+        name: 'Greenhouse Annex',
+        additionalPlots: 6,
+        costCoins: 1800,
+        requiredHarvests: 80
+    }
+];
 
-// Progressive plot unlocking thresholds (harvests needed for each plot)
-// Plot 1 is free, then unlock at 2, 5, 10, 16, 24 total harvests
-const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 2, 5, 10, 16, 24];
+// Progressive plot unlocking thresholds (harvests needed for each plot).
+// New plots unlock naturally after each expansion tier is purchased.
+const GARDEN_PLOT_UNLOCK_THRESHOLDS = [0, 2, 5, 10, 16, 24, 32, 40, 50, 60, 72, 84, 98, 112, 128, 144];
 
 // ==================== MULTI-PET SYSTEM ====================
 
@@ -2200,7 +2517,7 @@ const TROPHIES = {
     scoreKing: { id: 'scoreKing', name: 'Score King', icon: '👑', description: 'Score 100+ in any mini-game', shelf: 'games', check: (gs) => { const s = gs.minigameHighScores || {}; return Object.values(s).some(v => v >= 100); } },
     // Garden trophies
     harvestKing: { id: 'harvestKing', name: 'Harvest King', icon: '🌾', description: 'Harvest 30 crops total', shelf: 'garden', check: (gs) => gs.garden && gs.garden.totalHarvests >= 30 },
-    fullGarden: { id: 'fullGarden', name: 'Full Garden', icon: '🏡', description: 'Unlock all 6 garden plots', shelf: 'garden', check: (gs) => gs.garden && getUnlockedPlotCount(gs.garden.totalHarvests) >= 6 },
+    fullGarden: { id: 'fullGarden', name: 'Full Garden', icon: '🏡', description: 'Unlock all 16 garden plots', shelf: 'garden', check: (gs) => gs.garden && getUnlockedPlotCount(gs.garden.totalHarvests, gs.garden.expansionTier) >= MAX_GARDEN_PLOTS },
     // Social trophies
     familyTrophy: { id: 'familyTrophy', name: 'Happy Family', icon: '👨‍👩‍👧‍👦', description: 'Have 4 pets with all at Good+ care', shelf: 'social', check: (gs) => { const ps = gs.pets || []; return ps.length >= 4 && ps.every(p => p && ['good', 'excellent'].includes(p.careQuality)); } },
     bondMaster: { id: 'bondMaster', name: 'Bond Master', icon: '💖', description: 'Reach Family relationship level', shelf: 'social', check: (gs) => { const r = gs.relationships || {}; return Object.values(r).some(v => v.points >= 250); } },
@@ -2482,17 +2799,33 @@ const RIVAL_TRAINERS = [
     }
 ];
 
-function getUnlockedPlotCount(totalHarvests) {
+function getGardenPlotCapacity(expansionTier) {
+    const tiers = Array.isArray(GARDEN_EXPANSION_TIERS) ? GARDEN_EXPANSION_TIERS : [];
+    const tier = Math.max(0, Math.floor(typeof expansionTier === 'number' ? expansionTier : 0));
+    let capacity = GARDEN_BASE_PLOTS;
+    for (let i = 0; i < tier && i < tiers.length; i++) {
+        capacity += Math.max(0, Number(tiers[i].additionalPlots) || 0);
+    }
+    return Math.min(MAX_GARDEN_PLOTS, capacity);
+}
+
+function getUnlockedPlotCount(totalHarvests, expansionTier) {
     const harvests = typeof totalHarvests === 'number' ? totalHarvests : 0;
+    let resolvedExpansionTier = expansionTier;
+    if (typeof resolvedExpansionTier !== 'number' && typeof gameState !== 'undefined' && gameState && gameState.garden) {
+        resolvedExpansionTier = gameState.garden.expansionTier;
+    }
+    const plotCapacity = getGardenPlotCapacity(typeof resolvedExpansionTier === 'number' ? resolvedExpansionTier : 0);
     let unlocked = 0;
     for (let i = 0; i < GARDEN_PLOT_UNLOCK_THRESHOLDS.length; i++) {
+        if (i >= plotCapacity) break;
         if (harvests >= GARDEN_PLOT_UNLOCK_THRESHOLDS[i]) {
             unlocked = i + 1;
         } else {
             break;
         }
     }
-    return Math.min(unlocked, MAX_GARDEN_PLOTS);
+    return Math.min(unlocked, plotCapacity);
 }
 
 // ==================== BREEDING & GENETICS SYSTEM ====================

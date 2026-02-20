@@ -477,9 +477,9 @@
 
             let gardenHTML = '';
             const garden = gameState.garden;
-            if (garden && garden.plots && garden.plots.some(p => p && p.stage >= 3)) {
-                const readyCount = garden.plots.filter(p => p && p.stage >= 3).length;
-                gardenHTML = `<div class="welcome-back-garden">🌱 ${readyCount} crop${readyCount > 1 ? 's' : ''} ready to harvest!</div>`;
+            const readyCount = (typeof getReadyCropCount === 'function') ? getReadyCropCount() : 0;
+            if (garden && readyCount > 0) {
+                gardenHTML = `<div class="welcome-back-garden">🌱 ${readyCount} garden item${readyCount > 1 ? 's' : ''} ready!</div>`;
             }
 
             let streakHTML = '';
@@ -6150,12 +6150,9 @@
                     minigamePlayCounts: preservedMinigamePlayCounts,
                     minigameHighScores: preservedMinigameHighScores,
                     minigameScoreHistory: preservedMinigameScoreHistory,
-                    garden: {
-                        plots: [],
-                        inventory: {},
-                        lastGrowTick: Date.now(),
-                        totalHarvests: 0
-                    },
+                    garden: (typeof createDefaultGardenState === 'function')
+                        ? createDefaultGardenState(Date.now())
+                        : { plots: [], inventory: {}, lastGrowTick: Date.now(), totalHarvests: 0 },
                     pets: [],
                     activePetIndex: 0,
                     relationships: {},
@@ -7790,13 +7787,21 @@
                     const entries = Object.values(ECONOMY_SHOP_ITEMS[category.key] || {});
                     const cards = entries.map((item) => {
                         // Rec 10: Seasonal availability check
+                        const seedLockReason = (category.key === 'seeds' && typeof getSeedPurchaseLockReason === 'function')
+                            ? getSeedPurchaseLockReason(item.id)
+                            : null;
                         const available = (typeof isShopItemAvailable === 'function') ? isShopItemAvailable(item.id) : true;
-                        if (!available) return `
+                        if (!available) {
+                            const lockText = seedLockReason === 'undiscovered'
+                                ? 'Undiscovered (try crossbreeding)'
+                                : 'Out of season';
+                            return `
                             <div class="economy-card" style="opacity:0.5;">
                                 <div><strong>${item.emoji} ${item.name}</strong></div>
-                                <div class="explore-subtext" style="color:#FFA726;">Out of season</div>
+                                <div class="explore-subtext" style="color:#FFA726;">${lockText}</div>
                             </div>
                         `;
+                        }
                         const price = (typeof getShopItemPrice === 'function') ? getShopItemPrice(category.key, item.id) : (item.basePrice || 0);
                         const ownedId = category.key === 'seeds' ? item.cropId
                             : category.key === 'accessories' ? item.accessoryId
@@ -8064,7 +8069,9 @@
                         const [category, itemId] = String(btn.getAttribute('data-shop-buy') || '').split(':');
                         const result = buyPetShopItem(category, itemId, 1);
                         if (!result.ok) {
-                            showToast('Not enough coins for that purchase.', '#FFA726');
+                            if (result.reason === 'out-of-season') showToast('That seed is out of season right now.', '#FFA726');
+                            else if (result.reason === 'undiscovered') showToast('This seed is still undiscovered. Try crossbreeding!', '#AB47BC');
+                            else showToast('Not enough coins for that purchase.', '#FFA726');
                             return;
                         }
                         showToast(`🛍️ Purchased ${result.item.emoji} ${result.item.name}!`, '#66BB6A');
