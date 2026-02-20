@@ -1,4 +1,5 @@
-        /* Registered custom properties for animated stat bars */
+	        /* Changelog (Retention pass): Updated beginner visibility rules, added Journey/reminder/onboarding/debug panel styles, and modal styles for Journey + return recap. */
+	        /* Registered custom properties for animated stat bars */
         @property --progress {
             syntax: '<number>';
             inherits: false;
@@ -11233,9 +11234,13 @@
 body.beginner-ui #codex-btn,
 body.beginner-ui #achievements-btn,
 body.beginner-ui #daily-btn,
+body.beginner-ui #journey-btn {
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.42);
+}
+
 body.beginner-ui #economy-btn,
 body.beginner-ui #explore-btn {
-    display: none !important;
+    opacity: 0.95;
 }
 
 .room-coming-wrap {
@@ -11386,6 +11391,340 @@ body.beginner-ui #explore-btn {
     .goal-ladder-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.journey-status-panel {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(24, 83, 127, 0.2);
+    background: linear-gradient(180deg, rgba(235, 247, 255, 0.95), rgba(248, 252, 255, 0.92));
+}
+
+.journey-status-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.journey-status-title {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #1f4258;
+}
+
+.journey-status-open {
+    border: 1px solid rgba(34, 73, 97, 0.3);
+    background: #ffffff;
+    border-radius: 8px;
+    min-height: 36px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.journey-status-meta,
+.journey-status-next,
+.journey-status-novelty {
+    margin: 6px 0 0;
+    font-size: 0.75rem;
+    color: #375567;
+}
+
+.journey-status-tracks {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+}
+
+.journey-track {
+    display: grid;
+    gap: 4px;
+    font-size: 0.76rem;
+}
+
+.journey-track-bar {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(18, 73, 109, 0.14);
+    overflow: hidden;
+}
+
+.journey-track-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #00acc1, #4db6ac);
+}
+
+.next-steps-panel {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(46, 125, 50, 0.28);
+    background: #f4fff5;
+}
+
+.next-steps-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.next-steps-head h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #1f5d3f;
+}
+
+.next-steps-head button {
+    border: none;
+    background: transparent;
+    color: #2e7d32;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.next-steps-list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+}
+
+.next-steps-list button {
+    width: 100%;
+    text-align: left;
+    border: 1px solid rgba(46, 125, 50, 0.25);
+    border-radius: 10px;
+    background: #ffffff;
+    min-height: 42px;
+    padding: 8px 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.reminder-center-banner {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 152, 0, 0.35);
+    background: #fffaf1;
+}
+
+.reminder-center-banner h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #8a4b00;
+}
+
+.reminder-optin-row {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+}
+
+.reminder-optin-row p {
+    margin: 0;
+    font-size: 0.74rem;
+    color: #6f4a18;
+}
+
+.reminder-optin-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.reminder-optin-actions button,
+.reminder-center-actions button {
+    border: 1px solid rgba(255, 152, 0, 0.28);
+    border-radius: 8px;
+    background: #fff;
+    min-height: 36px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.reminder-center-list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+}
+
+.reminder-center-item {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 8px;
+    background: #fff;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.reminder-center-copy {
+    display: grid;
+    gap: 2px;
+    font-size: 0.72rem;
+    color: #5f4a2a;
+}
+
+.reminder-center-actions {
+    display: grid;
+    gap: 6px;
+}
+
+.retention-debug-panel {
+    margin: 8px 0;
+    padding: 8px;
+    border: 1px dashed rgba(33, 150, 243, 0.4);
+    border-radius: 10px;
+    background: rgba(232, 245, 255, 0.78);
+    font-size: 0.7rem;
+}
+
+.retention-debug-panel button {
+    border: 1px solid rgba(33, 150, 243, 0.35);
+    border-radius: 8px;
+    min-height: 34px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.retention-debug-details {
+    margin-top: 6px;
+    display: grid;
+    gap: 4px;
+    color: #1b3c52;
+}
+
+.journey-overlay,
+.return-recap-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.journey-modal,
+.return-recap-modal {
+    width: min(680px, 96vw);
+    max-height: min(86vh, 720px);
+    overflow: auto;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+    padding: 14px;
+}
+
+.journey-title {
+    margin: 0;
+}
+
+.journey-subtitle {
+    margin: 4px 0;
+    font-size: 0.78rem;
+    color: #3e5a6f;
+}
+
+.journey-section-title {
+    margin: 10px 0 6px;
+    font-size: 0.78rem;
+    color: #25465b;
+}
+
+.journey-objective-list,
+.journey-chapter-list,
+.journey-token-store {
+    display: grid;
+    gap: 6px;
+}
+
+.journey-objective,
+.journey-chapter-card {
+    border: 1px solid rgba(0, 0, 0, 0.09);
+    border-radius: 10px;
+    background: #fafcff;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.journey-objective.done {
+    border-color: rgba(76, 175, 80, 0.32);
+    background: #f2fff4;
+}
+
+.journey-objective-label {
+    flex: 1;
+    font-size: 0.75rem;
+}
+
+.journey-objective-progress {
+    font-size: 0.72rem;
+    color: #5c6f7d;
+}
+
+.journey-chapter-card {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.journey-chapter-card.locked {
+    opacity: 0.75;
+}
+
+.journey-chapter-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.74rem;
+    color: #37556b;
+}
+
+.journey-chapter-foot {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    color: #536a79;
+}
+
+.journey-token-store button,
+.journey-close,
+.return-recap-actions button {
+    border: 1px solid rgba(23, 108, 125, 0.28);
+    border-radius: 10px;
+    background: #fff;
+    min-height: 38px;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.return-recap-modal h2 {
+    margin: 0 0 8px;
+}
+
+.return-recap-modal p {
+    margin: 6px 0;
+    font-size: 0.8rem;
+    color: #2e4658;
+}
+
+.return-recap-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* ===== Mini-game Medal + PB ===== */

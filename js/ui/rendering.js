@@ -1,3 +1,4 @@
+// Changelog (Retention pass): Added compact streak status panel, Journey entry point, first-session guidance panel, reminder center banner, and beginner visibility accessibility guards.
 // ============================================================
 // ui/rendering.js  --  Pet display, room rendering, HUD updates
 // Extracted from ui.js (lines 1-240, 1209-2405)
@@ -205,6 +206,151 @@
                 ${hasBonus ? '<span class="streak-bonus-dot" aria-hidden="true"></span>' : ''}
             </button>`;
         }
+
+	        function generateStreakStatusPanelHTML() {
+            if (typeof getStreakProtectionStatus !== 'function') return '';
+            const status = getStreakProtectionStatus();
+            if (!status || !Number.isFinite(status.current) || status.current <= 0) return '';
+            const nextMilestoneText = status.nextMilestone
+                ? `${status.nextMilestone.label} in ${status.daysToMilestone} day${status.daysToMilestone === 1 ? '' : 's'}`
+                : 'All milestone tiers reached';
+            const checkpointText = status.checkpoint > 0
+                ? `Checkpoint: day ${status.checkpoint} (fallback floor ${status.checkpointFloor})`
+                : 'No checkpoint yet (first checkpoint at day 7)';
+            const outcomeText = status.lastOutcome ? `<p class="streak-status-outcome">${escapeHTML(status.lastOutcome)}</p>` : '';
+	            return `
+	                <section class="streak-status-panel" id="streak-status-panel" role="region" aria-label="Streak status">
+                    <div class="streak-status-head">
+                        <h3 class="streak-status-title">🔥 Streak Status</h3>
+                        <button class="streak-status-open" id="streak-status-open" type="button" aria-label="Open full streak details">Details</button>
+                    </div>
+                    <div class="streak-status-grid">
+                        <p><strong>${status.current}</strong> current</p>
+                        <p><strong>${status.freezeTokens}</strong> freeze token${status.freezeTokens === 1 ? '' : 's'}</p>
+                        <p>${escapeHTML(nextMilestoneText)}</p>
+                        <p>${escapeHTML(checkpointText)}</p>
+                    </div>
+                    ${outcomeText}
+                </section>
+	            `;
+	        }
+
+	        function generateJourneyStatusPanelHTML() {
+	            if (typeof getJourneyStatus !== 'function') return '';
+	            const status = getJourneyStatus();
+	            if (!status || !status.chapter) return '';
+	            const nextObjective = status.nextObjective
+	                ? `<p class="journey-status-next"><strong>Next:</strong> ${escapeHTML(status.nextObjective.label || 'Objective')}</p>`
+	                : '<p class="journey-status-next"><strong>Next:</strong> Chapter complete! Claim your chapter story reward in Journey.</p>';
+	            const noveltyCopy = status.novelty
+	                ? `<p class="journey-status-novelty">Upcoming unlock: ${escapeHTML(status.novelty.title || status.novelty.label || `Day ${status.novelty.day}`)}</p>`
+	                : '<p class="journey-status-novelty">All scheduled novelty unlocks are claimed.</p>';
+	            const bondTrack = status.trackProgress.bond || { pct: 0, completed: 0, total: 0 };
+	            const masteryTrack = status.trackProgress.mastery || { pct: 0, completed: 0, total: 0 };
+	            const collectionTrack = status.trackProgress.collection || { pct: 0, completed: 0, total: 0 };
+	            return `
+	                <section class="journey-status-panel" id="journey-status-panel" role="region" aria-label="30 day journey status">
+	                    <div class="journey-status-head">
+	                        <h3 class="journey-status-title">🧭 30-Day Journey</h3>
+	                        <button class="journey-status-open" id="journey-status-open" type="button" aria-label="Open journey details">Open</button>
+	                    </div>
+	                    <p class="journey-status-meta">Day ${status.day} · ${escapeHTML(status.chapter.label)} · Journey Tokens: ${status.tokens}</p>
+	                    <div class="journey-status-tracks" role="list" aria-label="Journey tracks">
+	                        <div class="journey-track" role="listitem" aria-label="Bond track ${bondTrack.completed} of ${bondTrack.total}">
+	                            <span>💞 Bond</span>
+	                            <div class="journey-track-bar"><span style="width:${bondTrack.pct}%;"></span></div>
+	                        </div>
+	                        <div class="journey-track" role="listitem" aria-label="Mastery track ${masteryTrack.completed} of ${masteryTrack.total}">
+	                            <span>🧠 Mastery</span>
+	                            <div class="journey-track-bar"><span style="width:${masteryTrack.pct}%;"></span></div>
+	                        </div>
+	                        <div class="journey-track" role="listitem" aria-label="Collection track ${collectionTrack.completed} of ${collectionTrack.total}">
+	                            <span>📚 Collection</span>
+	                            <div class="journey-track-bar"><span style="width:${collectionTrack.pct}%;"></span></div>
+	                        </div>
+	                    </div>
+	                    ${nextObjective}
+	                    ${noveltyCopy}
+	                </section>
+	            `;
+	        }
+
+	        function generateOnboardingNextPanelHTML() {
+	            if (typeof ensureRetentionMetaState !== 'function') return '';
+	            const meta = ensureRetentionMetaState();
+	            if (!meta || !meta.onboarding || meta.onboarding.sessionGuideSkipped) return '';
+	            const sessions = getPetSessionCount();
+	            if (sessions > 2) return '';
+	            return `
+	                <aside class="next-steps-panel" id="next-steps-panel" role="region" aria-label="What to do next">
+	                    <div class="next-steps-head">
+	                        <h3>What to do next</h3>
+	                        <button id="next-steps-skip" type="button" aria-label="Skip onboarding guide">Skip</button>
+	                    </div>
+	                    <ul class="next-steps-list">
+	                        <li><button id="next-step-daily" type="button">Do one Daily</button></li>
+	                        <li><button id="next-step-codex" type="button">Open Codex and claim your first badge</button></li>
+	                        <li><button id="next-step-expedition" type="button">Start an expedition</button></li>
+	                    </ul>
+	                </aside>
+	            `;
+	        }
+
+	        function generateReminderCenterBannerHTML() {
+	            if (typeof getReminderCenterItems !== 'function') return '';
+	            const items = getReminderCenterItems();
+	            const prompt = (typeof shouldShowReminderPrompt === 'function') ? shouldShowReminderPrompt() : false;
+	            if (!prompt && (!items || items.length === 0)) return '';
+	            const rows = (items || []).slice(0, 3).map((item) => `
+	                <li class="reminder-center-item" aria-label="${escapeHTML(item.title)} ${escapeHTML(item.body || '')}">
+	                    <div class="reminder-center-copy">
+	                        <strong>${escapeHTML(item.title)}</strong>
+	                        <span>${escapeHTML(item.body || '')}</span>
+	                    </div>
+	                    <div class="reminder-center-actions">
+	                        <button type="button" data-reminder-open="${item.id}" aria-label="Open reminder context">Open</button>
+	                        <button type="button" data-reminder-dismiss="${item.id}" aria-label="Dismiss reminder">Dismiss</button>
+	                    </div>
+	                </li>
+	            `).join('');
+	            const promptHTML = prompt ? `
+	                <div class="reminder-optin-row" role="group" aria-label="Enable reminders prompt">
+	                    <p>Enable reminders for egg hatching, expedition completion, harvest readiness, and streak protection?</p>
+	                    <div class="reminder-optin-actions">
+	                        <button id="reminder-optin-enable" type="button">Enable reminders</button>
+	                        <button id="reminder-optin-later" type="button">Not now</button>
+	                    </div>
+	                </div>
+	            ` : '';
+	            return `
+	                <section class="reminder-center-banner" id="reminder-center-banner" role="region" aria-label="Reminder center">
+	                    <h3>🔔 Reminder Center</h3>
+	                    ${promptHTML}
+	                    ${rows ? `<ul class="reminder-center-list">${rows}</ul>` : ''}
+	                </section>
+	            `;
+	        }
+
+	        function generateRetentionDebugPanelHTML() {
+	            if (typeof getRetentionDebugSnapshot !== 'function') return '';
+	            if (!(typeof RETENTION_DEV_FLAGS !== 'undefined' && RETENTION_DEV_FLAGS && RETENTION_DEV_FLAGS.showDebugPanel)) return '';
+	            const enabled = (typeof isRetentionDebugEnabled === 'function') ? isRetentionDebugEnabled() : false;
+	            const snapshot = getRetentionDebugSnapshot();
+	            const details = enabled ? `
+	                <div class="retention-debug-details">
+	                    <div>Streak: ${snapshot.streak.current} (freeze ${snapshot.streak.freezeTokens})</div>
+	                    <div>Journey: day ${snapshot.journey.day}, ${snapshot.journey.chapter} (${snapshot.journey.chapterPct}%)</div>
+	                    <div>Tokens: ${snapshot.journey.tokens} · Reminders: ${snapshot.reminderItems}</div>
+	                    <div>Away days: ${snapshot.awayDays} · Novelty day: ${snapshot.noveltyLastDay}</div>
+	                </div>
+	            ` : '';
+	            return `
+	                <section class="retention-debug-panel" id="retention-debug-panel" role="region" aria-label="Retention debug panel">
+	                    <button id="retention-debug-toggle" type="button" aria-pressed="${enabled ? 'true' : 'false'}">${enabled ? 'Disable' : 'Enable'} RETENTION DEV</button>
+	                    ${details}
+	                </section>
+	            `;
+	        }
 
         function generateGoalLadderHTML() {
             const ladder = (typeof getGoalLadder === 'function') ? getGoalLadder() : null;
@@ -871,12 +1017,16 @@
                                 <span class="top-action-btn-label" aria-hidden="true">Awards</span>
                                 ${getAchievementCount() > 0 ? `<span class="achievement-count-badge" aria-hidden="true">${getAchievementCount()}</span>` : ''}
                             </button>
-                            <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks${isDailyComplete() ? ' (all complete)' : ''}">
-                                <span class="top-action-btn-icon" aria-hidden="true">📋</span>
-                                <span class="top-action-btn-label" aria-hidden="true">Daily</span>
-                                ${isDailyComplete() ? '<span class="daily-complete-badge" aria-hidden="true">✓</span>' : ''}
-                            </button>
-                            <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards" aria-describedby="top-meta-rewards">
+	                            <button class="top-action-btn" id="daily-btn" type="button" aria-haspopup="dialog" title="Daily Tasks" aria-label="Daily Tasks${isDailyComplete() ? ' (all complete)' : ''}">
+	                                <span class="top-action-btn-icon" aria-hidden="true">📋</span>
+	                                <span class="top-action-btn-label" aria-hidden="true">Daily</span>
+	                                ${isDailyComplete() ? '<span class="daily-complete-badge" aria-hidden="true">✓</span>' : ''}
+	                            </button>
+	                            <button class="top-action-btn" id="journey-btn" type="button" aria-haspopup="dialog" title="Journey" aria-label="30 day journey">
+	                                <span class="top-action-btn-icon" aria-hidden="true">🧭</span>
+	                                <span class="top-action-btn-label" aria-hidden="true">Journey</span>
+	                            </button>
+	                            <button class="top-action-btn" id="rewards-btn" type="button" aria-haspopup="dialog" title="Rewards" aria-label="Rewards" aria-describedby="top-meta-rewards">
                                 <span class="top-action-btn-icon" aria-hidden="true">🎁</span>
                                 <span class="top-action-btn-label" aria-hidden="true">Rewards</span>
                                 ${(gameState.streak && gameState.streak.current > 0 && !gameState.streak.todayBonusClaimed) ? '<span class="rewards-alert-badge" aria-hidden="true">!</span>' : ''}
@@ -1054,9 +1204,14 @@
                     </div>
                 </div>
 
-                ${generateGoalLadderHTML()}
+	                ${generateGoalLadderHTML()}
+	                ${generateStreakStatusPanelHTML()}
+	                ${generateJourneyStatusPanelHTML()}
+	                ${generateReminderCenterBannerHTML()}
+	                ${generateOnboardingNextPanelHTML()}
+	                ${generateRetentionDebugPanelHTML()}
 
-                ${(() => {
+	                ${(() => {
                     const careQuality = pet.careQuality || 'average';
                     const qualityData = CARE_QUALITY[careQuality] || CARE_QUALITY.average;
                     const ageInHours = getPetAge(pet);
@@ -1283,13 +1438,95 @@
             safeAddClick('feed-btn', () => careAction('feed'));
             safeAddClick('wash-btn', () => careAction('wash'));
             safeAddClick('play-btn', () => careAction('play'));
-            safeAddClick('sleep-btn', () => careAction('sleep'));
-            safeAddClick('next-action-chip', () => {
-                if (!recommendedNext || !recommendedNext.action) return;
-                careAction(recommendedNext.action);
-            });
-            safeAddClick('core-feed-btn', () => careAction('feed'));
-            safeAddClick('core-wash-btn', () => careAction('wash'));
+	            safeAddClick('sleep-btn', () => careAction('sleep'));
+	            safeAddClick('streak-status-open', () => {
+	                if (typeof showStreakModal === 'function') showStreakModal();
+	            });
+	            safeAddClick('journey-status-open', () => {
+	                if (typeof showJourneyModal === 'function') showJourneyModal();
+	            });
+	            safeAddClick('journey-btn', () => {
+	                if (typeof showJourneyModal === 'function') showJourneyModal();
+	            });
+	            safeAddClick('daily-btn', () => {
+	                if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('complete_daily');
+	            });
+	            safeAddClick('codex-btn', () => {
+	                if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('open_codex');
+	            });
+	            safeAddClick('next-action-chip', () => {
+	                if (!recommendedNext || !recommendedNext.action) return;
+	                careAction(recommendedNext.action);
+	            });
+	            safeAddClick('next-step-daily', () => {
+	                if (typeof showDailyChecklistModal === 'function') showDailyChecklistModal();
+	                if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('complete_daily');
+	            });
+	            safeAddClick('next-step-codex', () => {
+	                if (typeof showPetCodex === 'function') showPetCodex();
+	                if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('open_codex');
+	            });
+	            safeAddClick('next-step-expedition', () => {
+	                if (typeof showExplorationModal === 'function') showExplorationModal();
+	            });
+	            safeAddClick('next-steps-skip', () => {
+	                if (typeof ensureRetentionMetaState === 'function') {
+	                    const meta = ensureRetentionMetaState();
+	                    if (meta && meta.onboarding) meta.onboarding.sessionGuideSkipped = true;
+	                    if (typeof saveGame === 'function') saveGame();
+	                }
+	                const panel = document.getElementById('next-steps-panel');
+	                if (panel) panel.remove();
+	            });
+	            safeAddClick('reminder-optin-enable', () => {
+	                if (!gameState.reminders || typeof gameState.reminders !== 'object') {
+	                    gameState.reminders = { enabled: false, permission: 'default', lastSent: {} };
+	                }
+	                gameState.reminders.enabled = true;
+	                if (typeof requestLocalReminderPermission === 'function') {
+	                    requestLocalReminderPermission().then((permission) => {
+	                        gameState.reminders.permission = permission;
+	                        if (typeof markReminderPromptSeen === 'function') markReminderPromptSeen();
+	                        if (typeof saveGame === 'function') saveGame();
+	                    });
+	                } else {
+	                    if (typeof markReminderPromptSeen === 'function') markReminderPromptSeen();
+	                    if (typeof saveGame === 'function') saveGame();
+	                }
+	                if (typeof showToast === 'function') showToast('🔔 Reminders enabled.', '#66BB6A');
+	            });
+	            safeAddClick('reminder-optin-later', () => {
+	                if (typeof dismissReminderPrompt === 'function') dismissReminderPrompt();
+	                const panel = document.getElementById('reminder-center-banner');
+	                if (panel) panel.remove();
+	            });
+	            safeAddClick('retention-debug-toggle', () => {
+	                if (typeof isRetentionDebugEnabled !== 'function' || typeof setRetentionDebugEnabled !== 'function') return;
+	                const enabled = setRetentionDebugEnabled(!isRetentionDebugEnabled());
+	                if (typeof showToast === 'function') showToast(`Retention DEV ${enabled ? 'enabled' : 'disabled'}.`, '#90CAF9');
+	                renderPetPhase();
+	            });
+	            const reminderCenter = document.getElementById('reminder-center-banner');
+	            if (reminderCenter) {
+	                reminderCenter.addEventListener('click', (event) => {
+	                    const openBtn = event.target.closest('[data-reminder-open]');
+	                    if (openBtn) {
+	                        const itemId = openBtn.getAttribute('data-reminder-open');
+	                        if (itemId && typeof openReminderCenterAction === 'function') openReminderCenterAction(itemId);
+	                        if (itemId && typeof dismissReminderCenterItem === 'function') dismissReminderCenterItem(itemId);
+	                        renderPetPhase();
+	                        return;
+	                    }
+	                    const dismissBtn = event.target.closest('[data-reminder-dismiss]');
+	                    if (dismissBtn) {
+	                        const itemId = dismissBtn.getAttribute('data-reminder-dismiss');
+	                        if (itemId && typeof dismissReminderCenterItem === 'function') dismissReminderCenterItem(itemId);
+	                        renderPetPhase();
+	                    }
+	                });
+	            }
+	            safeAddClick('core-feed-btn', () => careAction('feed'));
+	            safeAddClick('core-wash-btn', () => careAction('wash'));
             safeAddClick('core-play-btn', () => careAction('play'));
             safeAddClick('core-sleep-btn', () => careAction('sleep'));
             safeAddClick('medicine-btn', () => careAction('medicine'));
@@ -1528,4 +1765,3 @@
             showOnboardingHints(currentRoom);
             renderCoachChecklist();
         }
-

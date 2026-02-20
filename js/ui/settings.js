@@ -1,3 +1,4 @@
+// Changelog (Retention pass): Added auto-use streak freeze setting, reminder opt-in copy, and updated Quick Start checklist to Daily/Codex/Expedition onboarding.
 // ============================================================
 // ui/settings.js  --  Settings panel, accessibility, low stat
 //                     warnings, keyboard shortcuts, button press
@@ -34,8 +35,11 @@
             const ttsEnabled = !(localStorage.getItem(STORAGE_KEYS.ttsOff) === 'true');
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
             const srVerbosityDetailed = (localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed');
-            const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
-            const highContrastEnabled = document.documentElement.getAttribute('data-high-contrast') === 'true';
+	            const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
+	            const autoFreezeEnabled = (typeof getStreakProtectionStatus === 'function')
+	                ? !!getStreakProtectionStatus().autoUseFreeze
+	                : true;
+	            const highContrastEnabled = document.documentElement.getAttribute('data-high-contrast') === 'true';
 
             const overlay = document.createElement('div');
             overlay.className = 'settings-overlay';
@@ -151,16 +155,23 @@
                             </button>
                             <span class="settings-toggle-state" id="state-setting-haptic">${hapticEnabled ? 'On' : 'Off'}</span>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-row-label">🔔 Local Reactivation Reminders</span>
-                            <button class="settings-toggle ${remindersEnabled ? 'on' : ''}" id="setting-reminders" role="switch" aria-checked="${remindersEnabled}" aria-label="Local reminders">
-                                <span class="settings-toggle-knob"></span>
-                            </button>
-                            <span class="settings-toggle-state" id="state-setting-reminders">${remindersEnabled ? 'On' : 'Off'}</span>
-                        </div>
-                        <div class="settings-row">
-                            <button class="settings-preset-btn settings-reset-btn" id="setting-reset-defaults" style="color:#D32F2F;border-color:#D32F2F;">Reset All Settings to Defaults</button>
-                        </div>
+	                        <div class="settings-row">
+	                            <span class="settings-row-label">🔔 Local Reactivation Reminders</span>
+	                            <button class="settings-toggle ${remindersEnabled ? 'on' : ''}" id="setting-reminders" role="switch" aria-checked="${remindersEnabled}" aria-label="Local reminders">
+	                                <span class="settings-toggle-knob"></span>
+	                            </button>
+	                            <span class="settings-toggle-state" id="state-setting-reminders">${remindersEnabled ? 'On' : 'Off'}</span>
+	                        </div>
+	                        <div class="settings-row">
+	                            <span class="settings-row-label">🧊 Auto-use Streak Freeze</span>
+	                            <button class="settings-toggle ${autoFreezeEnabled ? 'on' : ''}" id="setting-streak-freeze-auto" role="switch" aria-checked="${autoFreezeEnabled}" aria-label="Automatically use streak freeze tokens">
+	                                <span class="settings-toggle-knob"></span>
+	                            </button>
+	                            <span class="settings-toggle-state" id="state-setting-streak-freeze-auto">${autoFreezeEnabled ? 'On' : 'Off'}</span>
+	                        </div>
+	                        <div class="settings-row">
+	                            <button class="settings-preset-btn settings-reset-btn" id="setting-reset-defaults" style="color:#D32F2F;border-color:#D32F2F;">Reset All Settings to Defaults</button>
+	                        </div>
                         </fieldset>
 
                     </div>
@@ -320,7 +331,7 @@
                 try { localStorage.setItem(STORAGE_KEYS.reducedMotion, isOn ? 'true' : 'false'); } catch (e) {}
             });
 
-            document.getElementById('setting-reminders').addEventListener('click', function() {
+	            document.getElementById('setting-reminders').addEventListener('click', function() {
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
                 setSwitchStateText('setting-reminders', isOn);
@@ -329,19 +340,32 @@
                 }
                 gameState.reminders.enabled = isOn;
                 if (isOn && typeof requestLocalReminderPermission === 'function') {
-                    requestLocalReminderPermission().then((permission) => {
-                        gameState.reminders.permission = permission;
-                        if (permission === 'denied') {
-                            showToast('Browser notification permission denied. In-app reminders still available while open.', '#FFA726');
-                        } else {
-                            showToast('Local reminders enabled for streak risk, expedition, and hatch readiness.', '#66BB6A');
-                        }
-                        saveGame();
-                    });
-                } else {
-                    saveGame();
-                }
-            });
+	                    requestLocalReminderPermission().then((permission) => {
+	                        gameState.reminders.permission = permission;
+	                        if (permission === 'denied') {
+	                            showToast('Browser notification permission denied. In-app reminders still available while open.', '#FFA726');
+	                        } else {
+	                            showToast('Local reminders enabled for streak risk, expedition, hatch, and harvest readiness.', '#66BB6A');
+	                        }
+	                        if (typeof markReminderPromptSeen === 'function') markReminderPromptSeen();
+	                        saveGame();
+	                    });
+	                } else {
+	                    saveGame();
+	                }
+	            });
+
+	            const autoFreezeBtn = document.getElementById('setting-streak-freeze-auto');
+	            if (autoFreezeBtn) {
+	                autoFreezeBtn.addEventListener('click', function() {
+	                    const isOn = this.classList.toggle('on');
+	                    this.setAttribute('aria-checked', String(isOn));
+	                    setSwitchStateText('setting-streak-freeze-auto', isOn);
+	                    if (typeof setStreakFreezeAutoUse === 'function') {
+	                        setStreakFreezeAutoUse(isOn);
+	                    }
+	                });
+	            }
 
             const srBrief = document.getElementById('setting-sr-brief');
             const srDetailed = document.getElementById('setting-sr-detailed');
@@ -411,15 +435,16 @@
                         localStorage.removeItem('petcare_highContrast');
                         localStorage.removeItem(STORAGE_KEYS.textSize);
                     } catch (e) {}
-                    if (typeof SoundManager !== 'undefined') {
-                        if (!SoundManager.getEnabled()) SoundManager.toggle();
-                        if (!SoundManager.getMusicEnabled()) SoundManager.toggleMusic();
-                        if (typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(1);
-                        if (typeof SoundManager.setAmbientVolumeSetting === 'function') SoundManager.setAmbientVolumeSetting(1);
-                        if (typeof SoundManager.setMusicVolumeSetting === 'function') SoundManager.setMusicVolumeSetting(1);
-                    }
-                    showToast('Settings reset to defaults.', '#66BB6A');
-                    closeSettings();
+	                    if (typeof SoundManager !== 'undefined') {
+	                        if (!SoundManager.getEnabled()) SoundManager.toggle();
+	                        if (!SoundManager.getMusicEnabled()) SoundManager.toggleMusic();
+	                        if (typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(1);
+	                        if (typeof SoundManager.setAmbientVolumeSetting === 'function') SoundManager.setAmbientVolumeSetting(1);
+	                        if (typeof SoundManager.setMusicVolumeSetting === 'function') SoundManager.setMusicVolumeSetting(1);
+	                    }
+	                    if (typeof setStreakFreezeAutoUse === 'function') setStreakFreezeAutoUse(true);
+	                    showToast('Settings reset to defaults.', '#66BB6A');
+	                    closeSettings();
                     // Re-open to reflect changes
                     setTimeout(() => showSettingsModal(), 300);
                 });
@@ -621,26 +646,26 @@
         }
 
         // ==================== NON-BLOCKING COACH CHECKLIST ====================
-        const COACH_CHECKLIST_STORAGE_KEY = STORAGE_KEYS.coachChecklist;
-        const COACH_CHECKLIST_STEPS = [
-            { id: 'feed_once', label: 'Feed once', icon: '🍎' },
-            { id: 'play_once', label: 'Play once', icon: '⚽' },
-            { id: 'open_minigame', label: 'Open mini-game', icon: '🎮' }
-        ];
+	        const COACH_CHECKLIST_STORAGE_KEY = STORAGE_KEYS.coachChecklist;
+	        const COACH_CHECKLIST_STEPS = [
+	            { id: 'complete_daily', label: 'Do one Daily', icon: '📋' },
+	            { id: 'open_codex', label: 'Open Codex and claim first badge', icon: '📖' },
+	            { id: 'start_expedition', label: 'Start an expedition', icon: '🧭' }
+	        ];
 
-        function getCoachChecklistState() {
-            const defaults = { feed_once: false, play_once: false, open_minigame: false };
-            try {
-                const raw = localStorage.getItem(COACH_CHECKLIST_STORAGE_KEY);
-                if (!raw) return defaults;
-                const parsed = JSON.parse(raw);
-                return {
-                    feed_once: !!parsed.feed_once,
-                    play_once: !!parsed.play_once,
-                    open_minigame: !!parsed.open_minigame
-                };
-            } catch (e) {
-                return defaults;
+	        function getCoachChecklistState() {
+	            const defaults = { complete_daily: false, open_codex: false, start_expedition: false };
+	            try {
+	                const raw = localStorage.getItem(COACH_CHECKLIST_STORAGE_KEY);
+	                if (!raw) return defaults;
+	                const parsed = JSON.parse(raw);
+	                return {
+	                    complete_daily: !!parsed.complete_daily,
+	                    open_codex: !!parsed.open_codex,
+	                    start_expedition: !!parsed.start_expedition
+	                };
+	            } catch (e) {
+	                return defaults;
             }
         }
 
@@ -660,35 +685,35 @@
             }
         }
 
-        function markCoachChecklistProgress(stepOrAction) {
+	        function markCoachChecklistProgress(stepOrAction) {
             try {
                 if (localStorage.getItem(STORAGE_KEYS.tutorialDone) === 'true') return;
             } catch (e) {}
             const state = getCoachChecklistState();
             let changed = false;
 
-            if ((stepOrAction === 'feed' || stepOrAction === 'feed_once') && !state.feed_once) {
-                state.feed_once = true;
-                changed = true;
-            }
-            if ((stepOrAction === 'play' || stepOrAction === 'play_once') && !state.play_once) {
-                state.play_once = true;
-                changed = true;
-            }
-            if ((stepOrAction === 'open_minigame' || stepOrAction === 'minigames') && !state.open_minigame) {
-                state.open_minigame = true;
-                changed = true;
-            }
-            if (!changed) return;
-            const stepLabels = {
-                feed_once: 'Feed once complete',
-                play_once: 'Play once complete',
-                open_minigame: 'Mini game opened'
-            };
-            const changedStep = stepOrAction === 'feed' ? 'feed_once'
-                : stepOrAction === 'play' ? 'play_once'
-                : stepOrAction === 'open_minigame' ? 'open_minigame'
-                : stepOrAction;
+	            if ((stepOrAction === 'complete_daily' || stepOrAction === 'daily') && !state.complete_daily) {
+	                state.complete_daily = true;
+	                changed = true;
+	            }
+	            if ((stepOrAction === 'open_codex' || stepOrAction === 'codex') && !state.open_codex) {
+	                state.open_codex = true;
+	                changed = true;
+	            }
+	            if ((stepOrAction === 'start_expedition' || stepOrAction === 'expedition') && !state.start_expedition) {
+	                state.start_expedition = true;
+	                changed = true;
+	            }
+	            if (!changed) return;
+	            const stepLabels = {
+	                complete_daily: 'Daily complete',
+	                open_codex: 'Codex opened',
+	                start_expedition: 'Expedition started'
+	            };
+	            const changedStep = stepOrAction === 'daily' ? 'complete_daily'
+	                : stepOrAction === 'codex' ? 'open_codex'
+	                : stepOrAction === 'expedition' ? 'start_expedition'
+	                : stepOrAction;
             if (typeof announce === 'function' && stepLabels[changedStep]) {
                 announce(`Quick Start updated: ${stepLabels[changedStep]}.`, { source: 'coach', dedupeMs: 2200 });
             }
