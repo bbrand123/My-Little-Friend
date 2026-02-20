@@ -7495,8 +7495,28 @@
             }
         }
 
+        // Dismiss the splash/loading screen after init completes (or fails)
+        function dismissSplash() {
+            const splash = document.getElementById('splash-screen');
+            if (!splash) return;
+            const minShowTime = 800;
+            const elapsed = performance.now();
+            const remaining = Math.max(0, minShowTime - elapsed);
+            setTimeout(() => {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 300);
+            }, remaining);
+        }
+
         // Start the game when page loads
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                init();
+            } finally {
+                // Never leave users trapped behind a permanent loading overlay.
+                dismissSplash();
+            }
+        });
 
         // ==================== OFFLINE INDICATOR (Item 42) ====================
         function updateOnlineStatus() {
