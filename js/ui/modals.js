@@ -1,3 +1,4 @@
+// Changelog (Retention pass): Upgraded streak modal with freeze token controls/checkpoint messaging, added journey modal scaffolding hooks, and prepared return-memory recap modal support.
 // ============================================================
 // ui/modals.js  --  Celebration modals, milestone fireworks,
 //                   pet journal, diary, memorial hall, retirement
@@ -968,8 +969,9 @@
 
         // ==================== PET CODEX ====================
 
-        function showPetCodex() {
-            const adultsRaised = gameState.adultsRaised || 0;
+	        function showPetCodex() {
+	            if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('open_codex');
+	            const adultsRaised = gameState.adultsRaised || 0;
             const allTypes = Object.keys(PET_TYPES);
 
             let cardsHTML = allTypes.map(type => {
@@ -2325,7 +2327,7 @@
 
         // ==================== DAILY STREAK MODAL ====================
 
-        function showStreakModal() {
+	        function showStreakModal() {
             const existing = document.querySelector('.streak-overlay');
             if (existing) {
                 if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
@@ -2336,6 +2338,26 @@
             const bonus = getStreakBonus(streak.current);
             const canClaim = !streak.todayBonusClaimed && streak.current > 0 && gameState.pet;
             const prestige = streak.prestige || { lifetimeTier: 0, completedCycles: 0 };
+            const streakStatus = (typeof getStreakProtectionStatus === 'function')
+                ? getStreakProtectionStatus()
+                : {
+                    freezeTokens: 0,
+                    autoUseFreeze: true,
+                    checkpoint: 0,
+                    checkpointFloor: 1,
+                    nextMilestone: null,
+                    daysToMilestone: 0,
+                    lastOutcome: ''
+                };
+            const freezeCost = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.streakFreezeTokenCost))
+                ? Math.max(1, Math.floor(ECONOMY_BALANCE.streakFreezeTokenCost))
+                : 120;
+            const checkpointCopy = streakStatus.checkpoint > 0
+                ? `Checkpoint protection active at day ${streakStatus.checkpoint}. If you miss a day, your streak floors at day ${streakStatus.checkpointFloor}.`
+                : 'No checkpoint yet. Reach day 7 to unlock your first checkpoint safeguard.';
+            const nextMilestoneCopy = streakStatus.nextMilestone
+                ? `${streakStatus.nextMilestone.label} in ${streakStatus.daysToMilestone} day${streakStatus.daysToMilestone === 1 ? '' : 's'}.`
+                : 'You reached every listed milestone. Keep the chain alive.';
 
             // Build milestone timeline
             let milestonesHTML = '';
@@ -2349,13 +2371,14 @@
                     : collectible && collectible.type === 'accessory'
                         ? `${ACCESSORIES[collectible.id] ? ACCESSORIES[collectible.id].emoji : '🎁'} ${ACCESSORIES[collectible.id] ? ACCESSORIES[collectible.id].name : 'Collectible'} + ${bundle && bundle.coins ? `${bundle.coins} coins` : 'bundle'}`
                         : `${bundle && bundle.coins ? `${bundle.coins} coins` : 'Bundle reward'}`;
+                const freezeText = milestone.freezeTokens ? ` + ${milestone.freezeTokens} freeze token${milestone.freezeTokens === 1 ? '' : 's'}` : '';
 
                 const milestoneBonus = getStreakBonus(milestone.days);
                 milestonesHTML += `
-                    <div class="streak-milestone ${reached ? 'reached' : ''} ${claimed ? 'claimed' : ''}" aria-label="${milestone.label}: ${milestone.description}. Reward: ${rewardLabel}. Daily bonus: ${milestoneBonus.label}${reached ? '. Reached' : ''}">
+                    <div class="streak-milestone ${reached ? 'reached' : ''} ${claimed ? 'claimed' : ''}" aria-label="${milestone.label}: ${milestone.description}. Reward: ${rewardLabel}${freezeText}. Daily bonus: ${milestoneBonus.label}${reached ? '. Reached' : ''}">
                         <div class="streak-milestone-day">${milestone.label}</div>
                         <div class="streak-milestone-marker">${reached ? '🔥' : '⚪'}</div>
-                        <div class="streak-milestone-reward">${rewardLabel}</div>
+                        <div class="streak-milestone-reward">${rewardLabel}${freezeText}</div>
                         <div class="streak-milestone-desc">${milestone.description}</div>
                         <div class="streak-milestone-bonus">${milestoneBonus.label}</div>
                     </div>
@@ -2383,9 +2406,20 @@
                     <div class="streak-count">${streak.current} day${streak.current !== 1 ? 's' : ''}</div>
                     <div class="streak-longest">Longest: ${streak.longest} day${streak.longest !== 1 ? 's' : ''}</div>
                     <div class="streak-longest">Prestige Tier: ${prestige.lifetimeTier || 0} · Cycles: ${prestige.completedCycles || 0}</div>
+                    <div class="streak-longest">Freeze Tokens: ${streakStatus.freezeTokens}</div>
                     <div class="streak-bonus-info">
                         <div class="streak-bonus-label">Today's Bonus</div>
                         <div class="streak-bonus-value">${bonus.label}</div>
+                    </div>
+                    <div class="streak-protection-panel" role="group" aria-label="Streak protection controls">
+                        <p class="streak-protection-copy">${escapeHTML(checkpointCopy)}</p>
+                        <p class="streak-protection-copy">${escapeHTML(nextMilestoneCopy)}</p>
+                        <label class="streak-protection-toggle">
+                            <input id="streak-auto-freeze-toggle" type="checkbox" ${streakStatus.autoUseFreeze ? 'checked' : ''} aria-label="Automatically use streak freeze tokens">
+                            Auto-use freeze tokens
+                        </label>
+                        <button class="streak-freeze-buy-btn" id="streak-freeze-buy-btn" type="button" aria-label="Buy one streak freeze token for ${freezeCost} coins">Buy Freeze Token (${freezeCost} coins)</button>
+                        ${streakStatus.lastOutcome ? `<p class="streak-protection-outcome">${escapeHTML(streakStatus.lastOutcome)}</p>` : ''}
                     </div>
                     ${canClaim ? `
                         <button class="streak-claim-btn" id="streak-claim-btn">Claim Today's Bonus!</button>
@@ -2412,10 +2446,11 @@
                         }
                         result.milestones.forEach((m, idx) => {
                             const rewardCoins = m.bundle && m.bundle.earnedCoins ? ` +${m.bundle.earnedCoins} coins` : '';
-                            setTimeout(() => showToast(`🎁 Streak reward: ${m.label}${rewardCoins}`, '#E040FB'), 500 + (idx * 180));
+                            const freezeCopy = m.freezeGranted ? ` +${m.freezeGranted} freeze token${m.freezeGranted === 1 ? '' : 's'}` : '';
+                            setTimeout(() => showToast(`🎁 Streak reward: ${m.label}${rewardCoins}${freezeCopy}`, '#E040FB'), 500 + (idx * 180));
                         });
                         if (result.prestigeReward) {
-                            setTimeout(() => showToast(`🌠 Prestige unlocked: ${result.prestigeReward.icon} ${result.prestigeReward.label}!`, '#7C4DFF'), 900);
+                            setTimeout(() => showToast(`🌠 Prestige celebration: ${result.prestigeReward.icon} ${result.prestigeReward.label}!`, '#7C4DFF'), 900);
                         }
                         // Refresh displays
                         if (typeof updateNeedDisplays === 'function') updateNeedDisplays();
@@ -2424,6 +2459,29 @@
                         closeStreak();
                         showStreakModal();
                     }
+                });
+            }
+            const autoFreezeToggle = document.getElementById('streak-auto-freeze-toggle');
+            if (autoFreezeToggle) {
+                autoFreezeToggle.addEventListener('change', () => {
+                    if (typeof setStreakFreezeAutoUse === 'function') {
+                        const enabled = setStreakFreezeAutoUse(autoFreezeToggle.checked);
+                        showToast(enabled ? '🧊 Auto-use freeze tokens enabled.' : '🧊 Auto-use freeze tokens disabled.', '#90CAF9');
+                    }
+                });
+            }
+            const buyFreezeBtn = document.getElementById('streak-freeze-buy-btn');
+            if (buyFreezeBtn) {
+                buyFreezeBtn.addEventListener('click', () => {
+                    if (typeof buyStreakFreezeToken !== 'function') return;
+                    const result = buyStreakFreezeToken(1);
+                    if (!result || !result.ok) {
+                        showToast('Not enough coins for a freeze token yet.', '#FF8A65');
+                        return;
+                    }
+                    showToast(`🧊 Freeze token purchased. You now have ${result.freezeTokens}.`, '#90CAF9');
+                    closeStreak();
+                    showStreakModal();
                 });
             }
 
@@ -2437,10 +2495,166 @@
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeStreak(); });
             pushModalEscape(closeStreak);
             overlay._closeOverlay = closeStreak;
-            trapFocus(overlay);
-        }
+	            trapFocus(overlay);
+	        }
 
-        // ==================== REWARDS HUB MODAL ====================
+	        function showJourneyModal() {
+	            const existing = document.querySelector('.journey-overlay');
+	            if (existing) {
+	                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+	                existing.remove();
+	            }
+	            if (typeof getJourneyStatus !== 'function') return;
+	            const status = getJourneyStatus();
+	            const chapters = (typeof getJourneyChapterStates === 'function') ? getJourneyChapterStates() : [];
+	            const chapterObjectives = Array.isArray(status.chapterObjectives) ? status.chapterObjectives : [];
+	            const objectivesHTML = chapterObjectives.length > 0
+	                ? chapterObjectives.map((objective) => `
+	                    <div class="journey-objective ${objective.done ? 'done' : ''}" aria-label="${escapeHTML(objective.label)} ${objective.value}/${objective.target}">
+	                        <span class="journey-objective-icon" aria-hidden="true">${objective.done ? '✅' : '⬜'}</span>
+	                        <span class="journey-objective-label">${escapeHTML(objective.label)}</span>
+	                        <span class="journey-objective-progress">${objective.value}/${objective.target}</span>
+	                    </div>
+	                `).join('')
+	                : '<p class="journey-empty">No chapter objectives available yet.</p>';
+	            const chapterHTML = chapters.map((chapter) => `
+	                <div class="journey-chapter-card ${chapter.complete ? 'complete' : ''} ${chapter.unlocked ? 'unlocked' : 'locked'}" aria-label="${escapeHTML(chapter.label)} ${chapter.completed}/${chapter.total}">
+	                    <div class="journey-chapter-head">
+	                        <strong>${escapeHTML(chapter.label)}</strong>
+	                        <span>Days ${chapter.dayStart}-${chapter.dayEnd}</span>
+	                    </div>
+	                    <div class="journey-track-bar"><span style="width:${chapter.pct}%;"></span></div>
+	                    <div class="journey-chapter-foot">${chapter.completed}/${chapter.total} objectives</div>
+	                </div>
+	            `).join('');
+	            const track = status.trackProgress || {};
+	            const bond = track.bond || { completed: 0, total: 0, pct: 0 };
+	            const mastery = track.mastery || { completed: 0, total: 0, pct: 0 };
+	            const collection = track.collection || { completed: 0, total: 0, pct: 0 };
+
+	            const overlay = document.createElement('div');
+	            overlay.className = 'journey-overlay';
+	            overlay.setAttribute('role', 'dialog');
+	            overlay.setAttribute('aria-modal', 'true');
+	            overlay.setAttribute('aria-labelledby', 'journey-title');
+	            overlay.innerHTML = `
+	                <div class="journey-modal">
+	                    <h2 id="journey-title" class="journey-title">🧭 30-Day Journey</h2>
+	                    <p class="journey-subtitle">Day ${status.day} · ${escapeHTML(status.chapter ? status.chapter.label : 'Journey')}</p>
+	                    <p class="journey-subtitle">Journey Tokens: ${status.tokens} · Bond XP: ${status.bondXp} (Level ${status.bondLevel})</p>
+	                    <div class="journey-track-list" role="list" aria-label="Journey tracks">
+	                        <div class="journey-track" role="listitem" aria-label="Bond track ${bond.completed} of ${bond.total}">
+	                            <span>💞 Bond</span>
+	                            <div class="journey-track-bar"><span style="width:${bond.pct}%;"></span></div>
+	                        </div>
+	                        <div class="journey-track" role="listitem" aria-label="Mastery track ${mastery.completed} of ${mastery.total}">
+	                            <span>🧠 Mastery</span>
+	                            <div class="journey-track-bar"><span style="width:${mastery.pct}%;"></span></div>
+	                        </div>
+	                        <div class="journey-track" role="listitem" aria-label="Collection track ${collection.completed} of ${collection.total}">
+	                            <span>📚 Collection</span>
+	                            <div class="journey-track-bar"><span style="width:${collection.pct}%;"></span></div>
+	                        </div>
+	                    </div>
+	                    <h3 class="journey-section-title">Current Chapter Objectives</h3>
+	                    <div class="journey-objective-list" role="list">${objectivesHTML}</div>
+	                    <h3 class="journey-section-title">Chapter Progress</h3>
+	                    <div class="journey-chapter-list">${chapterHTML}</div>
+	                    <h3 class="journey-section-title">Journey Token Rewards</h3>
+	                    <div class="journey-token-store" role="group" aria-label="Journey token rewards">
+	                        <button type="button" data-journey-redeem="story">Story Memory (5)</button>
+	                        <button type="button" data-journey-redeem="cosmetic">Cosmetic Drop (8)</button>
+	                        <button type="button" data-journey-redeem="bond">Bond Boost (6)</button>
+	                        <button type="button" data-journey-redeem="codex">Codex Insight (7)</button>
+	                    </div>
+	                    <button class="journey-close" id="journey-close" aria-label="Close journey">Close</button>
+	                </div>
+	            `;
+	            document.body.appendChild(overlay);
+
+	            function closeJourney() {
+	                popModalEscape(closeJourney);
+	                animateModalClose(overlay, () => {
+	                    const trigger = document.getElementById('journey-btn');
+	                    if (trigger) trigger.focus();
+	                });
+	            }
+
+	            overlay.querySelectorAll('[data-journey-redeem]').forEach((button) => {
+	                button.addEventListener('click', () => {
+	                    if (typeof redeemJourneyTokenReward !== 'function') return;
+	                    const rewardId = button.getAttribute('data-journey-redeem');
+	                    const result = redeemJourneyTokenReward(rewardId);
+	                    if (!result || !result.ok) {
+	                        showToast('Not enough Journey Tokens for that reward yet.', '#EF9A9A');
+	                        return;
+	                    }
+	                    showToast(`🧭 ${result.message}`, '#66BB6A');
+	                    closeJourney();
+	                    showJourneyModal();
+	                });
+	            });
+
+	            document.getElementById('journey-close').focus();
+	            document.getElementById('journey-close').addEventListener('click', closeJourney);
+	            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeJourney(); });
+	            pushModalEscape(closeJourney);
+	            overlay._closeOverlay = closeJourney;
+	            trapFocus(overlay);
+	        }
+
+	        function showReturnMemoryRecapModal(recap) {
+	            if (!recap || typeof recap !== 'object') return;
+	            const existing = document.querySelector('.return-recap-overlay');
+	            if (existing) {
+	                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+	                existing.remove();
+	            }
+	            const activityLabels = {
+	                expedition: 'last expedition progress',
+	                harvest: 'garden harvest rhythm',
+	                minigame: 'mini-game momentum',
+	                daily: 'daily routine',
+	                care: 'care routine',
+	                collection: 'collection progress'
+	            };
+	            const activityLabel = activityLabels[recap.lastActivity] || 'your recent progress';
+	            const overlay = document.createElement('div');
+	            overlay.className = 'return-recap-overlay';
+	            overlay.setAttribute('role', 'dialog');
+	            overlay.setAttribute('aria-modal', 'true');
+	            overlay.setAttribute('aria-labelledby', 'return-recap-title');
+	            overlay.innerHTML = `
+	                <div class="return-recap-modal">
+	                    <h2 id="return-recap-title">📘 While You Were Away</h2>
+	                    <p>You were away for ${Math.max(0, Math.floor(recap.awayDays || 0))} day${Math.floor(recap.awayDays || 0) === 1 ? '' : 's'}.</p>
+	                    <p>Last focus: ${escapeHTML(activityLabel)}.</p>
+	                    <p>Current streak: ${Math.max(0, Math.floor(recap.streak || 0))} · Bond level: ${Math.max(1, Math.floor(recap.bondLevel || 1))} · Journey day: ${Math.max(1, Math.floor(recap.journeyDay || 1))}.</p>
+	                    <div class="return-recap-actions">
+	                        <button id="return-recap-close" type="button">Continue</button>
+	                        <button id="return-recap-skip" type="button">Skip</button>
+	                    </div>
+	                </div>
+	            `;
+	            document.body.appendChild(overlay);
+
+	            function closeRecap() {
+	                popModalEscape(closeRecap);
+	                animateModalClose(overlay);
+	            }
+
+	            const closeBtn = document.getElementById('return-recap-close');
+	            const skipBtn = document.getElementById('return-recap-skip');
+	            if (closeBtn) closeBtn.addEventListener('click', closeRecap);
+	            if (skipBtn) skipBtn.addEventListener('click', closeRecap);
+	            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRecap(); });
+	            pushModalEscape(closeRecap);
+	            overlay._closeOverlay = closeRecap;
+	            trapFocus(overlay);
+	            if (closeBtn) closeBtn.focus();
+	        }
+
+	        // ==================== REWARDS HUB MODAL ====================
 
         function showRewardsHub() {
             const existing = document.querySelector('.rewards-hub-overlay');
@@ -2559,4 +2773,3 @@
             trapFocus(overlay);
             document.getElementById('kbd-shortcuts-close').focus();
         }
-
