@@ -4928,9 +4928,15 @@
 
         .garden-plots {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 8px;
             margin-bottom: 10px;
+        }
+
+        @media (max-width: 520px) {
+            .garden-plots {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .garden-plot {
@@ -4947,6 +4953,19 @@
             border: 2px solid #5D4037;
             transition: all 0.2s ease;
             position: relative;
+        }
+
+        .garden-plot-action {
+            border: none;
+            background: transparent;
+            color: inherit;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            cursor: pointer;
+            font: inherit;
         }
 
         .garden-plot:hover {
@@ -5266,6 +5285,14 @@
             border-color: #66BB6A;
             background: #E8F5E9;
             transform: translateY(-2px);
+        }
+
+        .seed-option.seed-option-locked {
+            border-style: dashed;
+            border-color: #BDBDBD;
+            background: #F5F5F5;
+            color: #757575;
+            cursor: default;
         }
 
         .seed-option-emoji {

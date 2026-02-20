@@ -65,6 +65,46 @@
             };
         }
 
+        function createDefaultGardenState(now) {
+            const ts = Number.isFinite(now) ? now : Date.now();
+            const mushroomPlots = Array(4).fill(null);
+            const flowerPlots = Array(4).fill(null);
+            const compostDefaults = (typeof GardenFeaturesCore !== 'undefined' && GardenFeaturesCore.createDefaultCompostState)
+                ? GardenFeaturesCore.createDefaultCompostState(ts)
+                : { queue: [], active: null, readyFertilizer: 0, maxQueue: 8, lastUpdatedAt: ts };
+            const beehiveDefaults = (typeof GardenFeaturesCore !== 'undefined' && GardenFeaturesCore.createDefaultBeehiveState)
+                ? GardenFeaturesCore.createDefaultBeehiveState(ts)
+                : { placed: false, storedHoney: 0, capacity: 20, progress: 0, lastUpdatedAt: ts };
+            return {
+                plots: [],
+                inventory: {},
+                lastGrowTick: ts,
+                totalHarvests: 0,
+                expansionTier: 0,
+                discoveredSeeds: { carrot: true, tomato: true, strawberry: true, pumpkin: true, sunflower: true, apple: true, candyCorn: true, snowberry: true },
+                sprinklers: [],
+                scarecrows: [],
+                beehive: beehiveDefaults,
+                flowerGarden: {
+                    plots: flowerPlots,
+                    lastMoodTick: ts,
+                    trimInventory: { petals: 0 },
+                    selectedTab: 'flowers'
+                },
+                compostBin: compostDefaults,
+                mushroomCave: {
+                    plots: mushroomPlots,
+                    inventory: {}
+                },
+                crossbreeding: {
+                    discoveries: {},
+                    logs: [],
+                    learnedHints: {}
+                },
+                lastPestCheckAt: ts
+            };
+        }
+
         let gameState = {
             phase: 'egg', // 'egg', 'hatching', 'pet'
             pet: null,
@@ -104,12 +144,7 @@
             },
             roomUpgrades: {},
             roomCustomizations: {},
-            garden: {
-                plots: [], // { cropId, stage, growTicks, watered }
-                inventory: {}, // { cropId: count }
-                lastGrowTick: Date.now(),
-                totalHarvests: 0
-            },
+            garden: createDefaultGardenState(),
             minigamePlayCounts: {}, // { gameId: playCount } — tracks replays for difficulty scaling
             minigameHighScores: {}, // { gameId: bestScore } — persisted best scores
             minigameScoreHistory: {}, // { gameId: [score, score, score] } — last 3 scores per game
@@ -302,6 +337,56 @@
             if (typeof state.mastery.familyLegacy.tier !== 'number' || !Number.isFinite(state.mastery.familyLegacy.tier)) state.mastery.familyLegacy.tier = 1;
             if (typeof state.mastery.familyLegacy.title !== 'string') state.mastery.familyLegacy.title = defaults.familyLegacy.title;
             return state.mastery;
+        }
+
+        function isGardenDebugEnabled() {
+            return !!(typeof GARDEN_SYSTEM_BALANCE !== 'undefined' && GARDEN_SYSTEM_BALANCE.debugLogging);
+        }
+
+        function gardenDebugLog(message, data) {
+            if (!isGardenDebugEnabled()) return;
+            if (data === undefined) {
+                console.log('[GardenDebug]', message);
+            } else {
+                console.log('[GardenDebug]', message, data);
+            }
+        }
+
+        function ensureGardenSystemsState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            const now = Date.now();
+            if (!state.garden || typeof state.garden !== 'object') {
+                state.garden = createDefaultGardenState(now);
+                return state.garden;
+            }
+            const defaultGarden = createDefaultGardenState(now);
+            const garden = state.garden;
+            if (!Array.isArray(garden.plots)) garden.plots = [];
+            if (!garden.inventory || typeof garden.inventory !== 'object') garden.inventory = {};
+            if (!Number.isFinite(garden.lastGrowTick)) garden.lastGrowTick = now;
+            if (!Number.isFinite(garden.totalHarvests)) garden.totalHarvests = 0;
+            if (!Number.isFinite(garden.expansionTier)) garden.expansionTier = 0;
+            if (!garden.discoveredSeeds || typeof garden.discoveredSeeds !== 'object') garden.discoveredSeeds = defaultGarden.discoveredSeeds;
+            if (!Array.isArray(garden.sprinklers)) garden.sprinklers = [];
+            if (!Array.isArray(garden.scarecrows)) garden.scarecrows = [];
+            if (!garden.beehive || typeof garden.beehive !== 'object') garden.beehive = defaultGarden.beehive;
+            if (!garden.flowerGarden || typeof garden.flowerGarden !== 'object') garden.flowerGarden = defaultGarden.flowerGarden;
+            if (!Array.isArray(garden.flowerGarden.plots)) garden.flowerGarden.plots = defaultGarden.flowerGarden.plots.slice();
+            if (!Number.isFinite(garden.flowerGarden.lastMoodTick)) garden.flowerGarden.lastMoodTick = now;
+            if (!garden.flowerGarden.trimInventory || typeof garden.flowerGarden.trimInventory !== 'object') {
+                garden.flowerGarden.trimInventory = { petals: 0 };
+            }
+            if (!garden.compostBin || typeof garden.compostBin !== 'object') garden.compostBin = defaultGarden.compostBin;
+            if (!Array.isArray(garden.compostBin.queue)) garden.compostBin.queue = [];
+            if (!garden.mushroomCave || typeof garden.mushroomCave !== 'object') garden.mushroomCave = defaultGarden.mushroomCave;
+            if (!Array.isArray(garden.mushroomCave.plots)) garden.mushroomCave.plots = defaultGarden.mushroomCave.plots.slice();
+            if (!garden.mushroomCave.inventory || typeof garden.mushroomCave.inventory !== 'object') garden.mushroomCave.inventory = {};
+            if (!garden.crossbreeding || typeof garden.crossbreeding !== 'object') garden.crossbreeding = defaultGarden.crossbreeding;
+            if (!Array.isArray(garden.crossbreeding.logs)) garden.crossbreeding.logs = [];
+            if (!garden.crossbreeding.discoveries || typeof garden.crossbreeding.discoveries !== 'object') garden.crossbreeding.discoveries = {};
+            if (!garden.crossbreeding.learnedHints || typeof garden.crossbreeding.learnedHints !== 'object') garden.crossbreeding.learnedHints = {};
+            if (!Number.isFinite(garden.lastPestCheckAt)) garden.lastPestCheckAt = now;
+            return garden;
         }
 
         // Holds the garden growth interval ID. Timer is started from renderPetPhase() in ui.js
@@ -1567,7 +1652,10 @@
             if (!item) return { ok: false, reason: 'invalid-item' };
             // Rec 10: Check seasonal availability
             if (typeof isShopItemAvailable === 'function' && !isShopItemAvailable(itemId)) {
-                return { ok: false, reason: 'out-of-season' };
+                const reason = (category === 'seeds' && typeof getSeedPurchaseLockReason === 'function')
+                    ? (getSeedPurchaseLockReason(itemId) || 'out-of-season')
+                    : 'out-of-season';
+                return { ok: false, reason: reason };
             }
             const qty = Math.max(1, Math.floor(Number(amount) || 1));
             const unitPrice = getShopItemPrice(category, itemId);
@@ -1786,6 +1874,10 @@
         // Rec 10: Check if a shop item is available in the current season
         function isShopItemAvailable(itemId) {
             if (typeof SEASONAL_SHOP_AVAILABILITY === 'undefined') return true;
+            if (ECONOMY_SHOP_ITEMS && ECONOMY_SHOP_ITEMS.seeds && ECONOMY_SHOP_ITEMS.seeds[itemId]) {
+                const reason = getSeedPurchaseLockReason(itemId);
+                return !reason;
+            }
             const seasons = SEASONAL_SHOP_AVAILABILITY[itemId];
             if (!seasons) return true; // Not in the rotation table = always available
             const currentSeason = gameState.season || (typeof getCurrentSeason === 'function' ? getCurrentSeason() : 'spring');
@@ -2229,6 +2321,12 @@
             }
             if (itemType === 'seed' && GARDEN_CROPS[itemId]) {
                 return { name: `${GARDEN_CROPS[itemId].name} Seeds`, emoji: GARDEN_CROPS[itemId].seedEmoji };
+            }
+            if (itemType === 'seed' && FLOWER_GARDEN_PLANTS[itemId]) {
+                return { name: `${FLOWER_GARDEN_PLANTS[itemId].name} Seeds`, emoji: FLOWER_GARDEN_PLANTS[itemId].emoji };
+            }
+            if (itemType === 'seed' && MUSHROOM_CAVE_PLANTS[itemId]) {
+                return { name: `${MUSHROOM_CAVE_PLANTS[itemId].name} Spores`, emoji: MUSHROOM_CAVE_PLANTS[itemId].emoji };
             }
             if ((itemType === 'food' || itemType === 'toys' || itemType === 'medicine') && ECONOMY_SHOP_ITEMS[itemType] && ECONOMY_SHOP_ITEMS[itemType][itemId]) {
                 return { name: ECONOMY_SHOP_ITEMS[itemType][itemId].name, emoji: ECONOMY_SHOP_ITEMS[itemType][itemId].emoji };
@@ -3824,6 +3922,7 @@
                 ensureExplorationState();
                 ensureEconomyState();
                 ensureMiniGameExpansionState();
+                ensureGardenSystemsState();
                 // Sync active pet to pets array before saving
                 syncActivePetToArray();
                 gameState.lastUpdate = Date.now();
@@ -3990,21 +4089,14 @@
 
                     // Add garden if missing (for existing saves)
                     if (!parsed.garden || typeof parsed.garden !== 'object') {
-                        parsed.garden = {
-                            plots: [],
-                            inventory: {},
-                            lastGrowTick: Date.now(),
-                            totalHarvests: 0
-                        };
+                        parsed.garden = createDefaultGardenState(Date.now());
                     }
-                    if (!parsed.garden.plots) parsed.garden.plots = [];
-                    if (!parsed.garden.inventory) parsed.garden.inventory = {};
-                    if (!parsed.garden.lastGrowTick) parsed.garden.lastGrowTick = Date.now();
-                    if (typeof parsed.garden.totalHarvests !== 'number') {
+                    const parsedGarden = ensureGardenSystemsState(parsed);
+                    if (typeof parsedGarden.totalHarvests !== 'number') {
                         // Infer minimum harvests from existing state to keep used plots unlocked
                         let inferredHarvests = 0;
-                        const invTotal = Object.values(parsed.garden.inventory || {}).reduce((s, c) => s + c, 0);
-                        const highestUsedPlot = parsed.garden.plots.reduce((max, p, i) => p ? i : max, -1);
+                        const invTotal = Object.values(parsedGarden.inventory || {}).reduce((s, c) => s + c, 0);
+                        const highestUsedPlot = parsedGarden.plots.reduce((max, p, i) => p ? i : max, -1);
                         if (highestUsedPlot >= 0 || invTotal > 0) {
                             // Ensure enough harvests to unlock all plots that have crops
                             for (let pi = 0; pi <= highestUsedPlot && pi < GARDEN_PLOT_UNLOCK_THRESHOLDS.length; pi++) {
@@ -4012,7 +4104,61 @@
                             }
                             inferredHarvests = Math.max(inferredHarvests, invTotal);
                         }
-                        parsed.garden.totalHarvests = inferredHarvests;
+                        parsedGarden.totalHarvests = inferredHarvests;
+                    }
+                    parsedGarden.plots = parsedGarden.plots.map((plot) => {
+                        if (!plot || typeof plot !== 'object' || !plot.cropId) return null;
+                        const normalized = Object.assign({}, plot);
+                        if (!Number.isFinite(normalized.plantedAt)) normalized.plantedAt = Date.now();
+                        if (!Number.isFinite(normalized.lastUpdatedAt)) normalized.lastUpdatedAt = parsedGarden.lastGrowTick || normalized.plantedAt || Date.now();
+                        if (!Number.isFinite(normalized.growthProgressMs)) {
+                            const growTicks = Number.isFinite(normalized.growTicks) ? normalized.growTicks : 0;
+                            normalized.growthProgressMs = Math.max(0, growTicks * 60000);
+                        }
+                        if (!Number.isFinite(normalized.stage)) normalized.stage = 0;
+                        if (normalized.watered === true && !Number.isFinite(normalized.wateredUntil)) {
+                            normalized.wateredUntil = Date.now() + ((GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.wateredDurationMs) || (2 * 60 * 60 * 1000));
+                        }
+                        if (!Number.isFinite(normalized.wateredUntil)) normalized.wateredUntil = 0;
+                        if (!Number.isFinite(normalized.fertilizerCharges)) normalized.fertilizerCharges = 0;
+                        if (!Number.isFinite(normalized.pestUntil)) normalized.pestUntil = 0;
+                        const cropDef = GARDEN_CROPS[normalized.cropId];
+                        if (cropDef && cropDef.plantType === 'fruitTree') {
+                            if (!Number.isFinite(normalized.nextHarvestAt)) normalized.nextHarvestAt = Date.now();
+                            normalized.harvestReady = Date.now() >= normalized.nextHarvestAt;
+                        }
+                        delete normalized.growTicks;
+                        delete normalized.watered;
+                        return normalized;
+                    });
+                    parsedGarden.flowerGarden.plots = parsedGarden.flowerGarden.plots.map((plot) => {
+                        if (!plot || typeof plot !== 'object') return null;
+                        const out = Object.assign({}, plot);
+                        if (!Number.isFinite(out.plantedAt)) out.plantedAt = Date.now();
+                        if (!Number.isFinite(out.lastUpdatedAt)) out.lastUpdatedAt = out.plantedAt;
+                        if (!Number.isFinite(out.growthProgressMs)) out.growthProgressMs = 0;
+                        if (!Number.isFinite(out.stage)) out.stage = 0;
+                        return out;
+                    });
+                    parsedGarden.mushroomCave.plots = parsedGarden.mushroomCave.plots.map((plot) => {
+                        if (!plot || typeof plot !== 'object') return null;
+                        const out = Object.assign({}, plot);
+                        if (!Number.isFinite(out.plantedAt)) out.plantedAt = Date.now();
+                        if (!Number.isFinite(out.lastUpdatedAt)) out.lastUpdatedAt = out.plantedAt;
+                        if (!Number.isFinite(out.growthProgressMs)) out.growthProgressMs = 0;
+                        if (!Number.isFinite(out.stage)) out.stage = 0;
+                        if (!Number.isFinite(out.fertilizerCharges)) out.fertilizerCharges = 0;
+                        return out;
+                    });
+                    if (!parsedGarden.discoveredSeeds || typeof parsedGarden.discoveredSeeds !== 'object') {
+                        parsedGarden.discoveredSeeds = {};
+                    }
+                    Object.entries(GARDEN_CROPS).forEach(([cropId, crop]) => {
+                        if (!crop || crop.defaultUnlocked === false) return;
+                        if (typeof parsedGarden.discoveredSeeds[cropId] !== 'boolean') parsedGarden.discoveredSeeds[cropId] = true;
+                    });
+                    if (!parsedGarden.crossbreeding || typeof parsedGarden.crossbreeding !== 'object') {
+                        parsedGarden.crossbreeding = { discoveries: {}, logs: [], learnedHints: {} };
                     }
 
                     // Add multi-pet system fields if missing (for existing saves)
@@ -4088,30 +4234,12 @@
                         parsed.pet = parsed.pets[parsed.activePetIndex];
                     }
 
-                    // Apply garden growth for time passed
-                    if (parsed.garden.plots.length > 0 && parsed.garden.lastGrowTick) {
-                        const gardenTimePassed = Date.now() - parsed.garden.lastGrowTick;
-                        const gardenTicksPassed = Math.floor(gardenTimePassed / 60000); // 1 tick per minute
-                        if (gardenTicksPassed > 0) {
-                            const season = parsed.season || getCurrentSeason();
-                            const growthMult = SEASONS[season] ? SEASONS[season].gardenGrowthMultiplier : 1;
-                            parsed.garden.plots.forEach(plot => {
-                                if (plot && plot.cropId && plot.stage < 3) {
-                                    const crop = GARDEN_CROPS[plot.cropId];
-                                    if (crop) {
-                                        const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growthMult));
-                                        // Watered plots get +2 on first tick (then water dries),
-                                        // remaining ticks get +1, matching live tick behavior
-                                        // First tick: watered=2, unwatered=1. Remaining: always 1.
-                                        const firstTickValue = plot.watered ? 2 : 1;
-                                        plot.growTicks += firstTickValue + (gardenTicksPassed - 1);
-                                        plot.watered = false;
-                                        const newStage = Math.min(3, Math.floor(plot.growTicks / effectiveGrowTime));
-                                        plot.stage = Math.max(plot.stage, newStage);
-                                    }
-                                }
-                            });
-                            parsed.garden.lastGrowTick = Date.now();
+                    // Apply timestamp-based garden progression for elapsed time.
+                    if (typeof advanceGardenSystems === 'function') {
+                        try {
+                            advanceGardenSystems(parsed, { now: Date.now(), silent: true, skipRandom: true });
+                        } catch (e) {
+                            gardenDebugLog('Failed to advance migrated garden state', e);
                         }
                     }
 
@@ -5659,9 +5787,19 @@
         }
 
         function getReadyCropCount() {
-            const garden = gameState.garden;
+            const garden = ensureGardenSystemsState();
             if (!garden || !garden.plots) return 0;
-            return garden.plots.filter(p => p && p.stage >= 3).length;
+            const plotReady = garden.plots.filter((plot) => {
+                if (!plot || !plot.cropId) return false;
+                const crop = GARDEN_CROPS[plot.cropId];
+                if (!crop) return false;
+                return crop.plantType === 'fruitTree' ? !!plot.harvestReady : plot.stage >= 3;
+            }).length;
+            const mushroomReady = (garden.mushroomCave && Array.isArray(garden.mushroomCave.plots))
+                ? garden.mushroomCave.plots.filter((plot) => plot && plot.stage >= 3).length
+                : 0;
+            const beehiveReady = (garden.beehive && garden.beehive.placed && (garden.beehive.storedHoney || 0) > 0) ? 1 : 0;
+            return plotReady + mushroomReady + beehiveReady;
         }
 
         function useBeginnerRoomNav() {
@@ -5693,7 +5831,7 @@
                     lockedRooms.push({ id, room, status });
                     continue;
                 }
-                const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} crops ready">${readyCrops}</span>` : '';
+                const badge = (id === 'garden' && readyCrops > 0) ? `<span class="garden-ready-badge" aria-label="${readyCrops} garden items ready">${readyCrops}</span>` : '';
                 const bonusHint = room.bonus ? ` (Bonus: ${getRoomBonusLabel(id)})` : '';
                 const lockBadge = unlocked ? '' : '<span class="room-lock-badge" aria-hidden="true">🔒</span>';
                 const lockRequirement = status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked';
@@ -5736,11 +5874,11 @@
             if (readyCrops > 0) {
                 if (existingBadge) {
                     existingBadge.textContent = readyCrops;
-                    existingBadge.setAttribute('aria-label', `${readyCrops} crops ready`);
+                    existingBadge.setAttribute('aria-label', `${readyCrops} garden items ready`);
                 } else {
                     const badge = document.createElement('span');
                     badge.className = 'garden-ready-badge';
-                    badge.setAttribute('aria-label', `${readyCrops} crops ready`);
+                    badge.setAttribute('aria-label', `${readyCrops} garden items ready`);
                     badge.textContent = readyCrops;
                     gardenBtn.appendChild(badge);
                 }
@@ -5899,6 +6037,534 @@
 
         // ==================== GARDEN FUNCTIONS ====================
 
+        function getGardenCore() {
+            return (typeof GardenFeaturesCore !== 'undefined') ? GardenFeaturesCore : null;
+        }
+
+        function getGardenPlantById(plantId, area) {
+            if (!plantId) return null;
+            if (area === 'flowerGarden') return FLOWER_GARDEN_PLANTS[plantId] || null;
+            if (area === 'mushroomCave') return MUSHROOM_CAVE_PLANTS[plantId] || null;
+            return GARDEN_CROPS[plantId] || null;
+        }
+
+        function getAllMainGardenSeeds() {
+            return Object.entries(GARDEN_CROPS).map(([id, def]) => Object.assign({ id: id }, def));
+        }
+
+        function getSeasonGrowthMultiplier(season) {
+            const seasonData = SEASONS[season];
+            return seasonData ? seasonData.gardenGrowthMultiplier : 1;
+        }
+
+        function getScarecrowCoverageForPlot(plotIndex, targetState) {
+            const state = targetState || gameState;
+            const garden = ensureGardenSystemsState(state);
+            const radius = (GARDEN_SYSTEM_BALANCE && Number.isFinite(GARDEN_SYSTEM_BALANCE.scarecrowRadius)) ? GARDEN_SYSTEM_BALANCE.scarecrowRadius : 2;
+            return garden.scarecrows.some((scarecrow) => {
+                const center = Number.isFinite(scarecrow.plotIndex) ? scarecrow.plotIndex : 0;
+                const r = Number.isFinite(scarecrow.radius) ? scarecrow.radius : radius;
+                return Math.abs(center - plotIndex) <= r;
+            });
+        }
+
+        function getSprinklerCoverageForPlot(plotIndex, targetState) {
+            const state = targetState || gameState;
+            const garden = ensureGardenSystemsState(state);
+            const radius = (GARDEN_SYSTEM_BALANCE && Number.isFinite(GARDEN_SYSTEM_BALANCE.sprinklerRadius)) ? GARDEN_SYSTEM_BALANCE.sprinklerRadius : 2;
+            return garden.sprinklers.some((sprinkler) => {
+                const center = Number.isFinite(sprinkler.plotIndex) ? sprinkler.plotIndex : 0;
+                const r = Number.isFinite(sprinkler.radius) ? sprinkler.radius : radius;
+                return Math.abs(center - plotIndex) <= r;
+            });
+        }
+
+        function getFriendlyGardenTime(ms) {
+            const core = getGardenCore();
+            if (core && typeof core.formatFriendlyDuration === 'function') {
+                return core.formatFriendlyDuration(ms);
+            }
+            const remaining = Math.max(0, Math.ceil((Number(ms) || 0) / 60000));
+            if (remaining <= 0) return 'Ready now';
+            if (remaining < 60) return `Ready in ${remaining} minute${remaining === 1 ? '' : 's'}`;
+            const hours = Math.floor(remaining / 60);
+            const mins = remaining % 60;
+            return mins > 0 ? `Ready in ${hours}h ${mins}m` : `Ready in ${hours} hour${hours === 1 ? '' : 's'}`;
+        }
+
+        function isSeedUnlocked(cropId, targetState) {
+            const state = targetState || gameState;
+            const garden = ensureGardenSystemsState(state);
+            const crop = GARDEN_CROPS[cropId];
+            if (!crop) return false;
+            if (crop.defaultUnlocked !== false) return true;
+            return !!garden.discoveredSeeds[cropId];
+        }
+
+        function getSeedPurchaseLockReason(seedItemId, targetState) {
+            const state = targetState || gameState;
+            const currentSeason = state.season || getCurrentSeason();
+            const item = ECONOMY_SHOP_ITEMS.seeds[seedItemId];
+            if (!item) return 'unknown';
+            const cropId = item.cropId;
+            if (cropId && GARDEN_CROPS[cropId] && !isSeedUnlocked(cropId, state)) return 'undiscovered';
+            const allowed = SEASONAL_SHOP_AVAILABILITY[seedItemId];
+            if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(currentSeason)) return 'out-of-season';
+            return null;
+        }
+
+        function createGardenPlotInstance(cropId, now) {
+            const ts = Number.isFinite(now) ? now : Date.now();
+            return {
+                cropId: cropId,
+                stage: 0,
+                plantedAt: ts,
+                lastUpdatedAt: ts,
+                growthProgressMs: 0,
+                wateredUntil: 0,
+                fertilizerCharges: 0,
+                pestUntil: 0,
+                harvestReady: false,
+                nextHarvestAt: 0
+            };
+        }
+
+        function createSubGardenPlotInstance(plantId, now) {
+            const ts = Number.isFinite(now) ? now : Date.now();
+            return {
+                cropId: plantId,
+                stage: 0,
+                plantedAt: ts,
+                lastUpdatedAt: ts,
+                growthProgressMs: 0,
+                wateredUntil: 0,
+                fertilizerCharges: 0,
+                pestUntil: 0,
+                harvestReady: false
+            };
+        }
+
+        function consumeGardenInventoryItem(itemId, count, targetState) {
+            const state = targetState || gameState;
+            const garden = ensureGardenSystemsState(state);
+            const qty = Math.max(1, Math.floor(Number(count) || 1));
+            if (!garden.inventory[itemId] || garden.inventory[itemId] < qty) return false;
+            garden.inventory[itemId] -= qty;
+            if (garden.inventory[itemId] <= 0) delete garden.inventory[itemId];
+            return true;
+        }
+
+        function addGardenInventoryItem(itemId, count, targetState) {
+            const state = targetState || gameState;
+            const garden = ensureGardenSystemsState(state);
+            const qty = Math.max(1, Math.floor(Number(count) || 1));
+            garden.inventory[itemId] = (garden.inventory[itemId] || 0) + qty;
+            return garden.inventory[itemId];
+        }
+
+        function advanceGardenSystems(targetState, options) {
+            const state = targetState || gameState;
+            const opts = options || {};
+            const silent = !!opts.silent;
+            const skipRandom = !!opts.skipRandom;
+            const now = Number.isFinite(opts.now) ? opts.now : Date.now();
+            const garden = ensureGardenSystemsState(state);
+            const core = getGardenCore();
+            const season = state.season || getCurrentSeason();
+            const seasonMultiplier = getSeasonGrowthMultiplier(season);
+            const waterDurationMs = (GARDEN_SYSTEM_BALANCE && Number.isFinite(GARDEN_SYSTEM_BALANCE.wateredDurationMs))
+                ? GARDEN_SYSTEM_BALANCE.wateredDurationMs
+                : (2 * 60 * 60 * 1000);
+            const offSeasonGrowthMultiplier = (GARDEN_SYSTEM_BALANCE && Number.isFinite(GARDEN_SYSTEM_BALANCE.offSeasonGrowthMultiplier))
+                ? GARDEN_SYSTEM_BALANCE.offSeasonGrowthMultiplier
+                : 0.35;
+            const fertilizerGrowthBoost = (GARDEN_SYSTEM_BALANCE && Number.isFinite(GARDEN_SYSTEM_BALANCE.fertilizerGrowthBoost))
+                ? GARDEN_SYSTEM_BALANCE.fertilizerGrowthBoost
+                : 0.2;
+
+            if (core && typeof core.runSprinklers === 'function') {
+                core.runSprinklers(garden.sprinklers, garden.plots, now, {
+                    defaultIntervalMs: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.sprinklerIntervalMs) || (6 * 60 * 60 * 1000),
+                    waterDurationMs: waterDurationMs
+                });
+            }
+
+            let newlyReady = 0;
+            garden.plots = garden.plots.map((plot, index) => {
+                if (!plot || !plot.cropId) return null;
+                const plantDef = getGardenPlantById(plot.cropId, 'garden');
+                if (!plantDef) return null;
+                const offSeason = Array.isArray(plantDef.seasons) && plantDef.seasons.length > 0 && !plantDef.seasons.includes(season);
+                const prevStage = plot.stage || 0;
+                if (core && typeof core.advancePlantPlot === 'function') {
+                    core.advancePlantPlot(plot, plantDef, {
+                        now: now,
+                        seasonMultiplier: seasonMultiplier,
+                        offSeason: offSeason,
+                        offSeasonGrowthMultiplier: offSeasonGrowthMultiplier,
+                        waterGrowthMultiplier: 1.22,
+                        fertilizerGrowthBoost: fertilizerGrowthBoost,
+                        pestSlowMultiplier: 0.7
+                    });
+                }
+                if (!skipRandom && plot.stage < 3 && (!Number.isFinite(plot.pestUntil) || plot.pestUntil < now)) {
+                    const covered = getScarecrowCoverageForPlot(index, state);
+                    const dailyRisk = core && typeof core.computePestRisk === 'function'
+                        ? core.computePestRisk(plantDef, covered, { scarecrowReduction: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.scarecrowRiskReduction) || 0.65 })
+                        : (plantDef.pestRiskPerDay || 0.08) * (covered ? 0.35 : 1);
+                    const elapsedMinutes = Math.max(1, Math.floor((now - (plot.lastPestRollAt || plot.lastUpdatedAt || now)) / 60000));
+                    const pestHit = core && typeof core.rollPestEvent === 'function'
+                        ? core.rollPestEvent(dailyRisk, elapsedMinutes, Math.random())
+                        : (Math.random() < (dailyRisk / 1440));
+                    if (pestHit) {
+                        plot.pestUntil = now + ((GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.pestDurationMs) || (6 * 60 * 60 * 1000));
+                        gardenDebugLog(`Pest event on plot ${index + 1}`, { cropId: plot.cropId, until: plot.pestUntil });
+                        if (!silent) showToast(`🐛 Pests found on plot ${index + 1}! Growth slowed.`, '#FF7043');
+                    }
+                    plot.lastPestRollAt = now;
+                }
+                if (plot.stage >= 3 && prevStage < 3) {
+                    newlyReady++;
+                    if (!silent) {
+                        const icon = plantDef.seedEmoji || '🌱';
+                        showToast(`${icon} ${plantDef.name} is ready!`, '#66BB6A');
+                    }
+                }
+                return plot;
+            });
+
+            // Flower garden passive mood.
+            const flowerArea = garden.flowerGarden;
+            const flowerElapsedMs = Math.max(0, now - (flowerArea.lastMoodTick || now));
+            flowerArea.lastMoodTick = now;
+            flowerArea.plots = flowerArea.plots.map((plot) => {
+                if (!plot || !plot.cropId) return null;
+                const plantDef = getGardenPlantById(plot.cropId, 'flowerGarden');
+                if (!plantDef) return null;
+                if (core && typeof core.advancePlantPlot === 'function') {
+                    core.advancePlantPlot(plot, plantDef, {
+                        now: now,
+                        seasonMultiplier: 1,
+                        offSeason: false,
+                        offSeasonGrowthMultiplier: 1,
+                        waterGrowthMultiplier: 1.08,
+                        fertilizerGrowthBoost: 0.05,
+                        pestSlowMultiplier: 1
+                    });
+                }
+                return plot;
+            });
+            if (flowerElapsedMs > 0 && state.pet) {
+                const matureFlowerIds = flowerArea.plots
+                    .filter((plot) => plot && plot.stage >= 3 && plot.cropId)
+                    .map((plot) => plot.cropId);
+                if (core && typeof core.computeFlowerMoodBonus === 'function') {
+                    const moodInfo = core.computeFlowerMoodBonus(matureFlowerIds, FLOWER_GARDEN_PLANTS, (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.flowerMood) || {});
+                    const moodGain = moodInfo.perMinute * (flowerElapsedMs / 60000);
+                    if (moodGain > 0) {
+                        state.pet.happiness = clamp(state.pet.happiness + moodGain, 0, 100);
+                    }
+                }
+            }
+
+            // Composting.
+            if (core && typeof core.tickCompostState === 'function') {
+                core.tickCompostState(garden.compostBin, now);
+            }
+
+            // Beehive.
+            const matureFlowerCount = flowerArea.plots.filter((plot) => plot && plot.stage >= 3).length;
+            if (core && typeof core.tickBeehive === 'function') {
+                core.tickBeehive(garden.beehive, now, {
+                    flowerCount: matureFlowerCount,
+                    baseHoneyPerHour: (((GARDEN_SYSTEM_BALANCE || {}).beehive || {}).baseHoneyPerHour) || 0.5,
+                    flowerBoostPerFlower: (((GARDEN_SYSTEM_BALANCE || {}).beehive || {}).flowerBoostPerFlower) || 0.12,
+                    maxFlowerBoost: (((GARDEN_SYSTEM_BALANCE || {}).beehive || {}).maxFlowerBoost) || 1.0
+                });
+            }
+
+            // Mushroom cave.
+            garden.mushroomCave.plots = garden.mushroomCave.plots.map((plot) => {
+                if (!plot || !plot.cropId) return null;
+                const plantDef = getGardenPlantById(plot.cropId, 'mushroomCave');
+                if (!plantDef) return null;
+                const offSeason = Array.isArray(plantDef.seasons) && plantDef.seasons.length > 0 && !plantDef.seasons.includes(season);
+                if (core && typeof core.advancePlantPlot === 'function') {
+                    core.advancePlantPlot(plot, plantDef, {
+                        now: now,
+                        seasonMultiplier: 0.9,
+                        offSeason: offSeason,
+                        offSeasonGrowthMultiplier: 0.5,
+                        waterGrowthMultiplier: 1.1,
+                        fertilizerGrowthBoost: fertilizerGrowthBoost,
+                        pestSlowMultiplier: 0.8
+                    });
+                }
+                return plot;
+            });
+
+            garden.lastGrowTick = now;
+            return { newlyReady: newlyReady };
+        }
+
+        function attemptCrossbreedingAt(plotIndex) {
+            const garden = ensureGardenSystemsState();
+            if (!Array.isArray(garden.plots) || garden.plots.length < 2) return;
+            const leftIdx = Math.max(0, plotIndex - 1);
+            const rightIdx = Math.min(garden.plots.length - 2, plotIndex);
+            const pairs = [];
+            if (garden.plots[leftIdx] && garden.plots[leftIdx + 1]) pairs.push(garden.plots[leftIdx], garden.plots[leftIdx + 1]);
+            if (rightIdx !== leftIdx && garden.plots[rightIdx] && garden.plots[rightIdx + 1]) pairs.push(garden.plots[rightIdx], garden.plots[rightIdx + 1]);
+            if (pairs.length === 0) return;
+            const windowPlots = [];
+            for (let i = Math.max(0, plotIndex - 1); i <= Math.min(garden.plots.length - 1, plotIndex + 1); i++) {
+                windowPlots.push(garden.plots[i] || null);
+            }
+            const core = getGardenCore();
+            if (!core || typeof core.runCrossbreeding !== 'function') return;
+            const result = core.runCrossbreeding(windowPlots, GARDEN_CROSSBREED_RECIPES, {
+                discovered: garden.discoveredSeeds,
+                rng: Math.random
+            });
+            if (!Array.isArray(garden.crossbreeding.logs)) garden.crossbreeding.logs = [];
+            (result.logs || []).forEach((log) => {
+                garden.crossbreeding.logs.unshift(`${new Date().toLocaleTimeString()} ${log}`);
+                gardenDebugLog('Crossbreeding roll', log);
+            });
+            garden.crossbreeding.logs = garden.crossbreeding.logs.slice(0, 20);
+            (result.unlocks || []).forEach((cropId) => {
+                garden.discoveredSeeds[cropId] = true;
+                garden.crossbreeding.discoveries[cropId] = Date.now();
+                addEconomyInventoryItem('seeds', cropId, 2);
+                const crop = GARDEN_CROPS[cropId];
+                if (crop) {
+                    showToast(`🧬 Crossbreeding discovered ${crop.name}! +2 seeds unlocked.`, '#AB47BC');
+                    announce(`Crossbreeding discovery: ${crop.name} seeds unlocked!`);
+                }
+            });
+        }
+
+        function applyFertilizerToGardenPlot(plotIndex, area) {
+            const garden = ensureGardenSystemsState();
+            const targetArea = area || 'garden';
+            const collection = targetArea === 'mushroomCave' ? garden.mushroomCave.plots : garden.plots;
+            const plot = collection[plotIndex];
+            if (!plot) return false;
+            if (!consumeGardenInventoryItem('fertilizer', 1)) {
+                showToast('🧪 No fertilizer available yet.', '#FFA726');
+                return false;
+            }
+            const maxCharges = (GARDEN_SYSTEM_BALANCE && Number.isFinite(GARDEN_SYSTEM_BALANCE.maxFertilizerChargesPerPlot))
+                ? GARDEN_SYSTEM_BALANCE.maxFertilizerChargesPerPlot
+                : 2;
+            plot.fertilizerCharges = Math.min(maxCharges, (plot.fertilizerCharges || 0) + 1);
+            showToast('🧪 Fertilizer applied. Growth boosted!', '#8BC34A');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+            return true;
+        }
+
+        function addInventoryItemToCompost(itemId) {
+            const garden = ensureGardenSystemsState();
+            if (itemId === 'fertilizer') return { ok: false, reason: 'not-compostable' };
+            if (!consumeGardenInventoryItem(itemId, 1)) return { ok: false, reason: 'missing-item' };
+            const compost = garden.compostBin;
+            const cropDef = GARDEN_CROPS[itemId] || FLOWER_GARDEN_PLANTS[itemId] || MUSHROOM_CAVE_PLANTS[itemId];
+            const compostYield = cropDef && Number.isFinite(cropDef.compostYield) ? cropDef.compostYield : 1;
+            const durationMs = (((GARDEN_SYSTEM_BALANCE || {}).compost || {}).baseDurationMs) || (30 * 60 * 1000);
+            const core = getGardenCore();
+            const enqueueResult = core && typeof core.enqueueCompostItem === 'function'
+                ? core.enqueueCompostItem(compost, { itemId: itemId, amount: 1, durationMs: durationMs, fertilizerYield: compostYield, enqueuedAt: Date.now() })
+                : { ok: false, reason: 'core-missing' };
+            if (!enqueueResult.ok) {
+                addGardenInventoryItem(itemId, 1);
+                return enqueueResult;
+            }
+            saveGame();
+            return { ok: true };
+        }
+
+        function collectCompostOutput() {
+            const garden = ensureGardenSystemsState();
+            const core = getGardenCore();
+            const qty = core && typeof core.collectCompostFertilizer === 'function'
+                ? core.collectCompostFertilizer(garden.compostBin)
+                : 0;
+            if (qty <= 0) {
+                showToast('♻️ Compost is still processing.', '#90A4AE');
+                return;
+            }
+            addGardenInventoryItem('fertilizer', qty);
+            showToast(`♻️ Collected ${qty} fertilizer!`, '#8BC34A');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function collectBeehiveOutput() {
+            const garden = ensureGardenSystemsState();
+            const core = getGardenCore();
+            const amount = core && typeof core.collectBeehiveHoney === 'function'
+                ? core.collectBeehiveHoney(garden.beehive)
+                : 0;
+            if (amount <= 0) {
+                showToast('🍯 Beehive is empty.', '#90A4AE');
+                return;
+            }
+            addGardenInventoryItem('honey', amount);
+            showToast(`🍯 Collected ${amount} honey!`, '#F9A825');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function unlockNextGardenExpansionTier() {
+            const garden = ensureGardenSystemsState();
+            const tierIndex = garden.expansionTier || 0;
+            if (tierIndex >= GARDEN_EXPANSION_TIERS.length) {
+                showToast('🏡 Garden is fully expanded!', '#66BB6A');
+                return;
+            }
+            const tier = GARDEN_EXPANSION_TIERS[tierIndex];
+            if ((garden.totalHarvests || 0) < (tier.requiredHarvests || 0)) {
+                showToast(`🌾 Need ${tier.requiredHarvests} total harvests for ${tier.name}.`, '#FFA726');
+                return;
+            }
+            const spend = spendCoins(tier.costCoins || 0, 'Garden Expansion', true);
+            if (!spend.ok) {
+                showToast(`🪙 Need ${tier.costCoins} coins for ${tier.name}.`, '#FFA726');
+                return;
+            }
+            garden.expansionTier = tierIndex + 1;
+            showToast(`🏡 Expanded garden: ${tier.name} unlocked!`, '#66BB6A');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function placeScarecrow() {
+            const garden = ensureGardenSystemsState();
+            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0, garden.expansionTier || 0);
+            if (unlockedPlots <= 0) return;
+            const center = Math.max(0, Math.floor((unlockedPlots - 1) / 2));
+            garden.scarecrows.push({
+                id: `scarecrow_${Date.now()}`,
+                plotIndex: center,
+                radius: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.scarecrowRadius) || 2
+            });
+            showToast('🪧 Scarecrow placed. Pest risk reduced nearby.', '#8D6E63');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function placeSprinkler() {
+            const garden = ensureGardenSystemsState();
+            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0, garden.expansionTier || 0);
+            if (unlockedPlots <= 0) return;
+            const center = Math.max(0, Math.floor((unlockedPlots - 1) / 2));
+            const now = Date.now();
+            garden.sprinklers.push({
+                id: `sprinkler_${now}`,
+                plotIndex: center,
+                radius: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.sprinklerRadius) || 2,
+                intervalMs: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.sprinklerIntervalMs) || (6 * 60 * 60 * 1000),
+                nextWaterAt: now + (((GARDEN_SYSTEM_BALANCE || {}).sprinklerIntervalMs) || (6 * 60 * 60 * 1000))
+            });
+            showToast('🚿 Sprinkler placed. Auto-watering started.', '#4FC3F7');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function placeBeehive() {
+            const garden = ensureGardenSystemsState();
+            if (garden.beehive.placed) {
+                showToast('🍯 Beehive already placed.', '#90A4AE');
+                return;
+            }
+            garden.beehive.placed = true;
+            garden.beehive.capacity = (((GARDEN_SYSTEM_BALANCE || {}).beehive || {}).capacity) || 20;
+            garden.beehive.lastUpdatedAt = Date.now();
+            showToast('🐝 Beehive placed! Honey production started.', '#F9A825');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function plantFlower(plotIndex, flowerId) {
+            const garden = ensureGardenSystemsState();
+            const plotList = garden.flowerGarden.plots;
+            if (plotIndex < 0 || plotIndex >= plotList.length) return;
+            if (plotList[plotIndex]) return;
+            const flower = FLOWER_GARDEN_PLANTS[flowerId];
+            if (!flower) return;
+            if (!consumeSeedForCrop(flowerId, 1)) {
+                showToast(`🌸 Need ${flower.name} seeds.`, '#FFA726');
+                return;
+            }
+            plotList[plotIndex] = createSubGardenPlotInstance(flowerId, Date.now());
+            showToast(`🌸 Planted ${flower.name} in Flower Garden.`, '#66BB6A');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function trimFlower(plotIndex) {
+            const garden = ensureGardenSystemsState();
+            const plot = garden.flowerGarden.plots[plotIndex];
+            if (!plot || plot.stage < 3) return;
+            const flower = FLOWER_GARDEN_PLANTS[plot.cropId];
+            if (!flower) return;
+            const trimItem = flower.trimItem || 'petals';
+            const trimYield = flower.trimYield || 1;
+            addGardenInventoryItem(trimItem, trimYield);
+            showToast(`✂️ Trimmed ${flower.name}. +${trimYield} ${trimItem}.`, '#CE93D8');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function plantMushroom(plotIndex, plantId) {
+            const garden = ensureGardenSystemsState();
+            const plots = garden.mushroomCave.plots;
+            if (plotIndex < 0 || plotIndex >= plots.length) return;
+            if (plots[plotIndex]) return;
+            const plant = MUSHROOM_CAVE_PLANTS[plantId];
+            if (!plant) return;
+            if (!consumeSeedForCrop(plantId, 1)) {
+                showToast(`🍄 Need ${plant.name} spores.`, '#FFA726');
+                return;
+            }
+            if (plant.requiresFertilizer && !consumeGardenInventoryItem('fertilizer', 1)) {
+                addEconomyInventoryItem('seeds', plantId, 1);
+                showToast('🧪 This fungus requires fertilizer to plant.', '#FFA726');
+                return;
+            }
+            plots[plotIndex] = createSubGardenPlotInstance(plantId, Date.now());
+            showToast(`🍄 Planted ${plant.name}.`, '#66BB6A');
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
+        function harvestMushroom(plotIndex) {
+            const garden = ensureGardenSystemsState();
+            const plots = garden.mushroomCave.plots;
+            const plot = plots[plotIndex];
+            if (!plot || plot.stage < 3) return;
+            const plant = MUSHROOM_CAVE_PLANTS[plot.cropId];
+            if (!plant) return;
+            const core = getGardenCore();
+            const season = gameState.season || getCurrentSeason();
+            const offSeason = Array.isArray(plant.seasons) && plant.seasons.length > 0 && !plant.seasons.includes(season);
+            const yieldCount = core && typeof core.getHarvestYield === 'function'
+                ? core.getHarvestYield(plot, plant, {
+                    now: Date.now(),
+                    offSeason: offSeason,
+                    offSeasonYieldMultiplier: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.offSeasonYieldMultiplier) || 0.75,
+                    fertilizerYieldBonus: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.fertilizerYieldBonus) || 1
+                })
+                : (plant.harvestYield || 1);
+            addGardenInventoryItem(plant.id, yieldCount);
+            const coinReward = addCoins(12 * yieldCount, 'Mushroom Harvest', true);
+            showToast(`🍄 Harvested ${yieldCount} ${plant.name}! +${coinReward} coins.`, '#8BC34A');
+            plots[plotIndex] = null;
+            saveGame();
+            if (gameState.currentRoom === 'garden') renderGardenUI();
+        }
+
         function startGardenGrowTimer() {
             if (gardenGrowInterval) clearInterval(gardenGrowInterval);
             gardenGrowInterval = setInterval(() => {
@@ -5922,49 +6588,24 @@
         }
 
         function tickGardenGrowth() {
-            const garden = gameState.garden;
-            if (!garden || !garden.plots || garden.plots.length === 0) return;
-
-            const season = gameState.season || getCurrentSeason();
-            const growthMult = SEASONS[season] ? SEASONS[season].gardenGrowthMultiplier : 1;
-            let anyGrew = false;
-
-            garden.plots.forEach(plot => {
-                if (plot && plot.cropId && plot.stage < 3) {
-                    const crop = GARDEN_CROPS[plot.cropId];
-                    if (!crop) return;
-                    const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growthMult));
-                    // Watered plants grow faster
-                    const waterBonus = plot.watered ? 2 : 1;
-                    plot.growTicks += waterBonus;
-                    plot.watered = false; // Water dries up each tick
-                    const newStage = Math.min(3, Math.floor(plot.growTicks / effectiveGrowTime));
-                    if (newStage > plot.stage) {
-                        plot.stage = newStage;
-                        anyGrew = true;
-                        if (newStage === 3) {
-                            showToast(`🌱 Your ${crop.name} is ready to harvest!`, '#66BB6A');
-                        }
-                    }
-                }
-            });
-
-            garden.lastGrowTick = Date.now();
+            const garden = ensureGardenSystemsState();
+            if (!garden) return;
+            const result = advanceGardenSystems(gameState, { now: Date.now(), silent: false });
             if (gameState.currentRoom === 'garden') {
                 renderGardenUI();
             }
             // Update room nav badge when crops become harvestable
-            if (anyGrew && typeof updateRoomNavBadge === 'function') {
+            if (result && result.newlyReady > 0 && typeof updateRoomNavBadge === 'function') {
                 updateRoomNavBadge();
             }
             saveGame();
         }
 
         function plantSeed(plotIndex, cropId) {
-            const garden = gameState.garden;
+            const garden = ensureGardenSystemsState();
             if (plotIndex >= MAX_GARDEN_PLOTS) return;
             // Prevent planting in locked plots
-            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0);
+            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0, garden.expansionTier || 0);
             if (plotIndex >= unlockedPlots) return;
 
             // Extend plots array if needed
@@ -5976,19 +6617,24 @@
 
             const crop = GARDEN_CROPS[cropId];
             if (!crop) return;
+            if (!isSeedUnlocked(cropId)) {
+                showToast('🧬 This seed is not unlocked yet.', '#FFA726');
+                return;
+            }
+            const season = gameState.season || getCurrentSeason();
+            if (Array.isArray(crop.seasons) && crop.seasons.length > 0 && !crop.seasons.includes(season)) {
+                showToast(`🍂 ${crop.name} cannot be planted this season.`, '#FFA726');
+                return;
+            }
             if (!consumeSeedForCrop(cropId, 1)) {
                 showToast(`🌱 You need ${crop.name} seeds. Buy more in the Economy shop.`, '#FFA726');
                 return;
             }
 
-            garden.plots[plotIndex] = {
-                cropId: cropId,
-                stage: 0,
-                growTicks: 0,
-                watered: false
-            };
+            garden.plots[plotIndex] = createGardenPlotInstance(cropId, Date.now());
 
             showToast(`🌱 Planted ${crop.name}!`, '#66BB6A');
+            attemptCrossbreedingAt(plotIndex);
 
             if (gameState.pet) {
                 gameState.pet.happiness = clamp(gameState.pet.happiness + 5, 0, 100);
@@ -6004,17 +6650,17 @@
         }
 
         function waterPlot(plotIndex) {
-            const garden = gameState.garden;
+            const garden = ensureGardenSystemsState();
             if (!garden.plots[plotIndex]) return;
 
             const plot = garden.plots[plotIndex];
             if (plot.stage >= 3) return; // Already ready
-            if (plot.watered) {
+            if (Number.isFinite(plot.wateredUntil) && plot.wateredUntil > Date.now()) {
                 showToast('💧 Already watered!', '#64B5F6');
                 return;
             }
 
-            plot.watered = true;
+            plot.wateredUntil = Date.now() + ((GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.wateredDurationMs) || (2 * 60 * 60 * 1000));
             const crop = GARDEN_CROPS[plot.cropId];
             if (!crop) return; // Guard against corrupted save data
             showToast(`💧 Watered the ${crop.name}!`, '#64B5F6');
@@ -6026,23 +6672,41 @@
         }
 
         function harvestPlot(plotIndex) {
-            const garden = gameState.garden;
+            const garden = ensureGardenSystemsState();
             if (!garden.plots[plotIndex]) return;
 
             const plot = garden.plots[plotIndex];
-            if (plot.stage < 3) return; // Not ready
-
             const crop = GARDEN_CROPS[plot.cropId];
-            if (!crop) return; // Guard against corrupted save data
-            if (!garden.inventory[plot.cropId]) {
-                garden.inventory[plot.cropId] = 0;
+            if (!crop) return;
+            if (crop.plantType === 'fruitTree') {
+                if (!(plot.harvestReady || plot.stage >= 3)) return;
+            } else if (plot.stage < 3) {
+                return;
             }
-            garden.inventory[plot.cropId]++;
-            const coinReward = awardHarvestCoins(plot.cropId);
+
+            const core = getGardenCore();
+            const season = gameState.season || getCurrentSeason();
+            const offSeason = Array.isArray(crop.seasons) && crop.seasons.length > 0 && !crop.seasons.includes(season);
+            const harvestYield = core && typeof core.getHarvestYield === 'function'
+                ? core.getHarvestYield(plot, crop, {
+                    now: Date.now(),
+                    offSeason: offSeason,
+                    offSeasonYieldMultiplier: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.offSeasonYieldMultiplier) || 0.75,
+                    fertilizerYieldBonus: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.fertilizerYieldBonus) || 1,
+                    pestYieldMultiplier: 0.7
+                })
+                : 1;
+
+            if (!garden.inventory[plot.cropId]) garden.inventory[plot.cropId] = 0;
+            garden.inventory[plot.cropId] += harvestYield;
+            let coinReward = 0;
+            for (let i = 0; i < harvestYield; i++) {
+                coinReward += awardHarvestCoins(plot.cropId);
+            }
 
             // Track total harvests for progressive plot unlocking
             if (typeof garden.totalHarvests !== 'number') garden.totalHarvests = 0;
-            garden.totalHarvests++;
+            garden.totalHarvests += harvestYield;
             if (typeof trackHarvest === 'function') trackHarvest();
             if (garden.totalHarvests === 1) {
                 addJournalEntry('🌱', `Harvested first ${crop.name}!`);
@@ -6084,8 +6748,8 @@
             }
 
             // Check if a new plot was unlocked
-            const prevUnlocked = getUnlockedPlotCount(garden.totalHarvests - 1);
-            const newUnlocked = getUnlockedPlotCount(garden.totalHarvests);
+            const prevUnlocked = getUnlockedPlotCount(garden.totalHarvests - harvestYield, garden.expansionTier || 0);
+            const newUnlocked = getUnlockedPlotCount(garden.totalHarvests, garden.expansionTier || 0);
             if (newUnlocked > prevUnlocked) {
                 showToast(`${crop.seedEmoji} Harvested a ${crop.name}! +${coinReward} coins. New garden plot unlocked!`, '#FF8C42');
             } else {
@@ -6099,8 +6763,14 @@
                 updateWellnessBar();
             }
 
-            // Clear the plot
-            garden.plots[plotIndex] = null;
+            const harvestOutcome = core && typeof core.afterHarvest === 'function'
+                ? core.afterHarvest(plot, crop, { now: Date.now() })
+                : { keepPlot: false };
+            if (!harvestOutcome.keepPlot) {
+                garden.plots[plotIndex] = null;
+            } else {
+                garden.plots[plotIndex] = plot;
+            }
 
             saveGame();
             if (gameState.currentRoom === 'garden') {
@@ -6347,16 +7017,31 @@
 
             let seedsHTML = '';
             for (const [id, crop] of Object.entries(GARDEN_CROPS)) {
+                if (!isSeedUnlocked(id)) {
+                    seedsHTML += `
+                        <div class="seed-option seed-option-locked" role="note" aria-label="Unknown seed. Discover by crossbreeding compatible crops.">
+                            <span class="seed-option-emoji" aria-hidden="true">❔</span>
+                            <span class="seed-option-name">Unknown Seed</span>
+                            <span class="seed-option-time">Discover via crossbreeding</span>
+                        </div>
+                    `;
+                    continue;
+                }
                 const isBonus = crop.seasonBonus.includes(season);
                 const bonusLabel = isBonus ? ' (in season!)' : '';
-                const growMult = SEASONS[season] ? SEASONS[season].gardenGrowthMultiplier : 1;
-                const effectiveTime = Math.max(1, Math.round(crop.growTime / growMult));
+                const inSeason = !Array.isArray(crop.seasons) || crop.seasons.length === 0 || crop.seasons.includes(season);
+                const firstMatureMinutes = Number.isFinite(crop.firstMatureMinutes) ? crop.firstMatureMinutes : ((crop.growTime || 3) * 3);
+                const displayTime = firstMatureMinutes >= 60
+                    ? `${Math.round((firstMatureMinutes / 60) * 10) / 10}h`
+                    : `${Math.round(firstMatureMinutes)}m`;
                 const ownedSeeds = getSeedInventoryCount(id);
+                const disabled = ownedSeeds <= 0 || !inSeason;
+                const seasonTag = inSeason ? '' : ' • Out of season';
                 seedsHTML += `
-                    <button class="seed-option" data-crop="${id}" aria-label="Plant ${crop.name}${bonusLabel}" ${ownedSeeds <= 0 ? 'disabled' : ''}>
+                    <button class="seed-option" data-crop="${id}" aria-label="Plant ${crop.name}${bonusLabel}${!inSeason ? ', out of season' : ''}" ${disabled ? 'disabled' : ''}>
                         <span class="seed-option-emoji" aria-hidden="true">${crop.seedEmoji}</span>
-                        <span class="seed-option-name">${crop.name}${isBonus ? ' ⭐' : ''}</span>
-                        <span class="seed-option-time">${effectiveTime} min · Seeds: ${ownedSeeds}</span>
+                        <span class="seed-option-name">${crop.name}${isBonus ? ' ⭐' : ''}${crop.plantType === 'fruitTree' ? ' 🌳' : ''}</span>
+                        <span class="seed-option-time">${displayTime} to first harvest · Seeds: ${ownedSeeds}${seasonTag}</span>
                     </button>
                 `;
             }
@@ -6414,6 +7099,151 @@
             if (firstSeed) firstSeed.focus();
         }
 
+        function openFlowerPicker(plotIndex) {
+            const existing = document.querySelector('.seed-picker-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+            const season = gameState.season || getCurrentSeason();
+            const overlay = document.createElement('div');
+            overlay.className = 'seed-picker-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'flower-picker-heading');
+
+            let optionsHTML = '';
+            Object.entries(FLOWER_GARDEN_PLANTS).forEach(([id, flower]) => {
+                const inSeason = !Array.isArray(flower.seasons) || flower.seasons.length === 0 || flower.seasons.includes(season);
+                const owned = getSeedInventoryCount(id);
+                const disabled = owned <= 0 || !inSeason;
+                const seasonTag = inSeason ? '' : ' · Out of season';
+                optionsHTML += `
+                    <button class="seed-option" data-flower-id="${id}" aria-label="Plant ${flower.name}${!inSeason ? ', out of season' : ''}" ${disabled ? 'disabled' : ''}>
+                        <span class="seed-option-emoji" aria-hidden="true">${flower.emoji}</span>
+                        <span class="seed-option-name">${flower.name}</span>
+                        <span class="seed-option-time">${Math.round(flower.firstMatureMinutes || 15)}m to bloom · Seeds: ${owned}${seasonTag}</span>
+                    </button>
+                `;
+            });
+
+            overlay.innerHTML = `
+                <div class="seed-picker">
+                    <h3 class="seed-picker-title" id="flower-picker-heading"><span aria-hidden="true">🌸</span> Flower Garden Planting</h3>
+                    <div class="seed-list">${optionsHTML}</div>
+                    <button class="seed-picker-close" id="flower-picker-close">Cancel</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeOverlay() {
+                popModalEscape(closeOverlay);
+                if (overlay.parentNode) overlay.remove();
+            }
+            overlay._closeOverlay = closeOverlay;
+            pushModalEscape(closeOverlay);
+
+            overlay.querySelectorAll('[data-flower-id]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const flowerId = btn.getAttribute('data-flower-id');
+                    closeOverlay();
+                    plantFlower(plotIndex, flowerId);
+                });
+            });
+            const closeBtn = overlay.querySelector('#flower-picker-close');
+            if (closeBtn) closeBtn.addEventListener('click', closeOverlay);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+            overlay.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab') return;
+                const focusable = overlay.querySelectorAll('button');
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (!first || !last) return;
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            });
+            const firstBtn = overlay.querySelector('[data-flower-id]:not([disabled])') || closeBtn;
+            if (firstBtn) firstBtn.focus();
+        }
+
+        function openMushroomPicker(plotIndex) {
+            const existing = document.querySelector('.seed-picker-overlay');
+            if (existing) {
+                if (existing._closeOverlay) popModalEscape(existing._closeOverlay);
+                existing.remove();
+            }
+            const season = gameState.season || getCurrentSeason();
+            const overlay = document.createElement('div');
+            overlay.className = 'seed-picker-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'mushroom-picker-heading');
+
+            let optionsHTML = '';
+            Object.entries(MUSHROOM_CAVE_PLANTS).forEach(([id, fungi]) => {
+                const inSeason = !Array.isArray(fungi.seasons) || fungi.seasons.length === 0 || fungi.seasons.includes(season);
+                const owned = getSeedInventoryCount(id);
+                const disabled = owned <= 0 || !inSeason;
+                const fertTag = fungi.requiresFertilizer ? ' · Needs fertilizer' : '';
+                const seasonTag = inSeason ? '' : ' · Out of season';
+                optionsHTML += `
+                    <button class="seed-option" data-fungi-id="${id}" aria-label="Plant ${fungi.name}${!inSeason ? ', out of season' : ''}" ${disabled ? 'disabled' : ''}>
+                        <span class="seed-option-emoji" aria-hidden="true">${fungi.emoji}</span>
+                        <span class="seed-option-name">${fungi.name}</span>
+                        <span class="seed-option-time">${Math.round(fungi.firstMatureMinutes || 40)}m growth · Spores: ${owned}${fertTag}${seasonTag}</span>
+                    </button>
+                `;
+            });
+
+            overlay.innerHTML = `
+                <div class="seed-picker">
+                    <h3 class="seed-picker-title" id="mushroom-picker-heading"><span aria-hidden="true">🍄</span> Mushroom Cave Planting</h3>
+                    <div class="seed-list">${optionsHTML}</div>
+                    <button class="seed-picker-close" id="mushroom-picker-close">Cancel</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function closeOverlay() {
+                popModalEscape(closeOverlay);
+                if (overlay.parentNode) overlay.remove();
+            }
+            overlay._closeOverlay = closeOverlay;
+            pushModalEscape(closeOverlay);
+
+            overlay.querySelectorAll('[data-fungi-id]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const fungiId = btn.getAttribute('data-fungi-id');
+                    closeOverlay();
+                    plantMushroom(plotIndex, fungiId);
+                });
+            });
+            const closeBtn = overlay.querySelector('#mushroom-picker-close');
+            if (closeBtn) closeBtn.addEventListener('click', closeOverlay);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+            overlay.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab') return;
+                const focusable = overlay.querySelectorAll('button');
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (!first || !last) return;
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            });
+            const firstBtn = overlay.querySelector('[data-fungi-id]:not([disabled])') || closeBtn;
+            if (firstBtn) firstBtn.focus();
+        }
+
         // Generate SVG illustrations for garden crop stages
         function generateCropSVG(cropId, stage) {
             const colors = {
@@ -6422,7 +7252,10 @@
                 strawberry: { stem: '#388E3C', fruit: '#E91E63', ground: '#8D6E63' },
                 pumpkin:    { stem: '#388E3C', fruit: '#FF9800', ground: '#8D6E63' },
                 sunflower:  { stem: '#388E3C', fruit: '#FFD600', ground: '#8D6E63' },
-                apple:      { stem: '#5D4037', fruit: '#F44336', ground: '#8D6E63' }
+                apple:      { stem: '#5D4037', fruit: '#F44336', ground: '#8D6E63' },
+                candyCorn:  { stem: '#8BC34A', fruit: '#FFCA28', ground: '#8D6E63' },
+                snowberry:  { stem: '#90CAF9', fruit: '#5C6BC0', ground: '#8D6E63' },
+                sunblush:   { stem: '#66BB6A', fruit: '#FFB74D', ground: '#8D6E63' }
             };
             const c = colors[cropId] || colors.carrot;
 
@@ -6459,7 +7292,10 @@
                     strawberry: `<path d="M20 14 Q14 20 16 26 Q20 30 24 26 Q26 20 20 14Z" fill="${c.fruit}"/><ellipse cx="20" cy="14" rx="4" ry="2" fill="${c.stem}"/><circle cx="18" cy="22" r="0.8" fill="#FFD600"/><circle cx="22" cy="24" r="0.8" fill="#FFD600"/><circle cx="20" cy="20" r="0.8" fill="#FFD600"/>`,
                     pumpkin: `<ellipse cx="20" cy="24" rx="9" ry="7" fill="${c.fruit}"/><path d="M20 17 Q22 14 20 12" stroke="${c.stem}" stroke-width="2" fill="none"/><ellipse cx="20" cy="24" rx="3" ry="7" fill="rgba(0,0,0,0.08)"/>`,
                     sunflower: `<circle cx="20" cy="18" r="5" fill="#5D4037"/><circle cx="14" cy="16" r="4" fill="${c.fruit}"/><circle cx="26" cy="16" r="4" fill="${c.fruit}"/><circle cx="14" cy="22" r="4" fill="${c.fruit}"/><circle cx="26" cy="22" r="4" fill="${c.fruit}"/><circle cx="20" cy="13" r="4" fill="${c.fruit}"/><circle cx="20" cy="24" r="4" fill="${c.fruit}"/>`,
-                    apple: `<circle cx="20" cy="20" r="7" fill="${c.fruit}"/><line x1="20" y1="13" x2="20" y2="10" stroke="${c.stem}" stroke-width="2" stroke-linecap="round"/><ellipse cx="22" cy="12" rx="3" ry="2" fill="${c.stem}"/>`
+                    apple: `<circle cx="20" cy="20" r="7" fill="${c.fruit}"/><line x1="20" y1="13" x2="20" y2="10" stroke="${c.stem}" stroke-width="2" stroke-linecap="round"/><ellipse cx="22" cy="12" rx="3" ry="2" fill="${c.stem}"/>`,
+                    candyCorn: `<path d="M20 14 C13 17 13 26 20 29 C27 26 27 17 20 14Z" fill="${c.fruit}"/><path d="M20 18 C17 20 17 24 20 26 C23 24 23 20 20 18Z" fill="#FF7043"/><path d="M20 22 C19 23 19 24 20 25 C21 24 21 23 20 22Z" fill="#FFF8E1"/>`,
+                    snowberry: `<circle cx="16" cy="21" r="4" fill="${c.fruit}"/><circle cx="22" cy="24" r="4" fill="${c.fruit}"/><circle cx="24" cy="18" r="3.5" fill="#9FA8DA"/>`,
+                    sunblush: `<ellipse cx="20" cy="22" rx="8" ry="6" fill="${c.fruit}"/><path d="M13 22 Q20 15 27 22" stroke="#F57C00" stroke-width="1.6" fill="none"/>`
                 };
                 const fruit = fruitShapes[cropId] || fruitShapes.carrot;
                 return `<svg viewBox="0 0 40 40" class="garden-plot-svg" aria-hidden="true">
@@ -6474,13 +7310,28 @@
             const gardenSection = document.getElementById('garden-section');
             if (!gardenSection) return;
 
-            const garden = gameState.garden;
+            const now = Date.now();
+            const garden = ensureGardenSystemsState();
+            advanceGardenSystems(gameState, { now: now, silent: true });
             const season = gameState.season || getCurrentSeason();
             const seasonData = SEASONS[season];
+            const core = getGardenCore();
+            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0, garden.expansionTier || 0);
+
+            function findNextSprinklerAt(plotIndex) {
+                let nextAt = null;
+                garden.sprinklers.forEach((sprinkler) => {
+                    const radius = Number.isFinite(sprinkler.radius) ? sprinkler.radius : ((GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.sprinklerRadius) || 2);
+                    const center = Number.isFinite(sprinkler.plotIndex) ? sprinkler.plotIndex : 0;
+                    if (Math.abs(center - plotIndex) > radius) return;
+                    if (!Number.isFinite(sprinkler.nextWaterAt)) return;
+                    if (!nextAt || sprinkler.nextWaterAt < nextAt) nextAt = sprinkler.nextWaterAt;
+                });
+                return nextAt;
+            }
 
             // Render plots
             let plotsHTML = '';
-            const unlockedPlots = getUnlockedPlotCount(garden.totalHarvests || 0);
             for (let i = 0; i < MAX_GARDEN_PLOTS; i++) {
                 const plot = garden.plots[i] || null;
                 const isLocked = i >= unlockedPlots;
@@ -6513,26 +7364,42 @@
                         `;
                         continue;
                     }
-                    const stageEmoji = crop.stages[plot.stage];
                     const cropSVG = generateCropSVG(plot.cropId, plot.stage);
-                    const isReady = plot.stage >= 3;
-                    const growMult = seasonData ? seasonData.gardenGrowthMultiplier : 1;
-                    const effectiveGrowTime = Math.max(1, Math.round(crop.growTime / growMult));
-                    const progress = isReady ? 100 : Math.min(100, Math.round((plot.growTicks / (effectiveGrowTime * 3)) * 100));
-                    const statusLabel = isReady ? 'Ready to harvest!' : `Growing... ${progress}%${plot.watered ? ' 💧' : ''}`;
+                    const firstMatureMs = core && typeof core.getPlantFirstMatureMs === 'function'
+                        ? core.getPlantFirstMatureMs(crop)
+                        : ((crop.growTime || 3) * 3 * 60000);
+                    const progressMs = Number.isFinite(plot.growthProgressMs) ? plot.growthProgressMs : ((Number(plot.growTicks) || 0) * 60000);
+                    const matured = !!plot.firstMatureAt || progressMs >= firstMatureMs;
+                    const isFruitTree = crop.plantType === 'fruitTree';
+                    const isReady = isFruitTree ? !!plot.harvestReady : plot.stage >= 3;
+                    const progress = isReady ? 100 : Math.min(100, Math.round((progressMs / firstMatureMs) * 100));
+                    const inSeason = !Array.isArray(crop.seasons) || crop.seasons.length === 0 || crop.seasons.includes(season);
+                    const offSeasonTag = inSeason ? '' : ' · Out of season';
+                    let timerLine = '';
+                    if (isFruitTree && matured) {
+                        const nextHarvestMs = Math.max(0, (plot.nextHarvestAt || now) - now);
+                        timerLine = isReady ? 'Harvest ready now' : getFriendlyGardenTime(nextHarvestMs);
+                    } else {
+                        const remainingMs = Math.max(0, firstMatureMs - progressMs);
+                        timerLine = isReady ? 'Harvest ready now' : getFriendlyGardenTime(remainingMs);
+                    }
+                    const scarecrowCovered = getScarecrowCoverageForPlot(i);
+                    const pestRisk = core && typeof core.computePestRisk === 'function'
+                        ? core.computePestRisk(crop, scarecrowCovered, { scarecrowReduction: (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.scarecrowRiskReduction) || 0.65 })
+                        : (crop.pestRiskPerDay || 0.08);
+                    const pestLabel = Number.isFinite(plot.pestUntil) && plot.pestUntil > now
+                        ? 'Pests active'
+                        : `Pest risk ${(pestRisk * 100).toFixed(1)}%/day${scarecrowCovered ? ' (covered)' : ''}`;
+                    const sprinklerCoverage = getSprinklerCoverageForPlot(i);
+                    const nextSprinklerAt = sprinklerCoverage ? findNextSprinklerAt(i) : null;
+                    const sprinklerLine = sprinklerCoverage
+                        ? `Auto-water ${nextSprinklerAt ? `(${getFriendlyGardenTime(nextSprinklerAt - now).replace('Ready in ', 'in ')})` : '(active)'}`
+                        : 'Manual water only';
+                    const statusLabel = isReady ? 'Ready to harvest!' : `Growing... ${progress}%${offSeasonTag}`;
                     const plotClass = isReady ? 'ready' : 'growing';
-
-                    // Calculate remaining time for countdown
-                    const totalTicksNeeded = effectiveGrowTime * 3;
-                    const ticksRemaining = Math.max(0, totalTicksNeeded - plot.growTicks);
-                    // Watering speeds up the next tick by 1.5x (water dries after one tick)
-                    const effectiveTickRate = plot.watered ? 1.5 : 1;
-                    const minsRemaining = isReady ? 0 : Math.ceil(ticksRemaining / effectiveTickRate);
-                    const timerText = isReady ? '' : (minsRemaining > 0 ? `~${minsRemaining}m left` : 'Almost...');
-
-                    // Simplified: emoji + progress bar + one status line
-                    const statusLine = isReady ? 'Harvest!' : `${progress}%${plot.watered ? ' 💧' : ''}`;
-                    const plotActionLabel = isReady ? `Harvest ${crop.name}` : (plot.watered ? `${crop.name} growing` : `Water ${crop.name}`);
+                    const statusLine = isReady ? 'Harvest!' : `${progress}%`;
+                    const wateredNow = Number.isFinite(plot.wateredUntil) && plot.wateredUntil > now;
+                    const plotActionLabel = isReady ? `Harvest ${crop.name}` : (wateredNow ? `${crop.name} growing` : `Water ${crop.name}`);
                     plotsHTML += `
                         <div class="garden-plot ${plotClass}" data-plot="${i}" role="group"
                              aria-label="Plot ${i + 1}: ${crop.name} - ${statusLabel}">
@@ -6540,8 +7407,12 @@
                                 ${cropSVG}
                                 ${!isReady ? `<div class="garden-plot-progress" role="progressbar" aria-label="${crop.name} growth" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"><div class="garden-plot-progress-fill" style="width:${progress}%"></div></div>` : ''}
                                 <span class="garden-plot-status">${statusLine}</span>
+                                <span class="garden-plot-status">${escapeHTML(timerLine)}</span>
+                                <span class="garden-plot-status">${escapeHTML(pestLabel)}</span>
+                                <span class="garden-plot-status">${escapeHTML(sprinklerLine)}</span>
                             </button>
                             ${!isReady ? `<button class="garden-plot-remove" data-remove-plot="${i}" aria-label="Remove ${crop.name}"><span aria-hidden="true">✕</span></button>` : ''}
+                            ${!isReady ? `<button class="garden-plot-remove" style="top:26px;" data-fertilize-plot="${i}" aria-label="Apply fertilizer to ${crop.name}"><span aria-hidden="true">🧪</span></button>` : ''}
                         </div>
                     `;
                 }
@@ -6556,6 +7427,8 @@
                     const crop = GARDEN_CROPS[cropId];
                     if (crop) {
                         itemsHTML += `<button class="garden-inventory-item" data-feed-crop="${cropId}" aria-label="Feed ${crop.name} to pet (${garden.inventory[cropId]} left)">${crop.seedEmoji} ${crop.name} x${garden.inventory[cropId]}</button>`;
+                    } else {
+                        itemsHTML += `<span class="garden-inventory-item">${escapeHTML(cropId)} x${garden.inventory[cropId]}</span>`;
                     }
                 });
                 inventoryHTML = `
@@ -6566,11 +7439,153 @@
                 `;
             }
 
+            // Flower garden section.
+            let flowerPlotsHTML = '';
+            garden.flowerGarden.plots.forEach((plot, idx) => {
+                if (!plot) {
+                    flowerPlotsHTML += `
+                        <div class="garden-plot empty" data-flower-plot="${idx}" role="button" tabindex="0" aria-label="Flower plot ${idx + 1}: empty. Press Enter to plant flower.">
+                            <span class="garden-plot-emoji" aria-hidden="true">🌸</span>
+                            <span class="garden-plot-label">Plant Flower</span>
+                        </div>
+                    `;
+                    return;
+                }
+                const flower = FLOWER_GARDEN_PLANTS[plot.cropId];
+                if (!flower) return;
+                const firstMatureMs = core && typeof core.getPlantFirstMatureMs === 'function'
+                    ? core.getPlantFirstMatureMs(flower)
+                    : ((flower.firstMatureMinutes || 15) * 60000);
+                const progressMs = Number.isFinite(plot.growthProgressMs) ? plot.growthProgressMs : 0;
+                const progress = plot.stage >= 3 ? 100 : Math.min(100, Math.round((progressMs / firstMatureMs) * 100));
+                const timerLine = plot.stage >= 3 ? 'Blooming' : getFriendlyGardenTime(firstMatureMs - progressMs);
+                flowerPlotsHTML += `
+                    <div class="garden-plot ${plot.stage >= 3 ? 'ready' : 'growing'}" role="group" aria-label="Flower plot ${idx + 1}: ${flower.name}. ${timerLine}">
+                        <button class="garden-plot-action" aria-label="${plot.stage >= 3 ? `Trim ${flower.name}` : `${flower.name} growing`}" data-trim-flower="${idx}">
+                            <span class="garden-plot-emoji" aria-hidden="true">${flower.emoji}</span>
+                            <span class="garden-plot-status">${escapeHTML(flower.name)}</span>
+                            <span class="garden-plot-status">${escapeHTML(timerLine)}</span>
+                            <span class="garden-plot-status">${plot.stage >= 3 ? `Mood +${Math.round((flower.moodPerMinute || 0) * 1440)}/day` : `${progress}%`}</span>
+                        </button>
+                    </div>
+                `;
+            });
+
+            const matureFlowerIds = garden.flowerGarden.plots.filter((plot) => plot && plot.stage >= 3).map((plot) => plot.cropId);
+            const moodInfo = core && typeof core.computeFlowerMoodBonus === 'function'
+                ? core.computeFlowerMoodBonus(matureFlowerIds, FLOWER_GARDEN_PLANTS, (GARDEN_SYSTEM_BALANCE && GARDEN_SYSTEM_BALANCE.flowerMood) || {})
+                : { perDay: 0 };
+
+            // Compost UI.
+            const compost = garden.compostBin;
+            const compostProgress = compost.active
+                ? Math.max(0, Math.min(100, Math.round(((now - compost.active.startedAt) / Math.max(1, compost.active.completeAt - compost.active.startedAt)) * 100)))
+                : 0;
+            const compostableItems = Object.entries(garden.inventory).filter(([id, count]) => count > 0 && id !== 'fertilizer');
+            const compostButtons = compostableItems.map(([id, count]) => {
+                const emoji = (GARDEN_CROPS[id] && GARDEN_CROPS[id].seedEmoji) || (FLOWER_GARDEN_PLANTS[id] && FLOWER_GARDEN_PLANTS[id].emoji) || '♻️';
+                return `<button class="garden-inventory-item" data-compost-item="${id}" aria-label="Add ${id} to compost">${emoji} ${escapeHTML(id)} x${count}</button>`;
+            }).join('');
+
+            // Beehive UI.
+            const beehive = garden.beehive;
+            const beehiveCap = Number.isFinite(beehive.capacity) ? beehive.capacity : ((((GARDEN_SYSTEM_BALANCE || {}).beehive || {}).capacity) || 20);
+            const beePercent = beehiveCap > 0 ? Math.round((Math.max(0, beehive.storedHoney || 0) / beehiveCap) * 100) : 0;
+
+            // Mushroom cave UI.
+            let mushroomHTML = '';
+            garden.mushroomCave.plots.forEach((plot, idx) => {
+                if (!plot) {
+                    mushroomHTML += `
+                        <div class="garden-plot empty" data-mushroom-plot="${idx}" role="button" tabindex="0" aria-label="Mushroom cave plot ${idx + 1}: empty. Press Enter to plant fungus.">
+                            <span class="garden-plot-emoji" aria-hidden="true">🍄</span>
+                            <span class="garden-plot-label">Plant Fungus</span>
+                        </div>
+                    `;
+                    return;
+                }
+                const fungi = MUSHROOM_CAVE_PLANTS[plot.cropId];
+                if (!fungi) return;
+                const firstMatureMs = core && typeof core.getPlantFirstMatureMs === 'function'
+                    ? core.getPlantFirstMatureMs(fungi)
+                    : ((fungi.firstMatureMinutes || 40) * 60000);
+                const progressMs = Number.isFinite(plot.growthProgressMs) ? plot.growthProgressMs : 0;
+                const progress = plot.stage >= 3 ? 100 : Math.min(100, Math.round((progressMs / firstMatureMs) * 100));
+                const timerLine = plot.stage >= 3 ? 'Ready' : getFriendlyGardenTime(firstMatureMs - progressMs);
+                mushroomHTML += `
+                    <div class="garden-plot ${plot.stage >= 3 ? 'ready' : 'growing'}" role="group" aria-label="Mushroom plot ${idx + 1}: ${fungi.name}. ${timerLine}">
+                        <button class="garden-plot-action" data-harvest-mushroom="${idx}" aria-label="${plot.stage >= 3 ? `Harvest ${fungi.name}` : `${fungi.name} growing`}">
+                            <span class="garden-plot-emoji" aria-hidden="true">${fungi.emoji}</span>
+                            <span class="garden-plot-status">${escapeHTML(fungi.name)}</span>
+                            <span class="garden-plot-status">${plot.stage >= 3 ? 'Harvest' : `${progress}%`}</span>
+                            <span class="garden-plot-status">${escapeHTML(timerLine)}</span>
+                        </button>
+                        ${plot.stage < 3 ? `<button class="garden-plot-remove" data-fertilize-mushroom="${idx}" aria-label="Apply fertilizer to ${fungi.name}"><span aria-hidden="true">🧪</span></button>` : ''}
+                    </div>
+                `;
+            });
+
+            const expansionTier = garden.expansionTier || 0;
+            const nextExpansion = GARDEN_EXPANSION_TIERS[expansionTier] || null;
+            const expansionHint = nextExpansion
+                ? `${nextExpansion.name}: ${nextExpansion.additionalPlots} plots for ${nextExpansion.costCoins} coins (needs ${nextExpansion.requiredHarvests} harvests)`
+                : 'All expansions unlocked';
+
+            const discoveries = Object.keys(garden.crossbreeding.discoveries || {}).map((cropId) => GARDEN_CROPS[cropId]).filter(Boolean);
+            const discoveryHintHTML = discoveries.length > 0
+                ? discoveries.map((crop) => `<span class="garden-inventory-item">${crop.seedEmoji} ${escapeHTML(crop.name)} discovered</span>`).join('')
+                : '<span class="garden-inventory-item">Unknown combinations await discovery.</span>';
+            const debugCrossLogs = Array.isArray(garden.crossbreeding.logs) ? garden.crossbreeding.logs.slice(0, 8) : [];
+            const crossLogHTML = (isGardenDebugEnabled() && debugCrossLogs.length > 0)
+                ? `<details><summary>Debug crossbreeding logs</summary><div class="garden-plot-status">${debugCrossLogs.map((entry) => escapeHTML(entry)).join('<br>')}</div></details>`
+                : '';
+
             gardenSection.innerHTML = `
                 <div class="garden-title"><span aria-hidden="true">🌱 ${seasonData ? seasonData.icon : ''}</span> My Garden</div>
                 <div class="garden-subtitle" style="font-size:0.82rem;color:#6d4c41;margin-bottom:8px;">Seed stock: ${Object.entries((gameState.economy && gameState.economy.inventory && gameState.economy.inventory.seeds) || {}).filter(([, c]) => c > 0).map(([cropId, count]) => `${(GARDEN_CROPS[cropId] ? GARDEN_CROPS[cropId].seedEmoji : '🌱')}x${count}`).join(' · ') || 'None'}</div>
                 <div class="garden-plots">${plotsHTML}</div>
                 ${inventoryHTML}
+                <div class="garden-inventory">
+                    <strong>🏡 Expansion:</strong> ${escapeHTML(expansionHint)}
+                    <div class="garden-inventory-items">
+                        <button class="garden-inventory-item" data-expand-garden aria-label="Unlock next garden expansion tier">Unlock Expansion</button>
+                        <button class="garden-inventory-item" data-place-scarecrow aria-label="Place scarecrow">Place Scarecrow</button>
+                        <button class="garden-inventory-item" data-place-sprinkler aria-label="Place sprinkler">Place Sprinkler</button>
+                    </div>
+                </div>
+                <div class="garden-inventory">
+                    <strong>🌸 Flower Garden bonus:</strong> +${Math.round(moodInfo.perDay || 0)} mood/day
+                    <div class="garden-plots">${flowerPlotsHTML}</div>
+                </div>
+                <div class="garden-inventory">
+                    <strong>♻️ Compost Bin</strong>
+                    <div class="garden-plot-status">${compost.active ? `Processing ${escapeHTML(compost.active.itemId)} (${compostProgress}%)` : 'Idle'}</div>
+                    <div class="garden-plot-status">${compost.queue.length} item${compost.queue.length === 1 ? '' : 's'} queued • Ready fertilizer: ${compost.readyFertilizer || 0}</div>
+                    <div class="garden-inventory-items">
+                        ${compostButtons || '<span class="garden-inventory-item">No compostable items</span>'}
+                        <button class="garden-inventory-item" data-collect-compost aria-label="Collect fertilizer">Collect Fertilizer</button>
+                    </div>
+                </div>
+                <div class="garden-inventory">
+                    <strong>🧬 Crossbreeding</strong>
+                    <div class="garden-plot-status">Plant compatible crops side by side to discover hidden seeds.</div>
+                    <div class="garden-inventory-items">${discoveryHintHTML}</div>
+                    ${crossLogHTML}
+                </div>
+                <div class="garden-inventory">
+                    <strong>🐝 Beehive</strong>
+                    <div class="garden-plot-status">${beehive.placed ? `Honey ${beehive.storedHoney || 0}/${beehiveCap}` : 'No beehive placed'}</div>
+                    ${beehive.placed ? `<div class="garden-plot-progress" role="progressbar" aria-label="Beehive storage" aria-valuenow="${beePercent}" aria-valuemin="0" aria-valuemax="100"><div class="garden-plot-progress-fill" style="width:${beePercent}%"></div></div>` : ''}
+                    <div class="garden-inventory-items">
+                        <button class="garden-inventory-item" data-place-beehive aria-label="Place beehive">${beehive.placed ? 'Beehive placed' : 'Place Beehive'}</button>
+                        <button class="garden-inventory-item" data-collect-honey aria-label="Collect honey">Collect Honey</button>
+                    </div>
+                </div>
+                <div class="garden-inventory">
+                    <strong>🕳️ Mushroom Cave</strong>
+                    <div class="garden-plot-status">Shaded, damp plots. Rare fungi grow slowly but sell high.</div>
+                    <div class="garden-plots">${mushroomHTML}</div>
+                </div>
             `;
 
             // Add event listeners to empty plots (role="button" divs)
@@ -6597,7 +7612,7 @@
                     if (!plot) return;
                     if (plot.stage >= 3) {
                         harvestPlot(plotIdx);
-                    } else if (!plot.watered) {
+                    } else if (!Number.isFinite(plot.wateredUntil) || plot.wateredUntil <= Date.now()) {
                         waterPlot(plotIdx);
                     } else {
                         const crop = GARDEN_CROPS[plot.cropId];
@@ -6615,11 +7630,93 @@
                 });
             });
 
+            gardenSection.querySelectorAll('[data-fertilize-plot]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const plotIdx = parseInt(btn.getAttribute('data-fertilize-plot'));
+                    if (Number.isInteger(plotIdx)) applyFertilizerToGardenPlot(plotIdx, 'garden');
+                });
+            });
+
             // Add event listeners to inventory items (feed pet)
             gardenSection.querySelectorAll('[data-feed-crop]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const cropId = btn.getAttribute('data-feed-crop');
                     feedFromGarden(cropId);
+                });
+            });
+
+            gardenSection.querySelectorAll('[data-expand-garden]').forEach((btn) => {
+                btn.addEventListener('click', () => unlockNextGardenExpansionTier());
+            });
+            gardenSection.querySelectorAll('[data-place-scarecrow]').forEach((btn) => {
+                btn.addEventListener('click', () => placeScarecrow());
+            });
+            gardenSection.querySelectorAll('[data-place-sprinkler]').forEach((btn) => {
+                btn.addEventListener('click', () => placeSprinkler());
+            });
+            gardenSection.querySelectorAll('[data-place-beehive]').forEach((btn) => {
+                btn.addEventListener('click', () => placeBeehive());
+            });
+            gardenSection.querySelectorAll('[data-collect-honey]').forEach((btn) => {
+                btn.addEventListener('click', () => collectBeehiveOutput());
+            });
+            gardenSection.querySelectorAll('[data-compost-item]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const itemId = btn.getAttribute('data-compost-item');
+                    const result = addInventoryItemToCompost(itemId);
+                    if (!result.ok) {
+                        if (result.reason === 'queue-full') showToast('♻️ Compost queue is full.', '#FFA726');
+                        else if (result.reason === 'missing-item') showToast('♻️ Item not available.', '#FFA726');
+                    } else {
+                        showToast(`♻️ Added ${itemId} to compost.`, '#66BB6A');
+                        renderGardenUI();
+                    }
+                });
+            });
+            gardenSection.querySelectorAll('[data-collect-compost]').forEach((btn) => {
+                btn.addEventListener('click', () => collectCompostOutput());
+            });
+
+            gardenSection.querySelectorAll('[data-flower-plot]').forEach((plotEl) => {
+                const plotIdx = parseInt(plotEl.getAttribute('data-flower-plot'));
+                if (!Number.isInteger(plotIdx)) return;
+                plotEl.addEventListener('click', () => openFlowerPicker(plotIdx));
+                plotEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openFlowerPicker(plotIdx);
+                    }
+                });
+            });
+            gardenSection.querySelectorAll('[data-trim-flower]').forEach((btn) => {
+                const plotIdx = parseInt(btn.getAttribute('data-trim-flower'));
+                if (!Number.isInteger(plotIdx)) return;
+                btn.addEventListener('click', () => trimFlower(plotIdx));
+            });
+
+            gardenSection.querySelectorAll('[data-mushroom-plot]').forEach((plotEl) => {
+                const plotIdx = parseInt(plotEl.getAttribute('data-mushroom-plot'));
+                if (!Number.isInteger(plotIdx)) return;
+                plotEl.addEventListener('click', () => openMushroomPicker(plotIdx));
+                plotEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openMushroomPicker(plotIdx);
+                    }
+                });
+            });
+            gardenSection.querySelectorAll('[data-harvest-mushroom]').forEach((btn) => {
+                const plotIdx = parseInt(btn.getAttribute('data-harvest-mushroom'));
+                if (!Number.isInteger(plotIdx)) return;
+                btn.addEventListener('click', () => harvestMushroom(plotIdx));
+            });
+            gardenSection.querySelectorAll('[data-fertilize-mushroom]').forEach((btn) => {
+                const plotIdx = parseInt(btn.getAttribute('data-fertilize-mushroom'));
+                if (!Number.isInteger(plotIdx)) return;
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    applyFertilizerToGardenPlot(plotIdx, 'mushroomCave');
                 });
             });
         }
@@ -7325,7 +8422,7 @@
 
             // Ensure garden state exists
             if (!gameState.garden || typeof gameState.garden !== 'object') {
-                gameState.garden = { plots: [], inventory: {}, lastGrowTick: Date.now(), totalHarvests: 0 };
+                gameState.garden = createDefaultGardenState(Date.now());
             }
 
             // Ensure adultsRaised exists
@@ -7336,6 +8433,7 @@
             ensureExplorationState();
             ensureEconomyState();
             ensureMiniGameExpansionState();
+            ensureGardenSystemsState();
             ensureReminderState();
             ensureMasteryState();
             updateExplorationUnlocks(true);
