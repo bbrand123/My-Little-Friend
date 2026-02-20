@@ -11,6 +11,42 @@
             return ageInMs / (1000 * 60 * 60); // Convert to hours
         }
 
+        function getNeglectRuntimeState(pet) {
+            if (!pet || typeof pet !== 'object') return null;
+            if (!pet._neglectRuntime || typeof pet._neglectRuntime !== 'object') {
+                Object.defineProperty(pet, '_neglectRuntime', {
+                    value: { progress: 0 },
+                    enumerable: false,
+                    writable: true,
+                    configurable: true
+                });
+            }
+            return pet._neglectRuntime;
+        }
+
+        function applyDeterministicNeglectCount(pet, stage, stageBalance, isNeglected) {
+            const runtime = getNeglectRuntimeState(pet);
+            if (!runtime) return;
+            const decayTuning = getDecayTuning();
+            const neglectCfg = ((decayTuning.neglectCount || {})[stage]) || {};
+            const gainScale = Math.max(0, Number(neglectCfg.gainScale) || 1);
+            const recoveryScale = Math.max(0, Number(neglectCfg.recoveryScale) || 1);
+            const gainAmount = Math.max(0, (Number(stageBalance.neglectGainMultiplier) || 1) * gainScale);
+            const recoveryAmount = Math.max(0, (Number(stageBalance.neglectRecoveryMultiplier) || 1) * recoveryScale);
+            runtime.progress = (Number(runtime.progress) || 0) + (isNeglected ? gainAmount : -recoveryAmount);
+            if (typeof pet.neglectCount !== 'number' || !Number.isFinite(pet.neglectCount)) pet.neglectCount = 0;
+
+            while (runtime.progress >= 1) {
+                pet.neglectCount += 1;
+                runtime.progress -= 1;
+            }
+            while (runtime.progress <= -1 && pet.neglectCount > 0) {
+                pet.neglectCount -= 1;
+                runtime.progress += 1;
+            }
+            pet.neglectCount = Math.max(0, Math.floor(pet.neglectCount));
+        }
+
         function updateCareHistory(pet) {
             if (!pet) return null;
             pet.hunger = normalizePetNeedValue(pet.hunger, 70);
@@ -57,12 +93,7 @@
             const isNeglected = pet.hunger < neglectThreshold || pet.cleanliness < neglectThreshold || pet.happiness < neglectThreshold || pet.energy < neglectThreshold;
             if (_neglectTickCounters[petId] >= 10) {
                 _neglectTickCounters[petId] = 0;
-                if (isNeglected) {
-                    pet.neglectCount = adjustNeglectCount(pet.neglectCount, stageBalance.neglectGainMultiplier || 1, 'up');
-                } else if ((pet.neglectCount || 0) > 0) {
-                    // Later stages recover neglect more slowly.
-                    pet.neglectCount = adjustNeglectCount(pet.neglectCount, stageBalance.neglectRecoveryMultiplier || 1, 'down');
-                }
+                applyDeterministicNeglectCount(pet, stage, stageBalance, isNeglected);
             }
 
             // Calculate overall care quality
@@ -215,4 +246,3 @@
                 default: return '☀️';
             }
         }
-

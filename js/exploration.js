@@ -87,6 +87,30 @@
             return ex;
         }
 
+        function getExplorationStageKey(pet) {
+            const stage = pet && pet.growthStage;
+            return GROWTH_STAGES[stage] ? stage : 'baby';
+        }
+
+        function getExpeditionCadence(stageKey, completedCount) {
+            const stage = GROWTH_STAGES[stageKey] ? stageKey : 'baby';
+            const tuning = getAsyncLoopTuning();
+            const stageCfg = ((tuning.expeditionStage || {})[stage]) || {};
+            let durationMultiplier = Math.max(0.6, Number(stageCfg.durationMultiplier) || 1);
+            const lootMultiplier = Math.max(0.75, Number(stageCfg.lootMultiplier) || 1);
+            const energyCostMultiplier = Math.max(0.8, Number(stageCfg.energyCostMultiplier) || 1);
+            const happinessMultiplier = Math.max(0.8, Number(stageCfg.happinessMultiplier) || 1);
+            const progression = Array.isArray(tuning.expeditionProgressionSlowdown) ? tuning.expeditionProgressionSlowdown : [];
+            const done = Math.max(0, Number(completedCount) || 0);
+            progression.forEach((step) => {
+                const threshold = Math.max(0, Number(step.completedAtLeast) || 0);
+                if (done >= threshold) {
+                    durationMultiplier *= Math.max(1, Number(step.durationMultiplier) || 1);
+                }
+            });
+            return { durationMultiplier, lootMultiplier, energyCostMultiplier, happinessMultiplier };
+        }
+
         function isFishTypePetType(type) {
             if (!type) return false;
             if (type === 'fish') return true;
@@ -307,6 +331,12 @@
             const duration = EXPEDITION_DURATIONS.find((d) => d.id === durationId) || EXPEDITION_DURATIONS[0];
             const pet = gameState.pet || (gameState.pets && gameState.pets[gameState.activePetIndex]);
             if (!pet) return { ok: false, reason: 'no-pet' };
+            const stage = getExplorationStageKey(pet);
+            const cadence = getExpeditionCadence(stage, ex.stats && ex.stats.expeditionsCompleted);
+            const roomIdAtStart = (typeof gameState.currentRoom === 'string' && ROOMS[gameState.currentRoom]) ? gameState.currentRoom : 'bedroom';
+            const roomYieldMultiplier = (typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('exploration', roomIdAtStart) : 1;
+            const adjustedDurationMs = Math.max(20000, Math.round((Number(duration.ms) || 45000) * cadence.durationMultiplier));
+            const adjustedLootMultiplier = Math.max(0.6, (Number(duration.lootMultiplier) || 1) * cadence.lootMultiplier * roomYieldMultiplier);
 
             const now = Date.now();
             ex.expedition = {
@@ -314,12 +344,21 @@
                 petId: pet.id,
                 petName: pet.name || ((typeof getAllPetTypeData === 'function' && getAllPetTypeData(pet.type) ? getAllPetTypeData(pet.type).name : 'Pet')),
                 durationId: duration.id,
+                durationMs: adjustedDurationMs,
                 startedAt: now,
-                endAt: now + duration.ms,
-                lootMultiplier: duration.lootMultiplier
+                endAt: now + adjustedDurationMs,
+                lootMultiplier: adjustedLootMultiplier,
+                stageAtStart: stage,
+                roomIdAtStart,
+                roomYieldMultiplier,
+                cadence
             };
             saveGame();
-            return { ok: true, expedition: ex.expedition, biome: EXPLORATION_BIOMES[biomeId], duration };
+            const adjustedDuration = {
+                ...duration,
+                ms: adjustedDurationMs
+            };
+            return { ok: true, expedition: ex.expedition, biome: EXPLORATION_BIOMES[biomeId], duration: adjustedDuration, adjustedDurationMs };
         }
 
         function resolveExpeditionIfReady(forceResolve, silent) {
@@ -342,8 +381,12 @@
 
             const targetPet = (gameState.pets || []).find((p) => p && p.id === expedition.petId) || gameState.pet;
             if (targetPet) {
-                targetPet.happiness = clamp(targetPet.happiness + GAME_BALANCE.petCare.expeditionHappinessGain, 0, 100);
-                targetPet.energy = clamp(targetPet.energy - GAME_BALANCE.petCare.expeditionEnergyCost, 0, 100);
+                const stage = getExplorationStageKey(targetPet);
+                const cadence = expedition.cadence || getExpeditionCadence(stage, ex.stats.expeditionsCompleted);
+                const happinessGain = Math.max(1, Math.round(GAME_BALANCE.petCare.expeditionHappinessGain * Math.max(0.7, Number(cadence.happinessMultiplier) || 1)));
+                const energyCost = Math.max(1, Math.round(GAME_BALANCE.petCare.expeditionEnergyCost * Math.max(0.7, Number(cadence.energyCostMultiplier) || 1)));
+                targetPet.happiness = clamp(targetPet.happiness + happinessGain, 0, 100);
+                targetPet.energy = clamp(targetPet.energy - energyCost, 0, 100);
             }
 
             let npc = null;
@@ -357,6 +400,7 @@
                 biomeId: expedition.biomeId,
                 biomeName: biome.name,
                 petName: expedition.petName || 'Pet',
+                durationMs: expedition.durationMs || duration.ms,
                 rewards: rewards.map((r) => ({ id: r.id, count: r.count })),
                 npcId: npc ? npc.id : null
             };
@@ -376,7 +420,9 @@
 
             if (!silent) {
                 const rewardPreview = rewards.slice(0, 3).map((r) => `${r.data.emoji}x${r.count}`).join(' ');
-                showToast(`🧭 Expedition complete in ${biome.icon} ${biome.name}! ${rewardPreview}`, '#4ECDC4');
+                const roomYieldPct = Math.round(((Number(expedition.roomYieldMultiplier) || 1) - 1) * 100);
+                const roomYieldText = roomYieldPct > 0 ? ` (+${roomYieldPct}% room yield)` : '';
+                showToast(`🧭 Expedition complete in ${biome.icon} ${biome.name}${roomYieldText}! ${rewardPreview}`, '#4ECDC4');
                 // Show encounter narrative for this biome
                 if (typeof getExplorationNarrative === 'function') {
                     const narrative = getExplorationNarrative(expedition.biomeId, expedition.petName || 'Your pet');
@@ -409,12 +455,15 @@
             const foundTreasure = Math.random() < 0.48;
             const action = getTreasureActionLabel(roomId);
             const lootPool = ROOM_TREASURE_POOLS[roomId] || ['ancientCoin'];
-            const rewards = foundTreasure ? generateLootBundle(lootPool, 1 + (Math.random() < 0.15 ? 1 : 0)) : [];
+            const roomYieldMultiplier = (typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('exploration', roomId) : 1;
+            const extraRollChance = Math.min(0.4, 0.15 + Math.max(0, roomYieldMultiplier - 1) * 0.45);
+            const rewards = foundTreasure ? generateLootBundle(lootPool, 1 + (Math.random() < extraRollChance ? 1 : 0)) : [];
 
             if (foundTreasure) {
                 ex.stats.treasuresFound++;
                 if (gameState.pet) {
-                    gameState.pet.happiness = clamp(gameState.pet.happiness + 6, 0, 100);
+                    const happyGain = Math.max(3, Math.round(6 * roomYieldMultiplier));
+                    gameState.pet.happiness = clamp(gameState.pet.happiness + happyGain, 0, 100);
                 }
             }
 
@@ -662,4 +711,3 @@
             saveGame();
             return { ok: true, pet: newPet, npc };
         }
-

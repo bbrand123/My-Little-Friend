@@ -1240,15 +1240,117 @@
             cuddle: ['❤️', '💕', '💗', '🥰']
         };
 
+        const CARE_PRIMARY_NEED_MAP = {
+            feed: 'hunger',
+            wash: 'cleanliness',
+            play: 'happiness',
+            sleep: 'energy',
+            groom: 'cleanliness',
+            exercise: 'happiness',
+            cuddle: 'happiness',
+            treat: 'hunger'
+        };
+
+        function getCarePrimaryNeed(action) {
+            if (typeof getCareActionPrimaryNeed === 'function') {
+                const key = getCareActionPrimaryNeed(action);
+                if (key) return key;
+            }
+            return CARE_PRIMARY_NEED_MAP[action] || null;
+        }
+
+        function getCareLoopRuntimeState(pet) {
+            if (!pet || typeof pet !== 'object') return null;
+            if (!pet._careLoopRuntime || typeof pet._careLoopRuntime !== 'object') {
+                Object.defineProperty(pet, '_careLoopRuntime', {
+                    value: { lastAction: null, lastAt: 0, repeatChain: 0, lastHintAt: 0 },
+                    enumerable: false,
+                    writable: true,
+                    configurable: true
+                });
+            }
+            return pet._careLoopRuntime;
+        }
+
+        function getLowestNeedFromSnapshot(pet, snapshot) {
+            if (typeof getLowestNeedStatKey === 'function') return getLowestNeedStatKey(pet, snapshot);
+            const stats = snapshot || (typeof getPetNeedSnapshot === 'function' ? getPetNeedSnapshot(pet) : null);
+            if (!stats) return 'hunger';
+            return Object.entries(stats).sort((a, b) => (a[1] || 0) - (b[1] || 0))[0][0];
+        }
+
+        function getCareDecisionMultiplier(action, pet, snapshot) {
+            const tuning = (typeof getCareLoopTuning === 'function') ? getCareLoopTuning() : null;
+            const runtime = getCareLoopRuntimeState(pet);
+            if (!tuning || !pet || !runtime) {
+                return { gainMultiplier: 1, repeatApplied: false, focused: false, offTarget: false, repeatChain: 0 };
+            }
+
+            const now = Date.now();
+            const windowMs = Math.max(5000, Number(tuning.repeatWindowMs) || 12000);
+            const maxStack = Math.max(1, Number(tuning.repeatMaxStack) || 4);
+            const minRepeatMultiplier = Math.max(0.25, Math.min(1, Number(tuning.repeatMinMultiplier) || 0.56));
+            const basePenalty = Math.max(0, Number(tuning.repeatBasePenalty) || 0.12);
+            const stepPenalty = Math.max(0, Number(tuning.repeatStepPenalty) || 0.08);
+            const elapsed = now - (Number(runtime.lastAt) || 0);
+            const sameActionRepeat = runtime.lastAction === action && elapsed >= 0 && elapsed <= windowMs;
+
+            let repeatChain = 0;
+            let repeatMultiplier = 1;
+            let repeatApplied = false;
+            if (sameActionRepeat) {
+                repeatChain = Math.min(maxStack, (Number(runtime.repeatChain) || 0) + 1);
+                const freshnessRatio = 1 - Math.min(1, elapsed / windowMs);
+                const penalty = (basePenalty + (repeatChain * stepPenalty)) * (0.6 + freshnessRatio * 0.4);
+                repeatMultiplier = Math.max(minRepeatMultiplier, 1 - penalty);
+                repeatApplied = repeatMultiplier < 0.999;
+            }
+
+            const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
+            const stageBalance = getStageBalance(stage);
+            const primaryNeed = getCarePrimaryNeed(action);
+            const lowestNeed = getLowestNeedFromSnapshot(pet, snapshot);
+            const baseFocus = (typeof getCareFocusMultiplier === 'function')
+                ? Math.max(1, Number(getCareFocusMultiplier(action, pet, snapshot)) || 1)
+                : 1;
+            const extraFocusedBonus = Math.max(0, Number(tuning.extraFocusedBonus) || 0);
+            const focusStageWeight = Math.max(0, Number(tuning.focusStageWeight) || 0.75);
+            const offTargetMultiplier = Math.max(0.65, Math.min(1, Number(tuning.offTargetMultiplier) || 0.9));
+
+            let focusMultiplier = baseFocus;
+            let focused = false;
+            let offTarget = false;
+            if (primaryNeed && lowestNeed) {
+                if (primaryNeed === lowestNeed) {
+                    focused = true;
+                    const stageFocus = Math.max(0, Number(stageBalance.focusedCareBonus) || 0);
+                    focusMultiplier *= (1 + extraFocusedBonus + (stageFocus * focusStageWeight));
+                } else {
+                    offTarget = true;
+                    focusMultiplier *= offTargetMultiplier;
+                }
+            }
+
+            const minTotal = Math.max(0.35, Number(tuning.minTotalMultiplier) || 0.55);
+            const maxTotal = Math.max(minTotal, Number(tuning.maxTotalMultiplier) || 1.65);
+            const gainMultiplier = Math.max(minTotal, Math.min(maxTotal, focusMultiplier * repeatMultiplier));
+
+            runtime.lastAction = action;
+            runtime.lastAt = now;
+            runtime.repeatChain = repeatChain;
+
+            return { gainMultiplier, repeatApplied, focused, offTarget, repeatChain };
+        }
+
         // Shared standard-feed logic used by both careAction('feed') and openFeedMenu
-        function performStandardFeed(pet) {
+        function performStandardFeed(pet, careDecision) {
             const focusSnapshot = (typeof getPetNeedSnapshot === 'function') ? getPetNeedSnapshot(pet) : null;
             const feedPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'feed') : 1;
             const feedPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'feed') : 1;
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-            const focusMult = (typeof getCareFocusMultiplier === 'function') ? getCareFocusMultiplier('feed', pet, focusSnapshot) : 1.0;
+            const decision = careDecision || getCareDecisionMultiplier('feed', pet, focusSnapshot);
             const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
-            const feedBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult * rewardCareMult);
+            const feedBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * decision.gainMultiplier * rewardCareMult);
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
@@ -1348,6 +1450,7 @@
             const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
             const rewardHappyFlat = (typeof getRewardHappinessFlatBonus === 'function') ? getRewardHappinessFlatBonus() : 0;
             let message = '';
+            let careDecisionResult = null;
 
             switch (action) {
                 case 'feed': {
@@ -1372,15 +1475,16 @@
                         cancelActionCooldownAndRestoreButtons();
                         return;
                     }
-                    message = performStandardFeed(pet);
+                    careDecisionResult = getCareDecisionMultiplier('feed', pet, beforeStats);
+                    message = performStandardFeed(pet, careDecisionResult);
                     break;
                 }
                 case 'wash': {
                     const washPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'wash') : 1;
                     const washPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'wash') : 1;
                     const washWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
-                    const washBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
+                    careDecisionResult = getCareDecisionMultiplier('wash', pet, beforeStats);
+                    const washBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * careDecisionResult.gainMultiplier * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('wash', pet.personality, pet.growthStage)
@@ -1396,8 +1500,8 @@
                     const playPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'play') : 1;
                     const playPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'play') : 1;
                     const playWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
-                    const playBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
+                    careDecisionResult = getCareDecisionMultiplier('play', pet, beforeStats);
+                    const playBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + playWisdom) * getRoomBonus('play') * playPersonality * playPref * careDecisionResult.gainMultiplier * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('play', pet.personality, pet.growthStage)
@@ -1413,7 +1517,7 @@
                     const sleepPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'sleep') : 1;
                     const sleepPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'sleep') : 1;
                     const sleepWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const sleepFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('sleep', pet, beforeStats) : 1.0;
+                    careDecisionResult = getCareDecisionMultiplier('sleep', pet, beforeStats);
                     // Sleep is more effective at night (deep sleep) and less during the day (just a nap)
                     const sleepTime = gameState.timeOfDay || 'day';
                     let sleepBonus = 22; // default nap
@@ -1428,7 +1532,7 @@
                         sleepBonus = 27; // nice morning sleep-in
                         sleepAnnounce = 'Your pet slept in a little!';
                     }
-                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * sleepFocusMult * rewardCareMult);
+                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * careDecisionResult.gainMultiplier * rewardCareMult);
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
                     if (petContainer) petContainer.classList.add('sleep-anim', 'pet-sleepy-nod');
@@ -1440,11 +1544,12 @@
                     const medPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'medicine') : 1;
                     const medPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'medicine') : 1;
                     const medMod = medPersonality * medPref;
+                    careDecisionResult = getCareDecisionMultiplier('medicine', pet, beforeStats);
                     // Medicine gives a gentle boost to all stats - helps pet feel better
-                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod * rewardCareMult), 0, 100);
-                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * rewardCareMult), 0, 100);
-                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * rewardCareMult), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(10 * medMod * rewardCareMult), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(10 * medMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('medicine', pet.personality, pet.growthStage)
                         : randomFromArray(FEEDBACK_MESSAGES.medicine);
@@ -1458,12 +1563,12 @@
                     const groomPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'groom') : 1;
                     const groomPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'groom') : 1;
                     const groomWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const groomFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('groom', pet, beforeStats) : 1.0;
+                    careDecisionResult = getCareDecisionMultiplier('groom', pet, beforeStats);
                     // Grooming - brush fur/feathers and trim nails
                     const groomBonus = getRoomBonus('groom');
                     const groomMod = groomPersonality * groomPref;
-                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * groomFocusMult * rewardCareMult);
-                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * rewardCareMult);
+                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * careDecisionResult.gainMultiplier * rewardCareMult);
+                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * careDecisionResult.gainMultiplier * rewardCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
@@ -1480,10 +1585,10 @@
                     const exPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'exercise') : 1;
                     const exPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'exercise') : 1;
                     const exWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const exFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('exercise', pet, beforeStats) : 1.0;
+                    careDecisionResult = getCareDecisionMultiplier('exercise', pet, beforeStats);
                     // Exercise - take walks or play fetch
                     const exMod = exPersonality * exPref;
-                    const exBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult * rewardCareMult);
+                    const exBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + exWisdom) * getRoomBonus('exercise') * exMod * careDecisionResult.gainMultiplier * rewardCareMult);
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
@@ -1500,6 +1605,7 @@
                 case 'treat': {
                     const treatPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'treat') : 1;
                     const treatWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
+                    careDecisionResult = getCareDecisionMultiplier('treat', pet, beforeStats);
                     // Treats - special snacks that give bonus happiness
                     const treat = randomFromArray(TREAT_TYPES);
                     // Check if this is the pet's favorite treat
@@ -1508,8 +1614,8 @@
                     if (prefs && treat.name === prefs.favoriteTreat) {
                         treatMod *= 1.5;
                     }
-                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * rewardCareMult), 0, 100);
-                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * rewardCareMult), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
                     const treatMsg = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('treat', pet.personality, pet.growthStage)
                         : randomFromArray(FEEDBACK_MESSAGES.treat);
@@ -1526,11 +1632,11 @@
                     const cuddlePersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'cuddle') : 1;
                     const cuddlePref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'cuddle') : 1;
                     const cuddleWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const cuddleFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('cuddle', pet, beforeStats) : 1.0;
+                    careDecisionResult = getCareDecisionMultiplier('cuddle', pet, beforeStats);
                     const cuddleMod = cuddlePersonality * cuddlePref;
                     // Petting/Cuddling - direct affection boosts happiness and energy
-                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult * rewardCareMult), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * rewardCareMult), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * careDecisionResult.gainMultiplier * rewardCareMult), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * rewardCareMult * careDecisionResult.gainMultiplier), 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('cuddle', pet.personality, pet.growthStage)
                         : randomFromArray(FEEDBACK_MESSAGES.cuddle);
@@ -1540,6 +1646,22 @@
                     if (sparkles) createCuddleParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
+                }
+            }
+
+            if (careDecisionResult && (careDecisionResult.repeatApplied || careDecisionResult.offTarget)) {
+                const runtime = getCareLoopRuntimeState(pet);
+                const now = Date.now();
+                const hintCooldown = Math.max(8000, Number((typeof getCareLoopTuning === 'function' ? getCareLoopTuning().hintCooldownMs : 0)) || 18000);
+                if (runtime && now - (runtime.lastHintAt || 0) >= hintCooldown) {
+                    runtime.lastHintAt = now;
+                    if (careDecisionResult.repeatApplied) {
+                        showToast('🔁 Repeating the same action quickly gives smaller gains. Rotate actions for better results.', '#FFA726', { announce: false });
+                        announce('Tip: repeating the same action too quickly gives reduced gains.');
+                    } else if (careDecisionResult.offTarget) {
+                        showToast('🎯 Focused care works best on your pet\'s lowest need right now.', '#4FC3F7', { announce: false });
+                        announce('Tip: caring for the lowest need is more efficient.');
+                    }
                 }
             }
 
@@ -2251,4 +2373,3 @@
             // Stop idle animations and earcons during mini-games
             if (typeof stopIdleAnimations === 'function') stopIdleAnimations();
         }
-

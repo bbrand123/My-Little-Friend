@@ -81,10 +81,10 @@
         }
 
         function getStageRewardWeight(stage) {
-            if (stage === 'elder') return 1.12;
-            if (stage === 'adult') return 1.06;
+            if (stage === 'elder') return 1.2;
+            if (stage === 'adult') return 1.1;
             if (stage === 'child') return 1.0;
-            return 0.92;
+            return 0.9;
         }
 
         function getCompetitionRewardMultiplier(pet, difficultyScale) {
@@ -94,7 +94,8 @@
             const powerDamp = Math.max(GAME_BALANCE.combat.powerDampMin, GAME_BALANCE.combat.powerDampBase - ((powerNorm - 1) * GAME_BALANCE.combat.powerDampFactor));
             const difficulty = Math.max(0.75, Number(difficultyScale) || 1);
             const difficultyWeight = Math.max(GAME_BALANCE.combat.difficultyWeightMin, Math.min(GAME_BALANCE.combat.difficultyWeightMax, GAME_BALANCE.combat.difficultyWeightBase + (difficulty - 1) * GAME_BALANCE.combat.difficultyWeightFactor));
-            return Math.max(GAME_BALANCE.combat.rewardMultMin, Math.min(GAME_BALANCE.combat.rewardMultMax, stageWeight * powerDamp * difficultyWeight));
+            const roomWeight = (typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1;
+            return Math.max(GAME_BALANCE.combat.rewardMultMin, Math.min(GAME_BALANCE.combat.rewardMultMax, stageWeight * powerDamp * difficultyWeight * roomWeight));
         }
 
         function calculateMoveDamage(move, attacker, defender) {
@@ -358,6 +359,7 @@
                 const comp = initCompetitionState();
                 const battleDifficulty = Math.max(0.8, oppMaxHP / Math.max(1, playerMaxHP));
                 const rewardMult = getCompetitionRewardMultiplier(pet, battleDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
+                const roomCompPct = Math.round((((typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1) - 1) * 100);
                 if (won) {
                     comp.battlesWon++;
                     // Recommendation #7: Mastery competition rank 3+ gives +2% battle happiness gain
@@ -371,8 +373,9 @@
                         else if (comp.battlesWon % 5 === 0) addJournalEntry('⚔️', `${petName} has won ${comp.battlesWon} battles!`);
                     }
                     setTimeout(() => {
-                        showToast(`⚔️ Battle Won! +${happyGain} Happiness!`, '#FFD700');
-                        announce(`Victory! You won the battle! Plus ${happyGain} happiness!`, true);
+                        const roomText = roomCompPct > 0 ? ` (room +${roomCompPct}%)` : '';
+                        showToast(`⚔️ Battle Won! +${happyGain} Happiness${roomText}!`, '#FFD700');
+                        announce(`Victory! You won the battle! Plus ${happyGain} happiness${roomText}.`, true);
                     }, 500);
                 } else {
                     comp.battlesLost++;
@@ -677,6 +680,7 @@
                         : (Number(calculateBattleStat(gameState.pet)) || 60);
                     const bossDifficulty = Math.max(1, boss.maxHP / Math.max(40, avgTeamPower));
                     const rewardMult = getCompetitionRewardMultiplier(gameState.pet || allPets[0], bossDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
+                    const roomCompPct = Math.round((((typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1) - 1) * 100);
                     if (won) {
                         comp.bossesDefeated[bossId] = { defeated: true, defeatedAt: Date.now() };
                         // Apply rewards only to alive pets (skip fainted ones)
@@ -696,8 +700,9 @@
                             gameState.pet = gameState.pets[gameState.activePetIndex];
                         }
                         setTimeout(() => {
-                            showToast(`👹 Boss Defeated: ${boss.name}!`, '#FFD700');
-                            announce(`Victory! Boss ${boss.name} defeated!`, true);
+                            const roomText = roomCompPct > 0 ? ` Room bonus +${roomCompPct}% applied.` : '';
+                            showToast(`👹 Boss Defeated: ${boss.name}!${roomText}`, '#FFD700');
+                            announce(`Victory! Boss ${boss.name} defeated!${roomText}`, true);
                         }, 500);
                     } else {
                         // Consolation rewards apply even if all pets fainted.
@@ -1352,6 +1357,7 @@
                     const comp = initCompetitionState();
                     const rivalDifficulty = 1 + (trainer.difficulty * 0.14);
                     const rewardMult = getCompetitionRewardMultiplier(pet, rivalDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
+                    const roomCompPct = Math.round((((typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1) - 1) * 100);
                     if (won) {
                         comp.rivalBattlesWon++;
                         const isFirstDefeat = !comp.rivalsDefeated.includes(rivalIdx);
@@ -1365,8 +1371,9 @@
                         pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                         pet.careActions = (pet.careActions || 0) + 1;
                         setTimeout(() => {
-                            showToast(`🏅 Defeated ${trainer.name}! +${happyGain} Happiness!`, '#FFD700');
-                            announce(`Victory! Rival ${trainer.name} defeated! Plus ${happyGain} happiness!`, true);
+                            const roomText = roomCompPct > 0 ? ` (room +${roomCompPct}%)` : '';
+                            showToast(`🏅 Defeated ${trainer.name}! +${happyGain} Happiness${roomText}!`, '#FFD700');
+                            announce(`Victory! Rival ${trainer.name} defeated! Plus ${happyGain} happiness${roomText}.`, true);
                         }, 500);
                     } else {
                         comp.rivalBattlesLost++;

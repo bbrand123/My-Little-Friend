@@ -232,6 +232,12 @@
             }
         }
 
+        function getRoomStrategyText(roomId) {
+            if (typeof getRoomStrategicLabel !== 'function') return '';
+            const text = getRoomStrategicLabel(roomId);
+            return text ? ` • ${text}` : '';
+        }
+
         function switchRoom(roomId) {
             if (!ROOMS[roomId] || roomId === gameState.currentRoom) return;
             ensureRoomSystemsState();
@@ -383,13 +389,14 @@
             // Show room change notification — limit bonus toasts to first few per session
             if (room.bonus) {
                 roomBonusToastCount[roomId] = (roomBonusToastCount[roomId] || 0) + 1;
+                const strategyText = getRoomStrategyText(roomId);
                 if (roomBonusToastCount[roomId] <= MAX_ROOM_BONUS_TOASTS) {
-                    showToast(`${room.icon} ${room.name}: ${getRoomBonusLabel(roomId)}!`, '#4ECDC4');
+                    showToast(`${room.icon} ${room.name}: ${getRoomBonusLabel(roomId)}!${strategyText}`, '#4ECDC4');
                 } else {
-                    announce(`Moved to ${room.name}. Room bonus still active: ${getRoomBonusLabel(roomId)}.`);
+                    announce(`Moved to ${room.name}. Room bonus still active: ${getRoomBonusLabel(roomId)}.${strategyText ? ` ${strategyText.replace(' • ', '')}.` : ''}`);
                 }
             } else {
-                showToast(`${room.icon} Moved to ${room.name}`, '#4ECDC4');
+                const strategyText = getRoomStrategyText(roomId);
+                showToast(`${room.icon} Moved to ${room.name}${strategyText}`, '#4ECDC4');
             }
         }
-

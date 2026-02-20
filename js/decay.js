@@ -8,6 +8,105 @@
         let decayInterval = null;
         let lastDecayAnnouncement = 0;
         let pendingRenderTimer = null;
+        let _decayRuntimeState = {};
+        const DECAY_NEED_KEYS = ['hunger', 'cleanliness', 'happiness', 'energy'];
+
+        function getDecayRuntimeKey(pet) {
+            if (!pet || typeof pet !== 'object') return null;
+            if (Number.isInteger(pet.id) && pet.id > 0) return `pet_${pet.id}`;
+            if (!pet._runtimeDecayKey) {
+                Object.defineProperty(pet, '_runtimeDecayKey', {
+                    value: `decay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    enumerable: false,
+                    writable: false,
+                    configurable: true
+                });
+            }
+            return pet._runtimeDecayKey;
+        }
+
+        function getDecayRuntime(pet) {
+            const key = getDecayRuntimeKey(pet);
+            if (!key) return null;
+            if (!_decayRuntimeState[key]) {
+                _decayRuntimeState[key] = {
+                    tick: 0,
+                    penaltyCarry: { hunger: 0, cleanliness: 0, happiness: 0, energy: 0 },
+                    lowNeedTicks: { hunger: 0, cleanliness: 0, happiness: 0, energy: 0 },
+                    varianceIndex: 0
+                };
+            }
+            return _decayRuntimeState[key];
+        }
+
+        function applyDeterministicNeedPenalty(pet, runtime, statKey, amount) {
+            if (!pet || !runtime || !statKey || amount <= 0) return 0;
+            if (!runtime.penaltyCarry || typeof runtime.penaltyCarry !== 'object') {
+                runtime.penaltyCarry = { hunger: 0, cleanliness: 0, happiness: 0, energy: 0 };
+            }
+            runtime.penaltyCarry[statKey] = (runtime.penaltyCarry[statKey] || 0) + amount;
+            const whole = Math.floor(runtime.penaltyCarry[statKey]);
+            if (whole <= 0) return 0;
+            runtime.penaltyCarry[statKey] -= whole;
+            pet[statKey] = clamp((Number(pet[statKey]) || 0) - whole, 0, 100);
+            return whole;
+        }
+
+        function applyStageVarianceDecay(pet, stage) {
+            const runtime = getDecayRuntime(pet);
+            if (!runtime) return;
+            runtime.tick = (runtime.tick || 0) + 1;
+            const decayTuning = getDecayTuning();
+            const stageCfg = ((decayTuning.stageVariance || {})[stage]) || {};
+            const cadence = Math.max(0, Number(stageCfg.extraEveryTicks) || 0);
+            const amount = Math.max(0, Number(stageCfg.extraNeedDecay) || 0);
+            if (!cadence || !amount) return;
+            if (runtime.tick % cadence !== 0) return;
+            runtime.varianceIndex = ((runtime.varianceIndex || 0) + 1) % DECAY_NEED_KEYS.length;
+            const statKey = DECAY_NEED_KEYS[runtime.varianceIndex];
+            applyDeterministicNeedPenalty(pet, runtime, statKey, amount);
+        }
+
+        function applyTimedNeglectPressure(pet, stage, stageBalance) {
+            const runtime = getDecayRuntime(pet);
+            if (!runtime) return;
+            if (!runtime.lowNeedTicks || typeof runtime.lowNeedTicks !== 'object') {
+                runtime.lowNeedTicks = { hunger: 0, cleanliness: 0, happiness: 0, energy: 0 };
+            }
+
+            const decayTuning = getDecayTuning();
+            const stageCfg = ((decayTuning.neglectPressure || {})[stage]) || {};
+            const threshold = Math.max(0, Number(stageBalance.neglectThreshold) || 20);
+            const graceTicks = Math.max(1, Number(stageCfg.graceTicks) || 5);
+            const pulseEveryTicks = Math.max(1, Number(stageCfg.pulseEveryTicks) || 4);
+            const lowestNeedPenalty = Math.max(0, Number(stageCfg.lowestNeedPenalty) || 1);
+            const happinessPenalty = Math.max(0, Number(stageCfg.happinessPenalty) || 0);
+            const multiNeedPenalty = Math.max(0, Number(stageCfg.multiNeedPenalty) || 0);
+
+            let lowNeedCount = 0;
+            DECAY_NEED_KEYS.forEach((need) => {
+                if ((Number(pet[need]) || 0) < threshold) {
+                    runtime.lowNeedTicks[need] = (runtime.lowNeedTicks[need] || 0) + 1;
+                    lowNeedCount++;
+                } else {
+                    runtime.lowNeedTicks[need] = Math.max(0, (runtime.lowNeedTicks[need] || 0) - 1);
+                }
+            });
+            if (lowNeedCount === 0) return;
+
+            const hasTimedOutNeed = DECAY_NEED_KEYS.some((need) => (runtime.lowNeedTicks[need] || 0) >= graceTicks);
+            if (!hasTimedOutNeed) return;
+            if ((runtime.tick || 0) % pulseEveryTicks !== 0) return;
+
+            const lowestNeed = getLowestNeedStatKey(pet);
+            const multiPenalty = Math.max(0, lowNeedCount - 1) * multiNeedPenalty;
+            if (lowestNeed) {
+                applyDeterministicNeedPenalty(pet, runtime, lowestNeed, lowestNeedPenalty + multiPenalty);
+            }
+            if (happinessPenalty > 0) {
+                applyDeterministicNeedPenalty(pet, runtime, 'happiness', happinessPenalty + multiPenalty);
+            }
+        }
 
         function startDecayTimer() {
             if (decayInterval) clearInterval(decayInterval);
@@ -84,19 +183,12 @@
                         pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, weatherData.cleanlinessDecayModifier * stageDecayMult, 'down');
                     }
 
-                    // Neglect pressure scales up by stage and targets the weakest need.
-                    const neglectThreshold = stageBalance.neglectThreshold || 20;
-                    const isNeglectingNow = pet.hunger < neglectThreshold || pet.cleanliness < neglectThreshold || pet.happiness < neglectThreshold || pet.energy < neglectThreshold;
-                    if (isNeglectingNow) {
-                        const lowestNeed = getLowestNeedStatKey(pet);
-                        if (lowestNeed) {
-                            pet[lowestNeed] = applyProbabilisticDelta(pet[lowestNeed], 0.45 * stageDecayMult, 'down');
-                        }
-                        pet.happiness = applyProbabilisticDelta(pet.happiness, 0.2 * stageDecayMult, 'down');
-                    }
+                    // Deterministic stage ramp: timed variance pulses + neglect pressure pulses.
+                    applyStageVarianceDecay(pet, stage);
+                    applyTimedNeglectPressure(pet, stage, stageBalance);
 
                     // Announce when any stat drops below 20% (threshold crossing)
-                    const lowThreshold = neglectThreshold;
+                    const lowThreshold = stageBalance.neglectThreshold || 20;
                     const petName = getPetDisplayName(pet);
                     const lowStats = [];
                     if (pet.hunger < lowThreshold && prevHunger >= lowThreshold) lowStats.push('hunger');
@@ -146,6 +238,8 @@
                             const companionBonus = (gameState.pets.length > 1) ? 0.3 : 0;
                             p.happiness = applyProbabilisticDelta(p.happiness, Math.max(0, (0.5 - companionBonus) * pDecayMult), 'down');
                             p.energy = applyProbabilisticDelta(p.energy, 0.5 * pDecayMult, 'down');
+                            applyStageVarianceDecay(p, pStage);
+                            applyTimedNeglectPressure(p, pStage, pStageBalance);
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -476,4 +570,3 @@
                 pendingRenderTimer = null;
             }
         }
-

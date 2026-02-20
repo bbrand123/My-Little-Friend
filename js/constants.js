@@ -82,6 +82,201 @@ function getStageBalance(stage) {
     return STAGE_BALANCE[stage] || STAGE_BALANCE.baby;
 }
 
+// ==================== GAMEPLAY TUNING PROFILES ====================
+// Switch between mild and aggressive tuning without editing gameplay code.
+// Valid values: 'QUICK_ITERATION_BUILD', 'AGGRESSIVE_ESCALATION_BUILD'
+const ACTIVE_GAMEPLAY_TUNING_PROFILE = 'QUICK_ITERATION_BUILD';
+
+const GAMEPLAY_TUNING_PROFILES = {
+    QUICK_ITERATION_BUILD: {
+        careLoop: {
+            repeatWindowMs: 12000,
+            repeatBasePenalty: 0.12,
+            repeatStepPenalty: 0.08,
+            repeatMaxStack: 4,
+            repeatMinMultiplier: 0.56,
+            focusStageWeight: 0.75,
+            extraFocusedBonus: 0.08,
+            offTargetMultiplier: 0.9,
+            minTotalMultiplier: 0.55,
+            maxTotalMultiplier: 1.65,
+            hintCooldownMs: 20000
+        },
+        rooms: {
+            actionSpreadScale: 1.28,
+            careUpgradeScale: 1.45,
+            systemUpgradeStep: 0.03
+        },
+        decay: {
+            stageVariance: {
+                baby: { extraEveryTicks: 0, extraNeedDecay: 0 },
+                child: { extraEveryTicks: 6, extraNeedDecay: 1 },
+                adult: { extraEveryTicks: 5, extraNeedDecay: 1 },
+                elder: { extraEveryTicks: 4, extraNeedDecay: 1 }
+            },
+            neglectPressure: {
+                baby: { graceTicks: 6, pulseEveryTicks: 5, lowestNeedPenalty: 1, happinessPenalty: 0, multiNeedPenalty: 0 },
+                child: { graceTicks: 5, pulseEveryTicks: 4, lowestNeedPenalty: 1, happinessPenalty: 1, multiNeedPenalty: 0 },
+                adult: { graceTicks: 4, pulseEveryTicks: 3, lowestNeedPenalty: 2, happinessPenalty: 1, multiNeedPenalty: 1 },
+                elder: { graceTicks: 3, pulseEveryTicks: 3, lowestNeedPenalty: 2, happinessPenalty: 2, multiNeedPenalty: 1 }
+            },
+            neglectCount: {
+                baby: { gainScale: 1.0, recoveryScale: 1.0 },
+                child: { gainScale: 1.05, recoveryScale: 0.95 },
+                adult: { gainScale: 1.12, recoveryScale: 0.9 },
+                elder: { gainScale: 1.2, recoveryScale: 0.85 }
+            }
+        },
+        minigames: {
+            replayDifficultyBoostPerPlay: 0.035,
+            replayDifficultyBoostMaxPlays: 10,
+            difficultyCap: 2.7,
+            difficultyBands: [
+                { id: 'steady', maxDifficulty: 1.2, rewardScoreMultiplier: 1.0 },
+                { id: 'challenging', maxDifficulty: 1.55, rewardScoreMultiplier: 1.08 },
+                { id: 'hard', maxDifficulty: 1.95, rewardScoreMultiplier: 1.16 },
+                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.24 }
+            ]
+        },
+        asyncLoops: {
+            expeditionStage: {
+                baby: { durationMultiplier: 0.86, lootMultiplier: 0.92, energyCostMultiplier: 0.92, happinessMultiplier: 1.0 },
+                child: { durationMultiplier: 0.96, lootMultiplier: 1.0, energyCostMultiplier: 1.0, happinessMultiplier: 1.0 },
+                adult: { durationMultiplier: 1.08, lootMultiplier: 1.08, energyCostMultiplier: 1.08, happinessMultiplier: 0.98 },
+                elder: { durationMultiplier: 1.14, lootMultiplier: 1.12, energyCostMultiplier: 1.12, happinessMultiplier: 0.96 }
+            },
+            expeditionProgressionSlowdown: [
+                { completedAtLeast: 6, durationMultiplier: 1.06 },
+                { completedAtLeast: 14, durationMultiplier: 1.12 }
+            ]
+        },
+        rewards: {
+            dailyModifierByStage: { baby: 'careRush', child: 'careRush', adult: 'luckyPaws', elder: 'focusedTraining' },
+            weeklyModifierByStage: { baby: 'careRush', child: 'luckyPaws', adult: 'focusedTraining', elder: 'focusedTraining' },
+            achievementModifierByStage: { baby: 'careRush', child: 'luckyPaws', adult: 'luckyPaws', elder: 'focusedTraining' },
+            prestigeWeightsByStage: {
+                baby: { careRush: 5, luckyPaws: 2, focusedTraining: 1 },
+                child: { careRush: 3, luckyPaws: 3, focusedTraining: 2 },
+                adult: { careRush: 2, luckyPaws: 3, focusedTraining: 4 },
+                elder: { careRush: 1, luckyPaws: 2, focusedTraining: 5 }
+            },
+            mastery: {
+                careByStage: { baby: 0.02, child: 0.03, adult: 0.02, elder: 0.015 },
+                expeditionRollBonusByStage: { baby: 0, child: 0, adult: 1, elder: 1 },
+                competitionByStage: { baby: 0.0, child: 0.02, adult: 0.04, elder: 0.06 }
+            }
+        }
+    },
+    AGGRESSIVE_ESCALATION_BUILD: {
+        careLoop: {
+            repeatWindowMs: 16000,
+            repeatBasePenalty: 0.18,
+            repeatStepPenalty: 0.12,
+            repeatMaxStack: 5,
+            repeatMinMultiplier: 0.42,
+            focusStageWeight: 1.0,
+            extraFocusedBonus: 0.12,
+            offTargetMultiplier: 0.82,
+            minTotalMultiplier: 0.45,
+            maxTotalMultiplier: 1.8,
+            hintCooldownMs: 17000
+        },
+        rooms: {
+            actionSpreadScale: 1.55,
+            careUpgradeScale: 1.8,
+            systemUpgradeStep: 0.045
+        },
+        decay: {
+            stageVariance: {
+                baby: { extraEveryTicks: 0, extraNeedDecay: 0 },
+                child: { extraEveryTicks: 5, extraNeedDecay: 1 },
+                adult: { extraEveryTicks: 4, extraNeedDecay: 2 },
+                elder: { extraEveryTicks: 3, extraNeedDecay: 2 }
+            },
+            neglectPressure: {
+                baby: { graceTicks: 5, pulseEveryTicks: 4, lowestNeedPenalty: 1, happinessPenalty: 1, multiNeedPenalty: 0 },
+                child: { graceTicks: 4, pulseEveryTicks: 3, lowestNeedPenalty: 2, happinessPenalty: 1, multiNeedPenalty: 1 },
+                adult: { graceTicks: 3, pulseEveryTicks: 2, lowestNeedPenalty: 2, happinessPenalty: 2, multiNeedPenalty: 1 },
+                elder: { graceTicks: 2, pulseEveryTicks: 2, lowestNeedPenalty: 3, happinessPenalty: 2, multiNeedPenalty: 1 }
+            },
+            neglectCount: {
+                baby: { gainScale: 1.05, recoveryScale: 0.95 },
+                child: { gainScale: 1.15, recoveryScale: 0.86 },
+                adult: { gainScale: 1.3, recoveryScale: 0.78 },
+                elder: { gainScale: 1.42, recoveryScale: 0.72 }
+            }
+        },
+        minigames: {
+            replayDifficultyBoostPerPlay: 0.055,
+            replayDifficultyBoostMaxPlays: 12,
+            difficultyCap: 3.0,
+            difficultyBands: [
+                { id: 'steady', maxDifficulty: 1.15, rewardScoreMultiplier: 1.0 },
+                { id: 'challenging', maxDifficulty: 1.5, rewardScoreMultiplier: 1.1 },
+                { id: 'hard', maxDifficulty: 1.9, rewardScoreMultiplier: 1.22 },
+                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.34 }
+            ]
+        },
+        asyncLoops: {
+            expeditionStage: {
+                baby: { durationMultiplier: 0.82, lootMultiplier: 0.9, energyCostMultiplier: 0.95, happinessMultiplier: 1.0 },
+                child: { durationMultiplier: 0.94, lootMultiplier: 1.0, energyCostMultiplier: 1.05, happinessMultiplier: 0.98 },
+                adult: { durationMultiplier: 1.12, lootMultiplier: 1.12, energyCostMultiplier: 1.16, happinessMultiplier: 0.95 },
+                elder: { durationMultiplier: 1.22, lootMultiplier: 1.18, energyCostMultiplier: 1.22, happinessMultiplier: 0.92 }
+            },
+            expeditionProgressionSlowdown: [
+                { completedAtLeast: 5, durationMultiplier: 1.08 },
+                { completedAtLeast: 12, durationMultiplier: 1.18 },
+                { completedAtLeast: 24, durationMultiplier: 1.26 }
+            ]
+        },
+        rewards: {
+            dailyModifierByStage: { baby: 'careRush', child: 'luckyPaws', adult: 'focusedTraining', elder: 'focusedTraining' },
+            weeklyModifierByStage: { baby: 'luckyPaws', child: 'luckyPaws', adult: 'focusedTraining', elder: 'focusedTraining' },
+            achievementModifierByStage: { baby: 'careRush', child: 'luckyPaws', adult: 'focusedTraining', elder: 'focusedTraining' },
+            prestigeWeightsByStage: {
+                baby: { careRush: 4, luckyPaws: 3, focusedTraining: 1 },
+                child: { careRush: 2, luckyPaws: 4, focusedTraining: 2 },
+                adult: { careRush: 1, luckyPaws: 3, focusedTraining: 5 },
+                elder: { careRush: 1, luckyPaws: 2, focusedTraining: 6 }
+            },
+            mastery: {
+                careByStage: { baby: 0.025, child: 0.03, adult: 0.018, elder: 0.012 },
+                expeditionRollBonusByStage: { baby: 0, child: 1, adult: 1, elder: 2 },
+                competitionByStage: { baby: 0.01, child: 0.03, adult: 0.06, elder: 0.08 }
+            }
+        }
+    }
+};
+
+function getGameplayTuning() {
+    return GAMEPLAY_TUNING_PROFILES[ACTIVE_GAMEPLAY_TUNING_PROFILE] || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD;
+}
+
+function getCareLoopTuning() {
+    return getGameplayTuning().careLoop || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.careLoop;
+}
+
+function getRoomTuning() {
+    return getGameplayTuning().rooms || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.rooms;
+}
+
+function getDecayTuning() {
+    return getGameplayTuning().decay || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.decay;
+}
+
+function getMinigameEscalationTuning() {
+    return getGameplayTuning().minigames || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.minigames;
+}
+
+function getAsyncLoopTuning() {
+    return getGameplayTuning().asyncLoops || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.asyncLoops;
+}
+
+function getPhaseRewardTuning() {
+    return getGameplayTuning().rewards || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.rewards;
+}
+
 // Care quality levels and their thresholds
 const CARE_QUALITY = {
     poor: {
@@ -861,6 +1056,23 @@ const ROOM_THEMES = {
 const ROOM_UPGRADE_COSTS = [150, 260, 420];
 const MAX_ROOM_UPGRADE_LEVEL = ROOM_UPGRADE_COSTS.length;
 const ROOM_UPGRADE_BONUS_STEPS = [0, 0.05, 0.09, 0.12];
+const ROOM_SYSTEM_ACTIVITY_MULTIPLIERS = {
+    bedroom: { minigame: 0.94, exploration: 0.9, competition: 0.96, care: 1.0 },
+    kitchen: { minigame: 0.96, exploration: 0.92, competition: 0.95, care: 1.06 },
+    bathroom: { minigame: 0.95, exploration: 0.9, competition: 0.97, care: 1.05 },
+    backyard: { minigame: 1.02, exploration: 1.03, competition: 0.98, care: 1.02 },
+    park: { minigame: 1.12, exploration: 1.02, competition: 0.96, care: 1.04 },
+    garden: { minigame: 0.94, exploration: 1.16, competition: 0.92, care: 1.05 },
+    library: { minigame: 1.03, exploration: 1.04, competition: 0.97, care: 1.08 },
+    arcade: { minigame: 1.2, exploration: 0.92, competition: 1.04, care: 1.03 },
+    spa: { minigame: 0.96, exploration: 0.95, competition: 1.02, care: 1.1 },
+    observatory: { minigame: 1.04, exploration: 1.18, competition: 1.05, care: 1.06 },
+    workshop: { minigame: 1.05, exploration: 1.0, competition: 1.18, care: 1.06 }
+};
+
+function getRoomStageLabel(stage) {
+    return GROWTH_STAGES[stage] ? stage : 'baby';
+}
 
 function getRoomUpgradeLevel(roomId) {
     try {
@@ -877,8 +1089,15 @@ function getRoomBonusMultiplierForRoom(roomId, action) {
     const room = ROOMS[roomId];
     if (!room || !room.bonus || room.bonus.action !== action) return 1.0;
     const upgradeLevel = getRoomUpgradeLevel(roomId);
-    const step = ROOM_UPGRADE_BONUS_STEPS[Math.max(0, Math.min(upgradeLevel, ROOM_UPGRADE_BONUS_STEPS.length - 1))] || 0;
-    return room.bonus.multiplier + step;
+    const roomTuning = getRoomTuning();
+    const roomProfile = ROOM_SYSTEM_ACTIVITY_MULTIPLIERS[roomId] || {};
+    const baseScale = Math.max(0.6, Number(roomTuning.actionSpreadScale) || 1);
+    const careScale = Math.max(0.8, Number(roomProfile.care) || 1);
+    const baseDelta = Math.max(0, Number(room.bonus.multiplier || 1) - 1);
+    const tunedBase = 1 + (baseDelta * baseScale * careScale);
+    const rawStep = ROOM_UPGRADE_BONUS_STEPS[Math.max(0, Math.min(upgradeLevel, ROOM_UPGRADE_BONUS_STEPS.length - 1))] || 0;
+    const step = rawStep * Math.max(1, Number(roomTuning.careUpgradeScale) || 1);
+    return Math.max(1, tunedBase + step);
 }
 
 function getRoomBonusLabel(roomId) {
@@ -893,6 +1112,28 @@ function getRoomBonusLabel(roomId) {
 function getRoomBonus(action) {
     const currentRoom = (typeof gameState !== 'undefined' && gameState && gameState.currentRoom) ? gameState.currentRoom : 'bedroom';
     return getRoomBonusMultiplierForRoom(currentRoom, action);
+}
+
+function getRoomSystemMultiplier(systemKey, roomId) {
+    const key = systemKey || 'minigame';
+    const resolvedRoom = ROOMS[roomId] ? roomId : (((typeof gameState !== 'undefined' && gameState && ROOMS[gameState.currentRoom]) ? gameState.currentRoom : 'bedroom'));
+    const profile = ROOM_SYSTEM_ACTIVITY_MULTIPLIERS[resolvedRoom] || {};
+    const base = Math.max(0.75, Number(profile[key]) || 1);
+    const roomTuning = getRoomTuning();
+    const upgradeLevel = getRoomUpgradeLevel(resolvedRoom);
+    const step = Math.max(0, Number(roomTuning.systemUpgradeStep) || 0) * Math.max(0, upgradeLevel);
+    return Math.max(0.75, Math.min(1.45, base + step));
+}
+
+function getRoomSystemBonusPercent(systemKey, roomId) {
+    return Math.round((getRoomSystemMultiplier(systemKey, roomId) - 1) * 100);
+}
+
+function getRoomStrategicLabel(roomId) {
+    const mini = getRoomSystemBonusPercent('minigame', roomId);
+    const explore = getRoomSystemBonusPercent('exploration', roomId);
+    const compete = getRoomSystemBonusPercent('competition', roomId);
+    return `Mini ${mini >= 0 ? '+' : ''}${mini}%, Explore ${explore >= 0 ? '+' : ''}${explore}%, Compete ${compete >= 0 ? '+' : ''}${compete}%`;
 }
 
 const ROOM_IDS = Object.keys(ROOMS);
@@ -1008,9 +1249,9 @@ const ROOM_TREASURE_POOLS = {
 };
 
 const EXPEDITION_DURATIONS = [
-    { id: 'scout', name: 'Scout Run', label: '45s Scout Run', ms: 45000, lootMultiplier: 0.9 },
-    { id: 'journey', name: 'Journey', label: '2m Journey', ms: 120000, lootMultiplier: 2.8 },
-    { id: 'odyssey', name: 'Grand Odyssey', label: '5m Grand Odyssey', ms: 300000, lootMultiplier: 7.5 }
+    { id: 'scout', name: 'Scout Run', label: '40s Scout Run', ms: 40000, lootMultiplier: 0.86 },
+    { id: 'journey', name: 'Journey', label: '1m 35s Journey', ms: 95000, lootMultiplier: 2.35 },
+    { id: 'odyssey', name: 'Grand Odyssey', label: '3m 40s Grand Odyssey', ms: 220000, lootMultiplier: 5.4 }
 ];
 
 const DUNGEON_ROOM_TYPES = [
@@ -1174,7 +1415,7 @@ const GARDEN_CROPS = {
         name: 'Carrot',
         seedEmoji: '🥕',
         stages: ['🟫', '🌱', '🌿', '🥕'],
-        growTime: 3, // grow ticks needed per stage
+        growTime: 2, // grow ticks needed per stage
         plantType: 'crop',
         harvestYield: 1,
         hungerValue: 15,
@@ -1191,7 +1432,7 @@ const GARDEN_CROPS = {
         name: 'Tomato',
         seedEmoji: '🍅',
         stages: ['🟫', '🌱', '🌿', '🍅'],
-        growTime: 4,
+        growTime: 3,
         plantType: 'crop',
         harvestYield: 1,
         hungerValue: 18,
@@ -1208,7 +1449,7 @@ const GARDEN_CROPS = {
         name: 'Strawberry',
         seedEmoji: '🍓',
         stages: ['🟫', '🌱', '🌿', '🍓'],
-        growTime: 5,
+        growTime: 4,
         plantType: 'crop',
         harvestYield: 1,
         hungerValue: 20,
@@ -1225,7 +1466,7 @@ const GARDEN_CROPS = {
         name: 'Pumpkin',
         seedEmoji: '🎃',
         stages: ['🟫', '🌱', '🌿', '🎃'],
-        growTime: 6,
+        growTime: 5,
         plantType: 'crop',
         harvestYield: 2,
         hungerValue: 25,
@@ -1242,7 +1483,7 @@ const GARDEN_CROPS = {
         name: 'Sunflower',
         seedEmoji: '🌻',
         stages: ['🟫', '🌱', '🌿', '🌻'],
-        growTime: 4,
+        growTime: 3,
         plantType: 'crop',
         harvestYield: 1,
         hungerValue: 5,
@@ -1259,7 +1500,7 @@ const GARDEN_CROPS = {
         name: 'Apple',
         seedEmoji: '🍎',
         stages: ['🟫', '🌱', '🌳', '🍎'],
-        growTime: 8,
+        growTime: 7,
         plantType: 'fruitTree',
         firstMatureMinutes: 30,
         harvestCooldownMinutes: 360,
@@ -1278,7 +1519,7 @@ const GARDEN_CROPS = {
         name: 'Candy Corn',
         seedEmoji: '🍬',
         stages: ['🟫', '🌱', '🌾', '🍬'],
-        growTime: 5,
+        growTime: 4,
         plantType: 'crop',
         harvestYield: 1,
         hungerValue: 12,
@@ -1295,7 +1536,7 @@ const GARDEN_CROPS = {
         name: 'Snowberry',
         seedEmoji: '🫐',
         stages: ['🟫', '🌱', '❄️', '🫐'],
-        growTime: 6,
+        growTime: 5,
         plantType: 'crop',
         harvestYield: 1,
         hungerValue: 14,
@@ -1312,7 +1553,7 @@ const GARDEN_CROPS = {
         name: 'Sunblush Melon',
         seedEmoji: '🍈',
         stages: ['🟫', '🌱', '🍃', '🍈'],
-        growTime: 7,
+        growTime: 6,
         plantType: 'crop',
         harvestYield: 2,
         hungerValue: 24,
@@ -2359,6 +2600,9 @@ const REWARD_MODIFIERS = {
 
 const REWARD_BUNDLES = {
     dailyFinish: { id: 'dailyFinish', coins: 100, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
+    dailyFinishCare: { id: 'dailyFinishCare', coins: 96, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
+    dailyFinishExplore: { id: 'dailyFinishExplore', coins: 102, modifierId: 'luckyPaws', collectible: { type: 'sticker', id: 'partySticker' } },
+    dailyFinishCompete: { id: 'dailyFinishCompete', coins: 104, modifierId: 'focusedTraining', collectible: { type: 'sticker', id: 'partySticker' } },
     streakDay1: { id: 'streakDay1', coins: 40, modifierId: 'happyHour', collectible: { type: 'sticker', id: 'starSticker' } },
     streakDay3: { id: 'streakDay3', coins: 55, modifierId: 'careRush', collectible: { type: 'sticker', id: 'partySticker' } },
     streakDay5: { id: 'streakDay5', coins: 75, modifierId: 'careRush', collectible: { type: 'accessory', id: 'bandana' } },
@@ -2368,12 +2612,63 @@ const REWARD_BUNDLES = {
     streakDay21: { id: 'streakDay21', coins: 180, modifierId: 'luckyPaws', collectible: { type: 'accessory', id: 'crown' } },
     streakDay30: { id: 'streakDay30', coins: 240, modifierId: 'focusedTraining', collectible: { type: 'sticker', id: 'crownSticker' } },
     weeklyArcFinale: { id: 'weeklyArcFinale', coins: 320, modifierId: 'familyAura', collectible: { type: 'sticker', id: 'legendRibbon' } },
+    weeklyArcCare: { id: 'weeklyArcCare', coins: 300, modifierId: 'careRush', collectible: { type: 'sticker', id: 'legendRibbon' } },
+    weeklyArcExplore: { id: 'weeklyArcExplore', coins: 308, modifierId: 'luckyPaws', collectible: { type: 'sticker', id: 'legendRibbon' } },
+    weeklyArcCompete: { id: 'weeklyArcCompete', coins: 314, modifierId: 'focusedTraining', collectible: { type: 'sticker', id: 'legendRibbon' } },
     // Recommendation #9: Sticker set completion bonuses
     stickerSetAnimals: { id: 'stickerSetAnimals', coins: 150, modifierId: 'luckyPaws' },
     stickerSetNature: { id: 'stickerSetNature', coins: 100, modifierId: 'careRush' },
     stickerSetFun: { id: 'stickerSetFun', coins: 120, modifierId: 'happyHour' },
     stickerSetSpecial: { id: 'stickerSetSpecial', coins: 200, modifierId: 'focusedTraining' }
 };
+
+const PHASE_REWARD_BUNDLE_TABLE = {
+    daily: {
+        baby: 'dailyFinishCare',
+        child: 'dailyFinishCare',
+        adult: 'dailyFinishExplore',
+        elder: 'dailyFinishCompete'
+    },
+    weekly: {
+        baby: 'weeklyArcCare',
+        child: 'weeklyArcExplore',
+        adult: 'weeklyArcCompete',
+        elder: 'weeklyArcCompete'
+    },
+    achievement: {
+        baby: 'stickerSetNature',
+        child: 'stickerSetAnimals',
+        adult: 'stickerSetAnimals',
+        elder: 'stickerSetSpecial'
+    }
+};
+
+function getRewardBundleForPhase(phaseKey, stage, fallbackBundleId) {
+    const lane = PHASE_REWARD_BUNDLE_TABLE[phaseKey];
+    if (!lane) return fallbackBundleId || null;
+    const stageKey = GROWTH_STAGES[stage] ? stage : 'baby';
+    const bundleId = lane[stageKey] || fallbackBundleId;
+    if (!bundleId || !REWARD_BUNDLES[bundleId]) return fallbackBundleId || null;
+    return bundleId;
+}
+
+function getPhaseModifierForLane(stage, laneKey) {
+    const tuning = getPhaseRewardTuning();
+    const stageKey = GROWTH_STAGES[stage] ? stage : 'baby';
+    if (laneKey === 'daily') return (tuning.dailyModifierByStage || {})[stageKey] || null;
+    if (laneKey === 'weekly') return (tuning.weeklyModifierByStage || {})[stageKey] || null;
+    if (laneKey === 'achievement') return (tuning.achievementModifierByStage || {})[stageKey] || null;
+    return null;
+}
+
+function getMasteryPhaseBonus(stage, bonusKey) {
+    const stageKey = GROWTH_STAGES[stage] ? stage : 'baby';
+    const mastery = (getPhaseRewardTuning().mastery || {});
+    if (bonusKey === 'care') return (mastery.careByStage || {})[stageKey] || 0;
+    if (bonusKey === 'expeditionRolls') return (mastery.expeditionRollBonusByStage || {})[stageKey] || 0;
+    if (bonusKey === 'competition') return (mastery.competitionByStage || {})[stageKey] || 0;
+    return 0;
+}
 
 // ==================== BADGES ====================
 
@@ -2565,6 +2860,12 @@ const STREAK_PRESTIGE_REWARDS = [
     { id: 'springRelay', label: 'Spring Relay', icon: '🌸', collectible: { type: 'sticker', id: 'bloomCrest' }, coins: 280, modifierId: 'familyAura' }
 ];
 
+function getStageWeightedPrestigeWeights(stage) {
+    const stageKey = GROWTH_STAGES[stage] ? stage : 'baby';
+    const tuning = getPhaseRewardTuning();
+    return (tuning.prestigeWeightsByStage && tuning.prestigeWeightsByStage[stageKey]) || {};
+}
+
 const WEEKLY_THEMED_ARCS = [
     {
         id: 'carecraft',
@@ -2575,7 +2876,7 @@ const WEEKLY_THEMED_ARCS = [
             { id: 'arc-feed', icon: '🍎', trackKey: 'feedCount', target: 8, nameTemplate: 'Feed {target} times' },
             { id: 'arc-explore', icon: '🧭', trackKey: 'expeditionCount', target: 2, nameTemplate: 'Complete {target} expeditions' }
         ],
-        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+        finaleReward: { bundleId: 'weeklyArcCare', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
     },
     {
         id: 'wildfrontier',
@@ -2586,7 +2887,7 @@ const WEEKLY_THEMED_ARCS = [
             { id: 'arc-discovery', icon: '✨', trackKey: 'discoveryEvents', target: 5, nameTemplate: 'Find {target} discovery events' },
             { id: 'arc-bond', icon: '💞', trackKey: 'bondEvents', target: 3, nameTemplate: 'Trigger {target} bond moments' }
         ],
-        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+        finaleReward: { bundleId: 'weeklyArcExplore', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
     },
     // Recommendation #5: New weekly arc variants
     {
@@ -2598,7 +2899,7 @@ const WEEKLY_THEMED_ARCS = [
             { id: 'arc-feed-bloom', icon: '🍎', trackKey: 'feedCount', target: 6, nameTemplate: 'Feed {target} times' },
             { id: 'arc-care-bloom', icon: '💝', trackKey: 'totalCareActions', target: 12, nameTemplate: 'Do {target} care actions' }
         ],
-        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+        finaleReward: { bundleId: 'weeklyArcExplore', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
     },
     {
         id: 'arenaglory',
@@ -2609,7 +2910,7 @@ const WEEKLY_THEMED_ARCS = [
             { id: 'arc-minigame', icon: '🎮', trackKey: 'minigameCount', target: 5, nameTemplate: 'Play {target} mini-games' },
             { id: 'arc-expedition-glory', icon: '🧭', trackKey: 'expeditionCount', target: 2, nameTemplate: 'Complete {target} expeditions' }
         ],
-        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+        finaleReward: { bundleId: 'weeklyArcCompete', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
     },
     {
         id: 'familybonds',
@@ -2620,7 +2921,7 @@ const WEEKLY_THEMED_ARCS = [
             { id: 'arc-care-family', icon: '💝', trackKey: 'totalCareActions', target: 15, nameTemplate: 'Do {target} care actions' },
             { id: 'arc-hatch-family', icon: '🥚', trackKey: 'hatchCount', target: 1, nameTemplate: 'Hatch {target} new family member' }
         ],
-        finaleReward: { bundleId: 'weeklyArcFinale', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
+        finaleReward: { bundleId: 'weeklyArcCare', collectible: { type: 'sticker', id: 'legendRibbon' }, title: 'Arc Finale Prize' }
     }
 ];
 

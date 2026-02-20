@@ -107,6 +107,36 @@
             };
         }
 
+        function getRewardPhaseStage() {
+            const stage = gameState && gameState.pet && gameState.pet.growthStage;
+            return GROWTH_STAGES[stage] ? stage : 'baby';
+        }
+
+        function grantPhaseModifier(stage, laneKey, sourceLabel) {
+            const modifierId = (typeof getPhaseModifierForLane === 'function') ? getPhaseModifierForLane(stage, laneKey) : null;
+            if (!modifierId) return null;
+            return addGameplayModifier(modifierId, sourceLabel || 'Phase Reward');
+        }
+
+        function pickStageWeightedPrestigeReward(rewards, stage, seedKey) {
+            const pool = Array.isArray(rewards) ? rewards : [];
+            if (pool.length === 0) return null;
+            const weights = (typeof getStageWeightedPrestigeWeights === 'function') ? getStageWeightedPrestigeWeights(stage) : {};
+            const weighted = pool.map((reward) => {
+                const modifier = reward && reward.modifierId;
+                const w = Math.max(1, Number(weights[modifier] || 1));
+                return { reward, weight: w };
+            });
+            const total = weighted.reduce((sum, row) => sum + row.weight, 0);
+            if (total <= 0) return weighted[0].reward;
+            let roll = hashDailySeed(seedKey) % total;
+            for (const row of weighted) {
+                roll -= row.weight;
+                if (roll < 0) return row.reward;
+            }
+            return weighted[weighted.length - 1].reward;
+        }
+
         function addGameplayModifier(modifierId, source) {
             if (!modifierId || !REWARD_MODIFIERS || !REWARD_MODIFIERS[modifierId]) return null;
             if (!Array.isArray(gameState.rewardModifiers)) gameState.rewardModifiers = [];
@@ -173,6 +203,7 @@
                 if (!effect || effect.type !== 'careGainMultiplier') return;
                 mult *= Math.max(1, Number(effect.multiplier) || 1);
             });
+            mult *= (1 + getMasteryCareGainBonus());
             return mult;
         }
 
@@ -215,6 +246,7 @@
                 modifier.nextExpeditionBonusRolls = 0;
             });
             gameState.rewardModifiers = gameState.rewardModifiers.filter((modifier) => !(typeof modifier.nextExpeditionBonusRolls === 'number' && modifier.nextExpeditionBonusRolls <= 0 && !modifier.expiresAt && modifier.remainingActions === null && modifier.remainingMatches === null));
+            rolls += getMasteryExpeditionRollBonus();
             return rolls;
         }
 
@@ -225,6 +257,7 @@
                 if (!effect || effect.type !== 'competitionRewardMultiplier') return;
                 mult *= Math.max(1, Number(effect.multiplier) || 1);
             });
+            mult *= (1 + getMasteryCompetitionPayoutBonus());
             return mult;
         }
 
@@ -314,7 +347,14 @@
                 arc.completed = true;
                 if (!arc.rewardClaimed) {
                     arc.rewardClaimed = true;
-                    if (arc.reward && arc.reward.bundleId) applyRewardBundle(arc.reward.bundleId, `${arc.icon || '🏅'} ${arc.theme || 'Weekly Arc'}`);
+                    const stage = getRewardPhaseStage();
+                    if (arc.reward && arc.reward.bundleId) {
+                        const bundleId = (typeof getRewardBundleForPhase === 'function')
+                            ? getRewardBundleForPhase('weekly', stage, arc.reward.bundleId)
+                            : arc.reward.bundleId;
+                        if (bundleId) applyRewardBundle(bundleId, `${arc.icon || '🏅'} ${arc.theme || 'Weekly Arc'}`);
+                    }
+                    grantPhaseModifier(stage, 'weekly', `${arc.icon || '🏅'} Weekly Emphasis`);
                     if (arc.reward && arc.reward.collectible) grantBundleCollectible(arc.reward.collectible);
                     addJournalEntry('🏅', `${arc.theme || 'Weekly arc'} completed! Exclusive finale reward unlocked.`);
                 }
@@ -422,8 +462,12 @@
                     gameState.totalDailyCompletions++;
                     if (!cl._rewardGranted) {
                         cl._rewardGranted = true;
-                        const bundled = applyRewardBundle('dailyFinish', 'Daily Tasks');
                         const stage = (cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : 'baby';
+                        const bundleId = (typeof getRewardBundleForPhase === 'function')
+                            ? getRewardBundleForPhase('daily', stage, 'dailyFinish')
+                            : 'dailyFinish';
+                        const bundled = bundleId ? applyRewardBundle(bundleId, 'Daily Tasks') : null;
+                        grantPhaseModifier(stage, 'daily', 'Daily Emphasis');
                         const stageMult = Math.max(1, Number(getStageBalance(stage).dailyTaskMultiplier) || 1);
                         const stageBonusCoins = Math.max(0, Math.round((stageMult - 1) * 45));
                         // Recommendation #7: Mastery rank daily bonus (+1 coin if Family Legacy tier 2+)
@@ -549,6 +593,35 @@
             const mastery = ensureMasteryState();
             if (mastery.familyLegacy && mastery.familyLegacy.tier >= 2) return 1;
             return 0;
+        }
+
+        function getMasteryCareGainBonus() {
+            const mastery = ensureMasteryState();
+            const stage = getRewardPhaseStage();
+            const stageBonus = (typeof getMasteryPhaseBonus === 'function') ? getMasteryPhaseBonus(stage, 'care') : 0;
+            if (!mastery.familyLegacy) return stageBonus;
+            const tier = Math.max(1, Number(mastery.familyLegacy.tier) || 1);
+            if (tier < 2) return stageBonus;
+            return stageBonus + Math.min(0.08, 0.01 * (tier - 1));
+        }
+
+        function getMasteryExpeditionRollBonus() {
+            const mastery = ensureMasteryState();
+            const stage = getRewardPhaseStage();
+            const stageBonus = Math.max(0, Math.floor((typeof getMasteryPhaseBonus === 'function') ? getMasteryPhaseBonus(stage, 'expeditionRolls') : 0));
+            const biomeRanks = mastery.biomeRanks || {};
+            const highRanks = Object.values(biomeRanks).filter((entry) => entry && Number(entry.rank) >= 4).length;
+            const rankBonus = highRanks >= 2 ? 1 : 0;
+            return stageBonus + rankBonus;
+        }
+
+        function getMasteryCompetitionPayoutBonus() {
+            const mastery = ensureMasteryState();
+            const stage = getRewardPhaseStage();
+            const stageBonus = Math.max(0, Number((typeof getMasteryPhaseBonus === 'function') ? getMasteryPhaseBonus(stage, 'competition') : 0));
+            const rank = Math.max(1, Number((mastery.competitionSeason || {}).rank) || 1);
+            const masteryBonus = rank >= 7 ? 0.06 : rank >= 5 ? 0.04 : rank >= 3 ? 0.02 : 0;
+            return stageBonus + masteryBonus;
         }
 
         // ==================== GOAL LADDER ====================
@@ -715,6 +788,7 @@
             if (!gameState._claimedStickerSets) gameState._claimedStickerSets = {};
             const collected = gameState.stickers;
             const rewards = [];
+            const stage = getRewardPhaseStage();
             const setBundles = {
                 animals: 'stickerSetAnimals',
                 nature: 'stickerSetNature',
@@ -728,7 +802,11 @@
                 const allCollected = stickersInCategory.every(([id]) => collected[id] && collected[id].collected);
                 if (allCollected) {
                     gameState._claimedStickerSets[catKey] = true;
-                    const result = applyRewardBundle(bundleId, `${STICKER_CATEGORIES[catKey].icon} ${STICKER_CATEGORIES[catKey].label} Set Complete`);
+                    const phaseBundleId = (typeof getRewardBundleForPhase === 'function')
+                        ? getRewardBundleForPhase('achievement', stage, bundleId)
+                        : bundleId;
+                    const result = applyRewardBundle(phaseBundleId, `${STICKER_CATEGORIES[catKey].icon} ${STICKER_CATEGORIES[catKey].label} Set Complete`);
+                    grantPhaseModifier(stage, 'achievement', `${STICKER_CATEGORIES[catKey].icon} Achievement Emphasis`);
                     if (result) rewards.push({ category: catKey, ...result });
                     if (typeof addJournalEntry === 'function') {
                         addJournalEntry(STICKER_CATEGORIES[catKey].icon, `Completed the ${STICKER_CATEGORIES[catKey].label} sticker set! Bonus reward unlocked.`);
@@ -1017,8 +1095,8 @@
                 const monthKey = getCurrentMonthKey();
                 const rewards = Array.isArray(STREAK_PRESTIGE_REWARDS) ? STREAK_PRESTIGE_REWARDS : [];
                 if (rewards.length > 0 && streak.prestige.claimedMonthlyReward !== monthKey) {
-                    const idx = hashDailySeed(`prestige:${monthKey}`) % rewards.length;
-                    prestigeReward = rewards[idx];
+                    const stage = getRewardPhaseStage();
+                    prestigeReward = pickStageWeightedPrestigeReward(rewards, stage, `prestige:${monthKey}:${stage}`);
                     // Recommendation #8: Prestige escalation — +20 coins per completed cycle, cap 400
                     const prestigeBaseCoins = prestigeReward.coins || 280;
                     const prestigeEscalation = Math.min(400, prestigeBaseCoins + ((streak.prestige.completedCycles || 0) * 20));
@@ -1037,4 +1115,3 @@
             saveGame();
             return { bonus, milestones: unclaimedMilestones, prestigeReward, streakDripCoins: streakDripCoins || 0 };
         }
-

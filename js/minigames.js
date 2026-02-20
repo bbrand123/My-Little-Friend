@@ -194,7 +194,7 @@
                     historyHTML = `<span class="minigame-card-history">Recent: ${historyItems}</span>`;
                 }
                 const plays = playCounts[game.id] || 0;
-                const diffLevel = Math.min(plays, 10);
+                const diffLevel = plays > 0 ? getMiniGameDifficultyMeterLevel(game.id) : 0;
                 let difficultyHTML = '';
                 if (plays > 0) {
                     const pips = Array.from({length: 10}, (_, i) => {
@@ -359,6 +359,56 @@
             return null;
         }
 
+        function getEscalatedMinigameDifficulty(gameId) {
+            const baseDifficulty = typeof getMinigameDifficulty === 'function' ? Math.max(0.6, Number(getMinigameDifficulty(gameId)) || 1) : 1;
+            const plays = Math.max(0, Number((gameState.minigamePlayCounts || {})[gameId]) || 0);
+            const tuning = (typeof getMinigameEscalationTuning === 'function') ? getMinigameEscalationTuning() : null;
+            if (!tuning) return baseDifficulty;
+            const boostPerPlay = Math.max(0, Number(tuning.replayDifficultyBoostPerPlay) || 0);
+            const maxBoostPlays = Math.max(0, Number(tuning.replayDifficultyBoostMaxPlays) || 0);
+            const cap = Math.max(1, Number(tuning.difficultyCap) || 2.7);
+            const boosted = baseDifficulty * (1 + Math.min(plays, maxBoostPlays) * boostPerPlay);
+            return Math.max(0.7, Math.min(cap, Number(boosted.toFixed(2))));
+        }
+
+        function getMinigameDifficultyBand(gameId, runDifficulty) {
+            const tuning = (typeof getMinigameEscalationTuning === 'function') ? getMinigameEscalationTuning() : null;
+            const diff = Math.max(0.6, Number(runDifficulty) || getEscalatedMinigameDifficulty(gameId));
+            if (!tuning || !Array.isArray(tuning.difficultyBands) || tuning.difficultyBands.length === 0) {
+                return { id: 'steady', rewardScoreMultiplier: 1, difficulty: diff };
+            }
+            for (const band of tuning.difficultyBands) {
+                if (diff <= (Number(band.maxDifficulty) || 99)) {
+                    return {
+                        id: band.id || 'steady',
+                        rewardScoreMultiplier: Math.max(0.8, Number(band.rewardScoreMultiplier) || 1),
+                        difficulty: diff
+                    };
+                }
+            }
+            const fallback = tuning.difficultyBands[tuning.difficultyBands.length - 1] || {};
+            return {
+                id: fallback.id || 'steady',
+                rewardScoreMultiplier: Math.max(0.8, Number(fallback.rewardScoreMultiplier) || 1),
+                difficulty: diff
+            };
+        }
+
+        function getMiniGameDifficultyMeterLevel(gameId) {
+            const diff = getEscalatedMinigameDifficulty(gameId);
+            return Math.max(1, Math.min(10, Math.round(diff * 3.4)));
+        }
+
+        function awardScaledMiniGameCoins(gameId, baseCoinScore, runDifficulty) {
+            if (typeof awardMiniGameCoins !== 'function') return 0;
+            const safeBase = Math.max(0, Number(baseCoinScore) || 0);
+            if (safeBase <= 0) return 0;
+            const band = getMinigameDifficultyBand(gameId, runDifficulty);
+            const roomMult = (typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('minigame') : 1;
+            const tunedScore = Math.max(1, Math.round(safeBase * band.rewardScoreMultiplier * roomMult));
+            return awardMiniGameCoins(gameId, tunedScore);
+        }
+
         function startMiniGame(gameId) {
             switch (gameId) {
                 case 'fetch':
@@ -420,7 +470,7 @@
                 }
                 return;
             }
-            const fetchDiff = getMinigameDifficulty('fetch');
+            const fetchDiff = getEscalatedMinigameDifficulty('fetch');
             fetchState = {
                 score: 0,
                 phase: 'ready', // 'ready', 'thrown', 'fetching', 'returning'
@@ -712,7 +762,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyLoss, 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger - hungerLoss, 0, 100);
-                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('fetch', fetchState.score) : 0;
+                const coinReward = awardScaledMiniGameCoins('fetch', fetchState.score, fetchState.difficulty);
                 const previousBest = Number((gameState.minigameHighScores || {}).fetch || 0);
                 const isNewBest = updateMinigameHighScore('fetch', fetchState.score);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -779,7 +829,7 @@
                 }
                 return;
             }
-            const hideSeekDiff = getMinigameDifficulty('hideseek');
+            const hideSeekDiff = getEscalatedMinigameDifficulty('hideseek');
             // More treats to find with difficulty, less time
             const totalTreats = Math.min(5 + Math.floor((hideSeekDiff - 1) * 5), 8);
             const spotCount = Math.min(8 + Math.floor((hideSeekDiff - 1) * 4), 12);
@@ -1145,7 +1195,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + bonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(hideSeekState.treatsFound * 2, 8), 0, 100);
                 gameState.pet.hunger = clamp(gameState.pet.hunger + Math.min(hideSeekState.treatsFound * 2, 10), 0, 100);
-                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('hideseek', hideSeekState.treatsFound) : 0;
+                const coinReward = awardScaledMiniGameCoins('hideseek', hideSeekState.treatsFound, hideSeekState.difficulty);
                 const previousBest = Number((gameState.minigameHighScores || {}).hideseek || 0);
                 const isNewBest = updateMinigameHighScore('hideseek', hideSeekState.treatsFound);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -1200,7 +1250,7 @@
             const existing = document.querySelector('.bubblepop-game-overlay');
             if (existing) existing.remove();
 
-            const bubbleDiff = getMinigameDifficulty('bubblepop');
+            const bubbleDiff = getEscalatedMinigameDifficulty('bubblepop');
             bubblePopState = {
                 score: 0,
                 timeLeft: 30,
@@ -1577,7 +1627,7 @@
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.cleanliness = clamp(gameState.pet.cleanliness + cleanlinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - Math.min(bubblePopState.score, 10), 0, 100);
-                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('bubblepop', bubblePopState.score) : 0;
+                const coinReward = awardScaledMiniGameCoins('bubblepop', bubblePopState.score, bubblePopState.difficulty);
                 const previousBest = Number((gameState.minigameHighScores || {}).bubblepop || 0);
                 const isNewBest = updateMinigameHighScore('bubblepop', bubblePopState.score);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -1656,7 +1706,7 @@
             const existing = document.querySelector('.matching-game-overlay');
             if (existing) existing.remove();
 
-            const matchDiff = getMinigameDifficulty('matching');
+            const matchDiff = getEscalatedMinigameDifficulty('matching');
             // Scale pairs: 6 at base, up to 10 at max difficulty (capped by available items)
             const pairCount = Math.min(6 + Math.floor((matchDiff - 1) * 4), MATCHING_ITEMS.length);
 
@@ -1941,7 +1991,7 @@
                     ? Math.max(1, Math.round(matchingState.totalPairs * 100 / matchingState.moves))
                     : 0;
                 const coinBasis = Math.max(matchingState.matchesFound * 8, Math.round(matchScore / 5));
-                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('matching', coinBasis) : 0;
+                const coinReward = awardScaledMiniGameCoins('matching', coinBasis, matchingState.difficulty);
                 const previousBest = Number((gameState.minigameHighScores || {}).matching || 0);
                 const isNewBest = matchScore > 0 && updateMinigameHighScore('matching', matchScore);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -2049,7 +2099,7 @@
             const existing = document.querySelector('.simonsays-game-overlay');
             if (existing) existing.remove();
 
-            const simonDiff = getMinigameDifficulty('simonsays');
+            const simonDiff = getEscalatedMinigameDifficulty('simonsays');
             simonState = {
                 pattern: [],
                 playerIndex: 0,
@@ -2335,7 +2385,7 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
-                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('simonsays', roundsCompleted * 10) : 0;
+                const coinReward = awardScaledMiniGameCoins('simonsays', roundsCompleted * 10, simonState.difficulty);
                 const previousBest = Number((gameState.minigameHighScores || {}).simonsays || 0);
                 const isNewBest = updateMinigameHighScore('simonsays', roundsCompleted);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -2796,7 +2846,7 @@
 
                 gameState.pet.happiness = clamp(gameState.pet.happiness + happinessBonus, 0, 100);
                 gameState.pet.energy = clamp(gameState.pet.energy - energyCost, 0, 100);
-                const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins('coloring', Math.round(ratio * 100)) : 0;
+                const coinReward = awardScaledMiniGameCoins('coloring', Math.round(ratio * 100), getEscalatedMinigameDifficulty('coloring'));
                 const previousBest = Number((gameState.minigameHighScores || {}).coloring || 0);
                 const isNewBest = updateMinigameHighScore('coloring', colored);
                 const bestMsg = isNewBest ? ' New best!' : '';
@@ -2886,7 +2936,8 @@
 
             if (!config.skipPlayCount) incrementMinigamePlayCount(gameId, score);
             const statAggregate = applyMiniGameStatChangesToPets(pets, config.statDelta);
-            const coinReward = (typeof awardMiniGameCoins === 'function') ? awardMiniGameCoins(gameId, coinScore) : 0;
+            const runDifficulty = Number.isFinite(config.runDifficulty) ? Number(config.runDifficulty) : getEscalatedMinigameDifficulty(gameId);
+            const coinReward = awardScaledMiniGameCoins(gameId, coinScore, runDifficulty);
             const previousBest = Number((gameState.minigameHighScores || {})[gameId] || 0);
             const isNewBest = updateMinigameHighScore(gameId, score);
 
@@ -2952,13 +3003,14 @@
                 showToast('You need a pet to race.', '#FFA726');
                 return;
             }
-            const difficulty = getMinigameDifficulty('racing');
+            const difficulty = getEscalatedMinigameDifficulty('racing');
             racingState = {
                 lane: 1,
                 score: 0,
                 lives: 3,
                 elapsedMs: 0,
                 durationMs: 32000,
+                difficulty,
                 obstacles: [],
                 spawnEvery: Math.max(8, Math.round(18 / Math.max(0.7, difficulty))),
                 speed: 2.7 * difficulty,
@@ -3105,6 +3157,7 @@
                     gameName: 'Lane Racing',
                     score,
                     coinScore: score * 6,
+                    runDifficulty: racingState.difficulty,
                     statDelta: {
                         happiness: Math.min(24, Math.round(score * 1.7)),
                         energy: -Math.min(14, Math.round(score * 1.2)),
@@ -3309,6 +3362,7 @@
                     gameName: 'Cooking Lab',
                     score: recipes,
                     coinScore: recipes * 10,
+                    runDifficulty: getEscalatedMinigameDifficulty('cooking'),
                     statDelta: {
                         hunger: Math.min(24, recipes * 5),
                         happiness: Math.min(20, recipes * 4),
@@ -3337,12 +3391,13 @@
                 showToast('You need a pet for pond fishing.', '#FFA726');
                 return;
             }
-            const difficulty = getMinigameDifficulty('fishing');
+            const difficulty = getEscalatedMinigameDifficulty('fishing');
             fishingState = {
                 roundsLeft: 10,
                 catches: 0,
                 misses: 0,
                 marker: 0,
+                difficulty,
                 velocity: 1.8 + difficulty * 0.9,
                 zoneStart: 35,
                 zoneSize: Math.max(20, Math.round(38 / Math.max(difficulty, 0.75))),
@@ -3480,6 +3535,7 @@
                     gameName: 'Pond Fishing',
                     score: catches,
                     coinScore: catches * 8,
+                    runDifficulty: fishingState.difficulty,
                     statDelta: {
                         happiness: Math.min(22, catches * 4),
                         energy: -Math.min(10, Math.max(2, fishingState.misses + 2)),
@@ -3537,13 +3593,14 @@
                 showToast('You need a pet to jam.', '#FFA726');
                 return;
             }
-            const difficulty = getMinigameDifficulty('rhythm');
+            const difficulty = getEscalatedMinigameDifficulty('rhythm');
             rhythmState = {
                 beat: 0,
                 totalBeats: 24,
                 score: 0,
                 combo: 0,
                 bestCombo: 0,
+                difficulty,
                 expectedAt: performance.now(),
                 lastRegisteredBeat: -1,
                 intervalMs: Math.max(440, Math.round(720 / Math.max(0.75, difficulty))),
@@ -3670,6 +3727,7 @@
                     gameName: 'Rhythm Beats',
                     score,
                     coinScore: Math.round(score * 0.85),
+                    runDifficulty: rhythmState.difficulty,
                     statDelta: {
                         happiness: Math.min(28, Math.round(score / 2.2)),
                         energy: -Math.min(12, Math.max(4, Math.round(rhythmState.totalBeats / 3)))
@@ -3860,6 +3918,7 @@
                     gameName: 'Slider Puzzle',
                     score: solvedScore,
                     coinScore: solved ? Math.round(solvedScore * 0.8) : Math.round(solvedScore * 0.45),
+                    runDifficulty: getEscalatedMinigameDifficulty('slider'),
                     statDelta: {
                         happiness: Math.min(24, Math.round(solvedScore / 5)),
                         energy: -Math.min(10, Math.round(elapsed / 18))
@@ -4019,6 +4078,7 @@
                     gameName: 'Animal Trivia',
                     score,
                     coinScore: score * 9,
+                    runDifficulty: getEscalatedMinigameDifficulty('trivia'),
                     statDelta: {
                         happiness: Math.min(24, score * 5),
                         energy: -Math.max(2, total - score)
@@ -4045,13 +4105,14 @@
                 showToast('You need a pet to run.', '#FFA726');
                 return;
             }
-            const difficulty = getMinigameDifficulty('runner');
+            const difficulty = getEscalatedMinigameDifficulty('runner');
             runnerState = {
                 y: 0,
                 velocity: 0,
                 score: 0,
                 tick: 0,
                 obstacles: [],
+                difficulty,
                 speed: 1.9 * difficulty,
                 spawnEvery: Math.max(24, Math.round(50 / Math.max(0.75, difficulty))),
                 timerId: null
@@ -4185,6 +4246,7 @@
                     gameName: 'Endless Runner',
                     score,
                     coinScore: Math.round(score / 4),
+                    runDifficulty: runnerState.difficulty,
                     statDelta: {
                         happiness: Math.min(28, Math.round(score / 8)),
                         energy: -Math.min(18, Math.round(score / 10)),
@@ -4330,6 +4392,7 @@
                 gameName: 'Tournament Cup',
                 score,
                 coinScore: wins * 12 + championBonus * 8,
+                runDifficulty: getEscalatedMinigameDifficulty('tournament'),
                 statDelta: {
                     happiness: Math.min(30, 8 + wins * 4 + championBonus * 3),
                     energy: -Math.min(14, 6 + wins * 2),
@@ -4632,6 +4695,7 @@
                     gameName: 'Co-op Relay',
                     score,
                     coinScore: Math.round(score / 3),
+                    runDifficulty: getEscalatedMinigameDifficulty('coop'),
                     pets: coopState.pets,
                     statDelta: () => ({
                         happiness: Math.min(20, Math.round(score / 8)),
