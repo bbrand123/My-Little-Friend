@@ -182,3 +182,6 @@
 
         function shouldRunUnloadAutosave() {
             if (_suppressUnloadAutosave) return false;
+            if (hasExternalSaveChangeSinceLastSave()) return false;
+            return true;
+        }
