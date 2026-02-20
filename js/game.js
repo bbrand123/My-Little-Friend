@@ -28,7 +28,8 @@
                 mysteryEggsOpened: 0,
                 auction: { slotId: 'slotA', soldCount: 0, boughtCount: 0, postedCount: 0 },
                 totalEarned: 0,
-                totalSpent: 0
+                totalSpent: 0,
+                auctionIdentityMigrationDone: false
             };
         }
 
@@ -884,6 +885,15 @@
                 expedition: null,
                 expeditionHistory: [],
                 roomTreasureCooldowns: {},
+                treasureHunt: {
+                    // Report #1: Global cooldown + anti-farm runtime state.
+                    globalCooldownEndsAt: 0,
+                    lastRunAt: 0,
+                    lastRoomId: null,
+                    recentRuns: [],
+                    roomSwitchCount: 0,
+                    repeatCount: 0
+                },
                 npcEncounters: [],
                 dungeon: {
                     active: false,
@@ -919,6 +929,15 @@
             if (!ex.lootInventory || typeof ex.lootInventory !== 'object') ex.lootInventory = {};
             if (!Array.isArray(ex.expeditionHistory)) ex.expeditionHistory = [];
             if (!ex.roomTreasureCooldowns || typeof ex.roomTreasureCooldowns !== 'object') ex.roomTreasureCooldowns = {};
+            if (!ex.treasureHunt || typeof ex.treasureHunt !== 'object') {
+                ex.treasureHunt = { globalCooldownEndsAt: 0, lastRunAt: 0, lastRoomId: null, recentRuns: [], roomSwitchCount: 0, repeatCount: 0 };
+            }
+            if (typeof ex.treasureHunt.globalCooldownEndsAt !== 'number') ex.treasureHunt.globalCooldownEndsAt = 0;
+            if (typeof ex.treasureHunt.lastRunAt !== 'number') ex.treasureHunt.lastRunAt = 0;
+            if (typeof ex.treasureHunt.lastRoomId !== 'string' && ex.treasureHunt.lastRoomId !== null) ex.treasureHunt.lastRoomId = null;
+            if (!Array.isArray(ex.treasureHunt.recentRuns)) ex.treasureHunt.recentRuns = [];
+            if (typeof ex.treasureHunt.roomSwitchCount !== 'number') ex.treasureHunt.roomSwitchCount = 0;
+            if (typeof ex.treasureHunt.repeatCount !== 'number') ex.treasureHunt.repeatCount = 0;
             if (!Array.isArray(ex.npcEncounters)) ex.npcEncounters = [];
             if (!ex.dungeon || typeof ex.dungeon !== 'object') {
                 ex.dungeon = { active: false, seed: 0, rooms: [], currentIndex: 0, log: [], rewards: [], startedAt: 0 };
@@ -1031,37 +1050,50 @@
             ex.lootInventory[lootId] = (ex.lootInventory[lootId] || 0) + safeCount;
         }
 
-        function getLootDropWeight(lootId) {
+        function getLootDropWeight(lootId, options) {
             const loot = EXPLORATION_LOOT[lootId];
             const rarity = loot && loot.rarity ? loot.rarity : 'common';
-            if (rarity === 'rare') return 0.3;
-            if (rarity === 'uncommon') return 0.65;
-            return 1;
+            let weight = 1;
+            if (rarity === 'rare') weight = 0.3;
+            else if (rarity === 'uncommon') weight = 0.65;
+
+            const ctx = options && typeof options === 'object' ? options : null;
+            if (ctx && ctx.source === 'expedition' && rarity !== 'common') {
+                // Report #2: Late-biome expedition rarity odds are slightly less favorable.
+                const biomeId = ctx.biomeId || 'forest';
+                const biomeMult = (EXPEDITION_BALANCE && EXPEDITION_BALANCE.biomeRarityWeightMultiplier && Number(EXPEDITION_BALANCE.biomeRarityWeightMultiplier[biomeId])) || 1;
+                let prestigeQualityMult = 1;
+                if (typeof getPrestigeEffectValue === 'function') {
+                    prestigeQualityMult = Math.max(1, Number(getPrestigeEffectValue('expeditionGuild', 'expeditionLootQualityMultiplier', 1)) || 1);
+                }
+                weight *= Math.max(0.65, Math.min(1.2, biomeMult * prestigeQualityMult));
+            }
+            return Math.max(0.05, weight);
         }
 
-        function pickWeightedLootId(pool) {
+        function pickWeightedLootId(pool, options) {
             const candidates = (Array.isArray(pool) ? pool : [])
                 .filter((lootId) => !!EXPLORATION_LOOT[lootId]);
             if (candidates.length === 0) return null;
             let total = 0;
             candidates.forEach((lootId) => {
-                total += getLootDropWeight(lootId);
+                total += getLootDropWeight(lootId, options);
             });
             if (total <= 0) return randomFromArray(candidates);
             let roll = Math.random() * total;
             for (const lootId of candidates) {
-                roll -= getLootDropWeight(lootId);
+                roll -= getLootDropWeight(lootId, options);
                 if (roll <= 0) return lootId;
             }
             return candidates[candidates.length - 1];
         }
 
-        function generateLootBundle(lootPool, rolls) {
+        function generateLootBundle(lootPool, rolls, options) {
             const pool = Array.isArray(lootPool) && lootPool.length > 0 ? lootPool : ['ancientCoin'];
             const rewardMap = {};
             const totalRolls = Math.max(1, Math.floor(rolls || 1));
             for (let i = 0; i < totalRolls; i++) {
-                const lootId = pickWeightedLootId(pool);
+                const lootId = pickWeightedLootId(pool, options);
                 if (!lootId || !EXPLORATION_LOOT[lootId]) continue;
                 const rarity = EXPLORATION_LOOT[lootId].rarity || 'common';
                 let amount = 1;
@@ -1084,11 +1116,69 @@
             return room && room.isOutdoor ? 'Dig' : 'Search';
         }
 
-        function getTreasureCooldownRemaining(roomId) {
+        function getTreasureHuntEnergyCost() {
+            const base = Math.max(1, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.energyCost) || 5));
+            const pet = gameState.pet || (gameState.pets && gameState.pets[gameState.activePetIndex]);
+            const stage = pet && pet.growthStage ? pet.growthStage : 'baby';
+            if (stage === 'baby') return Math.max(1, base - 1);
+            return base;
+        }
+
+        function clampTreasureSuccessChance(value) {
+            const min = Math.max(0.05, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.successChanceMin) || 0.2));
+            return Math.max(min, Math.min(0.9, Number(value) || min));
+        }
+
+        function getTreasureHuntPreview(roomId) {
             const ex = ensureExplorationState();
-            const cooldownMs = GAME_BALANCE.timing.treasureCooldownMs;
-            const lastAt = ex.roomTreasureCooldowns[roomId] || 0;
-            return Math.max(0, (lastAt + cooldownMs) - Date.now());
+            const now = Date.now();
+            const t = ex.treasureHunt || {};
+            const antiFarmWindowMs = Math.max(30000, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.antiFarmWindowMs) || (3 * 60 * 1000)));
+            const penaltyResetMs = Math.max(30000, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.penaltyResetMs) || (4 * 60 * 1000)));
+            const roomSwapPenaltyStep = Math.max(0, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.roomSwapPenaltyStep) || 0.07));
+            const repeatPenaltyStep = Math.max(0, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.repeatPenaltyStep) || 0.05));
+            const maxPenaltyStacks = Math.max(1, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.maxPenaltyStacks) || 6));
+            const cooldownMs = Math.max(1000, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.globalCooldownMs) || GAME_BALANCE.timing.treasureCooldownMs));
+            const successChanceBase = Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.successChanceBase) || 0.48);
+            const extraRollChanceBase = Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.extraRollChanceBase) || 0.22);
+
+            const lastRunAt = Number(t.lastRunAt) || 0;
+            const inActiveWindow = (now - lastRunAt) <= antiFarmWindowMs;
+            const resetPenalty = (now - lastRunAt) > penaltyResetMs;
+
+            let roomSwitchCount = resetPenalty ? 0 : (Number(t.roomSwitchCount) || 0);
+            let repeatCount = resetPenalty ? 0 : (Number(t.repeatCount) || 0);
+            const lastRoomId = typeof t.lastRoomId === 'string' ? t.lastRoomId : null;
+            if (inActiveWindow && lastRoomId) {
+                if (lastRoomId !== roomId) roomSwitchCount += 1;
+                else repeatCount += 1;
+            } else if (!inActiveWindow) {
+                roomSwitchCount = 0;
+                repeatCount = 0;
+            }
+
+            const penaltyStacks = Math.min(maxPenaltyStacks, Math.max(0, roomSwitchCount + repeatCount));
+            let successChance = successChanceBase - (roomSwitchCount * roomSwapPenaltyStep) - (repeatCount * repeatPenaltyStep);
+            // Report #8: Luxury room prestige bonus improves treasure odds slightly.
+            successChance += Number(getPrestigeEffectValue('luxuryRoomUpgrade', 'treasureSuccessBonus', 0)) || 0;
+            successChance = clampTreasureSuccessChance(successChance);
+            const extraRollChance = Math.max(0, Math.min(0.9, extraRollChanceBase - (penaltyStacks * 0.08)));
+
+            return {
+                cooldownRemainingMs: Math.max(0, (Number(t.globalCooldownEndsAt) || 0) - now),
+                cooldownMs,
+                energyCost: getTreasureHuntEnergyCost(),
+                penaltyStacks,
+                roomSwitchCount,
+                repeatCount,
+                successChance,
+                extraRollChance
+            };
+        }
+
+        function getTreasureCooldownRemaining(roomId) {
+            const preview = getTreasureHuntPreview(roomId);
+            return Math.max(0, Number(preview.cooldownRemainingMs) || 0);
         }
 
         function resolvePetTypeForNpc(type) {
@@ -1157,6 +1247,36 @@
             return { ok: true, abandoned };
         }
 
+        function getExpeditionUpkeepCost(biomeId, duration) {
+            const safeDuration = duration || EXPEDITION_DURATIONS[0] || { ms: 40000 };
+            const mins = Math.max(0.5, Number(safeDuration.ms || 0) / 60000);
+            const baseCost = Number((EXPEDITION_BALANCE && EXPEDITION_BALANCE.upkeepBaseCoins) || 0);
+            const perMinute = Number((EXPEDITION_BALANCE && EXPEDITION_BALANCE.upkeepPerMinute) || 0);
+            const biomeMult = Number((EXPEDITION_BALANCE && EXPEDITION_BALANCE.biomeUpkeepMultiplier && EXPEDITION_BALANCE.biomeUpkeepMultiplier[biomeId]) || 1);
+            const prestigeMult = Number(getPrestigeEffectValue('expeditionGuild', 'expeditionUpkeepMultiplier', 1)) || 1;
+            return Math.max(0, Math.round((baseCost + (mins * perMinute)) * biomeMult * prestigeMult));
+        }
+
+        function getExpeditionLootRollCount(baseRolls, lootMultiplier, bonusRolls) {
+            const threshold = Math.max(1, Number((EXPEDITION_BALANCE && EXPEDITION_BALANCE.durationDiminishingThreshold) || 1.9));
+            const exponent = Math.max(0.3, Number((EXPEDITION_BALANCE && EXPEDITION_BALANCE.durationDiminishingExponent) || 0.68));
+            const rawMult = Math.max(0.2, Number(lootMultiplier) || 1);
+            // Report #2: Diminishing returns after threshold keeps long runs better but smoother.
+            const diminishedMult = rawMult <= threshold
+                ? rawMult
+                : threshold + Math.pow(Math.max(0, rawMult - threshold), exponent);
+            const stageRollBonus = Number(getMasteryPhaseBonus((gameState.pet && gameState.pet.growthStage) || 'baby', 'expeditionRolls')) || 0;
+            const total = Math.round((Math.max(1, baseRolls) * diminishedMult) + Math.max(0, Number(bonusRolls) || 0) + Math.max(0, stageRollBonus));
+            return Math.max(2, total);
+        }
+
+        function getExpeditionPreview(biomeId, durationId) {
+            const duration = EXPEDITION_DURATIONS.find((d) => d.id === durationId) || EXPEDITION_DURATIONS[0];
+            const upkeepCost = getExpeditionUpkeepCost(biomeId, duration);
+            const projectedRolls = getExpeditionLootRollCount(2.5, duration.lootMultiplier || 1, 0);
+            return { upkeepCost, projectedRolls, duration };
+        }
+
 	        function startExpedition(biomeId, durationId) {
             const ex = ensureExplorationState();
             updateExplorationUnlocks(true);
@@ -1168,6 +1288,14 @@
             const duration = EXPEDITION_DURATIONS.find((d) => d.id === durationId) || EXPEDITION_DURATIONS[0];
             const pet = gameState.pet || (gameState.pets && gameState.pets[gameState.activePetIndex]);
             if (!pet) return { ok: false, reason: 'no-pet' };
+            const upkeepCost = getExpeditionUpkeepCost(biomeId, duration);
+            if (upkeepCost > 0) {
+                // Report #2: Upkeep scales by biome and duration.
+                const spend = spendCoins(upkeepCost, 'Expedition Upkeep', true);
+                if (!spend.ok) {
+                    return { ok: false, reason: spend.reason, needed: upkeepCost, balance: spend.balance };
+                }
+            }
 
             const now = Date.now();
 	            ex.expedition = {
@@ -1177,12 +1305,14 @@
                 durationId: duration.id,
                 startedAt: now,
                 endAt: now + duration.ms,
-	                lootMultiplier: duration.lootMultiplier
+	                lootMultiplier: duration.lootMultiplier,
+                upkeepCost: upkeepCost
 	            };
+            balanceDebugLog('ExpeditionStart', { biomeId, durationId: duration.id, upkeepCost, lootMultiplier: duration.lootMultiplier }); // Report #2
 	            recordRetentionActivity('expedition');
 	            if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('start_expedition');
 	            saveGame();
-	            return { ok: true, expedition: ex.expedition, biome: EXPLORATION_BIOMES[biomeId], duration };
+	            return { ok: true, expedition: ex.expedition, biome: EXPLORATION_BIOMES[biomeId], duration, upkeepCost };
 	        }
 
         function resolveExpeditionIfReady(forceResolve, silent) {
@@ -1198,8 +1328,8 @@
             const duration = EXPEDITION_DURATIONS.find((d) => d.id === expedition.durationId) || EXPEDITION_DURATIONS[0];
             const baseRolls = 2 + Math.floor(Math.random() * 2);
             const bonusRolls = typeof consumeExpeditionRewardBonusRolls === 'function' ? consumeExpeditionRewardBonusRolls() : 0;
-            const totalRolls = Math.max(2, Math.round(baseRolls * (expedition.lootMultiplier || duration.lootMultiplier || 1)) + Math.max(0, bonusRolls));
-            const rewards = generateLootBundle(getBiomeLootPool(expedition.biomeId), totalRolls);
+            const totalRolls = getExpeditionLootRollCount(baseRolls, (expedition.lootMultiplier || duration.lootMultiplier || 1), bonusRolls);
+            const rewards = generateLootBundle(getBiomeLootPool(expedition.biomeId), totalRolls, { source: 'expedition', biomeId: expedition.biomeId });
             ex.discoveredBiomes[expedition.biomeId] = true;
             ex.stats.expeditionsCompleted++;
 
@@ -1221,7 +1351,9 @@
                 biomeName: biome.name,
                 petName: expedition.petName || 'Pet',
                 rewards: rewards.map((r) => ({ id: r.id, count: r.count })),
-                npcId: npc ? npc.id : null
+                npcId: npc ? npc.id : null,
+                rolls: totalRolls,
+                upkeepCost: expedition.upkeepCost || 0
             };
             ex.expeditionHistory.unshift(historyEntry);
             if (ex.expeditionHistory.length > 15) ex.expeditionHistory = ex.expeditionHistory.slice(0, 15);
@@ -1239,6 +1371,18 @@
 	            const newlyUnlocked = updateExplorationUnlocks(true);
             refreshMasteryTracks();
             saveGame();
+
+            const estimatedSellValue = rewards.reduce((sum, reward) => {
+                return sum + ((getLootSellPrice(reward.id, { source: 'expedition' }) || 0) * (reward.count || 0));
+            }, 0);
+            balanceDebugLog('ExpeditionResolve', { // Report #2
+                biomeId: expedition.biomeId,
+                durationId: expedition.durationId,
+                totalRolls,
+                upkeepCost: expedition.upkeepCost || 0,
+                estimatedSellValue,
+                rewardCount: rewards.length
+            });
 
             if (!silent) {
                 const rewardPreview = rewards.slice(0, 3).map((r) => `${r.data.emoji}x${r.count}`).join(' ');
@@ -1261,21 +1405,53 @@
                 }
             }
 
-            return { ok: true, rewards, npc, biome, newlyUnlocked };
+            return { ok: true, rewards, npc, biome, newlyUnlocked, totalRolls, estimatedSellValue, upkeepCost: expedition.upkeepCost || 0 };
         }
 
         function runTreasureHunt(roomId) {
             const ex = ensureExplorationState();
             const room = ROOMS[roomId];
             if (!room) return { ok: false, reason: 'invalid-room' };
-            const remaining = getTreasureCooldownRemaining(roomId);
-            if (remaining > 0) return { ok: false, reason: 'cooldown', remainingMs: remaining };
+            const preview = getTreasureHuntPreview(roomId);
+            const remaining = Math.max(0, preview.cooldownRemainingMs || 0);
+            if (remaining > 0) return { ok: false, reason: 'cooldown', remainingMs: remaining, preview };
 
-            ex.roomTreasureCooldowns[roomId] = Date.now();
-            const foundTreasure = Math.random() < 0.48;
+            const pet = gameState.pet || (gameState.pets && gameState.pets[gameState.activePetIndex]);
+            const energyCost = Math.max(0, preview.energyCost || 0);
+            if (!pet || Number(pet.energy || 0) < energyCost) {
+                return { ok: false, reason: 'insufficient-energy', needed: energyCost, current: pet ? Number(pet.energy || 0) : 0, preview };
+            }
+            // Report #1: Small recurring cost keeps hunts supplemental, not dominant.
+            pet.energy = clamp((Number(pet.energy) || 0) - energyCost, 0, 100);
+
+            const now = Date.now();
+            const t = ex.treasureHunt;
+            const antiFarmWindowMs = Math.max(30000, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.antiFarmWindowMs) || (3 * 60 * 1000)));
+            const penaltyResetMs = Math.max(30000, Number((TREASURE_HUNT_BALANCE && TREASURE_HUNT_BALANCE.penaltyResetMs) || (4 * 60 * 1000)));
+            const elapsed = now - (Number(t.lastRunAt) || 0);
+            if (elapsed > penaltyResetMs) {
+                t.roomSwitchCount = 0;
+                t.repeatCount = 0;
+            }
+            if (elapsed <= antiFarmWindowMs && t.lastRoomId) {
+                if (t.lastRoomId !== roomId) t.roomSwitchCount = Math.max(0, Number(t.roomSwitchCount || 0) + 1);
+                else t.repeatCount = Math.max(0, Number(t.repeatCount || 0) + 1);
+            } else {
+                t.roomSwitchCount = 0;
+                t.repeatCount = 0;
+            }
+            t.lastRoomId = roomId;
+            t.lastRunAt = now;
+            t.globalCooldownEndsAt = now + Math.max(1000, Number(preview.cooldownMs) || 0);
+            t.recentRuns.push({ at: now, roomId });
+            t.recentRuns = t.recentRuns.filter((entry) => entry && (now - Number(entry.at || 0)) <= antiFarmWindowMs);
+
+            ex.roomTreasureCooldowns[roomId] = now;
+            const foundTreasure = Math.random() < Math.max(0, Math.min(1, preview.successChance || 0.2));
             const action = getTreasureActionLabel(roomId);
             const lootPool = ROOM_TREASURE_POOLS[roomId] || ['ancientCoin'];
-            const rewards = foundTreasure ? generateLootBundle(lootPool, 1 + (Math.random() < 0.15 ? 1 : 0)) : [];
+            const rolls = 1 + ((Math.random() < Math.max(0, Math.min(1, preview.extraRollChance || 0))) ? 1 : 0);
+            const rewards = foundTreasure ? generateLootBundle(lootPool, rolls, { source: 'treasure', roomId }) : [];
 
             if (foundTreasure) {
                 ex.stats.treasuresFound++;
@@ -1293,6 +1469,15 @@
                 npc = registerNpcEncounter(randomFromArray(npcCandidates), biomeId, room.name);
             }
 
+            balanceDebugLog('TreasureHunt', { // Report #1
+                roomId,
+                penaltyStacks: preview.penaltyStacks,
+                successChance: preview.successChance,
+                foundTreasure,
+                rolls,
+                energyCost
+            });
+
             saveGame();
             return {
                 ok: true,
@@ -1300,7 +1485,11 @@
                 foundTreasure,
                 rewards,
                 npc,
-                room
+                room,
+                energyCost,
+                cooldownMs: preview.cooldownMs,
+                penaltyStacks: preview.penaltyStacks,
+                successChance: preview.successChance
             };
         }
 
@@ -1555,7 +1744,7 @@
         }
 
         function createDefaultAuctionHouseData() {
-            return { listings: [], wallets: {} };
+            return { listings: [], wallets: {}, profileWallets: {} };
         }
 
         function loadAuctionHouseData() {
@@ -1566,16 +1755,21 @@
                 if (!parsed || typeof parsed !== 'object') return createDefaultAuctionHouseData();
                 if (!Array.isArray(parsed.listings)) parsed.listings = [];
                 if (!parsed.wallets || typeof parsed.wallets !== 'object') parsed.wallets = {};
+                if (!parsed.profileWallets || typeof parsed.profileWallets !== 'object') parsed.profileWallets = {};
                 parsed.listings = parsed.listings
                     .filter((l) => l && typeof l === 'object')
                     .map((listing) => ({
                         id: String(listing.id || ''),
                         sellerSlot: String(listing.sellerSlot || 'slotA'),
+                        // Report #6: Stable identity stored on listing ownership.
+                        sellerProfileId: listing.sellerProfileId ? String(listing.sellerProfileId) : null,
+                        sellerPlayerId: listing.sellerPlayerId ? String(listing.sellerPlayerId) : null,
                         itemType: String(listing.itemType || ''),
                         itemId: String(listing.itemId || ''),
                         quantity: Math.max(1, Math.floor(Number(listing.quantity) || 1)),
                         price: Math.max(1, Math.floor(Number(listing.price) || 1)),
-                        createdAt: Number(listing.createdAt) || Date.now()
+                        createdAt: Number(listing.createdAt) || Date.now(),
+                        legacyOwnerSlot: listing.legacyOwnerSlot ? String(listing.legacyOwnerSlot) : null
                     }))
                     .filter((l) => l.id && l.itemType && l.itemId);
                 return parsed;
@@ -1589,10 +1783,40 @@
                 const clean = data && typeof data === 'object' ? data : createDefaultAuctionHouseData();
                 if (!Array.isArray(clean.listings)) clean.listings = [];
                 if (!clean.wallets || typeof clean.wallets !== 'object') clean.wallets = {};
+                if (!clean.profileWallets || typeof clean.profileWallets !== 'object') clean.profileWallets = {};
                 localStorage.setItem(getAuctionHouseStorageKey(), JSON.stringify(clean));
             } catch (e) {
                 // ignore storage errors
             }
+        }
+
+        function migrateAuctionIdentityForPlayer(playerId, activeSlotId) {
+            if (!playerId) return;
+            const data = loadAuctionHouseData();
+            let changed = false;
+            (data.listings || []).forEach((listing) => {
+                if (!listing || listing.sellerProfileId) return;
+                if (listing.sellerPlayerId) {
+                    listing.sellerProfileId = listing.sellerPlayerId;
+                    changed = true;
+                    return;
+                }
+                // Report #6: Best-effort migration for legacy slot-owned listings.
+                if (listing.sellerSlot === activeSlotId) {
+                    listing.sellerProfileId = playerId;
+                    changed = true;
+                } else {
+                    listing.legacyOwnerSlot = listing.sellerSlot;
+                }
+            });
+
+            const legacyWallet = Math.max(0, Math.floor((data.wallets && data.wallets[activeSlotId]) || 0));
+            if (legacyWallet > 0) {
+                data.profileWallets[playerId] = Math.max(0, Math.floor((data.profileWallets[playerId] || 0))) + legacyWallet;
+                data.wallets[activeSlotId] = 0;
+                changed = true;
+            }
+            if (changed) saveAuctionHouseData(data);
         }
 
         function createDefaultEconomyInventory() {
@@ -1634,6 +1858,7 @@
             if (typeof eco.mysteryEggsOpened !== 'number') eco.mysteryEggsOpened = 0;
             // Rec 2: Ensure persistent playerId exists for auction self-trade prevention
             if (!eco.playerId || typeof eco.playerId !== 'string') eco.playerId = generatePlayerId();
+            if (typeof eco.auctionIdentityMigrationDone !== 'boolean') eco.auctionIdentityMigrationDone = false;
             if (eco.starterSeedGranted !== true) {
                 eco.inventory.seeds.carrot = (eco.inventory.seeds.carrot || 0) + 4;
                 eco.inventory.seeds.tomato = (eco.inventory.seeds.tomato || 0) + 3;
@@ -1648,6 +1873,10 @@
                 }
             })();
             if (preferredSlot && ECONOMY_AUCTION_SLOTS.includes(preferredSlot)) eco.auction.slotId = preferredSlot;
+            if (!eco.auctionIdentityMigrationDone) {
+                migrateAuctionIdentityForPlayer(eco.playerId, eco.auction.slotId);
+                eco.auctionIdentityMigrationDone = true;
+            }
             return eco;
         }
 
@@ -1965,7 +2194,20 @@
 
             let deltas = null;
             if (def.effects) {
-                deltas = applyStatEffectsToPet(def.effects);
+                let effectsToApply = def.effects;
+                const isFoodUse = (category === 'food' || (isCrafted && def.category === 'food'));
+                if (isFoodUse) {
+                    // Report #8: Golden Feeder permanently boosts food stat effects.
+                    const foodMult = Number(getPrestigeEffectValue('goldenFeeder', 'foodEffectMultiplier', 1)) || 1;
+                    if (foodMult !== 1) {
+                        effectsToApply = Object.assign({}, def.effects);
+                        Object.keys(effectsToApply).forEach((key) => {
+                            const val = Number(effectsToApply[key]) || 0;
+                            effectsToApply[key] = Math.round(val * foodMult);
+                        });
+                    }
+                }
+                deltas = applyStatEffectsToPet(effectsToApply);
                 if (typeof gameState.pet.careActions !== 'number') gameState.pet.careActions = 0;
                 gameState.pet.careActions++;
             } else if (category === 'accessories') {
@@ -2001,6 +2243,42 @@
             return gameState._prestigeOwned;
         }
 
+        function getPrestigeEffectValue(purchaseId, effectKey, fallbackValue) {
+            if (!purchaseId || !effectKey || typeof PRESTIGE_EFFECTS === 'undefined') return fallbackValue;
+            if (!hasPrestigePurchase(purchaseId)) return fallbackValue;
+            const effectSet = PRESTIGE_EFFECTS[purchaseId];
+            if (!effectSet || typeof effectSet !== 'object') return fallbackValue;
+            const value = effectSet[effectKey];
+            return value === undefined ? fallbackValue : value;
+        }
+
+        function getPrestigeEffectSummary() {
+            const purchases = getPrestigePurchases();
+            const lines = [];
+            Object.values(purchases).forEach((item) => {
+                if (!item || !item.id || !hasPrestigePurchase(item.id)) return;
+                const effect = (typeof PRESTIGE_EFFECTS !== 'undefined' && PRESTIGE_EFFECTS[item.id]) ? PRESTIGE_EFFECTS[item.id] : null;
+                if (!effect) return;
+                const parts = [];
+                if (effect.extraGardenPlots) parts.push(`+${effect.extraGardenPlots} garden plots`);
+                if (effect.harvestCoinMultiplier && effect.harvestCoinMultiplier !== 1) parts.push(`+${Math.round((effect.harvestCoinMultiplier - 1) * 100)}% harvest coins`);
+                if (effect.extraPetCapacity) parts.push(`+${effect.extraPetCapacity} pet capacity`);
+                if (effect.competitionCoinMultiplier && effect.competitionCoinMultiplier !== 1) parts.push(`+${Math.round((effect.competitionCoinMultiplier - 1) * 100)}% competition coins`);
+                if (effect.foodEffectMultiplier && effect.foodEffectMultiplier !== 1) parts.push(`+${Math.round((effect.foodEffectMultiplier - 1) * 100)}% food effects`);
+                if (effect.craftingCostMultiplier && effect.craftingCostMultiplier !== 1) parts.push(`${Math.round((1 - effect.craftingCostMultiplier) * 100)}% crafting discount`);
+                if (effect.roomSystemMultiplier && effect.roomSystemMultiplier !== 1) parts.push(`+${Math.round((effect.roomSystemMultiplier - 1) * 100)}% room systems`);
+                if (effect.treasureSuccessBonus) parts.push(`+${Math.round(effect.treasureSuccessBonus * 100)}% treasure success`);
+                if (effect.cleanlinessDecayMultiplier && effect.cleanlinessDecayMultiplier !== 1) parts.push(`${Math.round((1 - effect.cleanlinessDecayMultiplier) * 100)}% cleanliness decay`);
+                if (effect.careGainMultiplier && effect.careGainMultiplier !== 1) parts.push(`+${Math.round((effect.careGainMultiplier - 1) * 100)}% care gains`);
+                if (effect.expeditionLootQualityMultiplier && effect.expeditionLootQualityMultiplier !== 1) parts.push(`+${Math.round((effect.expeditionLootQualityMultiplier - 1) * 100)}% expedition loot quality`);
+                if (effect.expeditionUpkeepMultiplier && effect.expeditionUpkeepMultiplier !== 1) parts.push(`${Math.round((1 - effect.expeditionUpkeepMultiplier) * 100)}% expedition upkeep`);
+                if (effect.minigameCoinMultiplier && effect.minigameCoinMultiplier !== 1) parts.push(`+${Math.round((effect.minigameCoinMultiplier - 1) * 100)}% minigame coins`);
+                if (effect.minigameDailySoftCapBonus) parts.push(`+${effect.minigameDailySoftCapBonus} minigame daily soft cap`);
+                lines.push({ id: item.id, name: item.name, emoji: item.emoji, effects: parts });
+            });
+            return lines;
+        }
+
         function hasPrestigePurchase(purchaseId) {
             const owned = getOwnedPrestige();
             return !!owned[purchaseId];
@@ -2018,6 +2296,17 @@
             if (!spend.ok) return { ok: false, reason: spend.reason, needed: item.cost, balance: spend.balance };
             owned[purchaseId] = (owned[purchaseId] || 0) + 1;
             gameState._prestigeOwned = owned;
+            // Report #8: Cosmetic chest grants immediate accessory unlocks.
+            if (purchaseId === 'cosmeticChest' && Array.isArray(gameState.pets)) {
+                const cosmeticIds = ['crown', 'sunglasses', 'wizardHat'];
+                gameState.pets.forEach((pet) => {
+                    if (!pet) return;
+                    if (!Array.isArray(pet.unlockedAccessories)) pet.unlockedAccessories = [];
+                    cosmeticIds.forEach((accId) => {
+                        if (!pet.unlockedAccessories.includes(accId)) pet.unlockedAccessories.push(accId);
+                    });
+                });
+            }
             saveGame();
             return { ok: true, item, balance: getCoinBalance() };
         }
@@ -2056,6 +2345,9 @@
 	                    : 0.65;
 	                finalRate *= Math.max(0.15, Math.min(1, engagedReduction));
 	            }
+            // Report #10: Quick iteration mode softens daily coin decay pressure.
+            const profileDecayScale = Math.max(0.2, Number((typeof getBalanceProfileConfig === 'function' ? getBalanceProfileConfig().offlineDecayMultiplier : 1)) || 1);
+            finalRate *= profileDecayScale;
 	            const minTax = (typeof ECONOMY_BALANCE !== 'undefined' && Number.isFinite(ECONOMY_BALANCE.coinDecayMinTax))
 	                ? Math.max(0, Math.floor(ECONOMY_BALANCE.coinDecayMinTax))
 	                : 1;
@@ -2099,12 +2391,18 @@
             return 10;
         }
 
-        function getLootSellPrice(lootId) {
+        function getLootSellPrice(lootId, options) {
             const base = getLootSellBasePrice(lootId);
             if (!base) return 0;
             const sellMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.sellPriceMultiplier === 'number')
                 ? ECONOMY_BALANCE.sellPriceMultiplier
                 : 0.8;
+            const opts = options && typeof options === 'object' ? options : null;
+            const expeditionSellMult = (opts && opts.source === 'expedition')
+                ? ((typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.expeditionSellPriceMultiplier === 'number')
+                    ? ECONOMY_BALANCE.expeditionSellPriceMultiplier
+                    : 0.78)
+                : 1;
             // Recommendation #7: Mastery biome rank loot sell bonus (+5% for biome rank 3+)
             // Determine which biome this loot is associated with
             let biomeSellBonus = 0;
@@ -2115,7 +2413,7 @@
                     }
                 }
             }
-            return Math.max(1, Math.round(getDynamicEconomyPrice(base, 'loot', `loot:${lootId}`) * sellMult * (1 + biomeSellBonus)));
+            return Math.max(1, Math.round(getDynamicEconomyPrice(base, 'loot', `loot:${lootId}`) * sellMult * expeditionSellMult * (1 + biomeSellBonus)));
         }
 
         function sellExplorationLoot(lootId, count) {
@@ -2314,7 +2612,10 @@
                     return Object.assign({}, ing, { owned, missing: Math.max(0, ing.count - owned) });
                 });
                 const canCraftIngredients = ingredientStatus.every((ing) => ing.missing <= 0);
-                const cost = Math.max(0, Math.floor(Number(recipe.craftCost) || 0));
+                const baseCost = Math.max(0, Math.floor(Number(recipe.craftCost) || 0));
+                // Report #8: Master Crafter Bench reduces crafting coin cost.
+                const craftMult = Number(getPrestigeEffectValue('masterCrafterBench', 'craftingCostMultiplier', 1)) || 1;
+                const cost = Math.max(0, Math.round(baseCost * craftMult));
                 const canCraft = canCraftIngredients && getCoinBalance() >= cost;
                 return Object.assign({}, recipe, { ingredientStatus, canCraft, craftCost: cost });
             });
@@ -2323,7 +2624,10 @@
         function craftRecipe(recipeId) {
             const recipe = CRAFTING_RECIPES[recipeId];
             if (!recipe) return { ok: false, reason: 'invalid-recipe' };
-            const cost = Math.max(0, Math.floor(Number(recipe.craftCost) || 0));
+            const baseCost = Math.max(0, Math.floor(Number(recipe.craftCost) || 0));
+            // Report #8
+            const craftMult = Number(getPrestigeEffectValue('masterCrafterBench', 'craftingCostMultiplier', 1)) || 1;
+            const cost = Math.max(0, Math.round(baseCost * craftMult));
             for (const ing of (recipe.ingredients || [])) {
                 if (getIngredientCount(ing.source, ing.id) < ing.count) {
                     return { ok: false, reason: 'missing-ingredients' };
@@ -2383,8 +2687,9 @@
             };
             const multiplier = gameBonus[gameId] || 1;
             const difficulty = typeof getMinigameDifficulty === 'function' ? getMinigameDifficulty(gameId) : 1;
-            const difficultyRewardMult = Math.max(0.9, Math.min(1.22, 0.96 + ((difficulty - 1) * 0.32)));
-            const payout = Math.max(3, Math.round((5 + Math.sqrt(score) * 3.2) * multiplier * difficultyRewardMult));
+            // Report #4: Reward growth now tracks remaining replay difficulty curve.
+            const difficultyRewardMult = Math.max(0.92, Math.min(1.52, 0.96 + ((difficulty - 1) * 0.52)));
+            const payout = Math.max(3, Math.round((6 + Math.pow(score, 0.52) * 4.3) * multiplier * difficultyRewardMult));
             const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardMultiplier === 'number')
                 ? ECONOMY_BALANCE.minigameRewardMultiplier
                 : 1;
@@ -2398,31 +2703,59 @@
             gameState._sessionMinigameCount++;
             const sessionMult = Math.min(1.15, 1 + (Math.max(0, gameState._sessionMinigameCount - 1) * 0.05));
 
-            const cap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.minigameRewardCap === 'number')
-                ? ECONOMY_BALANCE.minigameRewardCap
-                : 9999;
-            let tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult * sessionMult)));
+            const stage = (gameState.pet && GROWTH_STAGES[gameState.pet.growthStage]) ? gameState.pet.growthStage : 'baby';
+            const prestigeRunMult = Number(getPrestigeEffectValue('cosmeticChest', 'minigameCoinMultiplier', 1)) || 1;
+            const streakBonusPerRun = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.streakBonusPerRun) || 0.045);
+            const streakBonusMax = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.streakBonusMax) || 0.38);
+            gameState._minigameWinStreak = Math.max(0, Number(gameState._minigameWinStreak) || 0) + 1;
+            const streakMult = 1 + Math.min(streakBonusMax, Math.max(0, gameState._minigameWinStreak - 1) * streakBonusPerRun);
+            const highSkillThreshold = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.highSkillThreshold) || 82);
+            const highSkillPerPoint = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.highSkillPerPoint) || 0.011);
+            const highSkillMax = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.highSkillMaxBonus) || 0.35);
+            const highSkillBonus = score >= highSkillThreshold
+                ? Math.min(highSkillMax, (score - highSkillThreshold) * highSkillPerPoint)
+                : 0;
+            const capBase = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.perRunCapBase) || 94);
+            const capStage = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.perRunCapByStage && MINIGAME_BALANCE.perRunCapByStage[stage]) || capBase);
+            const cap = Math.max(3, Math.floor(capStage));
+            let tuned = Math.max(3, Math.min(cap, Math.round(payout * ecoMult * petStatRewardMult * sessionMult * streakMult * (1 + highSkillBonus) * prestigeRunMult)));
 
-            // Rec 1: Enforce daily minigame earnings cap
-            const dailyCap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyMinigameEarningsCap === 'number')
-                ? ECONOMY_BALANCE.dailyMinigameEarningsCap : 350;
+            // Report #3: Daily cap is now soft-diminishing instead of hard stop.
+            const stageSoftCapBase = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.dailySoftCapBase) || 380);
+            const stageSoftCap = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.dailySoftCapByStage && MINIGAME_BALANCE.dailySoftCapByStage[stage]) || stageSoftCapBase);
+            const prestigeSoftCap = Number(getPrestigeEffectValue('cosmeticChest', 'minigameDailySoftCapBonus', 0)) || 0;
+            const dailySoftCap = Math.max(50, Math.floor(stageSoftCap + prestigeSoftCap));
             const today = typeof getTodayString === 'function' ? getTodayString() : '';
             if (!gameState._dailyMinigameEarnings || gameState._dailyMinigameEarningsDay !== today) {
                 gameState._dailyMinigameEarnings = 0;
                 gameState._dailyMinigameEarningsDay = today;
+                gameState._minigameWinStreak = 1;
             }
-	            const remaining = Math.max(0, dailyCap - gameState._dailyMinigameEarnings);
-	            if (remaining <= 0) {
-	                if (gameState._dailyMinigameCapConsolationDay !== today) {
-	                    gameState._dailyMinigameCapConsolationDay = today;
-	                    addBondXp(1, 'Minigame cap consolation');
-	                    addJourneyTokens(1, 'Minigame cap consolation');
-	                }
-	                if (typeof showToast === 'function') showToast('Daily minigame coin cap reached! Play for fun or try again tomorrow.', '#90A4AE');
-	                return 0;
-	            }
-            tuned = Math.min(tuned, remaining);
+            const overCap = Math.max(0, gameState._dailyMinigameEarnings - dailySoftCap);
+            if (overCap > 0) {
+                const falloff = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.softCapFalloffPerCoin) || 0.0042);
+                const minMult = Number((MINIGAME_BALANCE && MINIGAME_BALANCE.softCapMinMultiplier) || 0.2);
+                const diminishingMult = Math.max(minMult, 1 / (1 + (overCap * falloff)));
+                tuned = Math.max(1, Math.round(tuned * diminishingMult));
+                const now = Date.now();
+                if ((now - (Number(gameState._lastMinigameSoftCapToastAt) || 0)) > 45000 && typeof showToast === 'function') {
+                    gameState._lastMinigameSoftCapToastAt = now;
+                    showToast('Mini-game rewards are in soft-cap mode: gains are reduced, not stopped.', '#90A4AE');
+                }
+            }
+
             gameState._dailyMinigameEarnings += tuned;
+            balanceDebugLog('MinigameReward', { // Report #3/#4
+                gameId,
+                score,
+                difficulty,
+                payoutBase: payout,
+                tuned,
+                dailySoftCap,
+                dailyEarned: gameState._dailyMinigameEarnings,
+                streak: gameState._minigameWinStreak,
+                highSkillBonus
+            });
 
             addCoins(tuned, 'Mini-game', true);
             return tuned;
@@ -2436,7 +2769,9 @@
             const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.harvestRewardMultiplier === 'number')
                 ? ECONOMY_BALANCE.harvestRewardMultiplier
                 : 1;
-            const payout = Math.max(2, Math.round(base * seasonalBoost * ecoMult));
+            // Report #8: Garden expansion includes a harvest coin bonus.
+            const prestigeHarvestMult = Number(getPrestigeEffectValue('gardenExpansion', 'harvestCoinMultiplier', 1)) || 1;
+            const payout = Math.max(2, Math.round(base * seasonalBoost * ecoMult * prestigeHarvestMult));
             addCoins(payout, 'Harvest', true);
             return payout;
         }
@@ -2493,13 +2828,14 @@
             const eco = ensureEconomyState();
             const data = loadAuctionHouseData();
             const slotId = eco.auction.slotId;
-            const myWallet = Math.max(0, Math.floor((data.wallets && data.wallets[slotId]) || 0));
+            const myWallet = Math.max(0, Math.floor((data.profileWallets && data.profileWallets[eco.playerId]) || 0));
             const listings = (data.listings || [])
                 .slice()
                 .sort((a, b) => b.createdAt - a.createdAt)
                 .map((listing) => {
                     const label = getAuctionItemLabel(listing.itemType, listing.itemId);
-                    return Object.assign({}, listing, label);
+                    const isMine = !!(listing.sellerProfileId && listing.sellerProfileId === eco.playerId);
+                    return Object.assign({}, listing, label, { isMine });
                 });
             return {
                 slotId,
@@ -2634,7 +2970,7 @@
             const perSlotCap = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.auctionPerSlotListingCap === 'number')
                 ? ECONOMY_BALANCE.auctionPerSlotListingCap : 12;
             const existingData = loadAuctionHouseData();
-            const mySlotListings = (existingData.listings || []).filter(l => l.sellerSlot === eco.auction.slotId);
+            const mySlotListings = (existingData.listings || []).filter((l) => l && l.sellerSlot === eco.auction.slotId && l.sellerProfileId === eco.playerId);
             if (mySlotListings.length >= perSlotCap) {
                 return { ok: false, reason: 'slot-listing-cap', cap: perSlotCap };
             }
@@ -2656,7 +2992,8 @@
             const listing = {
                 id: `auc_${Date.now()}_${Math.floor(Math.random() * 99999)}`,
                 sellerSlot: eco.auction.slotId,
-                // Rec 2: Embed persistent playerId for cross-slot self-trade prevention
+                // Report #6: Stable profile identity prevents slot-switch ownership bypass.
+                sellerProfileId: eco.playerId || '',
                 sellerPlayerId: eco.playerId || '',
                 itemType,
                 itemId,
@@ -2679,7 +3016,8 @@
             const idx = data.listings.findIndex((l) => l && l.id === listingId);
             if (idx === -1) return { ok: false, reason: 'listing-not-found' };
             const listing = data.listings[idx];
-            if (listing.sellerSlot !== eco.auction.slotId) return { ok: false, reason: 'not-owner' };
+            if (!listing.sellerProfileId) return { ok: false, reason: 'legacy-owner-unknown' };
+            if (listing.sellerProfileId !== eco.playerId) return { ok: false, reason: 'not-owner' };
             data.listings.splice(idx, 1);
             addAuctionItem(listing.itemType, listing.itemId, listing.quantity);
             saveAuctionHouseData(data);
@@ -2693,9 +3031,10 @@
             const idx = data.listings.findIndex((l) => l && l.id === listingId);
             if (idx === -1) return { ok: false, reason: 'listing-not-found' };
             const listing = data.listings[idx];
-            // Rec 2: Block self-purchase by playerId (cross-slot exploit fix) + legacy slotId check
-            if (listing.sellerSlot === eco.auction.slotId) return { ok: false, reason: 'own-listing' };
+            // Report #6: Ownership checks use stable profile identity.
+            if (listing.sellerProfileId && listing.sellerProfileId === eco.playerId) return { ok: false, reason: 'own-listing' };
             if (listing.sellerPlayerId && listing.sellerPlayerId === eco.playerId) return { ok: false, reason: 'own-listing' };
+            if (!listing.sellerProfileId && listing.sellerSlot === eco.auction.slotId) return { ok: false, reason: 'own-listing' };
 
             const spend = spendCoins(listing.price, 'Auction Buy', true);
             if (!spend.ok) return { ok: false, reason: spend.reason, needed: listing.price, balance: spend.balance };
@@ -2707,7 +3046,12 @@
                 ? ECONOMY_BALANCE.auctionTransactionTaxRate : 0.08;
             const taxAmount = Math.max(0, Math.floor(listing.price * taxRate));
             const sellerProceeds = listing.price - taxAmount;
-            data.wallets[listing.sellerSlot] = Math.max(0, Math.floor((data.wallets[listing.sellerSlot] || 0))) + sellerProceeds;
+            if (listing.sellerProfileId) {
+                data.profileWallets[listing.sellerProfileId] = Math.max(0, Math.floor((data.profileWallets[listing.sellerProfileId] || 0))) + sellerProceeds;
+            } else {
+                const legacySlot = listing.sellerSlot || 'slotA';
+                data.wallets[legacySlot] = Math.max(0, Math.floor((data.wallets[legacySlot] || 0))) + sellerProceeds;
+            }
             data.listings.splice(idx, 1);
             saveAuctionHouseData(data);
             eco.auction.boughtCount = (eco.auction.boughtCount || 0) + 1;
@@ -2718,10 +3062,11 @@
         function claimAuctionEarnings() {
             const eco = ensureEconomyState();
             const data = loadAuctionHouseData();
-            const slotId = eco.auction.slotId;
-            const amount = Math.max(0, Math.floor((data.wallets[slotId] || 0)));
+            // Report #6: Claim path is tied to immutable profile identity.
+            const profileId = eco.playerId;
+            const amount = Math.max(0, Math.floor((data.profileWallets[profileId] || 0)));
             if (amount <= 0) return { ok: false, reason: 'nothing-to-claim' };
-            data.wallets[slotId] = 0;
+            data.profileWallets[profileId] = 0;
             saveAuctionHouseData(data);
             addCoins(amount, 'Auction Payout', true);
             eco.auction.soldCount = (eco.auction.soldCount || 0) + 1;
@@ -3885,6 +4230,7 @@
                 // Rec 1: Reset daily minigame earnings counter
                 gameState._dailyMinigameEarnings = 0;
                 gameState._dailyMinigameEarningsDay = today;
+                gameState._minigameWinStreak = 0;
 
                 const stage = (gameState.pet && GROWTH_STAGES[gameState.pet.growthStage]) ? gameState.pet.growthStage : 'baby';
                 const fixedTasks = (Array.isArray(DAILY_FIXED_TASKS) ? DAILY_FIXED_TASKS : []).slice(0, 2);
@@ -3957,6 +4303,17 @@
 	            return cl.tasks.every(t => t.done);
 	        }
 
+        function getTodayDailyRewardPreview() {
+            const cl = initDailyChecklist();
+            const stage = (cl && cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : ((gameState.pet && GROWTH_STAGES[gameState.pet.growthStage]) ? gameState.pet.growthStage : 'baby');
+            // Report #9: Stage-table reward routing replaces hardcoded dailyFinish.
+            const bundleId = (typeof getRewardBundleForPhase === 'function')
+                ? getRewardBundleForPhase('daily', stage, 'dailyFinish')
+                : 'dailyFinish';
+            const bundle = (typeof REWARD_BUNDLES !== 'undefined' && REWARD_BUNDLES[bundleId]) ? REWARD_BUNDLES[bundleId] : null;
+            return { stage, bundleId, bundle };
+        }
+
 	        // Track daily completions count (for trophies)
 	        function trackDailyCompletion() {
 	            if (isDailyComplete()) {
@@ -3969,10 +4326,8 @@
 	                    if (typeof markCoachChecklistProgress === 'function') markCoachChecklistProgress('complete_daily');
 	                    if (!cl._rewardGranted) {
 	                        cl._rewardGranted = true;
-	                        const bundled = applyRewardBundle('dailyFinish', 'Daily Tasks');
-	                        const stage = (cl.stage && GROWTH_STAGES[cl.stage]) ? cl.stage : 'baby';
-	                        const stageMult = Math.max(1, Number(getStageBalance(stage).dailyTaskMultiplier) || 1);
-	                        const stageBonusCoins = Math.max(0, Math.round((stageMult - 1) * 45));
+	                        const preview = getTodayDailyRewardPreview();
+	                        const bundled = applyRewardBundle(preview.bundleId, 'Daily Tasks');
 	                        // Recommendation #7: Mastery rank daily bonus (+1 coin if Family Legacy tier 2+)
 	                        const masteryDailyBonus = typeof getMasteryDailyBonus === 'function' ? getMasteryDailyBonus() : 0;
 	                        // Recommendation #10: Elder legacy passive income
@@ -3983,13 +4338,13 @@
 	                                elderLegacyBonus += (m.growthStage === 'elder') ? 2 : 1;
 	                            });
 	                        }
-	                        const totalBonusCoins = stageBonusCoins + masteryDailyBonus + elderLegacyBonus;
+	                        const totalBonusCoins = masteryDailyBonus + elderLegacyBonus;
 	                        if (totalBonusCoins > 0) {
-	                            addCoins(totalBonusCoins, 'Daily Tasks (Stage + Mastery + Legacy Bonus)', true);
+	                            addCoins(totalBonusCoins, 'Daily Tasks (Mastery + Legacy Bonus)', true);
 	                        }
 	                        if (bundled && typeof showToast === 'function') {
 	                            const modifierText = bundled.modifier ? ` + ${bundled.modifier.emoji} ${bundled.modifier.name}` : '';
-	                            const bonusText = (stageBonusCoins > 0 || elderLegacyBonus > 0) ? ` + ${stageBonusCoins + elderLegacyBonus} bonus` : '';
+	                            const bonusText = (masteryDailyBonus > 0 || elderLegacyBonus > 0) ? ` + ${masteryDailyBonus + elderLegacyBonus} bonus` : '';
 	                            showToast(`📋 Daily tasks complete! +${bundled.earnedCoins} coins${bonusText}${modifierText}`, '#FFD700');
 	                        } else {
 	                            const dailyRewardBase = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.dailyCompletionReward === 'number')
@@ -5257,8 +5612,12 @@
                     if (parsed.lastUpdate) {
                         const timePassed = Date.now() - parsed.lastUpdate;
                         const minutesPassed = Math.max(0, timePassed / 60000);
+                        const profileCfg = (typeof getBalanceProfileConfig === 'function') ? getBalanceProfileConfig() : { offlineDecayMultiplier: 1, offlineNeglectMultiplier: 1 };
+                        const offlineDecayScale = Math.max(0, Number(profileCfg.offlineDecayMultiplier) || 1);
+                        const offlineNeglectScale = Math.max(0, Number(profileCfg.offlineNeglectMultiplier) || 1);
                         // Keep offline progression meaningful so long absences cannot fully reset pressure.
-                        const decay = Math.min(Math.floor(minutesPassed / 2), 80);
+                        // Report #10: Quick iteration profile softens offline penalties.
+                        const decay = Math.min(Math.floor((minutesPassed / 2) * offlineDecayScale), 80);
                         if (decay > 0) {
                             const petsToDecay = parsed.pets && parsed.pets.length > 0 ? parsed.pets : (parsed.pet ? [parsed.pet] : []);
                             let activeOldStats = null;
@@ -5287,11 +5646,13 @@
                                 const energyRecoveryM = energyM > 0 ? (1 / energyM) : 1;
                                 // Elder wisdom offline reduction
                                 const elderR = p.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
+                                // Report #8: Pet spa mitigates cleanliness decay while offline.
+                                const spaCleanMult = Number(getPrestigeEffectValue('petSpa', 'cleanlinessDecayMultiplier', 1)) || 1;
 
                                 // Hunger decays faster while away (pet gets hungry)
                                 p.hunger = clamp(p.hunger - Math.floor(decay * 1.5 * rateMult * hungerM * elderR), 0, 100);
                                 // Cleanliness decays slower (pet isn't doing much)
-                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5 * rateMult * cleanM * elderR), 0, 100);
+                                p.cleanliness = clamp(p.cleanliness - Math.floor(decay * 0.5 * rateMult * cleanM * elderR * spaCleanMult), 0, 100);
                                 // Happiness decays at normal rate
                                 p.happiness = clamp(p.happiness - Math.floor(decay * rateMult * happyM * elderR), 0, 100);
                                 // Energy recovers only partially while away.
@@ -5323,7 +5684,7 @@
                                 const isNeglected = p.hunger < 20 || p.cleanliness < 20 || p.happiness < 20 || p.energy < 20;
                                 if (isNeglected) {
                                     // Scale neglect count by offline time (1 per ~10 minutes of neglect), capped at 10
-                                    const neglectIncrements = Math.min(10, Math.floor(minutesPassed / 10));
+                                    const neglectIncrements = Math.min(10, Math.floor((minutesPassed / 10) * offlineNeglectScale));
                                     if (neglectIncrements > 0) {
                                         p.neglectCount = (p.neglectCount || 0) + neglectIncrements;
                                     }
@@ -5611,8 +5972,15 @@
             return gameState.pets ? gameState.pets.length : (gameState.pet ? 1 : 0);
         }
 
+        function getMaxPetCapacity() {
+            const base = Number(typeof MAX_PETS !== 'undefined' ? MAX_PETS : 4) || 4;
+            // Report #8: Premium Nursery increases family capacity.
+            const extra = Number(getPrestigeEffectValue('premiumNursery', 'extraPetCapacity', 0)) || 0;
+            return Math.max(1, base + extra);
+        }
+
         function canAdoptMore() {
-            return getPetCount() < MAX_PETS;
+            return getPetCount() < getMaxPetCapacity();
         }
 
         function switchActivePet(index) {
@@ -5634,6 +6002,7 @@
         }
 
         function addPetToFamily(pet) {
+            if (getPetCount() >= getMaxPetCapacity()) return false;
             if (!gameState.pets) gameState.pets = [];
             gameState.pets.push(pet);
             // Initialize relationships with all existing pets
@@ -5649,6 +6018,7 @@
                     };
                 }
             }
+            return true;
         }
 
         function getRelationshipKey(id1, id2) {
@@ -8828,6 +9198,8 @@
         function startDecayTimer() {
             if (decayInterval) clearInterval(decayInterval);
             lastDecayAnnouncement = 0;
+            const profileConfig = (typeof getBalanceProfileConfig === 'function') ? getBalanceProfileConfig() : { liveDecayMultiplier: 1, decayTickMs: 30000 };
+            const decayTickMs = Math.max(10000, Number(profileConfig.decayTickMs) || 30000);
 
             // Decrease needs every 30 seconds (gentle for young children)
             decayInterval = setInterval(() => {
@@ -8876,17 +9248,20 @@
                     const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
                     const stageBalance = getStageBalance(stage);
                     const stageDecayMult = stageBalance.needDecayMultiplier || 1;
+                    const profileLiveDecayMult = Math.max(0, Number((typeof getBalanceProfileConfig === 'function' ? getBalanceProfileConfig().liveDecayMultiplier : 1)) || 1);
+                    // Report #8: Pet Spa specifically softens cleanliness decay.
+                    const petSpaCleanMult = Number(getPrestigeEffectValue('petSpa', 'cleanlinessDecayMultiplier', 1)) || 1;
 
                     // Elder wisdom reduces decay
                     const elderReduction = pet.growthStage === 'elder' ? ELDER_CONFIG.wisdomDecayReduction : 1;
 
                     // Stage-aware base decay with probabilistic fractional handling.
-                    pet.hunger = applyProbabilisticDelta(pet.hunger, 1 * hungerMult * elderReduction * stageDecayMult, 'down');
-                    pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, 1 * cleanMult * elderReduction * stageDecayMult, 'down');
-                    pet.happiness = applyProbabilisticDelta(pet.happiness, 1 * happyMult * elderReduction * stageDecayMult, 'down');
+                    pet.hunger = applyProbabilisticDelta(pet.hunger, 1 * hungerMult * elderReduction * stageDecayMult * profileLiveDecayMult, 'down');
+                    pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, 1 * cleanMult * elderReduction * stageDecayMult * profileLiveDecayMult * petSpaCleanMult, 'down');
+                    pet.happiness = applyProbabilisticDelta(pet.happiness, 1 * happyMult * elderReduction * stageDecayMult * profileLiveDecayMult, 'down');
                     const baseEnergyDelta = (1 + energyDecayBonus - energyRegenBonus);
                     if (baseEnergyDelta >= 0) {
-                        pet.energy = applyProbabilisticDelta(pet.energy, baseEnergyDelta * energyMult * elderReduction * stageDecayMult, 'down');
+                        pet.energy = applyProbabilisticDelta(pet.energy, baseEnergyDelta * energyMult * elderReduction * stageDecayMult * profileLiveDecayMult, 'down');
                     } else {
                         const energyRecoveryMult = energyMult > 0 ? (1 / energyMult) : 1;
                         const recoveryStageMod = Math.max(0.7, 1 - ((stageDecayMult - 1) * 0.25));
@@ -8895,9 +9270,9 @@
 
                     // Extra weather-based decay when outdoors
                     if (isOutdoor) {
-                        pet.happiness = applyProbabilisticDelta(pet.happiness, weatherData.happinessDecayModifier * stageDecayMult, 'down');
-                        pet.energy = applyProbabilisticDelta(pet.energy, weatherData.energyDecayModifier * stageDecayMult, 'down');
-                        pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, weatherData.cleanlinessDecayModifier * stageDecayMult, 'down');
+                        pet.happiness = applyProbabilisticDelta(pet.happiness, weatherData.happinessDecayModifier * stageDecayMult * profileLiveDecayMult, 'down');
+                        pet.energy = applyProbabilisticDelta(pet.energy, weatherData.energyDecayModifier * stageDecayMult * profileLiveDecayMult, 'down');
+                        pet.cleanliness = applyProbabilisticDelta(pet.cleanliness, weatherData.cleanlinessDecayModifier * stageDecayMult * profileLiveDecayMult * petSpaCleanMult, 'down');
                     }
 
                     // Neglect pressure scales up by stage and targets the weakest need.
@@ -8951,16 +9326,18 @@
                             const pStage = p.growthStage && GROWTH_STAGES[p.growthStage] ? p.growthStage : 'baby';
                             const pStageBalance = getStageBalance(pStage);
                             const pDecayMult = pStageBalance.needDecayMultiplier || 1;
+                            const pProfileMult = Math.max(0, Number((typeof getBalanceProfileConfig === 'function' ? getBalanceProfileConfig().liveDecayMultiplier : 1)) || 1);
+                            const pSpaCleanMult = Number(getPrestigeEffectValue('petSpa', 'cleanlinessDecayMultiplier', 1)) || 1;
                             p.hunger = normalizePetNeedValue(p.hunger, 70);
                             p.cleanliness = normalizePetNeedValue(p.cleanliness, 70);
                             p.happiness = normalizePetNeedValue(p.happiness, 70);
                             p.energy = normalizePetNeedValue(p.energy, 70);
-                            p.hunger = applyProbabilisticDelta(p.hunger, 0.5 * pDecayMult, 'down');
-                            p.cleanliness = applyProbabilisticDelta(p.cleanliness, 0.5 * pDecayMult, 'down');
+                            p.hunger = applyProbabilisticDelta(p.hunger, 0.5 * pDecayMult * pProfileMult, 'down');
+                            p.cleanliness = applyProbabilisticDelta(p.cleanliness, 0.5 * pDecayMult * pProfileMult * pSpaCleanMult, 'down');
                             // Net happiness: -0.5 decay + companion bonus (dynamically calculated)
                             const companionBonus = (gameState.pets.length > 1) ? 0.3 : 0;
-                            p.happiness = applyProbabilisticDelta(p.happiness, Math.max(0, (0.5 - companionBonus) * pDecayMult), 'down');
-                            p.energy = applyProbabilisticDelta(p.energy, 0.5 * pDecayMult, 'down');
+                            p.happiness = applyProbabilisticDelta(p.happiness, Math.max(0, (0.5 - companionBonus) * pDecayMult * pProfileMult), 'down');
+                            p.energy = applyProbabilisticDelta(p.energy, 0.5 * pDecayMult * pProfileMult, 'down');
 
                             // Track neglect for non-active pets (reuse per-pet tick counter)
                             const pid = p.id;
@@ -9125,7 +9502,7 @@
                     // Keep incubation aligned to visible playtime only.
                     gameState.lastBreedingIncubationTick = Date.now();
                 }
-            }, 30000); // Every 30 seconds
+            }, decayTickMs); // Report #10: Balance-profile-controlled tick rate.
         }
 
         function updateContextIndicator() {

@@ -1688,6 +1688,12 @@
             const treasureActionLabel = typeof getTreasureActionLabel === 'function'
                 ? getTreasureActionLabel(currentRoom)
                 : (room && room.isOutdoor ? 'Dig' : 'Search');
+            const treasurePreview = (typeof getTreasureHuntPreview === 'function') ? getTreasureHuntPreview(currentRoom) : null;
+            const treasureCostText = treasurePreview ? `${Math.max(0, Math.round(treasurePreview.energyCost || 0))}⚡` : '5⚡';
+            const treasureCooldownText = treasurePreview && treasurePreview.cooldownRemainingMs > 0
+                ? ` · CD ${formatCountdown(treasurePreview.cooldownRemainingMs)}`
+                : '';
+            const treasureTooltip = `Hidden treasure in this room · Cost ${treasureCostText}${treasureCooldownText}`;
             const simplifiedActionPanel = useSimplifiedActionPanel(pet);
             document.body.classList.toggle('beginner-ui', !!simplifiedActionPanel);
             const recommendedNext = getRecommendedNextAction(pet, currentRoom);
@@ -2107,9 +2113,9 @@
                             <div class="action-group-buttons" role="group" aria-label="Activity actions">
                                 ${simplifiedActionPanel ? secondaryQuickActionsHTML : ''}
                                 <button class="action-btn treasure-hunt-btn" id="treasure-btn">
-                                    <span class="action-btn-tooltip">Hidden treasure in this room</span>
+                                    <span class="action-btn-tooltip">${treasureTooltip}</span>
                                     <span class="btn-icon" aria-hidden="true">🧭</span>
-                                    <span>${treasureActionLabel}</span>
+                                    <span>${treasureActionLabel} (${treasureCostText})</span>
                                     <span class="cooldown-count" aria-hidden="true"></span>
                                 </button>
                                 <button class="action-btn seasonal ${season}-activity" id="seasonal-btn" title="${Object.entries(seasonData.activityEffects || {}).map(([k, v]) => (v >= 0 ? '+' : '') + v + ' ' + k).join(', ')}">
@@ -2197,6 +2203,10 @@
                     if (result && result.reason === 'cooldown') {
                         const sec = Math.max(1, Math.ceil((result.remainingMs || 0) / 1000));
                         showCooldownToast('treasure-hunt', `🕒 ${sec}s until you can ${typeof getTreasureActionLabel === 'function' ? getTreasureActionLabel(roomId).toLowerCase() : 'search'} again.`);
+                    } else if (result && result.reason === 'insufficient-energy') {
+                        const needed = Math.max(0, Math.round(result.needed || 0));
+                        showToast(`Need ${needed}⚡ energy before running a treasure hunt.`, '#FFA726');
+                        announce(`Treasure hunt unavailable. You need ${needed} energy.`, true);
                     } else {
                         showToast('No hidden treasures right now.', '#FFA726');
                     }
@@ -2205,10 +2215,10 @@
 
                 if (result.foundTreasure && result.rewards && result.rewards.length > 0) {
                     const summary = result.rewards.map((r) => `${r.data.emoji}x${r.count}`).join(' ');
-                    showToast(`🧭 ${result.action} success! Found ${summary}`, '#66BB6A');
+                    showToast(`🧭 ${result.action} success! Found ${summary} (cost ${result.energyCost || 0}⚡)`, '#66BB6A');
                 } else {
                     const actionPast = result.action === 'Dig' ? 'dug' : 'searched';
-                    showToast(`🧭 You ${actionPast} around but only found dusty clues.`, '#90A4AE');
+                    showToast(`🧭 You ${actionPast} around but only found dusty clues. (cost ${result.energyCost || 0}⚡)`, '#90A4AE');
                 }
                 if (result.npc) {
                     setTimeout(() => showToast(`${result.npc.icon} You discovered ${result.npc.name} nearby!`, '#FFD54F'), 240);
@@ -3140,15 +3150,115 @@
             cuddle: ['❤️', '💕', '💗', '🥰']
         };
 
+        const CARE_PRIMARY_NEED_MAP = {
+            feed: 'hunger',
+            wash: 'cleanliness',
+            play: 'happiness',
+            sleep: 'energy',
+            medicine: 'happiness',
+            groom: 'cleanliness',
+            exercise: 'happiness',
+            treat: 'hunger',
+            cuddle: 'happiness'
+        };
+
+        function getCarePrimaryNeed(action) {
+            return CARE_PRIMARY_NEED_MAP[action] || null;
+        }
+
+        function getCareLoopRuntimeState(pet) {
+            if (!pet || typeof pet !== 'object') return null;
+            if (!pet._careLoopRuntime || typeof pet._careLoopRuntime !== 'object') {
+                Object.defineProperty(pet, '_careLoopRuntime', {
+                    // Report #7: runtime-only anti-spam state (not serialized).
+                    value: { lastAction: null, lastAt: 0, repeatChain: 0, lastHintAt: 0, resetAnnouncedAt: 0 },
+                    enumerable: false,
+                    writable: true,
+                    configurable: true
+                });
+            }
+            return pet._careLoopRuntime;
+        }
+
+        function getLowestNeedFromSnapshot(pet, snapshot) {
+            if (typeof getLowestNeedStatKey === 'function') return getLowestNeedStatKey(pet, snapshot);
+            const stats = snapshot || (typeof getPetNeedSnapshot === 'function' ? getPetNeedSnapshot(pet) : null);
+            if (!stats) return 'hunger';
+            return Object.entries(stats).sort((a, b) => (a[1] || 0) - (b[1] || 0))[0][0];
+        }
+
+        function getCareDecisionMultiplier(action, pet, snapshot) {
+            const tuning = (typeof getCareLoopTuning === 'function') ? getCareLoopTuning() : null;
+            const runtime = getCareLoopRuntimeState(pet);
+            if (!tuning || !pet || !runtime) {
+                return { gainMultiplier: 1, repeatApplied: false, focused: false, offTarget: false, repeatChain: 0, resetAt: 0 };
+            }
+
+            const now = Date.now();
+            const windowMs = Math.max(5000, Number(tuning.repeatWindowMs) || 12000);
+            const maxStack = Math.max(1, Number(tuning.repeatMaxStack) || 4);
+            const minRepeatMultiplier = Math.max(0.25, Math.min(1, Number(tuning.repeatMinMultiplier) || 0.56));
+            const basePenalty = Math.max(0, Number(tuning.repeatBasePenalty) || 0.12);
+            const stepPenalty = Math.max(0, Number(tuning.repeatStepPenalty) || 0.08);
+            const elapsed = now - (Number(runtime.lastAt) || 0);
+            const sameActionRepeat = runtime.lastAction === action && elapsed >= 0 && elapsed <= windowMs;
+
+            let repeatChain = 0;
+            let repeatMultiplier = 1;
+            let repeatApplied = false;
+            if (sameActionRepeat) {
+                repeatChain = Math.min(maxStack, (Number(runtime.repeatChain) || 0) + 1);
+                const freshnessRatio = 1 - Math.min(1, elapsed / windowMs);
+                const penalty = (basePenalty + (repeatChain * stepPenalty)) * (0.6 + freshnessRatio * 0.4);
+                repeatMultiplier = Math.max(minRepeatMultiplier, 1 - penalty);
+                repeatApplied = repeatMultiplier < 0.999;
+            }
+
+            const stage = pet.growthStage && GROWTH_STAGES[pet.growthStage] ? pet.growthStage : 'baby';
+            const stageBalance = getStageBalance(stage);
+            const primaryNeed = getCarePrimaryNeed(action);
+            const lowestNeed = getLowestNeedFromSnapshot(pet, snapshot);
+            const baseFocus = (typeof getCareFocusMultiplier === 'function')
+                ? Math.max(1, Number(getCareFocusMultiplier(action, pet, snapshot)) || 1)
+                : 1;
+            const extraFocusedBonus = Math.max(0, Number(tuning.extraFocusedBonus) || 0);
+            const focusStageWeight = Math.max(0, Number(tuning.focusStageWeight) || 0.75);
+            const offTargetMultiplier = Math.max(0.65, Math.min(1, Number(tuning.offTargetMultiplier) || 0.9));
+
+            let focusMultiplier = baseFocus;
+            let focused = false;
+            let offTarget = false;
+            if (primaryNeed && lowestNeed) {
+                if (primaryNeed === lowestNeed) {
+                    focused = true;
+                    const stageFocus = Math.max(0, Number(stageBalance.focusedCareBonus) || 0);
+                    focusMultiplier *= (1 + extraFocusedBonus + (stageFocus * focusStageWeight));
+                } else {
+                    offTarget = true;
+                    focusMultiplier *= offTargetMultiplier;
+                }
+            }
+
+            const minTotal = Math.max(0.35, Number(tuning.minTotalMultiplier) || 0.55);
+            const maxTotal = Math.max(minTotal, Number(tuning.maxTotalMultiplier) || 1.65);
+            // Report #7: repeat-chain + focus-aware diminishing returns.
+            const gainMultiplier = Math.max(minTotal, Math.min(maxTotal, focusMultiplier * repeatMultiplier));
+
+            runtime.lastAction = action;
+            runtime.lastAt = now;
+            runtime.repeatChain = repeatChain;
+            return { gainMultiplier, repeatApplied, focused, offTarget, repeatChain, resetAt: now + windowMs };
+        }
+
         // Shared standard-feed logic used by both careAction('feed') and openFeedMenu
-        function performStandardFeed(pet) {
-            const focusSnapshot = (typeof getPetNeedSnapshot === 'function') ? getPetNeedSnapshot(pet) : null;
+        function performStandardFeed(pet, careDecision) {
             const feedPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'feed') : 1;
             const feedPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'feed') : 1;
             const feedWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-            const focusMult = (typeof getCareFocusMultiplier === 'function') ? getCareFocusMultiplier('feed', pet, focusSnapshot) : 1.0;
+            const decision = careDecision || getCareDecisionMultiplier('feed', pet, (typeof getPetNeedSnapshot === 'function') ? getPetNeedSnapshot(pet) : null);
             const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
-            const feedBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * focusMult * rewardCareMult);
+            const prestigeCareMult = Number(getPrestigeEffectValue('petSpa', 'careGainMultiplier', 1)) || 1;
+            const feedBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + feedWisdom) * getRoomBonus('feed') * feedPersonality * feedPref * decision.gainMultiplier * rewardCareMult * prestigeCareMult);
             pet.hunger = clamp(pet.hunger + feedBonus, 0, 100);
             // Track lifetime feed count for feed-specific badges/achievements
             if (typeof gameState.totalFeedCount !== 'number') gameState.totalFeedCount = 0;
@@ -3183,6 +3293,8 @@
             }
             restoreActionButtonsFromCooldown();
         }
+
+        let careDiminishResetTimer = null;
 
         function careAction(action) {
             // Prevent rapid clicking
@@ -3227,8 +3339,11 @@
                 energy: pet.energy
             };
             const rewardCareMult = (typeof getRewardCareGainMultiplier === 'function') ? getRewardCareGainMultiplier() : 1;
+            const prestigeCareMult = Number(getPrestigeEffectValue('petSpa', 'careGainMultiplier', 1)) || 1; // Report #8
+            const totalCareMult = rewardCareMult * prestigeCareMult;
             const rewardHappyFlat = (typeof getRewardHappinessFlatBonus === 'function') ? getRewardHappinessFlatBonus() : 0;
             let message = '';
+            let careDecisionResult = getCareDecisionMultiplier(action, pet, beforeStats); // Report #7
 
             switch (action) {
                 case 'feed': {
@@ -3253,15 +3368,14 @@
                         cancelActionCooldownAndRestoreButtons();
                         return;
                     }
-                    message = performStandardFeed(pet);
+                    message = performStandardFeed(pet, careDecisionResult);
                     break;
                 }
                 case 'wash': {
                     const washPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'wash') : 1;
                     const washPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'wash') : 1;
                     const washWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const washFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('wash', pet, beforeStats) : 1.0;
-                    const washBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * washFocusMult * rewardCareMult);
+                    const washBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + washWisdom) * getRoomBonus('wash') * washPersonality * washPref * careDecisionResult.gainMultiplier * totalCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + washBonus, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('wash', pet.personality, pet.growthStage)
@@ -3277,8 +3391,7 @@
                     const playPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'play') : 1;
                     const playPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'play') : 1;
                     const playWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const playFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('play', pet, beforeStats) : 1.0;
-                    const playBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + playWisdom) * getRoomBonus('play') * playPersonality * playPref * playFocusMult * rewardCareMult);
+                    const playBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + playWisdom) * getRoomBonus('play') * playPersonality * playPref * careDecisionResult.gainMultiplier * totalCareMult);
                     pet.happiness = clamp(pet.happiness + playBonus, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('play', pet.personality, pet.growthStage)
@@ -3294,7 +3407,6 @@
                     const sleepPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'sleep') : 1;
                     const sleepPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'sleep') : 1;
                     const sleepWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const sleepFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('sleep', pet, beforeStats) : 1.0;
                     // Sleep is more effective at night (deep sleep) and less during the day (just a nap)
                     const sleepTime = gameState.timeOfDay || 'day';
                     let sleepBonus = 22; // default nap
@@ -3309,7 +3421,7 @@
                         sleepBonus = 27; // nice morning sleep-in
                         sleepAnnounce = 'Your pet slept in a little!';
                     }
-                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * sleepFocusMult * rewardCareMult);
+                    sleepBonus = Math.round((sleepBonus + sleepWisdom) * getRoomBonus('sleep') * sleepPersonality * sleepPref * careDecisionResult.gainMultiplier * totalCareMult);
                     pet.energy = clamp(pet.energy + sleepBonus, 0, 100);
                     message = sleepAnnounce;
                     if (petContainer) petContainer.classList.add('sleep-anim', 'pet-sleepy-nod');
@@ -3320,12 +3432,12 @@
                 case 'medicine': {
                     const medPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'medicine') : 1;
                     const medPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'medicine') : 1;
-                    const medMod = medPersonality * medPref;
+                    const medMod = medPersonality * medPref * careDecisionResult.gainMultiplier;
                     // Medicine gives a gentle boost to all stats - helps pet feel better
-                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod * rewardCareMult), 0, 100);
-                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * rewardCareMult), 0, 100);
-                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * rewardCareMult), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(10 * medMod * rewardCareMult), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * medMod * totalCareMult), 0, 100);
+                    pet.cleanliness = clamp(pet.cleanliness + Math.round(10 * medMod * totalCareMult), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round(15 * medMod * totalCareMult), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(10 * medMod * totalCareMult), 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('medicine', pet.personality, pet.growthStage)
                         : randomFromArray(FEEDBACK_MESSAGES.medicine);
@@ -3339,12 +3451,11 @@
                     const groomPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'groom') : 1;
                     const groomPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'groom') : 1;
                     const groomWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const groomFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('groom', pet, beforeStats) : 1.0;
                     // Grooming - brush fur/feathers and trim nails
                     const groomBonus = getRoomBonus('groom');
                     const groomMod = groomPersonality * groomPref;
-                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * groomFocusMult * rewardCareMult);
-                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * rewardCareMult);
+                    const groomClean = Math.round((13 + groomWisdom) * groomBonus * groomMod * careDecisionResult.gainMultiplier * totalCareMult);
+                    const groomHappy = Math.round((8 + groomWisdom) * groomBonus * groomMod * totalCareMult);
                     pet.cleanliness = clamp(pet.cleanliness + groomClean, 0, 100);
                     pet.happiness = clamp(pet.happiness + groomHappy, 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
@@ -3361,10 +3472,9 @@
                     const exPersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'exercise') : 1;
                     const exPref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'exercise') : 1;
                     const exWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const exFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('exercise', pet, beforeStats) : 1.0;
                     // Exercise - take walks or play fetch
                     const exMod = exPersonality * exPref;
-                    const exBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + exWisdom) * getRoomBonus('exercise') * exMod * exFocusMult * rewardCareMult);
+                    const exBonus = Math.round((GAME_BALANCE.petCare.baseCareBonus + exWisdom) * getRoomBonus('exercise') * exMod * careDecisionResult.gainMultiplier * totalCareMult);
                     pet.happiness = clamp(pet.happiness + exBonus, 0, 100);
                     pet.energy = clamp(pet.energy - 10, 0, 100);
                     pet.hunger = clamp(pet.hunger - 5, 0, 100);
@@ -3389,8 +3499,9 @@
                     if (prefs && treat.name === prefs.favoriteTreat) {
                         treatMod *= 1.5;
                     }
-                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * rewardCareMult), 0, 100);
-                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * rewardCareMult), 0, 100);
+                    treatMod *= careDecisionResult.gainMultiplier;
+                    pet.happiness = clamp(pet.happiness + Math.round((25 + treatWisdom) * treatMod * totalCareMult), 0, 100);
+                    pet.hunger = clamp(pet.hunger + Math.round(10 * treatMod * totalCareMult), 0, 100);
                     const treatMsg = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('treat', pet.personality, pet.growthStage)
                         : randomFromArray(FEEDBACK_MESSAGES.treat);
@@ -3407,11 +3518,10 @@
                     const cuddlePersonality = typeof getPersonalityCareModifier === 'function' ? getPersonalityCareModifier(pet, 'cuddle') : 1;
                     const cuddlePref = typeof getPreferenceModifier === 'function' ? getPreferenceModifier(pet, 'cuddle') : 1;
                     const cuddleWisdom = typeof getElderWisdomBonus === 'function' ? getElderWisdomBonus(pet) : 0;
-                    const cuddleFocusMult = typeof getCareFocusMultiplier === 'function' ? getCareFocusMultiplier('cuddle', pet, beforeStats) : 1.0;
                     const cuddleMod = cuddlePersonality * cuddlePref;
                     // Petting/Cuddling - direct affection boosts happiness and energy
-                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * cuddleFocusMult * rewardCareMult), 0, 100);
-                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * rewardCareMult), 0, 100);
+                    pet.happiness = clamp(pet.happiness + Math.round((13 + cuddleWisdom) * cuddleMod * careDecisionResult.gainMultiplier * totalCareMult), 0, 100);
+                    pet.energy = clamp(pet.energy + Math.round(4 * cuddleMod * totalCareMult), 0, 100);
                     message = (typeof getExpandedFeedbackMessage === 'function')
                         ? getExpandedFeedbackMessage('cuddle', pet.personality, pet.growthStage)
                         : randomFromArray(FEEDBACK_MESSAGES.cuddle);
@@ -3421,6 +3531,29 @@
                     if (sparkles) createCuddleParticles(sparkles);
                     if (typeof SoundManager !== 'undefined') SoundManager.playSFX(SoundManager.sfx.cuddle);
                     break;
+                }
+            }
+
+            if (careDecisionResult && (careDecisionResult.repeatApplied || careDecisionResult.offTarget)) {
+                const runtime = getCareLoopRuntimeState(pet);
+                const now = Date.now();
+                const hintCooldown = Math.max(8000, Number((typeof getCareLoopTuning === 'function' ? getCareLoopTuning().hintCooldownMs : 0)) || 18000);
+                if (runtime && now - (runtime.lastHintAt || 0) >= hintCooldown) {
+                    runtime.lastHintAt = now;
+                    const secs = Math.max(1, Math.ceil(Math.max(0, (careDecisionResult.resetAt || now) - now) / 1000));
+                    if (careDecisionResult.repeatApplied) {
+                        // Report #7: Screen-reader feedback for anti-spam diminishing returns.
+                        showToast('🔁 Diminishing returns active: repeating the same care action now gives smaller gains.', '#FFA726', { announce: false });
+                        announce(`Diminishing returns active. Rotate care actions or wait about ${secs} seconds to reset.`, true);
+                        if (careDiminishResetTimer) clearTimeout(careDiminishResetTimer);
+                        careDiminishResetTimer = setTimeout(() => {
+                            announce('Care diminishing returns reset.', true);
+                            careDiminishResetTimer = null;
+                        }, Math.max(1000, (careDecisionResult.resetAt || now) - now));
+                    } else if (careDecisionResult.offTarget) {
+                        showToast('🎯 Focused care works best on your pet\'s lowest need right now.', '#4FC3F7', { announce: false });
+                        announce('Focused care tip: target the lowest need for better gains.', true);
+                    }
                 }
             }
 
@@ -5903,7 +6036,7 @@
                             </div>
                             <div class="stats-card">
                                 <div class="stats-card-icon">🐾</div>
-                                <div class="stats-card-value">${gameState.pets ? gameState.pets.length : (pet ? 1 : 0)}/${MAX_PETS}</div>
+                                <div class="stats-card-value">${gameState.pets ? gameState.pets.length : (pet ? 1 : 0)}/${typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS}</div>
                                 <div class="stats-card-label">Pet Family</div>
                             </div>
                             <div class="stats-card">
@@ -5973,7 +6106,7 @@
                         <div class="new-pet-summary-stats">
                             <span class="new-pet-summary-stat">${stageData.emoji} ${stageData.label}</span>
                             <span class="new-pet-summary-stat">💝 ${careActions} actions</span>
-                            <span class="new-pet-summary-stat">🐾 ${petCount}/${MAX_PETS} pets</span>
+                            <span class="new-pet-summary-stat">🐾 ${petCount}/${typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS} pets</span>
                         </div>
                     </div>
                 `;
@@ -6005,7 +6138,7 @@
                     <div class="modal-icon" aria-hidden="true">🥚</div>
                     <h2 class="modal-title" id="modal-title">${canAdopt ? 'Grow Your Family!' : 'Start Fresh?'}</h2>
                     ${summaryHTML}
-                    <p class="modal-message">${canAdopt ? `You can adopt another egg (${petCount}/${MAX_PETS} pets) or start completely fresh!` : `You have ${MAX_PETS} pets already. Start over for a fresh adventure?`}</p>
+                    <p class="modal-message">${canAdopt ? `You can adopt another egg (${petCount}/${typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS} pets) or start completely fresh!` : `You have ${typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS} pets already. Start over for a fresh adventure?`}</p>
                     <div class="modal-buttons modal-buttons-col">
                         ${buttonsHTML}
                     </div>
@@ -6209,7 +6342,7 @@
 
         function adoptNewEgg() {
             if (!canAdoptMore()) {
-                showToast(`You already have ${MAX_PETS} pets! That's the maximum.`, '#FFA726');
+                showToast(`You already have ${typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS} pets! That's the maximum.`, '#FFA726');
                 return;
             }
 
@@ -6332,8 +6465,8 @@
             if (!gameState.hatchedBreedingEggs || index < 0 || index >= gameState.hatchedBreedingEggs.length) return;
 
             // Validate capacity before mutating hatch progression state
-            if (getPetCount() >= MAX_PETS) {
-                showToast(`You have ${MAX_PETS} pets already! Release one to collect this baby.`, '#FFA726');
+            if (getPetCount() >= (typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS)) {
+                showToast(`You have ${typeof getMaxPetCapacity === 'function' ? getMaxPetCapacity() : MAX_PETS} pets already! Release one to collect this baby.`, '#FFA726');
                 return;
             }
 
@@ -7106,6 +7239,15 @@
             const completedCount = cl.tasks.filter(t => t.done).length;
             const totalTasks = cl.tasks.length;
             const weeklyArc = (typeof initWeeklyArc === 'function') ? initWeeklyArc() : null;
+            const rewardPreview = (typeof getTodayDailyRewardPreview === 'function') ? getTodayDailyRewardPreview() : null;
+            const rewardBundle = rewardPreview && rewardPreview.bundle ? rewardPreview.bundle : null;
+            const rewardModifier = rewardBundle && rewardBundle.modifierId && typeof REWARD_MODIFIERS !== 'undefined' ? REWARD_MODIFIERS[rewardBundle.modifierId] : null;
+            const rewardCollectible = rewardBundle && rewardBundle.collectible ? rewardBundle.collectible : null;
+            const rewardCollectibleLabel = rewardCollectible
+                ? (rewardCollectible.type === 'sticker' && typeof STICKERS !== 'undefined' && STICKERS[rewardCollectible.id]
+                    ? `${STICKERS[rewardCollectible.id].emoji} ${STICKERS[rewardCollectible.id].name}`
+                    : rewardCollectible.id)
+                : '';
 
             let tasksHTML = '';
             (cl.tasks || []).forEach((task) => {
@@ -7157,6 +7299,11 @@
                     <p class="daily-subtitle">${completedCount}/${totalTasks} complete today</p>
                     <div class="daily-progress-bar">
                         <div class="daily-progress-fill" style="width: ${totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0}%;"></div>
+                    </div>
+                    <div class="daily-weekly-arc">
+                        <h3 class="daily-weekly-title">🎁 Today's Reward Preview</h3>
+                        <p class="daily-weekly-reward">${rewardBundle ? `${rewardBundle.coins || 0}🪙 coins` : 'Reward unavailable'}</p>
+                        <p class="explore-subtext">${rewardPreview ? `Stage: ${rewardPreview.stage}` : ''}${rewardModifier ? ` · Modifier: ${rewardModifier.emoji} ${rewardModifier.name}` : ''}${rewardCollectibleLabel ? ` · Collectible: ${rewardCollectibleLabel}` : ''}</p>
                     </div>
                     <div class="daily-tasks-list">${tasksHTML}</div>
                     ${weeklyArcHTML}
@@ -7873,22 +8020,33 @@
                 // Rec 6: Prestige shop section
                 let prestigeHTML = '';
                 if (typeof PRESTIGE_PURCHASES !== 'undefined') {
+                    const prestigeEffects = (typeof getPrestigeEffectSummary === 'function') ? getPrestigeEffectSummary() : [];
                     const prestigeCards = Object.values(PRESTIGE_PURCHASES).map((item) => {
                         const owned = (typeof hasPrestigePurchase === 'function') ? hasPrestigePurchase(item.id) : false;
+                        const effectEntry = prestigeEffects.find((entry) => entry && entry.id === item.id);
+                        const effectText = effectEntry && Array.isArray(effectEntry.effects) && effectEntry.effects.length > 0
+                            ? `<div class="explore-subtext" style="color:#4FC3F7;">Effects: ${effectEntry.effects.join(' · ')}</div>`
+                            : '';
                         return `
                             <div class="economy-card" ${owned ? 'style="opacity:0.6;"' : ''}>
                                 <div><strong>${item.emoji} ${item.name}</strong></div>
                                 <div class="explore-subtext">${item.description || ''}</div>
+                                ${effectText}
                                 ${owned ? '<div class="explore-subtext" style="color:#66BB6A;">Owned</div>'
                                     : `<button class="modal-btn confirm" data-prestige-buy="${item.id}">Buy (${item.cost}🪙)</button>`}
                             </div>
                         `;
                     }).join('');
+                    const totalEffectsHTML = prestigeEffects.length > 0
+                        ? `<ul class="explore-log-list">${prestigeEffects.map((entry) => `<li>${entry.emoji} ${escapeHTML(entry.name)}: ${(entry.effects || []).join(' · ') || 'Active'}</li>`).join('')}</ul>`
+                        : '<p class="explore-subtext">No prestige effects active yet.</p>';
                     shopSections += `
                         <section class="explore-section">
                             <h3>🏆 Prestige Shop</h3>
                             <p class="explore-subtext">High-value upgrades for veteran players.</p>
                             <div class="explore-biome-grid">${prestigeCards}</div>
+                            <h4 style="margin-top:10px;">Active Bonuses</h4>
+                            ${totalEffectsHTML}
                         </section>
                     `;
                 }
@@ -7964,7 +8122,7 @@
                     ? Math.round(ECONOMY_BALANCE.auctionListingFeeRate * 100) : 3;
 
                 const auctionListingHTML = (auction.listings || []).slice(0, 16).map((listing) => {
-                    const mine = listing.sellerSlot === auction.slotId;
+                    const mine = !!listing.isMine;
                     return `
                         <li>
                             <span>${listing.emoji} ${escapeHTML(listing.name)} x${listing.quantity} · ${listing.price}🪙 · ${getAuctionSlotLabel(listing.sellerSlot)}</span>
@@ -8231,7 +8389,11 @@
                         } else if (action === 'cancel' && typeof cancelAuctionListing === 'function') {
                             const result = cancelAuctionListing(listingId);
                             if (!result.ok) {
-                                showToast('Could not cancel listing.', '#FFA726');
+                                const reasonMap = {
+                                    'legacy-owner-unknown': 'Legacy listing cannot be cancelled by identity. It will expire naturally or be purchased.',
+                                    'not-owner': 'You can only cancel listings owned by your profile identity.'
+                                };
+                                showToast(reasonMap[result.reason] || 'Could not cancel listing.', '#FFA726');
                                 return;
                             }
                             showToast(`↩️ Cancelled listing for ${result.listing.emoji} ${result.listing.name}.`, '#90A4AE');
@@ -8353,6 +8515,7 @@
                     const discovered = !!(ex.discoveredBiomes && ex.discoveredBiomes[biome.id]);
                     const buttonDisabled = !unlocked || !!expedition || (dungeon && dungeon.active);
                     const buttonLabel = !unlocked ? 'Locked' : expedition ? 'Expedition Active' : (dungeon && dungeon.active) ? 'Dungeon Active' : 'Send Expedition';
+                    const expeditionPreview = (typeof getExpeditionPreview === 'function') ? getExpeditionPreview(biome.id, selectedDurationId) : null;
                     return `
                         <article class="explore-biome-card ${unlocked ? 'unlocked' : 'locked'} ${discovered ? 'discovered' : ''}">
                             <div class="explore-biome-top">
@@ -8366,6 +8529,7 @@
                                 ${unlocked ? `<span class="explore-status-tag">Unlocked</span>` : `<span class="explore-lock-hint">${biome.unlockHint}</span>`}
                                 ${discovered ? '<span class="explore-discovered-tag">Explored</span>' : ''}
                             </div>
+                            ${expeditionPreview ? `<p class="explore-subtext">Upkeep: ${expeditionPreview.upkeepCost}🪙 · Expected rolls: ~${expeditionPreview.projectedRolls}</p>` : ''}
                             <button class="modal-btn ${buttonDisabled ? '' : 'confirm'}" data-start-expedition="${biome.id}" ${buttonDisabled ? 'disabled' : ''}>
                                 ${buttonLabel}
                             </button>
@@ -8376,6 +8540,7 @@
                 const durationOptions = (EXPEDITION_DURATIONS || []).map((d) => (
                     `<option value="${d.id}" ${d.id === selectedDurationId ? 'selected' : ''}>${d.label}</option>`
                 )).join('');
+                const selectedPreview = (typeof getExpeditionPreview === 'function') ? getExpeditionPreview('forest', selectedDurationId) : null;
 
                 let expeditionPanel = '<p class="explore-subtext">No active expedition. Pick a biome and send your pet adventuring.</p>';
                 if (expedition) {
@@ -8480,6 +8645,7 @@
                             <select id="expedition-duration-select" class="explore-duration-select" ${expedition ? 'disabled' : ''}>
                                 ${durationOptions}
                             </select>
+                            ${selectedPreview ? `<p class="explore-subtext">Typical upkeep starts around ${selectedPreview.upkeepCost}🪙 for this duration. Longer/harder biomes cost more.</p>` : ''}
                             ${expeditionPanel}
                         </section>
 
@@ -8528,12 +8694,13 @@
                                 'already-running': 'An expedition is already active.',
                                 'dungeon-active': 'Finish your dungeon crawl first.',
                                 'locked-biome': 'This biome is still locked.',
-                                'no-pet': 'You need an active pet to explore.'
+                                'no-pet': 'You need an active pet to explore.',
+                                'insufficient-funds': 'Not enough coins for expedition upkeep.'
                             };
                             showToast(`🧭 ${reasonMap[res.reason] || 'Could not start expedition.'}`, '#FFA726');
                             return;
                         }
-                        showToast(`🧭 ${res.expedition.petName} departed for ${res.biome.name}!`, '#4ECDC4');
+                        showToast(`🧭 ${res.expedition.petName} departed for ${res.biome.name}! Upkeep: ${res.upkeepCost || 0}🪙`, '#4ECDC4');
                         renderExplorationModal();
                     });
                 });
@@ -8719,6 +8886,8 @@
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
             const srVerbosityDetailed = (localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed');
             const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
+            const currentBalanceProfile = (typeof getBalanceProfileId === 'function') ? getBalanceProfileId() : 'NORMAL';
+            const isQuickBalanceProfile = currentBalanceProfile === 'QUICK_ITERATION_BUILD';
 
             const overlay = document.createElement('div');
             overlay.className = 'settings-overlay';
@@ -8812,6 +8981,11 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                             <span class="settings-toggle-state" id="state-setting-reminders">${remindersEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">⚖️ Balance Profile</span>
+                            <button class="settings-choice ${!isQuickBalanceProfile ? 'active' : ''}" id="setting-balance-normal" type="button" aria-pressed="${!isQuickBalanceProfile ? 'true' : 'false'}">Normal</button>
+                            <button class="settings-choice ${isQuickBalanceProfile ? 'active' : ''}" id="setting-balance-quick" type="button" aria-pressed="${isQuickBalanceProfile ? 'true' : 'false'}">Quick Iteration</button>
                         </div>
                         <div class="settings-row">
                             <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
@@ -8990,6 +9164,27 @@
                     saveGame();
                 }
             });
+
+            const balanceNormalBtn = document.getElementById('setting-balance-normal');
+            const balanceQuickBtn = document.getElementById('setting-balance-quick');
+            if (balanceNormalBtn && balanceQuickBtn) {
+                const setBalanceProfile = (profileId) => {
+                    if (typeof setBalanceProfileId !== 'function') return;
+                    const applied = setBalanceProfileId(profileId);
+                    const quick = applied === 'QUICK_ITERATION_BUILD';
+                    balanceNormalBtn.classList.toggle('active', !quick);
+                    balanceQuickBtn.classList.toggle('active', quick);
+                    balanceNormalBtn.setAttribute('aria-pressed', !quick ? 'true' : 'false');
+                    balanceQuickBtn.setAttribute('aria-pressed', quick ? 'true' : 'false');
+                    // Report #10: Reapply decay timer immediately after profile switch.
+                    if (typeof startDecayTimer === 'function') startDecayTimer();
+                    const label = quick ? 'Quick Iteration' : 'Normal';
+                    showToast(`Balance profile switched to ${label}.`, '#4FC3F7');
+                    announce(`Balance profile switched to ${label}.`, true);
+                };
+                balanceNormalBtn.addEventListener('click', () => setBalanceProfile('NORMAL'));
+                balanceQuickBtn.addEventListener('click', () => setBalanceProfile('QUICK_ITERATION_BUILD'));
+            }
 
             const srBrief = document.getElementById('setting-sr-brief');
             const srDetailed = document.getElementById('setting-sr-detailed');

@@ -84,11 +84,97 @@ function getStageBalance(stage) {
 }
 
 // ==================== GAMEPLAY TUNING PROFILES ====================
-// Switch between mild and aggressive tuning without editing gameplay code.
-// Valid values: 'QUICK_ITERATION_BUILD', 'AGGRESSIVE_ESCALATION_BUILD'
-const ACTIVE_GAMEPLAY_TUNING_PROFILE = 'QUICK_ITERATION_BUILD';
+// Report #10: Runtime-selectable balance profile with player-safe default.
+const BALANCE_DEBUG = false;
+const BALANCE_PROFILE_STORAGE_KEY = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.balanceProfile) ? STORAGE_KEYS.balanceProfile : 'petCareBuddy_balanceProfile';
+const ACTIVE_GAMEPLAY_TUNING_PROFILE = 'NORMAL';
+
+function balanceDebugLog(topic, payload) {
+    // Report #10: Lightweight debug gate for EV/payout instrumentation.
+    if (!BALANCE_DEBUG || typeof console === 'undefined' || typeof console.log !== 'function') return;
+    console.log(`[BALANCE_DEBUG] ${topic}`, payload);
+}
 
 const GAMEPLAY_TUNING_PROFILES = {
+    NORMAL: {
+        careLoop: {
+            repeatWindowMs: 14000,
+            repeatBasePenalty: 0.14,
+            repeatStepPenalty: 0.09,
+            repeatMaxStack: 4,
+            repeatMinMultiplier: 0.52,
+            focusStageWeight: 0.82,
+            extraFocusedBonus: 0.1,
+            offTargetMultiplier: 0.88,
+            minTotalMultiplier: 0.5,
+            maxTotalMultiplier: 1.6,
+            hintCooldownMs: 18000
+        },
+        rooms: {
+            actionSpreadScale: 1.38,
+            careUpgradeScale: 1.55,
+            systemUpgradeStep: 0.035
+        },
+        decay: {
+            stageVariance: {
+                baby: { extraEveryTicks: 0, extraNeedDecay: 0 },
+                child: { extraEveryTicks: 6, extraNeedDecay: 1 },
+                adult: { extraEveryTicks: 5, extraNeedDecay: 1 },
+                elder: { extraEveryTicks: 4, extraNeedDecay: 1 }
+            },
+            neglectPressure: {
+                baby: { graceTicks: 6, pulseEveryTicks: 5, lowestNeedPenalty: 1, happinessPenalty: 0, multiNeedPenalty: 0 },
+                child: { graceTicks: 5, pulseEveryTicks: 4, lowestNeedPenalty: 1, happinessPenalty: 1, multiNeedPenalty: 0 },
+                adult: { graceTicks: 4, pulseEveryTicks: 3, lowestNeedPenalty: 2, happinessPenalty: 1, multiNeedPenalty: 1 },
+                elder: { graceTicks: 3, pulseEveryTicks: 3, lowestNeedPenalty: 2, happinessPenalty: 2, multiNeedPenalty: 1 }
+            },
+            neglectCount: {
+                baby: { gainScale: 1.0, recoveryScale: 1.0 },
+                child: { gainScale: 1.08, recoveryScale: 0.93 },
+                adult: { gainScale: 1.16, recoveryScale: 0.88 },
+                elder: { gainScale: 1.24, recoveryScale: 0.82 }
+            }
+        },
+        minigames: {
+            replayDifficultyBoostPerPlay: 0.02,
+            replayDifficultyBoostMaxPlays: 6,
+            difficultyCap: 2.2,
+            difficultyBands: [
+                { id: 'steady', maxDifficulty: 1.15, rewardScoreMultiplier: 1.0 },
+                { id: 'challenging', maxDifficulty: 1.45, rewardScoreMultiplier: 1.12 },
+                { id: 'hard', maxDifficulty: 1.8, rewardScoreMultiplier: 1.27 },
+                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.45 }
+            ]
+        },
+        asyncLoops: {
+            expeditionStage: {
+                baby: { durationMultiplier: 0.9, lootMultiplier: 0.94, energyCostMultiplier: 0.92, happinessMultiplier: 1.0 },
+                child: { durationMultiplier: 1.0, lootMultiplier: 1.0, energyCostMultiplier: 1.0, happinessMultiplier: 1.0 },
+                adult: { durationMultiplier: 1.08, lootMultiplier: 1.05, energyCostMultiplier: 1.08, happinessMultiplier: 0.98 },
+                elder: { durationMultiplier: 1.14, lootMultiplier: 1.08, energyCostMultiplier: 1.12, happinessMultiplier: 0.96 }
+            },
+            expeditionProgressionSlowdown: [
+                { completedAtLeast: 6, durationMultiplier: 1.05 },
+                { completedAtLeast: 14, durationMultiplier: 1.1 }
+            ]
+        },
+        rewards: {
+            dailyModifierByStage: { baby: 'careRush', child: 'careRush', adult: 'luckyPaws', elder: 'focusedTraining' },
+            weeklyModifierByStage: { baby: 'careRush', child: 'luckyPaws', adult: 'focusedTraining', elder: 'focusedTraining' },
+            achievementModifierByStage: { baby: 'careRush', child: 'luckyPaws', adult: 'luckyPaws', elder: 'focusedTraining' },
+            prestigeWeightsByStage: {
+                baby: { careRush: 4, luckyPaws: 2, focusedTraining: 1 },
+                child: { careRush: 3, luckyPaws: 3, focusedTraining: 2 },
+                adult: { careRush: 2, luckyPaws: 3, focusedTraining: 4 },
+                elder: { careRush: 1, luckyPaws: 2, focusedTraining: 5 }
+            },
+            mastery: {
+                careByStage: { baby: 0.02, child: 0.03, adult: 0.02, elder: 0.015 },
+                expeditionRollBonusByStage: { baby: 0, child: 0, adult: 1, elder: 1 },
+                competitionByStage: { baby: 0.0, child: 0.02, adult: 0.04, elder: 0.06 }
+            }
+        }
+    },
     QUICK_ITERATION_BUILD: {
         careLoop: {
             repeatWindowMs: 12000,
@@ -129,14 +215,14 @@ const GAMEPLAY_TUNING_PROFILES = {
             }
         },
         minigames: {
-            replayDifficultyBoostPerPlay: 0.035,
-            replayDifficultyBoostMaxPlays: 10,
-            difficultyCap: 2.7,
+            replayDifficultyBoostPerPlay: 0.02,
+            replayDifficultyBoostMaxPlays: 6,
+            difficultyCap: 2.1,
             difficultyBands: [
-                { id: 'steady', maxDifficulty: 1.2, rewardScoreMultiplier: 1.0 },
-                { id: 'challenging', maxDifficulty: 1.55, rewardScoreMultiplier: 1.08 },
-                { id: 'hard', maxDifficulty: 1.95, rewardScoreMultiplier: 1.16 },
-                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.24 }
+                { id: 'steady', maxDifficulty: 1.15, rewardScoreMultiplier: 1.0 },
+                { id: 'challenging', maxDifficulty: 1.45, rewardScoreMultiplier: 1.12 },
+                { id: 'hard', maxDifficulty: 1.8, rewardScoreMultiplier: 1.3 },
+                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.48 }
             ]
         },
         asyncLoops: {
@@ -208,14 +294,14 @@ const GAMEPLAY_TUNING_PROFILES = {
             }
         },
         minigames: {
-            replayDifficultyBoostPerPlay: 0.055,
-            replayDifficultyBoostMaxPlays: 12,
-            difficultyCap: 3.0,
+            replayDifficultyBoostPerPlay: 0.028,
+            replayDifficultyBoostMaxPlays: 8,
+            difficultyCap: 2.35,
             difficultyBands: [
                 { id: 'steady', maxDifficulty: 1.15, rewardScoreMultiplier: 1.0 },
-                { id: 'challenging', maxDifficulty: 1.5, rewardScoreMultiplier: 1.1 },
-                { id: 'hard', maxDifficulty: 1.9, rewardScoreMultiplier: 1.22 },
-                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.34 }
+                { id: 'challenging', maxDifficulty: 1.5, rewardScoreMultiplier: 1.14 },
+                { id: 'hard', maxDifficulty: 1.9, rewardScoreMultiplier: 1.32 },
+                { id: 'expert', maxDifficulty: 99, rewardScoreMultiplier: 1.52 }
             ]
         },
         asyncLoops: {
@@ -251,31 +337,81 @@ const GAMEPLAY_TUNING_PROFILES = {
 };
 
 function getGameplayTuning() {
-    return GAMEPLAY_TUNING_PROFILES[ACTIVE_GAMEPLAY_TUNING_PROFILE] || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD;
+    let selected = ACTIVE_GAMEPLAY_TUNING_PROFILE;
+    try {
+        const stored = localStorage.getItem(BALANCE_PROFILE_STORAGE_KEY);
+        if (stored && GAMEPLAY_TUNING_PROFILES[stored]) selected = stored;
+    } catch (e) {
+        // localStorage unavailable (privacy mode, test harness, etc.)
+    }
+    return GAMEPLAY_TUNING_PROFILES[selected] || GAMEPLAY_TUNING_PROFILES.NORMAL || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD;
+}
+
+function getBalanceProfileId() {
+    let selected = ACTIVE_GAMEPLAY_TUNING_PROFILE;
+    try {
+        const stored = localStorage.getItem(BALANCE_PROFILE_STORAGE_KEY);
+        if (stored && GAMEPLAY_TUNING_PROFILES[stored]) selected = stored;
+    } catch (e) {
+        // ignore storage read errors
+    }
+    return selected;
+}
+
+function setBalanceProfileId(profileId) {
+    const safe = GAMEPLAY_TUNING_PROFILES[profileId] ? profileId : ACTIVE_GAMEPLAY_TUNING_PROFILE;
+    try {
+        localStorage.setItem(BALANCE_PROFILE_STORAGE_KEY, safe);
+    } catch (e) {
+        // ignore storage write errors
+    }
+    return safe;
+}
+
+function getBalanceProfileConfig() {
+    const profileId = getBalanceProfileId();
+    if (profileId === 'QUICK_ITERATION_BUILD') {
+        return {
+            profileId,
+            label: 'Quick Iteration',
+            liveDecayMultiplier: 0.55,
+            offlineDecayMultiplier: 0.28,
+            offlineNeglectMultiplier: 0.35,
+            decayTickMs: 45000
+        };
+    }
+    return {
+        profileId,
+        label: 'Normal',
+        liveDecayMultiplier: 1,
+        offlineDecayMultiplier: 1,
+        offlineNeglectMultiplier: 1,
+        decayTickMs: 30000
+    };
 }
 
 function getCareLoopTuning() {
-    return getGameplayTuning().careLoop || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.careLoop;
+    return getGameplayTuning().careLoop || GAMEPLAY_TUNING_PROFILES.NORMAL.careLoop;
 }
 
 function getRoomTuning() {
-    return getGameplayTuning().rooms || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.rooms;
+    return getGameplayTuning().rooms || GAMEPLAY_TUNING_PROFILES.NORMAL.rooms;
 }
 
 function getDecayTuning() {
-    return getGameplayTuning().decay || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.decay;
+    return getGameplayTuning().decay || GAMEPLAY_TUNING_PROFILES.NORMAL.decay;
 }
 
 function getMinigameEscalationTuning() {
-    return getGameplayTuning().minigames || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.minigames;
+    return getGameplayTuning().minigames || GAMEPLAY_TUNING_PROFILES.NORMAL.minigames;
 }
 
 function getAsyncLoopTuning() {
-    return getGameplayTuning().asyncLoops || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.asyncLoops;
+    return getGameplayTuning().asyncLoops || GAMEPLAY_TUNING_PROFILES.NORMAL.asyncLoops;
 }
 
 function getPhaseRewardTuning() {
-    return getGameplayTuning().rewards || GAMEPLAY_TUNING_PROFILES.QUICK_ITERATION_BUILD.rewards;
+    return getGameplayTuning().rewards || GAMEPLAY_TUNING_PROFILES.NORMAL.rewards;
 }
 
 // Care quality levels and their thresholds
@@ -1123,7 +1259,12 @@ function getRoomSystemMultiplier(systemKey, roomId) {
     const roomTuning = getRoomTuning();
     const upgradeLevel = getRoomUpgradeLevel(resolvedRoom);
     const step = Math.max(0, Number(roomTuning.systemUpgradeStep) || 0) * Math.max(0, upgradeLevel);
-    return Math.max(0.75, Math.min(1.45, base + step));
+    let mult = Math.max(0.75, Math.min(1.45, base + step));
+    // Report #8: Luxury room prestige scales all room-system multipliers.
+    if (typeof gameState !== 'undefined' && gameState && gameState._prestigeOwned && gameState._prestigeOwned.luxuryRoomUpgrade > 0 && PRESTIGE_EFFECTS.luxuryRoomUpgrade) {
+        mult *= Math.max(1, Number(PRESTIGE_EFFECTS.luxuryRoomUpgrade.roomSystemMultiplier) || 1);
+    }
+    return Math.max(0.75, Math.min(1.75, mult));
 }
 
 function getRoomSystemBonusPercent(systemKey, roomId) {
@@ -1249,11 +1390,81 @@ const ROOM_TREASURE_POOLS = {
     garden: ['glowMushroom', 'forestCharm', 'berryBundle']
 };
 
+const TREASURE_HUNT_BALANCE = {
+    // Report #1: Shared cooldown + anti-farm + low-friction resource cost.
+    globalCooldownMs: 70 * 1000,
+    energyCost: 5,
+    successChanceBase: 0.48,
+    successChanceMin: 0.2,
+    extraRollChanceBase: 0.22,
+    antiFarmWindowMs: 3 * 60 * 1000,
+    penaltyResetMs: 4 * 60 * 1000,
+    roomSwapPenaltyStep: 0.07,
+    repeatPenaltyStep: 0.05,
+    maxPenaltyStacks: 6
+};
+
 const EXPEDITION_DURATIONS = [
-    { id: 'scout', name: 'Scout Run', label: '40s Scout Run', ms: 40000, lootMultiplier: 0.86 },
-    { id: 'journey', name: 'Journey', label: '1m 35s Journey', ms: 95000, lootMultiplier: 2.35 },
-    { id: 'odyssey', name: 'Grand Odyssey', label: '3m 40s Grand Odyssey', ms: 220000, lootMultiplier: 5.4 }
+    { id: 'scout', name: 'Scout Run', label: '40s Scout Run', ms: 40000, lootMultiplier: 0.95 },
+    { id: 'journey', name: 'Journey', label: '1m 35s Journey', ms: 95000, lootMultiplier: 1.85 },
+    { id: 'odyssey', name: 'Grand Odyssey', label: '3m 40s Grand Odyssey', ms: 220000, lootMultiplier: 3.25 }
 ];
+
+const EXPEDITION_BALANCE = {
+    // Report #2: EV control levers (diminishing scaling, rarity smoothing, upkeep).
+    durationDiminishingThreshold: 1.9,
+    durationDiminishingExponent: 0.68,
+    biomeRarityWeightMultiplier: {
+        forest: 1.0,
+        beach: 0.98,
+        mountain: 0.94,
+        cave: 0.93,
+        skyIsland: 0.9,
+        underwater: 0.9,
+        skyZone: 0.88
+    },
+    upkeepBaseCoins: 8,
+    upkeepPerMinute: 7,
+    biomeUpkeepMultiplier: {
+        forest: 1.0,
+        beach: 1.04,
+        mountain: 1.1,
+        cave: 1.12,
+        skyIsland: 1.18,
+        underwater: 1.2,
+        skyZone: 1.22
+    }
+};
+
+const MINIGAME_BALANCE = {
+    // Report #3/#4: Soft cap and skill/streak reward scaling.
+    perRunCapBase: 94,
+    perRunCapByStage: { baby: 90, child: 96, adult: 104, elder: 112 },
+    dailySoftCapBase: 380,
+    dailySoftCapByStage: { baby: 360, child: 400, adult: 460, elder: 520 },
+    dailyCapFromPrestigeStep: 40,
+    softCapFalloffPerCoin: 0.0042,
+    softCapMinMultiplier: 0.2,
+    highSkillThreshold: 82,
+    highSkillPerPoint: 0.011,
+    highSkillMaxBonus: 0.35,
+    streakBonusPerRun: 0.045,
+    streakBonusMax: 0.38
+};
+
+const COMPETITION_ECONOMY_BALANCE = {
+    // Report #5: Coin rewards by mode, tuned below expedition dominance.
+    battleWinBaseCoins: 14,
+    battleLoseConsolationCoins: 4,
+    bossWinBaseCoins: 40,
+    showBaseCoins: 18,
+    obstacleBaseCoins: 16,
+    rivalWinBaseCoins: 22,
+    rankStepCoins: 4,
+    difficultyCoinScale: 0.24,
+    maxCoinMultiplier: 2.4,
+    victoryLootDropChance: 0.18
+};
 
 const DUNGEON_ROOM_TYPES = [
     { id: 'combat', name: 'Battle Room', icon: '⚔️' },
@@ -1700,11 +1911,13 @@ const ECONOMY_BALANCE = {
     rareMarketPriceMultiplier: 0.9,
     mysteryEggPriceMultiplier: 0.85,
     sellPriceMultiplier: 0.88,
+    expeditionSellPriceMultiplier: 0.78, // Report #2
     // Reward side
     minigameRewardMultiplier: 0.88,
     harvestRewardMultiplier: 0.82,
+    competitionCoinRewardMultiplier: 0.9, // Report #5
     dailyCompletionReward: 70,
-    minigameRewardCap: 74,
+    minigameRewardCap: 94,
     // Rec 1: Daily minigame earning cap to prevent unlimited grinding
     dailyMinigameEarningsCap: 350,
     // Rec 3: Auction transaction tax (percentage taken from sale proceeds)
@@ -2108,7 +2321,7 @@ const PRESTIGE_PURCHASES = {
         id: 'gardenExpansion',
         name: 'Garden Plot Expansion',
         emoji: '🌿',
-        description: 'Unlock 2 additional garden plots beyond the standard 6.',
+        description: 'Unlock 2 additional garden plots and +10% harvest coin rewards.',
         cost: 800,
         maxOwned: 1,
         category: 'garden'
@@ -2117,7 +2330,7 @@ const PRESTIGE_PURCHASES = {
         id: 'premiumNursery',
         name: 'Premium Nursery',
         emoji: '🏠',
-        description: 'Increase max pet capacity by 1 (up to 5 pets).',
+        description: 'Increase max pet capacity by 1 and +8% competition coin rewards.',
         cost: 1200,
         maxOwned: 1,
         category: 'pets'
@@ -2144,7 +2357,7 @@ const PRESTIGE_PURCHASES = {
         id: 'luxuryRoomUpgrade',
         name: 'Luxury Room Upgrade',
         emoji: '🏰',
-        description: 'Unlock a 4th upgrade tier for all rooms (+16% bonus).',
+        description: 'Room bonuses scale +12% higher and treasure hunts gain +4% success.',
         cost: 1500,
         maxOwned: 1,
         category: 'rooms'
@@ -2153,7 +2366,7 @@ const PRESTIGE_PURCHASES = {
         id: 'petSpa',
         name: 'Pet Spa Pass',
         emoji: '💆',
-        description: 'Unlock passive cleanliness decay reduction (-20%).',
+        description: 'Passive cleanliness decay reduced by 20% and care gains +6%.',
         cost: 700,
         maxOwned: 1,
         category: 'boost'
@@ -2162,7 +2375,7 @@ const PRESTIGE_PURCHASES = {
         id: 'expeditionGuild',
         name: 'Expedition Guild Card',
         emoji: '🗺️',
-        description: 'All expeditions yield +20% more loot.',
+        description: 'Expeditions gain better loot quality and 12% lower upkeep.',
         cost: 900,
         maxOwned: 1,
         category: 'exploration'
@@ -2171,11 +2384,23 @@ const PRESTIGE_PURCHASES = {
         id: 'cosmeticChest',
         name: 'Rare Cosmetic Chest',
         emoji: '👑',
-        description: 'Unlock an exclusive pet accessory set (Crown, Cape, Monocle).',
+        description: 'Unlock cosmetics plus +12% minigame coins and +40 soft daily cap.',
         cost: 2000,
         maxOwned: 1,
         category: 'cosmetic'
     }
+};
+
+const PRESTIGE_EFFECTS = {
+    // Report #8: Every prestige purchase maps to live gameplay modifiers.
+    gardenExpansion: { extraGardenPlots: 2, harvestCoinMultiplier: 1.1 },
+    premiumNursery: { extraPetCapacity: 1, competitionCoinMultiplier: 1.08 },
+    goldenFeeder: { foodEffectMultiplier: 1.15 },
+    masterCrafterBench: { craftingCostMultiplier: 0.75 },
+    luxuryRoomUpgrade: { roomSystemMultiplier: 1.12, treasureSuccessBonus: 0.04 },
+    petSpa: { cleanlinessDecayMultiplier: 0.8, careGainMultiplier: 1.06 },
+    expeditionGuild: { expeditionLootQualityMultiplier: 1.1, expeditionUpkeepMultiplier: 0.88 },
+    cosmeticChest: { minigameCoinMultiplier: 1.12, minigameDailySoftCapBonus: 40 }
 };
 
 // Rec 10: Seasonal item rotation — items only available in specific seasons
@@ -3281,6 +3506,11 @@ function getGardenPlotCapacity(expansionTier) {
     let capacity = GARDEN_BASE_PLOTS;
     for (let i = 0; i < tier && i < tiers.length; i++) {
         capacity += Math.max(0, Number(tiers[i].additionalPlots) || 0);
+    }
+    // Report #8: Prestige garden expansion adds permanent plot capacity.
+    const owned = (typeof gameState !== 'undefined' && gameState && gameState._prestigeOwned) ? gameState._prestigeOwned : null;
+    if (owned && owned.gardenExpansion > 0 && PRESTIGE_EFFECTS.gardenExpansion) {
+        capacity += Math.max(0, Number(PRESTIGE_EFFECTS.gardenExpansion.extraGardenPlots) || 0);
     }
     return Math.min(MAX_GARDEN_PLOTS, capacity);
 }

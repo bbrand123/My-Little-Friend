@@ -361,13 +361,11 @@
 
         function getEscalatedMinigameDifficulty(gameId) {
             const baseDifficulty = typeof getMinigameDifficulty === 'function' ? Math.max(0.6, Number(getMinigameDifficulty(gameId)) || 1) : 1;
-            const plays = Math.max(0, Number((gameState.minigamePlayCounts || {})[gameId]) || 0);
             const tuning = (typeof getMinigameEscalationTuning === 'function') ? getMinigameEscalationTuning() : null;
             if (!tuning) return baseDifficulty;
-            const boostPerPlay = Math.max(0, Number(tuning.replayDifficultyBoostPerPlay) || 0);
-            const maxBoostPlays = Math.max(0, Number(tuning.replayDifficultyBoostMaxPlays) || 0);
             const cap = Math.max(1, Number(tuning.difficultyCap) || 2.7);
-            const boosted = baseDifficulty * (1 + Math.min(plays, maxBoostPlays) * boostPerPlay);
+            // Report #4: remove second replay-scaling layer; baseDifficulty already includes replay pressure.
+            const boosted = baseDifficulty;
             return Math.max(0.7, Math.min(cap, Number(boosted.toFixed(2))));
         }
 

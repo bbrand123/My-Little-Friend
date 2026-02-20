@@ -188,6 +188,8 @@ const STORAGE_KEYS = Object.freeze({
     auctionHouse: 'petCareBuddy_auctionHouse',
     /** Current auction slot ID */
     auctionSlotId: 'petCareBuddy_auctionSlotId',
+    /** Balance profile (NORMAL or QUICK_ITERATION_BUILD) */
+    balanceProfile: 'petCareBuddy_balanceProfile',
     /** Onboarding tooltips shown state */
     onboardingShown: 'petCareBuddy_onboardingShown',
     /** Coach checklist minimized state */

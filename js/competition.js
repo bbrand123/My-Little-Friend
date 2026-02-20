@@ -98,6 +98,57 @@
             return Math.max(GAME_BALANCE.combat.rewardMultMin, Math.min(GAME_BALANCE.combat.rewardMultMax, stageWeight * powerDamp * difficultyWeight * roomWeight));
         }
 
+        function getCompetitionProgressRank() {
+            const comp = initCompetitionState();
+            const points = (comp.battlesWon || 0)
+                + ((comp.rivalBattlesWon || 0) * 2)
+                + (Object.keys(comp.bossesDefeated || {}).length * 3)
+                + Math.floor((comp.showsEntered || 0) / 2)
+                + Math.floor((comp.obstacleCompletions || 0) / 2);
+            return Math.max(1, 1 + Math.floor(points / 6));
+        }
+
+        function buildCompetitionVictoryRewards(modeId, baseCoins, difficultyScale, won) {
+            if (!won) return { coins: 0, loot: null, summary: [] };
+            const ecoMult = (typeof ECONOMY_BALANCE !== 'undefined' && typeof ECONOMY_BALANCE.competitionCoinRewardMultiplier === 'number')
+                ? ECONOMY_BALANCE.competitionCoinRewardMultiplier
+                : 0.9;
+            const rank = getCompetitionProgressRank();
+            const rankBonus = Math.max(0, rank - 1) * ((COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.rankStepCoins) || 4);
+            const diffScale = Math.max(0.7, Number(difficultyScale) || 1);
+            const diffBonus = 1 + Math.min(((COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.maxCoinMultiplier) || 2.4) - 1, Math.max(0, diffScale - 1) * ((COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.difficultyCoinScale) || 0.24));
+            const prestigeCompMult = Number(getPrestigeEffectValue('premiumNursery', 'competitionCoinMultiplier', 1)) || 1;
+            const coins = Math.max(1, Math.round((Math.max(0, Number(baseCoins) || 0) + rankBonus) * diffBonus * ecoMult * prestigeCompMult));
+
+            let loot = null;
+            const lootChance = Math.max(0, Math.min(1, Number((COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.victoryLootDropChance) || 0.18)));
+            if (typeof addLootToInventory === 'function' && Math.random() < lootChance) {
+                const pool = modeId === 'boss' ? ['runeFragment', 'mysteryMap', 'stardust'] : ['ancientCoin', 'forestCharm', 'windCompass'];
+                const lootId = pool[Math.floor(Math.random() * pool.length)];
+                if (lootId) {
+                    addLootToInventory(lootId, 1);
+                    loot = EXPLORATION_LOOT[lootId] || null;
+                }
+            }
+
+            const summary = [`🪙 ${coins} coins`];
+            if (loot) summary.push(`${loot.emoji} ${loot.name}`);
+            balanceDebugLog('CompetitionRewards', { // Report #5
+                modeId,
+                baseCoins,
+                coins,
+                rank,
+                difficultyScale: diffScale,
+                lootId: loot ? loot.id : null
+            });
+            return { coins, loot, summary, rank };
+        }
+
+        function formatVictoryRewardsSummary(rewards) {
+            if (!rewards || !Array.isArray(rewards.summary) || rewards.summary.length === 0) return '<p class="battle-stats-summary">Victory Rewards: none</p>';
+            return `<p class="battle-stats-summary">Victory Rewards: ${rewards.summary.join(' · ')}</p>`;
+        }
+
         function calculateMoveDamage(move, attacker, defender) {
             const stat = attacker[move.stat] ?? 50;
             const statMult = stat / 50; // 1.0 at 50, 2.0 at 100
@@ -360,11 +411,15 @@
                 const battleDifficulty = Math.max(0.8, oppMaxHP / Math.max(1, playerMaxHP));
                 const rewardMult = getCompetitionRewardMultiplier(pet, battleDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 const roomCompPct = Math.round((((typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1) - 1) * 100);
+                let victoryRewards = { coins: 0, summary: [] };
                 if (won) {
                     comp.battlesWon++;
                     // Recommendation #7: Mastery competition rank 3+ gives +2% battle happiness gain
                     const masteryBattleBonus = typeof getMasteryBattleHappinessBonus === 'function' ? getMasteryBattleHappinessBonus() : 0;
                     const happyGain = Math.max(8, Math.round(11 * rewardMult * (1 + masteryBattleBonus)));
+                    // Report #5: Battle wins now pay economy rewards.
+                    victoryRewards = buildCompetitionVictoryRewards('battle', (COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.battleWinBaseCoins) || 14, battleDifficulty, true);
+                    if (victoryRewards.coins > 0 && typeof addCoins === 'function') addCoins(victoryRewards.coins, 'Competition Victory', true);
                     pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                     pet.careActions = (pet.careActions || 0) + 1;
                     if (typeof addJournalEntry === 'function') {
@@ -374,14 +429,19 @@
                     }
                     setTimeout(() => {
                         const roomText = roomCompPct > 0 ? ` (room +${roomCompPct}%)` : '';
-                        showToast(`⚔️ Battle Won! +${happyGain} Happiness${roomText}!`, '#FFD700');
-                        announce(`Victory! You won the battle! Plus ${happyGain} happiness${roomText}.`, true);
+                        showToast(`⚔️ Battle Won! +${happyGain} Happiness, +${victoryRewards.coins}🪙${roomText}!`, '#FFD700');
+                        announce(`Victory! You won the battle! Rewards: ${happyGain} happiness and ${victoryRewards.coins} coins${roomText}.`, true);
                     }, 500);
                 } else {
                     comp.battlesLost++;
+                    const consolationCoins = Math.max(0, Number((COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.battleLoseConsolationCoins) || 0));
+                    if (consolationCoins > 0 && typeof addCoins === 'function') {
+                        addCoins(consolationCoins, 'Competition Consolation', true);
+                        victoryRewards = { coins: consolationCoins, summary: [`🪙 ${consolationCoins} consolation coins`] };
+                    }
                     setTimeout(() => {
-                        showToast('⚔️ Defeat. No rewards this time.', '#64B5F6');
-                        announce('Defeat. No rewards this time.', true);
+                        showToast(consolationCoins > 0 ? `⚔️ Defeat. Consolation +${consolationCoins}🪙.` : '⚔️ Defeat. No rewards this time.', '#64B5F6');
+                        announce(consolationCoins > 0 ? `Defeat. You received ${consolationCoins} consolation coins.` : 'Defeat. No rewards this time.', true);
                     }, 500);
                 }
                 if (won && typeof incrementDailyProgress === 'function') {
@@ -406,6 +466,7 @@
                         <div class="battle-result-content">
                             <h3>${won ? '🎉 Victory!' : '😢 Defeat'}</h3>
                             <p>${won ? 'Your pet showed great strength!' : 'Better luck next time!'}</p>
+                            ${formatVictoryRewardsSummary(victoryRewards)}
                             <p class="battle-stats-summary">Record: ${comp.battlesWon}W / ${comp.battlesLost}L</p>
                             <div class="battle-result-actions">
                                 <button class="competition-btn primary" id="battle-done">Done</button>
@@ -681,8 +742,12 @@
                     const bossDifficulty = Math.max(1, boss.maxHP / Math.max(40, avgTeamPower));
                     const rewardMult = getCompetitionRewardMultiplier(gameState.pet || allPets[0], bossDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                     const roomCompPct = Math.round((((typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1) - 1) * 100);
+                    let victoryRewards = { coins: 0, summary: [] };
                     if (won) {
                         comp.bossesDefeated[bossId] = { defeated: true, defeatedAt: Date.now() };
+                        // Report #5: Boss wins now have an economy payout lane.
+                        victoryRewards = buildCompetitionVictoryRewards('boss', (COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.bossWinBaseCoins) || 40, bossDifficulty, true);
+                        if (victoryRewards.coins > 0 && typeof addCoins === 'function') addCoins(victoryRewards.coins, 'Boss Victory', true);
                         // Apply rewards only to alive pets (skip fainted ones)
                         const rewards = boss.rewards;
                         allPets.forEach((p, idx) => {
@@ -701,8 +766,8 @@
                         }
                         setTimeout(() => {
                             const roomText = roomCompPct > 0 ? ` Room bonus +${roomCompPct}% applied.` : '';
-                            showToast(`👹 Boss Defeated: ${boss.name}!${roomText}`, '#FFD700');
-                            announce(`Victory! Boss ${boss.name} defeated!${roomText}`, true);
+                            showToast(`👹 Boss Defeated: ${boss.name}! +${victoryRewards.coins}🪙.${roomText}`, '#FFD700');
+                            announce(`Victory! Boss ${boss.name} defeated. Rewards include ${victoryRewards.coins} coins.${roomText}`, true);
                         }, 500);
                     } else {
                         // Consolation rewards apply even if all pets fainted.
@@ -737,6 +802,7 @@
                             <div class="battle-result-content">
                                 <h3>${won ? '🏆 Boss Defeated!' : '😢 Defeat'}</h3>
                                 <p>${won ? boss.victoryMessage : 'Train harder and come back!'}</p>
+                                ${formatVictoryRewardsSummary(victoryRewards)}
                                 <div class="battle-result-actions">
                                     <button class="competition-btn primary" id="boss-done">Done</button>
                                     <button class="competition-btn secondary" id="boss-back-hub">Back to Hub</button>
@@ -854,6 +920,7 @@
             const cooldownRemainingMs = comp.lastShowTime ? Math.max(0, SHOW_COOLDOWN_MS - (now - comp.lastShowTime)) : 0;
             const onCooldown = cooldownRemainingMs > 0;
             const cooldownRemainingMinutes = Math.ceil(cooldownRemainingMs / 60000);
+            let showRewards = { coins: 0, summary: [] };
             if (!onCooldown) {
                 comp.showsEntered++;
                 if (result.totalScore > comp.bestShowScore) {
@@ -867,6 +934,9 @@
                 const showDifficulty = 0.95 + (result.totalScore / 120);
                 const showRewardMult = getCompetitionRewardMultiplier(pet, showDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 const showGain = Math.max(6, Math.round(8 * showRewardMult));
+                // Report #5: Pet show now includes economy rewards.
+                showRewards = buildCompetitionVictoryRewards('show', (COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.showBaseCoins) || 18, showDifficulty, true);
+                if (showRewards.coins > 0 && typeof addCoins === 'function') addCoins(showRewards.coins, 'Pet Show Rewards', true);
                 pet.happiness = clamp(pet.happiness + showGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
                 comp.lastShowTime = now;
@@ -930,6 +1000,7 @@
                         }).join('')}
                     </div>
                     <p class="show-tip">${getShowTip(result.scores)}</p>
+                    ${formatVictoryRewardsSummary(showRewards)}
                     <div class="show-stats-summary">Shows entered: ${comp.showsEntered} | Best: ${comp.bestShowRank} (${comp.bestShowScore})${onCooldown ? ` | Cooldown: ${cooldownRemainingMinutes}m` : ''}</div>
                     <div class="battle-result-actions">
                         <button class="competition-btn primary" id="show-done">Done</button>
@@ -957,8 +1028,8 @@
             pushModalEscape(closeShow);
             trapFocus(overlay);
 
-            showToast(`${result.rank.emoji} Pet Show: ${result.rank.name}! Score: ${result.totalScore}`, '#FFD700');
-            announce(`Pet show results: ${result.rank.name} with score ${result.totalScore}`);
+            showToast(`${result.rank.emoji} Pet Show: ${result.rank.name}! Score: ${result.totalScore}${showRewards.coins > 0 ? ` · +${showRewards.coins}🪙` : ''}`, '#FFD700');
+            announce(`Pet show results: ${result.rank.name} with score ${result.totalScore}${showRewards.coins > 0 ? ` and ${showRewards.coins} coin rewards` : ''}.`);
         }
 
         function getShowTip(scores) {
@@ -1085,6 +1156,9 @@
                 const obstacleDifficulty = 0.9 + (pct / 100);
                 const obstacleRewardMult = getCompetitionRewardMultiplier(pet, obstacleDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                 const obstacleGain = Math.max(6, Math.round(9 * obstacleRewardMult));
+                // Report #5: Obstacle completion now contributes to economy progression.
+                const obstacleRewards = buildCompetitionVictoryRewards('obstacle', (COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.obstacleBaseCoins) || 16, obstacleDifficulty, true);
+                if (obstacleRewards.coins > 0 && typeof addCoins === 'function') addCoins(obstacleRewards.coins, 'Obstacle Rewards', true);
                 pet.happiness = clamp(pet.happiness + obstacleGain, 0, 100);
                 pet.careActions = (pet.careActions || 0) + 1;
                 if (typeof incrementDailyProgress === 'function') {
@@ -1114,6 +1188,7 @@
                                 </div>
                             `).join('')}
                         </div>
+                        ${formatVictoryRewardsSummary(obstacleRewards)}
                         <div class="show-stats-summary">Completions: ${comp.obstacleCompletions} | Best: ${comp.obstacleBestScore}</div>
                         <div class="battle-result-actions">
                             <button class="competition-btn primary" id="obstacle-done">Done</button>
@@ -1126,8 +1201,8 @@
                 overlay.querySelector('#obstacle-done').addEventListener('click', closeObstacle);
                 overlay.querySelector('#obstacle-back-hub').addEventListener('click', () => { closeObstacle(); setTimeout(openCompetitionHub, 100); });
 
-                showToast(`🏁 Obstacle Course: Grade ${grade}! ${totalScore} points!`, '#FFD700');
-                announce(`Obstacle course complete! Grade ${grade}. ${totalScore} out of ${maxPossible} points.`, true);
+                showToast(`🏁 Obstacle Course: Grade ${grade}! ${totalScore} points · +${obstacleRewards.coins}🪙`, '#FFD700');
+                announce(`Obstacle course complete. Grade ${grade}. ${totalScore} out of ${maxPossible} points with ${obstacleRewards.coins} coin rewards.`, true);
             }
 
             function closeObstacle() {
@@ -1358,6 +1433,7 @@
                     const rivalDifficulty = 1 + (trainer.difficulty * 0.14);
                     const rewardMult = getCompetitionRewardMultiplier(pet, rivalDifficulty) * (typeof getRewardCompetitionMultiplier === 'function' ? getRewardCompetitionMultiplier() : 1);
                     const roomCompPct = Math.round((((typeof getRoomSystemMultiplier === 'function') ? getRoomSystemMultiplier('competition') : 1) - 1) * 100);
+                    let rivalRewards = { coins: 0, summary: [] };
                     if (won) {
                         comp.rivalBattlesWon++;
                         const isFirstDefeat = !comp.rivalsDefeated.includes(rivalIdx);
@@ -1368,12 +1444,15 @@
                             comp.currentRivalIndex = rivalIdx + 1;
                         }
                         const happyGain = Math.max(8, Math.round((8 + trainer.difficulty * 1.8) * rewardMult));
+                        // Report #5: Rival victories now award coins and possible tradable loot.
+                        rivalRewards = buildCompetitionVictoryRewards('rival', (COMPETITION_ECONOMY_BALANCE && COMPETITION_ECONOMY_BALANCE.rivalWinBaseCoins) || 22, rivalDifficulty, true);
+                        if (rivalRewards.coins > 0 && typeof addCoins === 'function') addCoins(rivalRewards.coins, 'Rival Victory', true);
                         pet.happiness = clamp(pet.happiness + happyGain, 0, 100);
                         pet.careActions = (pet.careActions || 0) + 1;
                         setTimeout(() => {
                             const roomText = roomCompPct > 0 ? ` (room +${roomCompPct}%)` : '';
-                            showToast(`🏅 Defeated ${trainer.name}! +${happyGain} Happiness${roomText}!`, '#FFD700');
-                            announce(`Victory! Rival ${trainer.name} defeated! Plus ${happyGain} happiness${roomText}.`, true);
+                            showToast(`🏅 Defeated ${trainer.name}! +${happyGain} Happiness, +${rivalRewards.coins}🪙${roomText}!`, '#FFD700');
+                            announce(`Victory! Rival ${trainer.name} defeated. Rewards include ${happyGain} happiness and ${rivalRewards.coins} coins${roomText}.`, true);
                         }, 500);
                     } else {
                         comp.rivalBattlesLost++;
@@ -1397,6 +1476,7 @@
                             <div class="battle-result-content">
                                 <h3>${won ? '🏅 Rival Defeated!' : '😢 Defeat'}</h3>
                                 <p>${won ? trainer.winMessage : trainer.loseMessage}</p>
+                                ${formatVictoryRewardsSummary(rivalRewards)}
                                 <p class="battle-stats-summary">Rivals defeated: ${comp.rivalsDefeated.length}/${RIVAL_TRAINERS.length} | Rival record: ${comp.rivalBattlesWon}W / ${comp.rivalBattlesLost}L</p>
                                 <div class="battle-result-actions">
                                     <button class="competition-btn primary" id="rival-done">Done</button>
