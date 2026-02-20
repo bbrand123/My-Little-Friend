@@ -1242,11 +1242,32 @@
                 { stat: 'happiness', value: pet.happiness, icon: '⚽', label: 'bored' }
             ];
             const critical = needs.filter(n => n.value < threshold).sort((a, b) => a.value - b.value);
+            const recoveryStage = pet.neglectArc && pet.neglectArc.active ? String(pet.neglectArc.stage || 'wounded') : '';
+            const recoveryCues = {
+                wounded: { icon: '🩹', text: `${petName} needs gentle, consistent care.` },
+                healing: { icon: '🌤️', text: `${petName} is healing. Keep mixing care actions.` },
+                stabilizing: { icon: '💗', text: `${petName} is stabilizing and trusting again.` }
+            };
 
             // Personality-driven thought override (when no critical needs)
             // Use a time-bucket seed (changes every 30s) to avoid flicker across re-renders
             const _thoughtSeed = Math.floor(Date.now() / 30000);
             if (critical.length === 0) {
+                if (recoveryStage && recoveryCues[recoveryStage]) {
+                    const cue = recoveryCues[recoveryStage];
+                    return `<div class="thought-bubble recovery-thought" aria-label="${cue.text}" role="img">
+                        <span class="thought-icon">${cue.icon}</span>
+                        <span class="thought-text">${cue.text}</span>
+                    </div>`;
+                }
+                const phaseState = gameState && gameState.sessionPhase ? gameState.sessionPhase.state : '';
+                if (phaseState === 'cooldown' && (_thoughtSeed % 10) < 4) {
+                    const cooldownLine = `${petName} is enjoying a quiet beat together with you.`;
+                    return `<div class="thought-bubble cooldown-thought" aria-label="${cooldownLine}" role="img">
+                        <span class="thought-icon">🫶</span>
+                        <span class="thought-text">${cooldownLine}</span>
+                    </div>`;
+                }
                 // Show personality-driven wants occasionally (deterministic per time bucket)
                 if (pet.personality && typeof PERSONALITY_TRAITS !== 'undefined' && (_thoughtSeed % 10) < 3) {
                     const trait = PERSONALITY_TRAITS[pet.personality];
@@ -1574,6 +1595,44 @@
             return getPetSessionCount() < EARLY_SESSION_LIMIT;
         }
 
+        function getSessionPhaseText(state, pet, room) {
+            const phaseState = state && state.state ? state.state : 'activity';
+            const petName = getPetDisplayName(pet);
+            if (phaseState === 'check-in') {
+                const lowest = [
+                    { key: 'hunger', value: Number(pet.hunger) || 0, label: 'hunger' },
+                    { key: 'cleanliness', value: Number(pet.cleanliness) || 0, label: 'cleanliness' },
+                    { key: 'happiness', value: Number(pet.happiness) || 0, label: 'happiness' },
+                    { key: 'energy', value: Number(pet.energy) || 0, label: 'energy' }
+                ].sort((a, b) => a.value - b.value)[0];
+                return {
+                    short: 'Check-in',
+                    detail: `${petName} check-in: start with ${lowest ? lowest.label : 'a gentle care action'} in the ${room.name}.`
+                };
+            }
+            if (phaseState === 'cooldown') {
+                return {
+                    short: 'Cooldown',
+                    detail: `${petName} is in a reflective cooldown. Keep the pace gentle for a minute.`
+                };
+            }
+            return {
+                short: 'Activity',
+                detail: `${petName} is ready for an activity burst.`
+            };
+        }
+
+        function maybeAnnounceSessionCheckIn(pet, room) {
+            if (!gameState || !gameState.sessionPhase) return;
+            const phase = gameState.sessionPhase;
+            if (phase.state !== 'check-in' || phase.checkInShown) return;
+            const summary = getSessionPhaseText(phase, pet, room);
+            if (summary && summary.detail && typeof announce === 'function') {
+                announce(summary.detail, { source: 'session-checkin', dedupeMs: 90000 });
+            }
+            phase.checkInShown = true;
+        }
+
         function getProgressiveOnboardingStorageKey() {
             return (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.progressiveOnboarding)
                 ? STORAGE_KEYS.progressiveOnboarding
@@ -1822,10 +1881,14 @@
             const isOutdoor = room.isOutdoor;
             const roomBg = getRoomBackground(currentRoom, timeOfDay);
             const roomDecor = getRoomDecor(currentRoom, timeOfDay);
+            const roomArtifactsLayer = (typeof renderRoomArtifactsHTML === 'function') ? renderRoomArtifactsHTML(currentRoom) : '';
+            const roomHistorySummary = (typeof renderRoomHistorySummaryHTML === 'function') ? renderRoomHistorySummaryHTML(currentRoom) : '';
             const roomCustom = typeof getRoomCustomization === 'function' ? getRoomCustomization(currentRoom) : { wallpaper: 'classic', flooring: 'natural', theme: 'auto' };
             const wallpaper = (typeof ROOM_WALLPAPERS !== 'undefined' && ROOM_WALLPAPERS[roomCustom.wallpaper]) ? ROOM_WALLPAPERS[roomCustom.wallpaper] : { bg: 'none' };
             const flooring = (typeof ROOM_FLOORINGS !== 'undefined' && ROOM_FLOORINGS[roomCustom.flooring]) ? ROOM_FLOORINGS[roomCustom.flooring] : { bg: 'none' };
             const roomThemeMode = typeof getRoomThemeMode === 'function' ? getRoomThemeMode(currentRoom, pet) : 'default';
+            maybeAnnounceSessionCheckIn(pet, room);
+            const sessionPhaseMeta = getSessionPhaseText(gameState.sessionPhase || { state: 'activity' }, pet, room);
 
             // Celestial elements (stars, moon, sun, clouds) removed to reduce visual layers
 
@@ -2003,6 +2066,7 @@
                         if (memories.length === 0) return '';
                         return `<div class="room-memories" aria-label="Room memories" style="position:absolute;bottom:4px;left:4px;display:flex;gap:4px;z-index:1;opacity:0.85;">${memories.map(m => `<span class="room-memory-icon" title="${escapeHTML(m.description)}" style="font-size:1.1rem;cursor:help;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${m.emoji}</span>`).join('')}</div>`;
                     })()}
+                    ${roomArtifactsLayer}
                     <div class="sparkles" id="sparkles"></div>
                     <button class="pet-container pet-interact-trigger" id="pet-container" type="button" aria-label="Give ${petDisplayName} cuddles">
                         ${generateThoughtBubble(pet)}
@@ -2021,6 +2085,8 @@
                             const styleStr = styleData && styleData.label !== 'The Natural' ? ` · ${styleData.emoji} ${styleData.label}` : '';
                             return `<p class="caretaker-title-badge" style="font-size:0.72rem;color:#6D4C41;margin:2px 0 0 0;" title="${titleData.description}">${titleData.emoji} ${titleData.label}${styleStr}</p>`;
                         })()}
+                        ${sessionPhaseMeta ? `<p class="session-phase-badge" style="font-size:0.7rem;color:#6D4C41;margin:3px 0 0 0;" title="${escapeHTML(sessionPhaseMeta.detail)}">🧭 ${escapeHTML(sessionPhaseMeta.short)} · ${escapeHTML(sessionPhaseMeta.detail)}</p>` : ''}
+                        ${roomHistorySummary}
                         ${(() => {
                             const stage = pet.growthStage || 'baby';
                             const stageData = GROWTH_STAGES[stage];
@@ -2907,6 +2973,9 @@
             /achievement/i,
             /badge/i,
             /trophy/i,
+            /sticker/i,
+            /milestone/i,
+            /unlocked/i,
             /daily task/i,
             /warning/i,
             /critical/i,
@@ -2917,6 +2986,42 @@
             /bonus/i,
             /joined your family/i
         ];
+        const CEREMONY_TOAST_PATTERNS = [
+            /achievement/i,
+            /badge/i,
+            /sticker/i,
+            /trophy/i,
+            /milestone/i,
+            /unlocked/i,
+            /evolved/i,
+            /grown to/i,
+            /title upgraded/i,
+            /joined your family/i,
+            /prestige/i,
+            /hall of fame/i
+        ];
+        const MOMENT_TOAST_PATTERNS = [
+            /daily task/i,
+            /weather changed/i,
+            /moved to/i,
+            /room bonus/i,
+            /crossbreeding discovery/i,
+            /care rush/i,
+            /streak/i
+        ];
+        const FEEDBACK_TIER_PRIORITY = { micro: 1, moment: 2, ceremony: 3 };
+        const FEEDBACK_ACTION_WINDOW_MS = 2400;
+        const FEEDBACK_COLLAPSE_DELAY_MS = 140;
+        const FEEDBACK_BUCKET_RETENTION_MS = 125000;
+        const QUIET_BEAT_MIN_MS = 60000;
+        const QUIET_BEAT_MAX_MS = 120000;
+        const FEEDBACK_SR_GAP_MS = { micro: 1400, major: 2600 };
+        let _feedbackActionSeq = 0;
+        let _feedbackCurrentActionToken = 0;
+        let _feedbackLastActionAt = 0;
+        let _feedbackQuietBeatUntil = 0;
+        const _feedbackBuckets = new Map();
+        const _feedbackSrLastAt = { micro: 0, major: 0 };
         const _toastAnnounceLastByText = new Map();
         const _toastQueue = [];
         let _toastQueueTimer = null;
@@ -2933,6 +3038,216 @@
             /need/i
         ];
         const COACH_CHECKLIST_MINIMIZED_KEY = STORAGE_KEYS.coachChecklistMinimized;
+
+        function pruneFeedbackBuckets() {
+            const now = Date.now();
+            _feedbackBuckets.forEach((bucket, token) => {
+                if (!bucket || (now - (bucket.createdAt || 0)) > FEEDBACK_BUCKET_RETENTION_MS) {
+                    _feedbackBuckets.delete(token);
+                }
+            });
+        }
+
+        function beginFeedbackActionWindow(reason) {
+            _feedbackActionSeq += 1;
+            _feedbackCurrentActionToken = _feedbackActionSeq;
+            _feedbackLastActionAt = Date.now();
+            const bucket = {
+                token: _feedbackCurrentActionToken,
+                createdAt: _feedbackLastActionAt,
+                entries: [],
+                timer: null,
+                visualUsed: false,
+                majorToastShown: false,
+                reason: reason || ''
+            };
+            _feedbackBuckets.set(_feedbackCurrentActionToken, bucket);
+            pruneFeedbackBuckets();
+            return _feedbackCurrentActionToken;
+        }
+
+        function getFeedbackActionToken(options) {
+            if (options && Number.isInteger(options.actionToken) && options.actionToken > 0) {
+                _feedbackCurrentActionToken = options.actionToken;
+                _feedbackLastActionAt = Date.now();
+                return options.actionToken;
+            }
+            const now = Date.now();
+            if (!_feedbackCurrentActionToken || (now - _feedbackLastActionAt) > FEEDBACK_ACTION_WINDOW_MS) {
+                return beginFeedbackActionWindow();
+            }
+            _feedbackLastActionAt = now;
+            return _feedbackCurrentActionToken;
+        }
+
+        function getFeedbackBucket(actionToken) {
+            if (!Number.isInteger(actionToken) || actionToken <= 0) return null;
+            let bucket = _feedbackBuckets.get(actionToken);
+            if (!bucket) {
+                bucket = {
+                    token: actionToken,
+                    createdAt: Date.now(),
+                    entries: [],
+                    timer: null,
+                    visualUsed: false,
+                    majorToastShown: false,
+                    reason: ''
+                };
+                _feedbackBuckets.set(actionToken, bucket);
+            }
+            pruneFeedbackBuckets();
+            return bucket;
+        }
+
+        function getFeedbackTier(plainText, options = {}) {
+            if (options && typeof options.tier === 'string' && FEEDBACK_TIER_PRIORITY[options.tier]) return options.tier;
+            if (isCriticalToast(plainText, options)) return 'ceremony';
+            if (CEREMONY_TOAST_PATTERNS.some((pattern) => pattern.test(plainText))) return 'ceremony';
+            if (MOMENT_TOAST_PATTERNS.some((pattern) => pattern.test(plainText))) return 'moment';
+            return 'micro';
+        }
+
+        function isQuietBeatActive() {
+            return Date.now() < _feedbackQuietBeatUntil;
+        }
+
+        function shouldSuppressForQuietBeat(entry) {
+            if (!entry || !entry.plainText) return false;
+            if (entry.priority === 'critical') return false;
+            if (entry.tier === 'ceremony') return false;
+            if (entry.options && entry.options.bypassQuietBeat) return false;
+            if (isQuietBeatActive()) return true;
+            const sessionPhase = gameState && gameState.sessionPhase ? gameState.sessionPhase.state : '';
+            if (sessionPhase === 'cooldown' && entry.tier === 'micro' && !(entry.options && entry.options.bypassSessionCooldown)) {
+                return true;
+            }
+            return false;
+        }
+
+        function startQuietBeatWindow() {
+            const now = Date.now();
+            const duration = QUIET_BEAT_MIN_MS + Math.floor(Math.random() * (QUIET_BEAT_MAX_MS - QUIET_BEAT_MIN_MS + 1));
+            _feedbackQuietBeatUntil = Math.max(_feedbackQuietBeatUntil, now + duration);
+            if (typeof noteSessionCeremony === 'function') {
+                noteSessionCeremony(duration);
+            }
+        }
+
+        function combineFeedbackMessages(entries, tier) {
+            if (!Array.isArray(entries) || entries.length === 0) return null;
+            if (entries.length === 1) return entries[0];
+            const first = entries.slice(0, 2).map((item) => item.plainText).filter(Boolean);
+            const remainder = Math.max(0, entries.length - first.length);
+            const prefix = tier === 'ceremony' ? 'Big moment:' : (tier === 'moment' ? 'Update:' : 'Note:');
+            const merged = remainder > 0
+                ? `${prefix} ${first.join(' • ')} (+${remainder} more)`
+                : `${prefix} ${first.join(' • ')}`;
+            return Object.assign({}, entries[0], {
+                plainText: merged,
+                safeMessage: escapeHTML(merged),
+                tier
+            });
+        }
+
+        function queueFeedbackAnnouncement(plainText, tier, options = {}) {
+            if (!plainText || typeof announce !== 'function') return;
+            if (!shouldAnnounceToast(plainText, options)) return;
+            const channel = tier === 'micro' && !options.assertive ? 'micro' : 'major';
+            const now = Date.now();
+            const minGap = channel === 'major' ? FEEDBACK_SR_GAP_MS.major : FEEDBACK_SR_GAP_MS.micro;
+            if (now - (_feedbackSrLastAt[channel] || 0) < minGap) return;
+            const key = plainText.trim().toLowerCase();
+            const dedupeMs = channel === 'major' ? 2600 : 1800;
+            const last = _toastAnnounceLastByText.get(key) || 0;
+            if (now - last <= dedupeMs) return;
+            _feedbackSrLastAt[channel] = now;
+            _toastAnnounceLastByText.set(key, now);
+            announce(plainText, {
+                assertive: channel === 'major',
+                source: channel === 'major' ? 'toast-major' : 'toast-micro',
+                dedupeMs
+            });
+        }
+
+        function routeFeedbackToast(entry) {
+            if (!entry || !entry.plainText) return;
+            const actionToken = getFeedbackActionToken(entry.options || {});
+            const bucket = getFeedbackBucket(actionToken);
+            if (!bucket) return;
+            bucket.entries.push(Object.assign({}, entry, { actionToken }));
+            if (bucket.timer) return;
+            bucket.timer = setTimeout(() => flushFeedbackBucket(actionToken), FEEDBACK_COLLAPSE_DELAY_MS);
+        }
+
+        function flushFeedbackBucket(actionToken) {
+            const bucket = _feedbackBuckets.get(actionToken);
+            if (!bucket) return;
+            if (bucket.timer) {
+                clearTimeout(bucket.timer);
+                bucket.timer = null;
+            }
+            if (!bucket.entries || bucket.entries.length === 0) return;
+
+            const deduped = [];
+            const seen = new Set();
+            bucket.entries.forEach((entry) => {
+                const key = String(entry.plainText || '').trim().toLowerCase();
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+                deduped.push(entry);
+            });
+            bucket.entries = [];
+            if (deduped.length === 0) return;
+
+            let highestTier = 'micro';
+            let highestRank = 0;
+            deduped.forEach((entry) => {
+                const rank = FEEDBACK_TIER_PRIORITY[entry.tier] || 1;
+                if (rank > highestRank) {
+                    highestRank = rank;
+                    highestTier = entry.tier;
+                }
+            });
+
+            let selected = deduped.filter((entry) => {
+                if (entry.priority === 'critical') return true;
+                return (FEEDBACK_TIER_PRIORITY[entry.tier] || 1) === highestRank;
+            });
+            if (selected.length === 0) selected = [deduped[0]];
+            if (bucket.majorToastShown && highestTier !== 'micro') {
+                selected = selected.filter((entry) => entry.priority === 'critical');
+                if (selected.length === 0) {
+                    // Keep one major toast per action window.
+                    selected = deduped.slice(0, 1).map((entry) => Object.assign({}, entry, { tier: 'micro' }));
+                    highestTier = 'micro';
+                }
+            }
+            let outputEntry = combineFeedbackMessages(selected, highestTier);
+            if (!outputEntry) return;
+
+            if (shouldSuppressForQuietBeat(outputEntry)) {
+                queueDeferredToast(outputEntry);
+                return;
+            }
+
+            if (highestTier === 'ceremony') {
+                startQuietBeatWindow();
+            }
+            if (highestTier !== 'micro') {
+                bucket.majorToastShown = true;
+            }
+
+            addToNotificationHistory(outputEntry.plainText);
+            if (isGameplayTrafficHigh() && outputEntry.priority !== 'critical') {
+                queueDeferredToast(outputEntry);
+            } else {
+                _toastQueue.push(outputEntry);
+                if (!_toastQueueTimer) _toastQueueTimer = setTimeout(flushToastQueue, 60);
+            }
+
+            clearOnboardingTooltips();
+            queueFeedbackAnnouncement(outputEntry.plainText, highestTier, outputEntry.options || {});
+        }
 
         function isNarrowViewport() {
             return window.matchMedia('(max-width: 720px)').matches;
@@ -3050,6 +3365,11 @@
                 _deferredToastTimer = null;
             }
             if (_deferredToastBatch.length === 0) return;
+            if (!force && isQuietBeatActive()) {
+                const ms = Math.max(800, Math.min(2500, _feedbackQuietBeatUntil - Date.now()));
+                _deferredToastTimer = setTimeout(() => flushDeferredToasts(), ms);
+                return;
+            }
             if (!force && (isGameplayTrafficHigh() || document.querySelector('.onboarding-tooltip') || document.querySelector('.reward-card-pop.show'))) {
                 _deferredToastTimer = setTimeout(() => flushDeferredToasts(), 1200);
                 return;
@@ -3103,28 +3423,19 @@
 
         function showToast(message, color = '#66BB6A', options = {}) {
             const plainText = sanitizeToastText(message);
+            if (!plainText) return;
             const safeMessage = escapeHTML(plainText);
+            const tier = getFeedbackTier(plainText, options);
             const priority = isCriticalToast(plainText, options) ? 'critical' : 'normal';
-            addToNotificationHistory(plainText);
-            const item = { safeMessage, color, plainText, priority };
-            if (isGameplayTrafficHigh() && priority !== 'critical') {
-                queueDeferredToast(item);
-            } else {
-                _toastQueue.push(item);
-                if (!_toastQueueTimer) _toastQueueTimer = setTimeout(flushToastQueue, 60);
-            }
-
-            clearOnboardingTooltips();
-
-            if (plainText && typeof announce === 'function' && shouldAnnounceToast(plainText, options) && !(isGameplayTrafficHigh() && priority !== 'critical')) {
-                const key = plainText.trim().toLowerCase();
-                const now = Date.now();
-                const last = _toastAnnounceLastByText.get(key) || 0;
-                if (now - last > 1800) {
-                    _toastAnnounceLastByText.set(key, now);
-                    announce(plainText, { assertive: !!options.assertive, source: 'toast', dedupeMs: 1800 });
-                }
-            }
+            const item = {
+                safeMessage,
+                color: sanitizeCssColor(color),
+                plainText,
+                priority,
+                tier,
+                options
+            };
+            routeFeedbackToast(item);
         }
 
         window.addEventListener('petcare:sound-cue-caption', (event) => {
@@ -3160,16 +3471,30 @@
         let _rewardCardActive = false;
         let _rewardCardTimer = null;
 
-        function queueRewardCard(type, reward, color) {
+        function queueRewardCard(type, reward, color, options = {}) {
             if (!reward) return;
             const meta = REWARD_CARD_META[type];
             if (!meta) return;
+            const actionToken = getFeedbackActionToken(options);
+            const bucket = getFeedbackBucket(actionToken);
+            if (bucket && bucket.visualUsed) {
+                // Hard cap celebration channels per action: one major visual effect.
+                showToast(`${meta.title}: ${reward.name || 'New reward'}`, sanitizeCssColor(color || '#FFD700'), {
+                    tier: 'moment',
+                    announce: false,
+                    actionToken,
+                    bypassQuietBeat: false
+                });
+                return;
+            }
+            if (bucket) bucket.visualUsed = true;
             _rewardCardQueue.push({
                 type,
                 title: meta.title,
                 icon: reward.icon || reward.emoji || meta.fallbackIcon,
                 name: reward.name || 'New reward',
-                color: sanitizeCssColor(color || '#FFD700')
+                color: sanitizeCssColor(color || '#FFD700'),
+                actionToken
             });
             if (!_rewardCardActive) showNextRewardCard();
         }
@@ -3505,6 +3830,7 @@
                 announceCooldownOnce();
                 return;
             }
+            beginFeedbackActionWindow(`care:${action}`);
 
             actionCooldown = true;
             const buttons = document.querySelectorAll('.action-btn');

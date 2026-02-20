@@ -215,8 +215,12 @@
                         }
 
                         // Mark pet as neglected for recovery arc
-                        pet._isNeglected = true;
-                        pet._neglectRecoveryStep = 0;
+                        if (!pet._isNeglected && typeof beginNeglectRecoveryArc === 'function') {
+                            beginNeglectRecoveryArc(pet, 'critical-need-drop');
+                        } else {
+                            pet._isNeglected = true;
+                            pet._neglectRecoveryStep = 0;
+                        }
                     }
 
                     // Apply passive decay to non-active pets (gentler rate)
@@ -305,6 +309,13 @@
                     const newSeason = getCurrentSeason();
                     if (gameState.season !== newSeason) {
                         gameState.season = newSeason;
+                        const activeRoom = gameState.currentRoom || 'bedroom';
+                        if (typeof applyRoomArtifactTrigger === 'function') {
+                            applyRoomArtifactTrigger(`season:${newSeason}`, { sourceRoom: activeRoom });
+                        }
+                        if (typeof setAmbientTone === 'function') {
+                            setAmbientTone(newSeason === 'winter' ? 'steady' : (newSeason === 'autumn' ? 'softening' : 'bright'), `season:${newSeason}`, 16000);
+                        }
                         const seasonData = SEASONS[newSeason];
                         showToast(`${seasonData.icon} ${seasonData.name} has arrived!`, '#FFB74D');
                         // Cancel any deferred render from a previous tick's care-quality change

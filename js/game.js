@@ -198,11 +198,13 @@
                 kitchen: true,
                 bathroom: true,
                 backyard: true,
-                park: true,
-                garden: true
+                park: false,
+                garden: false
             },
             roomUpgrades: {},
             roomCustomizations: {},
+            roomArtifacts: {},
+            roomHistory: {},
             garden: createDefaultGardenState(),
             minigamePlayCounts: {}, // { gameId: playCount } — tracks replays for difficulty scaling
             minigameHighScores: {}, // { gameId: bestScore } — persisted best scores
@@ -273,6 +275,9 @@
             caretakerTitle: 'newcomer',
             caretakerActionCounts: { feed: 0, wash: 0, play: 0, sleep: 0, medicine: 0, groom: 0, exercise: 0, treat: 0, cuddle: 0 },
             lastCaretakerTitle: 'newcomer',
+            caretakerIdentity: { style: 'comfort-focused', voice: 'gentle', trustStyle: 'steady', lastUpdatedAt: 0 },
+            ambientState: { current: 'settled', target: 'settled', transitionStartedAt: Date.now(), transitionDurationMs: 15000, reason: 'init' },
+            sessionPhase: { state: 'check-in', sessionStartedAt: Date.now(), phaseStartedAt: Date.now(), checkInShown: false, cooldownUntil: 0, lastCeremonyAt: 0 },
             // Weather tracking for micro-stories
             previousWeather: 'sunny',
             // Seasonal event tracking
@@ -567,6 +572,455 @@
         // the pet object so they don't get serialized into the save file.
         const _neglectTickCounters = {};
         let _lastAnnouncedTimeOfDay = null;
+        const SESSION_PHASES = {
+            checkin: 'check-in',
+            activity: 'activity',
+            cooldown: 'cooldown'
+        };
+        const SESSION_CHECKIN_MIN_MS = 60000;
+        const SESSION_CHECKIN_MAX_MS = 120000;
+        const SESSION_ACTIVITY_TO_COOLDOWN_MS = 8 * 60 * 1000;
+        const SESSION_COOLDOWN_MIN_MS = 2 * 60 * 1000;
+        const NEGLECT_RECOVERY_ARC_STAGES = [
+            { id: 'wounded', minCare: 0, minElapsedMs: 0, minVariety: 1, tone: 'fragile', color: '#EF9A9A', cue: 'Wounded: your pet needs steady reassurance.' },
+            { id: 'healing', minCare: 4, minElapsedMs: 5 * 60 * 1000, minVariety: 2, tone: 'softening', color: '#CE93D8', cue: 'Healing: gentle variety is helping.' },
+            { id: 'stabilizing', minCare: 10, minElapsedMs: 25 * 60 * 1000, minVariety: 4, tone: 'steady', color: '#81C784', cue: 'Stabilizing: trust is rebuilding.' },
+            { id: 'thriving', minCare: 18, minElapsedMs: 60 * 60 * 1000, minVariety: 5, tone: 'bright', color: '#66BB6A', cue: 'Thriving: the emotional bond feels secure again.' }
+        ];
+
+        function ensureSessionPhaseState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            const now = Date.now();
+            if (!state.sessionPhase || typeof state.sessionPhase !== 'object') {
+                state.sessionPhase = {
+                    state: SESSION_PHASES.checkin,
+                    sessionStartedAt: now,
+                    phaseStartedAt: now,
+                    checkInShown: false,
+                    cooldownUntil: 0,
+                    lastCeremonyAt: 0
+                };
+            }
+            const phase = state.sessionPhase;
+            if (!Object.values(SESSION_PHASES).includes(phase.state)) phase.state = SESSION_PHASES.checkin;
+            if (!Number.isFinite(phase.sessionStartedAt)) phase.sessionStartedAt = now;
+            if (!Number.isFinite(phase.phaseStartedAt)) phase.phaseStartedAt = now;
+            if (!Number.isFinite(phase.cooldownUntil)) phase.cooldownUntil = 0;
+            if (!Number.isFinite(phase.lastCeremonyAt)) phase.lastCeremonyAt = 0;
+            if (typeof phase.checkInShown !== 'boolean') phase.checkInShown = false;
+            if (!Number.isFinite(state._sessionCheckInWindowMs) || state._sessionCheckInWindowMs < SESSION_CHECKIN_MIN_MS || state._sessionCheckInWindowMs > SESSION_CHECKIN_MAX_MS) {
+                state._sessionCheckInWindowMs = SESSION_CHECKIN_MIN_MS + Math.floor(Math.random() * (SESSION_CHECKIN_MAX_MS - SESSION_CHECKIN_MIN_MS + 1));
+            }
+            return phase;
+        }
+
+        function setSessionPhase(nextPhase, options = {}) {
+            const phase = ensureSessionPhaseState();
+            if (!nextPhase || phase.state === nextPhase) return;
+            const now = Date.now();
+            phase.state = nextPhase;
+            phase.phaseStartedAt = now;
+            if (nextPhase === SESSION_PHASES.cooldown) {
+                const cooldownMs = Math.max(SESSION_COOLDOWN_MIN_MS, Number(options.cooldownMs) || SESSION_COOLDOWN_MIN_MS);
+                phase.cooldownUntil = now + cooldownMs;
+            }
+            if (nextPhase === SESSION_PHASES.checkin) {
+                phase.checkInShown = false;
+                phase.sessionStartedAt = now;
+                gameState._sessionCheckInWindowMs = SESSION_CHECKIN_MIN_MS + Math.floor(Math.random() * (SESSION_CHECKIN_MAX_MS - SESSION_CHECKIN_MIN_MS + 1));
+            }
+        }
+
+        function refreshSessionPhase() {
+            const phase = ensureSessionPhaseState();
+            const now = Date.now();
+            if (phase.state === SESSION_PHASES.checkin) {
+                const checkinWindow = Math.max(SESSION_CHECKIN_MIN_MS, Math.min(SESSION_CHECKIN_MAX_MS, Number(gameState._sessionCheckInWindowMs) || SESSION_CHECKIN_MIN_MS));
+                if (now - phase.sessionStartedAt >= checkinWindow) {
+                    setSessionPhase(SESSION_PHASES.activity);
+                }
+            } else if (phase.state === SESSION_PHASES.activity) {
+                if (now - phase.sessionStartedAt >= SESSION_ACTIVITY_TO_COOLDOWN_MS) {
+                    setSessionPhase(SESSION_PHASES.cooldown, { cooldownMs: SESSION_COOLDOWN_MIN_MS });
+                }
+            } else if (phase.state === SESSION_PHASES.cooldown && phase.cooldownUntil > 0 && now >= phase.cooldownUntil) {
+                setSessionPhase(SESSION_PHASES.activity);
+            }
+            return phase.state;
+        }
+
+        function noteSessionCeremony(cooldownMs) {
+            const phase = ensureSessionPhaseState();
+            phase.lastCeremonyAt = Date.now();
+            setSessionPhase(SESSION_PHASES.cooldown, { cooldownMs: cooldownMs || (90 * 1000) });
+        }
+
+        function startSessionCycle() {
+            const phase = ensureSessionPhaseState();
+            const now = Date.now();
+            phase.state = SESSION_PHASES.checkin;
+            phase.sessionStartedAt = now;
+            phase.phaseStartedAt = now;
+            phase.cooldownUntil = 0;
+            phase.checkInShown = false;
+            gameState._sessionCheckInWindowMs = SESSION_CHECKIN_MIN_MS + Math.floor(Math.random() * (SESSION_CHECKIN_MAX_MS - SESSION_CHECKIN_MIN_MS + 1));
+        }
+
+        function ensureAmbientState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            const now = Date.now();
+            if (!state.ambientState || typeof state.ambientState !== 'object') {
+                state.ambientState = { current: 'settled', target: 'settled', transitionStartedAt: now, transitionDurationMs: 15000, reason: 'init' };
+            }
+            const ambient = state.ambientState;
+            if (!ambient.current) ambient.current = 'settled';
+            if (!ambient.target) ambient.target = ambient.current;
+            if (!Number.isFinite(ambient.transitionStartedAt)) ambient.transitionStartedAt = now;
+            if (!Number.isFinite(ambient.transitionDurationMs)) ambient.transitionDurationMs = 15000;
+            if (!ambient.reason) ambient.reason = 'init';
+            return ambient;
+        }
+
+        function setAmbientTone(targetTone, reason, durationMs) {
+            const ambient = ensureAmbientState();
+            const nextTone = targetTone || 'settled';
+            if (ambient.target === nextTone) return;
+            ambient.current = ambient.target || ambient.current || 'settled';
+            ambient.target = nextTone;
+            ambient.transitionStartedAt = Date.now();
+            ambient.transitionDurationMs = Math.max(10000, Math.min(20000, Number(durationMs) || 15000));
+            ambient.reason = reason || 'state-change';
+            if (typeof SoundManager !== 'undefined' && SoundManager.enterRoom && gameState.currentRoom) {
+                // Existing sound system crossfades room earcons; spacing this call helps transitions feel less abrupt.
+                setTimeout(() => {
+                    if (gameState.currentRoom) SoundManager.enterRoom(gameState.currentRoom);
+                }, 120);
+            }
+        }
+
+        function getAmbientTransitionProgress() {
+            const ambient = ensureAmbientState();
+            const elapsed = Date.now() - ambient.transitionStartedAt;
+            const duration = Math.max(1, Number(ambient.transitionDurationMs) || 15000);
+            return clamp(elapsed / duration, 0, 1);
+        }
+
+        function maybeFinishAmbientTransition() {
+            const ambient = ensureAmbientState();
+            if (ambient.current !== ambient.target && getAmbientTransitionProgress() >= 1) {
+                ambient.current = ambient.target;
+            }
+        }
+
+        function ensureRoomHistoryState(targetState) {
+            const state = (targetState && typeof targetState === 'object') ? targetState : gameState;
+            if (!state.roomArtifacts || typeof state.roomArtifacts !== 'object') state.roomArtifacts = {};
+            if (!state.roomHistory || typeof state.roomHistory !== 'object') state.roomHistory = {};
+            if (!state._roomHintMeta || typeof state._roomHintMeta !== 'object') state._roomHintMeta = {};
+            ROOM_IDS.forEach((roomId) => {
+                if (!Array.isArray(state.roomArtifacts[roomId])) state.roomArtifacts[roomId] = [];
+                if (!state.roomHistory[roomId] || typeof state.roomHistory[roomId] !== 'object') {
+                    state.roomHistory[roomId] = {
+                        careActions: 0,
+                        sessions: 0,
+                        lastVisitedAt: 0,
+                        weatherMarks: {},
+                        seasonMarks: {},
+                        recoveryMarks: {},
+                        milestoneMarks: {}
+                    };
+                } else {
+                    const history = state.roomHistory[roomId];
+                    if (!Number.isFinite(history.careActions)) history.careActions = 0;
+                    if (!Number.isFinite(history.sessions)) history.sessions = 0;
+                    if (!Number.isFinite(history.lastVisitedAt)) history.lastVisitedAt = 0;
+                    if (!history.weatherMarks || typeof history.weatherMarks !== 'object') history.weatherMarks = {};
+                    if (!history.seasonMarks || typeof history.seasonMarks !== 'object') history.seasonMarks = {};
+                    if (!history.recoveryMarks || typeof history.recoveryMarks !== 'object') history.recoveryMarks = {};
+                    if (!history.milestoneMarks || typeof history.milestoneMarks !== 'object') history.milestoneMarks = {};
+                }
+            });
+            return state.roomHistory;
+        }
+
+        function getRoomArtifactBlueprints(roomId) {
+            if (typeof ROOM_ARTIFACT_BLUEPRINTS === 'undefined' || !ROOM_ARTIFACT_BLUEPRINTS) return [];
+            return ROOM_ARTIFACT_BLUEPRINTS[roomId] || [];
+        }
+
+        function hasRoomArtifact(roomId, artifactId) {
+            ensureRoomHistoryState();
+            const list = gameState.roomArtifacts[roomId] || [];
+            return list.some((entry) => entry && entry.id === artifactId);
+        }
+
+        function addRoomArtifact(roomId, blueprint, context = {}) {
+            if (!roomId || !blueprint || !blueprint.id) return false;
+            ensureRoomHistoryState();
+            if (!ROOMS[roomId]) return false;
+            if (hasRoomArtifact(roomId, blueprint.id)) return false;
+            const artifact = {
+                id: blueprint.id,
+                label: blueprint.label || 'Memory',
+                description: blueprint.description || '',
+                appearedAt: Date.now(),
+                conditions: {
+                    trigger: blueprint.trigger || context.trigger || 'manual',
+                    sourceRoom: context.sourceRoom || gameState.currentRoom || roomId,
+                    season: gameState.season || getCurrentSeason(),
+                    weather: gameState.weather || 'sunny'
+                },
+                render: Object.assign({ emoji: '✨', layer: 'front' }, blueprint.render || {})
+            };
+            gameState.roomArtifacts[roomId].push(artifact);
+            return true;
+        }
+
+        function applyRoomArtifactTrigger(trigger, context = {}) {
+            if (!trigger) return 0;
+            ensureRoomHistoryState();
+            let added = 0;
+            let marksChanged = false;
+            ROOM_IDS.forEach((roomId) => {
+                const blueprints = getRoomArtifactBlueprints(roomId);
+                let addedForRoom = false;
+                blueprints.forEach((bp) => {
+                    if (!bp || bp.trigger !== trigger) return;
+                    if (addRoomArtifact(roomId, bp, Object.assign({}, context, { trigger }))) {
+                        added++;
+                        addedForRoom = true;
+                    }
+                });
+                const fromSourceRoom = !!(context && context.sourceRoom && context.sourceRoom === roomId);
+                if ((addedForRoom || fromSourceRoom) && gameState.roomHistory[roomId]) {
+                    const history = gameState.roomHistory[roomId];
+                    if (trigger.indexOf('weather:') === 0) {
+                        const weatherKey = trigger.split(':')[1] || 'unknown';
+                        history.weatherMarks[weatherKey] = (history.weatherMarks[weatherKey] || 0) + 1;
+                        marksChanged = true;
+                    } else if (trigger.indexOf('season:') === 0) {
+                        const seasonKey = trigger.split(':')[1] || 'unknown';
+                        history.seasonMarks[seasonKey] = (history.seasonMarks[seasonKey] || 0) + 1;
+                        marksChanged = true;
+                    } else if (trigger.indexOf('recovery:') === 0) {
+                        const recoveryKey = trigger.split(':')[1] || 'unknown';
+                        history.recoveryMarks[recoveryKey] = (history.recoveryMarks[recoveryKey] || 0) + 1;
+                        marksChanged = true;
+                    } else if (trigger.indexOf('milestone:') === 0) {
+                        const milestoneKey = trigger.split(':')[1] || 'unknown';
+                        history.milestoneMarks[milestoneKey] = (history.milestoneMarks[milestoneKey] || 0) + 1;
+                        marksChanged = true;
+                    }
+                }
+            });
+            if (added > 0 || marksChanged) saveGame();
+            return added;
+        }
+
+        function renderRoomArtifactsHTML(roomId) {
+            ensureRoomHistoryState();
+            const artifacts = (gameState.roomArtifacts && gameState.roomArtifacts[roomId]) ? gameState.roomArtifacts[roomId] : [];
+            if (!artifacts || artifacts.length === 0) return '';
+            const visible = artifacts.slice(-6);
+            const chips = visible.map((artifact) => {
+                const emoji = (artifact.render && artifact.render.emoji) ? artifact.render.emoji : '✨';
+                const label = artifact.label || 'Artifact';
+                const desc = artifact.description || '';
+                return `<button class="room-artifact-chip" type="button" tabindex="0" aria-label="${escapeHTML(label)}. ${escapeHTML(desc)}" title="${escapeHTML(label)} — ${escapeHTML(desc)}">${emoji}</button>`;
+            }).join('');
+            return `<div class="room-history-layer" role="group" aria-label="Room history artifacts" style="position:absolute;left:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;">${chips}</div>`;
+        }
+
+        function getRoomArtifactDecor(roomId) {
+            ensureRoomHistoryState();
+            const artifacts = (gameState.roomArtifacts && gameState.roomArtifacts[roomId]) ? gameState.roomArtifacts[roomId] : [];
+            if (!artifacts || artifacts.length === 0) return '';
+            const visuals = artifacts.slice(-2).map((artifact, idx) => {
+                const emoji = (artifact.render && artifact.render.emoji) ? artifact.render.emoji : '✨';
+                return `<span class="room-artifact-decor room-artifact-${idx + 1}" aria-hidden="true">${emoji}</span>`;
+            }).join('');
+            return visuals;
+        }
+
+        function renderRoomHistorySummaryHTML(roomId) {
+            ensureRoomHistoryState();
+            const history = gameState.roomHistory[roomId];
+            if (!history) return '';
+            const visits = Number(history.sessions || 0);
+            const careActions = Number(history.careActions || 0);
+            const artifacts = (gameState.roomArtifacts && gameState.roomArtifacts[roomId]) ? gameState.roomArtifacts[roomId].length : 0;
+            const summary = `${ROOMS[roomId] ? ROOMS[roomId].name : 'Room'} history: ${careActions} care actions, ${visits} visits, ${artifacts} lasting artifacts.`;
+            return `<p class="room-history-summary" role="note" style="margin:6px 0 0 0;font-size:0.72rem;color:#5D4037;">${escapeHTML(summary)}</p>`;
+        }
+
+        function recordRoomCareAction(roomId, actionType) {
+            ensureRoomHistoryState();
+            const room = roomId || gameState.currentRoom || 'bedroom';
+            if (!gameState.roomHistory[room]) return;
+            const history = gameState.roomHistory[room];
+            history.careActions = (history.careActions || 0) + 1;
+            history.lastVisitedAt = Date.now();
+            if (actionType === 'wash' || actionType === 'groom') {
+                history.recoveryMarks.cleanliness = (history.recoveryMarks.cleanliness || 0) + 1;
+            }
+            if (actionType === 'cuddle' || actionType === 'sleep') {
+                history.recoveryMarks.comfort = (history.recoveryMarks.comfort || 0) + 1;
+            }
+        }
+
+        function updateCaretakerIdentityProfile() {
+            if (!gameState.caretakerIdentity || typeof gameState.caretakerIdentity !== 'object') {
+                gameState.caretakerIdentity = { style: 'comfort-focused', voice: 'gentle', trustStyle: 'steady', lastUpdatedAt: 0 };
+            }
+            const counts = gameState.caretakerActionCounts || {};
+            const comfort = (counts.cuddle || 0) + (counts.sleep || 0) + (counts.wash || 0) + (counts.groom || 0);
+            const routine = (counts.feed || 0) + (counts.medicine || 0);
+            const explore = Object.keys(gameState.roomsVisited || {}).length + ((gameState.exploration && gameState.exploration.stats && gameState.exploration.stats.expeditionsCompleted) || 0);
+            let style = 'comfort-focused';
+            if (routine >= comfort && routine >= explore) style = 'routine-focused';
+            else if (explore > comfort && explore > routine) style = 'explorer';
+            const voice = style === 'routine-focused' ? 'steady' : (style === 'explorer' ? 'adventurous' : 'gentle');
+            const trustStyle = style === 'comfort-focused' ? 'warm' : (style === 'routine-focused' ? 'reliable' : 'curious');
+            gameState.caretakerIdentity.style = style;
+            gameState.caretakerIdentity.voice = voice;
+            gameState.caretakerIdentity.trustStyle = trustStyle;
+            gameState.caretakerIdentity.lastUpdatedAt = Date.now();
+            return gameState.caretakerIdentity;
+        }
+
+        function getDiaryVoicePrefix() {
+            updateCaretakerIdentityProfile();
+            const voice = (gameState.caretakerIdentity && gameState.caretakerIdentity.voice) || 'gentle';
+            if (voice === 'steady') return 'Steady voice';
+            if (voice === 'adventurous') return 'Explorer voice';
+            return 'Gentle voice';
+        }
+
+        function applyDiaryVoice(entry) {
+            if (!entry || typeof entry !== 'object') return entry;
+            const prefix = getDiaryVoicePrefix();
+            if (!entry.voice) entry.voice = prefix;
+            if (entry.opening && entry.opening.indexOf(prefix + ':') !== 0) {
+                entry.opening = `${prefix}: ${entry.opening}`;
+            }
+            return entry;
+        }
+
+        function ensureNeglectRecoveryArcState(pet) {
+            if (!pet || typeof pet !== 'object') return null;
+            if (!pet.neglectArc || typeof pet.neglectArc !== 'object') {
+                pet.neglectArc = {
+                    active: !!pet._isNeglected,
+                    stage: pet._isNeglected ? 'wounded' : 'thriving',
+                    startedAt: pet._isNeglected ? Date.now() : 0,
+                    progressCare: Number(pet._neglectRecoveryStep) || 0,
+                    variety: {},
+                    uniqueActions: 0,
+                    lastAdvancedAt: 0,
+                    lastToneAt: 0
+                };
+            }
+            if (typeof pet.neglectArc.active !== 'boolean') pet.neglectArc.active = false;
+            if (!pet.neglectArc.stage) pet.neglectArc.stage = pet.neglectArc.active ? 'wounded' : 'thriving';
+            if (!Number.isFinite(pet.neglectArc.startedAt)) pet.neglectArc.startedAt = pet.neglectArc.active ? Date.now() : 0;
+            if (!Number.isFinite(pet.neglectArc.progressCare)) pet.neglectArc.progressCare = 0;
+            if (!pet.neglectArc.variety || typeof pet.neglectArc.variety !== 'object') pet.neglectArc.variety = {};
+            if (!Number.isFinite(pet.neglectArc.uniqueActions)) pet.neglectArc.uniqueActions = 0;
+            if (!Number.isFinite(pet.neglectArc.lastAdvancedAt)) pet.neglectArc.lastAdvancedAt = 0;
+            if (!Number.isFinite(pet.neglectArc.lastToneAt)) pet.neglectArc.lastToneAt = 0;
+            return pet.neglectArc;
+        }
+
+        function getNeglectStageData(stageId) {
+            return NEGLECT_RECOVERY_ARC_STAGES.find((stage) => stage.id === stageId) || NEGLECT_RECOVERY_ARC_STAGES[0];
+        }
+
+        function beginNeglectRecoveryArc(pet, reason) {
+            const arc = ensureNeglectRecoveryArcState(pet);
+            if (!arc) return null;
+            arc.active = true;
+            arc.stage = 'wounded';
+            arc.startedAt = Date.now();
+            arc.progressCare = 0;
+            arc.variety = {};
+            arc.uniqueActions = 0;
+            arc.lastAdvancedAt = 0;
+            pet._isNeglected = true;
+            pet._neglectRecoveryStep = 0;
+            const stageData = getNeglectStageData('wounded');
+            setAmbientTone(stageData.tone, reason || 'neglect-start');
+            return arc;
+        }
+
+        function advanceNeglectRecoveryArc(pet, actionType) {
+            const arc = ensureNeglectRecoveryArcState(pet);
+            if (!arc || !arc.active) return { changed: false, completed: false, stage: arc ? arc.stage : 'thriving' };
+            const now = Date.now();
+            arc.progressCare += 1;
+            arc.variety[actionType] = (arc.variety[actionType] || 0) + 1;
+            arc.uniqueActions = Object.keys(arc.variety).length;
+            pet._neglectRecoveryStep = arc.progressCare;
+
+            let stageChanged = false;
+            let nextStage = arc.stage;
+            NEGLECT_RECOVERY_ARC_STAGES.forEach((stage) => {
+                const elapsed = now - (arc.startedAt || now);
+                if (arc.progressCare >= stage.minCare && elapsed >= stage.minElapsedMs && arc.uniqueActions >= stage.minVariety) {
+                    nextStage = stage.id;
+                }
+            });
+            if (nextStage !== arc.stage) {
+                arc.stage = nextStage;
+                arc.lastAdvancedAt = now;
+                stageChanged = true;
+                const stageData = getNeglectStageData(nextStage);
+                setAmbientTone(stageData.tone, `recovery:${nextStage}`);
+                applyRoomArtifactTrigger(`recovery:${nextStage}`, { sourceRoom: gameState.currentRoom || 'bedroom' });
+            }
+
+            if (arc.stage === 'thriving') {
+                arc.active = false;
+                pet._isNeglected = false;
+                pet._neglectRecoveryStep = 0;
+                return { changed: stageChanged, completed: true, stage: arc.stage };
+            }
+            return { changed: stageChanged, completed: false, stage: arc.stage };
+        }
+
+        function getNeglectRecoveryVisualTone(pet) {
+            const arc = ensureNeglectRecoveryArcState(pet);
+            if (!arc || !arc.active) return 'recovery-thriving';
+            return `recovery-${arc.stage || 'wounded'}`;
+        }
+
+        function maybeShowRoomUnlockForeshadow(actionType) {
+            ensureRoomHistoryState();
+            if (!gameState._roomHintMeta) gameState._roomHintMeta = {};
+            const now = Date.now();
+            ['park', 'garden'].forEach((roomId) => {
+                const room = ROOMS[roomId];
+                if (!room || !room.unlockRule || room.unlockRule.type !== 'careActions') return;
+                if (gameState.roomUnlocks && gameState.roomUnlocks[roomId]) return;
+                const threshold = Number(room.unlockRule.count) || 0;
+                const careActions = (gameState.pet && Number(gameState.pet.careActions)) || 0;
+                const remaining = threshold - careActions;
+                const meta = gameState._roomHintMeta[roomId] || { lastHintAt: 0, hintedNear: false };
+                if (remaining <= 3 && remaining > 0 && !meta.hintedNear && (now - meta.lastHintAt > 45000)) {
+                    const cue = room.unlockCue && room.unlockCue.behaviorHint ? room.unlockCue.behaviorHint : `You are close to unlocking ${room.name}.`;
+                    showToast(`${room.icon} ${cue} (${Math.max(1, remaining)} care actions left)`, '#90A4AE', { tier: 'moment', announce: false });
+                    meta.hintedNear = true;
+                    meta.lastHintAt = now;
+                } else if (remaining > 3) {
+                    meta.hintedNear = false;
+                }
+                if (remaining <= 0 && now - meta.lastHintAt > 4000) {
+                    const cue = room.unlockCue && room.unlockCue.roomCue ? room.unlockCue.roomCue : `${room.name} feels ready to discover.`;
+                    showToast(`${room.icon} ${cue}`, '#81C784', { tier: 'moment', announce: true });
+                    meta.lastHintAt = now;
+                }
+                gameState._roomHintMeta[roomId] = meta;
+            });
+        }
 
         // ==================== HAPTIC FEEDBACK ====================
         // Short vibration on supported mobile devices for tactile satisfaction
@@ -822,6 +1276,7 @@
             if (!pet._roomActionCounts) pet._roomActionCounts = { feedCount: 0, sleepCount: 0, washCount: 0, playCount: 0, parkVisits: 0, harvestCount: 0 };
             if (typeof pet._neglectRecoveryStep !== 'number') pet._neglectRecoveryStep = 0;
             if (typeof pet._isNeglected !== 'boolean') pet._isNeglected = false;
+            ensureNeglectRecoveryArcState(pet);
         }
 
         function repairPetIdsAndNextId(state) {
@@ -4243,6 +4698,7 @@
                             const entry = generateDiaryEntry(pet, prevProgress, season, dayNum);
                             if (entry) {
                                 entry.date = gameState.dailyChecklist.date; // Use the actual day being summarized
+                                applyDiaryVoice(entry);
                                 if (!Array.isArray(gameState.diary)) gameState.diary = [];
                                 gameState.diary.push(entry);
                                 // Keep last 30 diary entries
@@ -4410,6 +4866,12 @@
         function trackRoomVisit(roomId) {
             if (!gameState.roomsVisited) gameState.roomsVisited = {};
             gameState.roomsVisited[roomId] = true;
+            ensureRoomHistoryState();
+            if (gameState.roomHistory[roomId]) {
+                gameState.roomHistory[roomId].sessions = (gameState.roomHistory[roomId].sessions || 0) + 1;
+                gameState.roomHistory[roomId].lastVisitedAt = Date.now();
+            }
+            updateCaretakerIdentityProfile();
         }
 
         // Track weather for achievements
@@ -5267,6 +5729,7 @@
                     if (todayEntry) {
                         todayEntry.date = gameState.dailyChecklist.date || new Date().toISOString().slice(0, 10);
                         todayEntry.isToday = true;
+                        applyDiaryVoice(todayEntry);
                         entries.push(todayEntry);
                     }
                 } catch (e) {
@@ -5426,7 +5889,22 @@
                         const room = ROOMS[roomId];
                         if (!room) return;
                         if (typeof parsed.roomUnlocks[roomId] !== 'boolean') {
-                            parsed.roomUnlocks[roomId] = room.unlockRule && room.unlockRule.type === 'default';
+                            const rule = room.unlockRule || { type: 'default' };
+                            if (rule.type === 'default') {
+                                parsed.roomUnlocks[roomId] = true;
+                            } else if (rule.type === 'careActions') {
+                                const care = Array.isArray(parsed.pets) && parsed.pets.length > 0
+                                    ? Math.max(...parsed.pets.map((p) => (p && Number.isFinite(p.careActions)) ? p.careActions : 0))
+                                    : (parsed.pet && Number.isFinite(parsed.pet.careActions) ? parsed.pet.careActions : 0);
+                                const visited = !!(parsed.roomsVisited && parsed.roomsVisited[roomId]);
+                                parsed.roomUnlocks[roomId] = visited || care >= (Number(rule.count) || 0);
+                            } else if (rule.type === 'adultsRaised') {
+                                const adults = Number(parsed.adultsRaised || 0);
+                                const visited = !!(parsed.roomsVisited && parsed.roomsVisited[roomId]);
+                                parsed.roomUnlocks[roomId] = visited || adults >= (Number(rule.count) || 0);
+                            } else {
+                                parsed.roomUnlocks[roomId] = false;
+                            }
                         }
                         if (!Number.isFinite(parsed.roomUpgrades[roomId])) parsed.roomUpgrades[roomId] = 0;
                         if (!parsed.roomCustomizations[roomId] || typeof parsed.roomCustomizations[roomId] !== 'object') {
@@ -5989,6 +6467,7 @@
                 _roomActionCounts: { feedCount: 0, sleepCount: 0, washCount: 0, playCount: 0, parkVisits: 0, harvestCount: 0 },
                 _neglectRecoveryStep: 0,   // Track recovery arc after neglect
                 _isNeglected: false,       // Whether pet is currently in neglected state
+                neglectArc: { active: false, stage: 'thriving', startedAt: 0, progressCare: 0, variety: {}, uniqueActions: 0, lastAdvancedAt: 0, lastToneAt: 0 },
                 _mentorId: null,           // ID of elder pet mentoring this one
                 _farewellMessage: ''       // Player's farewell message on retirement
             };
@@ -6788,6 +7267,16 @@
                 setTimeout(() => { delete _milestoneCheckInProgress[milestoneKey]; }, 100);
                 pet.growthStage = currentStage;
                 pet.lastGrowthStage = currentStage;
+                const milestoneTrigger = `milestone:${currentStage}`;
+                const artifactCount = applyRoomArtifactTrigger(milestoneTrigger, { sourceRoom: gameState.currentRoom || 'bedroom' });
+                if (artifactCount > 0) {
+                    showToast(`🏡 ${artifactCount} lasting room change${artifactCount === 1 ? '' : 's'} appeared after this milestone.`, '#81C784', { tier: 'ceremony' });
+                }
+                if (currentStage === 'adult' || currentStage === 'elder') {
+                    setAmbientTone('bright', `growth:${currentStage}`, 16000);
+                } else if (currentStage === 'child') {
+                    setAmbientTone('softening', `growth:${currentStage}`, 14000);
+                }
 
                 // Show birthday celebration
                 if (currentStage !== 'baby') {
@@ -6910,6 +7399,10 @@
                     gameState.weather = newWeather;
                     gameState.previousWeather = previousWeather;
                     trackWeather();
+                    const activeRoom = gameState.currentRoom || 'bedroom';
+                    applyRoomArtifactTrigger(`weather:${newWeather}`, { sourceRoom: activeRoom });
+                    const weatherTone = newWeather === 'rainy' ? 'softening' : (newWeather === 'snowy' ? 'steady' : 'bright');
+                    setAmbientTone(weatherTone, `weather:${newWeather}`, 15000);
                     const weatherData = WEATHER_TYPES[newWeather];
                     showToast(`${weatherData.icon} Weather changed to ${weatherData.name}!`, newWeather === 'sunny' ? '#FFD700' : newWeather === 'rainy' ? '#64B5F6' : '#B0BEC5');
                     announce(`Weather changed to ${weatherData.name}.`);
@@ -7062,11 +7555,27 @@
             if (!gameState.roomUnlocks || typeof gameState.roomUnlocks !== 'object') gameState.roomUnlocks = {};
             if (!gameState.roomUpgrades || typeof gameState.roomUpgrades !== 'object') gameState.roomUpgrades = {};
             if (!gameState.roomCustomizations || typeof gameState.roomCustomizations !== 'object') gameState.roomCustomizations = {};
+            ensureRoomHistoryState();
             ROOM_IDS.forEach((roomId) => {
                 const room = ROOMS[roomId];
                 if (!room) return;
                 if (typeof gameState.roomUnlocks[roomId] !== 'boolean') {
-                    gameState.roomUnlocks[roomId] = room.unlockRule && room.unlockRule.type === 'default';
+                    const rule = room.unlockRule || { type: 'default' };
+                    if (rule.type === 'default') {
+                        gameState.roomUnlocks[roomId] = true;
+                    } else if (rule.type === 'careActions') {
+                        const care = Array.isArray(gameState.pets) && gameState.pets.length > 0
+                            ? Math.max(...gameState.pets.map((p) => (p && Number.isFinite(p.careActions)) ? p.careActions : 0))
+                            : (gameState.pet && Number.isFinite(gameState.pet.careActions) ? gameState.pet.careActions : 0);
+                        const visited = !!(gameState.roomsVisited && gameState.roomsVisited[roomId]);
+                        gameState.roomUnlocks[roomId] = visited || care >= (Number(rule.count) || 0);
+                    } else if (rule.type === 'adultsRaised') {
+                        const adults = Number(gameState.adultsRaised || 0);
+                        const visited = !!(gameState.roomsVisited && gameState.roomsVisited[roomId]);
+                        gameState.roomUnlocks[roomId] = visited || adults >= (Number(rule.count) || 0);
+                    } else {
+                        gameState.roomUnlocks[roomId] = false;
+                    }
                 }
                 if (!Number.isFinite(gameState.roomUpgrades[roomId])) gameState.roomUpgrades[roomId] = 0;
                 if (!gameState.roomCustomizations[roomId] || typeof gameState.roomCustomizations[roomId] !== 'object') {
@@ -7177,6 +7686,7 @@
             const emojiDecor = timeOfDay === 'night' ? room.nightDecorEmoji : room.decorEmoji;
             const custom = getRoomCustomization(roomId);
             const themed = getRoomThemeMode(roomId, gameState.pet);
+            const artifactDecor = getRoomArtifactDecor(roomId);
             let themeDecor = '';
             if (themed === 'aquarium') themeDecor = '<span class="room-theme-badge">🐠 Aquarium</span>';
             if (themed === 'nest') themeDecor = '<span class="room-theme-badge">🪺 Nest</span>';
@@ -7184,14 +7694,14 @@
             const slotDecor = (custom.furnitureSlots || [])
                 .map((id, idx) => ROOM_FURNITURE_ITEMS[id] ? `<span class="room-furniture-slot room-furniture-slot-${idx + 1}">${ROOM_FURNITURE_ITEMS[id].emoji}</span>` : '')
                 .join('');
-            if (tier <= 0) return `<span class="room-decor-inline">${emojiDecor}</span>${themeDecor}${slotDecor}`;
+            if (tier <= 0) return `<span class="room-decor-inline">${emojiDecor}</span>${themeDecor}${slotDecor}${artifactDecor}`;
             const assets = ROOM_PROP_ASSETS[roomId] || [];
             const maxProps = Math.min(tier, assets.length);
             const props = [];
             for (let i = 0; i < maxProps; i++) {
                 props.push(`<span class="room-prop room-prop-tier-${i + 1}" aria-hidden="true"><img src="${assets[i]}" alt="" loading="lazy" decoding="async"></span>`);
             }
-            return `<span class="room-decor-inline">${emojiDecor}</span>${themeDecor}${slotDecor}${props.join('')}`;
+            return `<span class="room-decor-inline">${emojiDecor}</span>${themeDecor}${slotDecor}${props.join('')}${artifactDecor}`;
         }
 
         function getReadyCropCount() {
@@ -7243,12 +7753,13 @@
                 const bonusHint = room.bonus ? ` (Bonus: ${getRoomBonusLabel(id)})` : '';
                 const lockBadge = unlocked ? '' : '<span class="room-lock-badge" aria-hidden="true">🔒</span>';
                 const lockRequirement = status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked';
+                const lockForeshadow = (!unlocked && room.unlockCue && room.unlockCue.behaviorHint) ? ` Hint: ${room.unlockCue.behaviorHint}` : '';
                 const lockHint = unlocked ? '' : ` ${lockRequirement}`;
-                const lockA11y = unlocked ? '' : `. Locked. Requirement: ${lockRequirement}.`;
+                const lockA11y = unlocked ? '' : `. Locked. Requirement: ${lockRequirement}.${lockForeshadow}`;
                 html += `<button class="room-btn${isActive ? ' active' : ''}${unlocked ? '' : ' locked'}" type="button" data-room="${id}"
                     aria-label="Go to ${room.name}${lockA11y}" aria-pressed="${isActive}" aria-disabled="${unlocked ? 'false' : 'true'}"
                     ${isActive ? 'aria-current="page"' : ''} tabindex="${unlocked ? '0' : '-1'}" style="position:relative;"
-                    title="${room.name}${bonusHint}${lockHint}">
+                    title="${room.name}${bonusHint}${lockHint}${lockForeshadow}">
                     <span class="room-btn-icon" aria-hidden="true">${room.icon}</span>
                     <span class="room-btn-label">${room.name}</span>
                     ${badge}
@@ -7259,11 +7770,12 @@
             if (beginnerMode && lockedRooms.length > 0) {
                 const lockedHTML = lockedRooms.map(({ id, room, status }) => {
                     const lockRequirement = status.reason || (room.unlockRule && room.unlockRule.text) || 'Locked';
+                    const lockForeshadow = room.unlockCue && room.unlockCue.roomCue ? room.unlockCue.roomCue : '';
                     return `<div class="room-btn locked room-coming-item" data-room="${id}" role="listitem" aria-disabled="true"
-                        aria-label="${room.name}. Locked. Requirement: ${lockRequirement}."
-                        title="${room.name} ${lockRequirement}">
+                        aria-label="${room.name}. Locked. Requirement: ${lockRequirement}.${lockForeshadow ? ` ${lockForeshadow}` : ''}"
+                        title="${room.name} ${lockRequirement}${lockForeshadow ? ` — ${lockForeshadow}` : ''}">
                         <span class="room-coming-icon" aria-hidden="true">${room.icon}</span>
-                        <span class="room-coming-copy"><strong>${room.name}</strong><span>${lockRequirement}</span></span>
+                        <span class="room-coming-copy"><strong>${room.name}</strong><span>${lockRequirement}${lockForeshadow ? ` · ${lockForeshadow}` : ''}</span></span>
                     </div>`;
                 }).join('');
                 html += `<section class="room-coming-wrap" aria-label="Locked rooms">
@@ -7297,17 +7809,23 @@
 
         function switchRoom(roomId) {
             if (!ROOMS[roomId] || roomId === gameState.currentRoom) return;
+            if (typeof beginFeedbackActionWindow === 'function') beginFeedbackActionWindow(`room:${roomId}`);
             ensureRoomSystemsState();
             const unlockResult = unlockRoom(roomId);
             if (!unlockResult.ok) {
-                showToast(`🔒 ${unlockResult.reason}`, '#FFA726');
+                const room = ROOMS[roomId];
+                const cue = room && room.unlockCue && room.unlockCue.uiHint ? ` ${room.unlockCue.uiHint}` : '';
+                showToast(`🔒 ${unlockResult.reason}${cue}`, '#FFA726', { tier: 'moment' });
                 if (typeof SoundManager !== 'undefined' && SoundManager.playSFXByName) {
                     SoundManager.playSFXByName('error-soft', SoundManager.sfx.miss);
                 }
                 return;
             }
             if (!unlockResult.already) {
-                showToast(`🔓 Unlocked ${ROOMS[roomId].name}!`, '#66BB6A');
+                const unlockedRoom = ROOMS[roomId];
+                showToast(`🎉 ${unlockedRoom.icon} ${unlockedRoom.name} is now open!`, '#66BB6A', { tier: 'ceremony', assertive: true });
+                applyRoomArtifactTrigger(`roomUnlock:${roomId}`, { sourceRoom: roomId });
+                noteSessionCeremony(90000);
             }
 
             const previousRoom = gameState.currentRoom;
@@ -7334,6 +7852,7 @@
             }
 
             const room = ROOMS[roomId];
+            setAmbientTone(room && room.isOutdoor ? 'bright' : 'steady', `room:${roomId}`, 15000);
 
             // Re-render when switching to/from garden (garden section needs DOM update)
             if (roomId === 'garden' || previousRoom === 'garden') {
@@ -9345,8 +9864,12 @@
                         }
 
                         // Mark pet as neglected for recovery arc
-                        pet._isNeglected = true;
-                        pet._neglectRecoveryStep = 0;
+                        if (!pet._isNeglected && typeof beginNeglectRecoveryArc === 'function') {
+                            beginNeglectRecoveryArc(pet, 'critical-need-drop');
+                        } else {
+                            pet._isNeglected = true;
+                            pet._neglectRecoveryStep = 0;
+                        }
                     }
 
                     // Apply passive decay to non-active pets (gentler rate)
@@ -9435,6 +9958,9 @@
                     const newSeason = getCurrentSeason();
                     if (gameState.season !== newSeason) {
                         gameState.season = newSeason;
+                        const activeRoom = gameState.currentRoom || 'bedroom';
+                        applyRoomArtifactTrigger(`season:${newSeason}`, { sourceRoom: activeRoom });
+                        setAmbientTone(newSeason === 'winter' ? 'steady' : (newSeason === 'autumn' ? 'softening' : 'bright'), `season:${newSeason}`, 16000);
                         const seasonData = SEASONS[newSeason];
                         showToast(`${seasonData.icon} ${seasonData.name} has arrived!`, '#FFB74D');
                         // Cancel any deferred render from a previous tick's care-quality change
@@ -9555,6 +10081,7 @@
         function updateDayNightDisplay() {
             const petArea = document.querySelector('.pet-area');
             if (!petArea) return;
+            refreshSessionPhase();
 
             const timeOfDay = gameState.timeOfDay;
             const timeClass = timeOfDay === 'day' ? 'daytime' : timeOfDay === 'night' ? 'nighttime' : timeOfDay;
@@ -9568,6 +10095,16 @@
             // Update class
             petArea.classList.remove('daytime', 'nighttime', 'sunset', 'sunrise');
             petArea.classList.add(timeClass);
+            const toneFromTime = timeOfDay === 'night' ? 'steady' : (timeOfDay === 'sunset' ? 'softening' : 'bright');
+            setAmbientTone(toneFromTime, `timeofday:${timeOfDay}`, 15000);
+            maybeFinishAmbientTransition();
+            const ambient = ensureAmbientState();
+            const ambientProgress = getAmbientTransitionProgress();
+            petArea.setAttribute('data-ambient-tone', ambient.target || 'settled');
+            petArea.setAttribute('data-ambient-progress', ambientProgress.toFixed(2));
+            petArea.style.setProperty('--ambient-transition-progress', ambientProgress.toFixed(2));
+            petArea.classList.remove('ambient-tone-settled', 'ambient-tone-fragile', 'ambient-tone-softening', 'ambient-tone-steady', 'ambient-tone-bright');
+            petArea.classList.add(`ambient-tone-${ambient.target || 'settled'}`);
 
             // Update room background for new time of day
             petArea.style.background = getRoomBackground(currentRoom, timeOfDay);
@@ -9654,6 +10191,10 @@
             }
             const room = ROOMS[currentRoom];
             const isOutdoor = room ? room.isOutdoor : false;
+            maybeFinishAmbientTransition();
+            const ambient = ensureAmbientState();
+            petArea.setAttribute('data-ambient-tone', ambient.target || 'settled');
+            petArea.setAttribute('data-ambient-progress', getAmbientTransitionProgress().toFixed(2));
 
             // Remove all old weather overlays (querySelectorAll to catch duplicates)
             petArea.querySelectorAll('.weather-overlay').forEach(el => el.remove());
@@ -9845,6 +10386,9 @@
                 gameState.adultsRaised = 0;
             }
             ensureRoomSystemsState();
+            ensureSessionPhaseState();
+            startSessionCycle();
+            ensureAmbientState();
             ensureExplorationState();
             ensureEconomyState();
             ensureMiniGameExpansionState();
@@ -10137,23 +10681,38 @@
                 if (actionType === 'wash' || actionType === 'groom') pet._roomActionCounts.washCount++;
                 if (actionType === 'play' || actionType === 'exercise') pet._roomActionCounts.playCount++;
                 if (room === 'park') pet._roomActionCounts.parkVisits++;
+                recordRoomCareAction(room, actionType);
+                maybeShowRoomUnlockForeshadow(actionType);
 
-                // Check for neglect recovery arc
-                if (pet._isNeglected) {
-                    pet._neglectRecoveryStep = (pet._neglectRecoveryStep || 0) + 1;
-                    if (typeof getNeglectRecoveryMessage === 'function') {
-                        const recoveryMsg = getNeglectRecoveryMessage(pet, pet._neglectRecoveryStep);
-                        if (recoveryMsg && pet._neglectRecoveryStep <= 3) {
-                            setTimeout(() => showToast(recoveryMsg, '#CE93D8'), 800);
+                // Multi-session neglect recovery arc.
+                const arc = ensureNeglectRecoveryArcState(pet);
+                if (arc && arc.active) {
+                    const arcBefore = arc.stage;
+                    const recovery = advanceNeglectRecoveryArc(pet, actionType);
+                    if (recovery.changed || recovery.completed) {
+                        const stageData = getNeglectStageData(recovery.stage);
+                        const recoveryMsg = (typeof getNeglectRecoveryMessage === 'function')
+                            ? getNeglectRecoveryMessage(pet, Math.max(1, arc.progressCare))
+                            : stageData.cue;
+                        if (recoveryMsg) {
+                            setTimeout(() => showToast(recoveryMsg, stageData.color || '#CE93D8', { tier: recovery.completed ? 'ceremony' : 'moment' }), 700);
                         }
-                    }
-                    // After 3 recovery actions, clear neglect state
-                    if (pet._neglectRecoveryStep >= 3) {
-                        pet._isNeglected = false;
-                        pet._neglectRecoveryStep = 0;
+                        if (recovery.completed) {
+                            showToast(`🌤️ ${getPetDisplayName(pet)} is thriving again. The healing arc is complete.`, '#66BB6A', { tier: 'ceremony', assertive: true });
+                            addJournalEntry('🌤️', `${getPetDisplayName(pet)} fully recovered after a long care arc.`);
+                            noteSessionCeremony(90000);
+                        } else if (arcBefore !== recovery.stage) {
+                            showToast(`💗 Recovery stage: ${stageData.id.charAt(0).toUpperCase()}${stageData.id.slice(1)} (${arc.progressCare} care actions, ${arc.uniqueActions} unique).`, '#81C784', { tier: 'moment', announce: false });
+                        }
+                    } else if (arc.progressCare > 0 && arc.progressCare % 5 === 0) {
+                        const stageData = getNeglectStageData(arc.stage);
+                        showToast(`🧭 Healing arc progress: ${arc.progressCare} supportive actions, ${arc.uniqueActions} unique care types.`, stageData.color || '#B39DDB', { tier: 'micro', announce: false });
                     }
                 }
             }
+
+            refreshSessionPhase();
+            updateCaretakerIdentityProfile();
 
             // Check caretaker title upgrade
             const totalActions = Object.values(gameState.caretakerActionCounts).reduce((s, v) => s + v, 0);

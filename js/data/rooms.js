@@ -113,7 +113,12 @@ const ROOMS = {
         name: 'Park',
         icon: '🌳',
         isOutdoor: true,
-        unlockRule: { type: 'default' },
+        unlockRule: { type: 'careActions', count: 12, text: 'Care for your pet 12 times' },
+        unlockCue: {
+            behaviorHint: 'Your pet keeps peeking toward the front gate.',
+            roomCue: 'A leash hook appears by the door.',
+            uiHint: 'Keep a short routine of care actions to unlock park walks.'
+        },
         ground: { color1: '#66BB6A', color2: '#43A047' },
         decorEmoji: '🌳 🌺 🦆',
         nightDecorEmoji: '🌳 🍃 🦉',
@@ -127,7 +132,12 @@ const ROOMS = {
         name: 'Garden',
         icon: '🌱',
         isOutdoor: true,
-        unlockRule: { type: 'default' },
+        unlockRule: { type: 'careActions', count: 24, text: 'Care for your pet 24 times' },
+        unlockCue: {
+            behaviorHint: 'Your pet sniffs at seed packets near the window.',
+            roomCue: 'A tiny planter sits by the back door.',
+            uiHint: 'Mix care actions to help your pet discover the garden.'
+        },
         ground: { color1: '#8D6E63', color2: '#6D4C41' },
         decorEmoji: '🌱 🪴 🌿',
         nightDecorEmoji: '🌱 🌙 🌿',
@@ -207,6 +217,34 @@ const ROOMS = {
         bgSunrise: 'linear-gradient(180deg, #E3D6CE 0%, #CCB8AD 50%, #8D6E63 100%)',
         bonus: { action: 'exercise', multiplier: 1.22, label: 'Exercise' }
     }
+};
+
+const ROOM_ARTIFACT_BLUEPRINTS = {
+    bedroom: [
+        { id: 'bedroom-first-photo', trigger: 'milestone:child', label: 'First Photo', description: 'A framed snapshot from your early care days.', render: { emoji: '🖼️', layer: 'front' } },
+        { id: 'bedroom-growth-plush', trigger: 'milestone:adult', label: 'Keepsake Plush', description: 'A plush toy stitched with your pet\'s initials.', render: { emoji: '🧸', layer: 'front' } },
+        { id: 'bedroom-healing-blanket', trigger: 'recovery:stabilizing', label: 'Warm Blanket', description: 'A comfort blanket from the healing arc.', render: { emoji: '🧣', layer: 'front' } }
+    ],
+    kitchen: [
+        { id: 'kitchen-favorite-bowl', trigger: 'milestone:child', label: 'Favorite Bowl', description: 'A bowl decorated with tiny hearts.', render: { emoji: '🥣', layer: 'front' } },
+        { id: 'kitchen-family-menu', trigger: 'milestone:adult', label: 'Family Menu', description: 'A handwritten menu of favorite meals.', render: { emoji: '🧾', layer: 'back' } }
+    ],
+    bathroom: [
+        { id: 'bathroom-soft-towels', trigger: 'milestone:child', label: 'Soft Towels', description: 'Fresh towels stacked for gentle care.', render: { emoji: '🧺', layer: 'front' } },
+        { id: 'bathroom-repair-kit', trigger: 'recovery:healing', label: 'Care Kit', description: 'A small kit used during recovery days.', render: { emoji: '🧴', layer: 'front' } }
+    ],
+    backyard: [
+        { id: 'backyard-lantern', trigger: 'milestone:adult', label: 'Garden Lantern', description: 'A lantern lights your shared evening routines.', render: { emoji: '🏮', layer: 'back' } },
+        { id: 'backyard-rainwear', trigger: 'weather:rainy', label: 'Rain Boots', description: 'Mud-splashed boots from rainy play.', render: { emoji: '🥾', layer: 'front' } }
+    ],
+    park: [
+        { id: 'park-picnic-token', trigger: 'roomUnlock:park', label: 'Picnic Token', description: 'A keepsake from your first unlocked park visit.', render: { emoji: '🧺', layer: 'front' } },
+        { id: 'park-bloom-ribbon', trigger: 'season:spring', label: 'Bloom Ribbon', description: 'A ribbon tied during spring walks.', render: { emoji: '🌸', layer: 'back' } }
+    ],
+    garden: [
+        { id: 'garden-first-sprout', trigger: 'roomUnlock:garden', label: 'First Sprout', description: 'The first sprout that never stopped growing.', render: { emoji: '🌱', layer: 'front' } },
+        { id: 'garden-winter-lights', trigger: 'season:winter', label: 'Winter Lights', description: 'Seasonal lights hung across the garden fence.', render: { emoji: '✨', layer: 'back' } }
+    ]
 };
 
 const ROOM_WALLPAPERS = {
