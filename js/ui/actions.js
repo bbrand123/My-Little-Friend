@@ -730,11 +730,16 @@
             overlay.setAttribute('aria-labelledby', 'naming-title');
 
             // Generate color options
-            let colorOptions = petData.colors.map((color) => `
-                <button class="color-option ${color === initialColor ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="${getColorName(color)}${color === initialColor ? ', selected' : ''}">
-                    ${color === initialColor ? '✓' : ''}
+            let colorOptions = petData.colors.map((color) => {
+                const colorName = getColorName(color);
+                return `
+                <button class="color-option ${color === initialColor ? 'selected' : ''}" data-color="${color}" style="--swatch-color: ${color};" aria-label="${colorName}${color === initialColor ? ', selected' : ''}">
+                    <span class="color-option-swatch" aria-hidden="true"></span>
+                    <span class="color-option-name">${escapeHTML(colorName)}</span>
+                    <span class="color-option-check" aria-hidden="true">${color === initialColor ? '✓' : ''}</span>
                 </button>
-            `).join('');
+            `;
+            }).join('');
 
             // Generate pattern options
             let patternOptions = Object.entries(PET_PATTERNS).map(([id, pattern]) => `
@@ -835,11 +840,13 @@
                 btn.addEventListener('click', () => {
                     overlay.querySelectorAll('.color-option').forEach(b => {
                         b.classList.remove('selected');
-                        b.textContent = '';
+                        const check = b.querySelector('.color-option-check');
+                        if (check) check.textContent = '';
                         b.setAttribute('aria-label', getColorName(b.dataset.color));
                     });
                     btn.classList.add('selected');
-                    btn.textContent = '✓';
+                    const check = btn.querySelector('.color-option-check');
+                    if (check) check.textContent = '✓';
                     btn.setAttribute('aria-label', getColorName(btn.dataset.color) + ', selected');
                     selectedColor = btn.dataset.color;
                     updatePreview();
@@ -948,6 +955,9 @@
                     gameState.pet.accessories = selectedAccessory ? [selectedAccessory] : [];
                 }
 
+                if (typeof syncProgressiveOnboardingMilestones === 'function') {
+                    syncProgressiveOnboardingMilestones({ firstPetCreated: true });
+                }
                 saveGame();
                 overlay.remove();
                 renderPetPhase();
@@ -1466,6 +1476,9 @@
                             cancelActionCooldownAndRestoreButtons();
                             return;
                         }
+                        if (typeof syncProgressiveOnboardingMilestones === 'function') {
+                            syncProgressiveOnboardingMilestones({ firstCareAction: true });
+                        }
                         markCoachChecklistProgress('feed');
                         return;
                     } else if (availableCrops.length > 1) {
@@ -1694,6 +1707,9 @@
             // Track care actions for growth
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
+            if (typeof syncProgressiveOnboardingMilestones === 'function') {
+                syncProgressiveOnboardingMilestones({ firstCareAction: true });
+            }
             if (typeof trackCareAction === 'function') trackCareAction(action);
             markCoachChecklistProgress(action);
 
@@ -2257,6 +2273,9 @@
                     }
                     if (typeof currentPet.careActions !== 'number') currentPet.careActions = 0;
                     currentPet.careActions++;
+                    if (typeof syncProgressiveOnboardingMilestones === 'function') {
+                        syncProgressiveOnboardingMilestones({ firstCareAction: true });
+                    }
                     markCoachChecklistProgress('feed');
 
                     // Play pet voice sound
@@ -2345,7 +2364,12 @@
                     const cropId = btn.getAttribute('data-feed-crop');
                     closeMenu();
                     const fed = feedFromGarden(cropId);
-                    if (fed) markCoachChecklistProgress('feed');
+                    if (fed) {
+                        if (typeof syncProgressiveOnboardingMilestones === 'function') {
+                            syncProgressiveOnboardingMilestones({ firstCareAction: true });
+                        }
+                        markCoachChecklistProgress('feed');
+                    }
                 });
             });
 

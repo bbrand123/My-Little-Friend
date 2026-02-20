@@ -732,10 +732,12 @@
             const val = document.getElementById('wellness-value');
             if (!fill || !val) return;
             const w = getWellnessPercent(pet);
+            const statusClass = w >= 60 ? 'status-good' : w >= 35 ? 'status-okay' : 'status-needs-care';
             fill.style.width = w + '%';
             fill.className = `wellness-bar-fill ${getWellnessClass(pet)}`;
             val.textContent = getWellnessLabel(pet);
-            val.style.color = w >= 60 ? '#66BB6A' : w >= 35 ? '#FFA726' : '#EF5350';
+            val.classList.remove('status-good', 'status-okay', 'status-needs-care');
+            val.classList.add('wellness-status-text', statusClass);
             // Keep aria-valuenow in sync so screen readers report current wellness
             const bar = fill.parentElement;
             if (bar) {
@@ -747,13 +749,15 @@
             const pctEl = document.getElementById('wellness-pct');
             if (pctEl) {
                 pctEl.textContent = w + '%';
-                pctEl.style.color = val.style.color;
+                pctEl.classList.remove('status-good', 'status-okay', 'status-needs-care');
+                pctEl.classList.add('wellness-status-text', statusClass);
             }
         }
 
         let _announceQueue = [];
         let _announceTimer = null;
-        let _assertiveClearTimer = null;
+        let _assertiveQueue = [];
+        let _assertiveTimer = null;
         const _announceRecentByKey = new Map();
 
         function getAnnouncementVerbosity() {
@@ -797,6 +801,35 @@
             _announceTimer = setTimeout(flushAnnouncementQueue, 340);
         }
 
+        function getAssertiveAnnouncementDurationMs(message) {
+            const words = String(message || '').trim().split(/\s+/).filter(Boolean).length;
+            // Approximate spoken pacing so longer messages are not interrupted.
+            const estimated = Math.round((words / 2.6) * 1000) + 1100;
+            return Math.max(2200, Math.min(11000, estimated));
+        }
+
+        function flushAssertiveQueue() {
+            const announcer = document.getElementById('live-announcer-assertive');
+            if (!announcer) {
+                _assertiveQueue = [];
+                _assertiveTimer = null;
+                return;
+            }
+            const next = _assertiveQueue.shift();
+            if (!next) {
+                _assertiveTimer = null;
+                return;
+            }
+            announcer.textContent = '';
+            setTimeout(() => { announcer.textContent = next.message; }, 90);
+            _assertiveTimer = setTimeout(() => {
+                if (next.shouldClear && _assertiveQueue.length === 0) {
+                    announcer.textContent = '';
+                }
+                flushAssertiveQueue();
+            }, next.durationMs);
+        }
+
         function announce(message, assertiveOrOptions = false) {
             const options = normalizeAnnounceOptions(assertiveOrOptions);
             const assertive = options.assertive;
@@ -814,13 +847,14 @@
             if (now - recent < options.dedupeMs) return;
             _announceRecentByKey.set(key, now);
             if (assertive) {
-                // Assertive messages bypass the queue — they're critical
-                const announcer = document.getElementById('live-announcer-assertive');
-                if (!announcer) return;
-                announcer.textContent = '';
-                setTimeout(() => { announcer.textContent = plainMessage; }, 100);
-                if (_assertiveClearTimer) clearTimeout(_assertiveClearTimer);
-                _assertiveClearTimer = setTimeout(() => { announcer.textContent = ''; }, 1800);
+                _assertiveQueue.push({
+                    message: plainMessage,
+                    durationMs: getAssertiveAnnouncementDurationMs(plainMessage),
+                    // Prefer not clearing long messages; next announcement will replace naturally.
+                    shouldClear: plainMessage.length <= 60
+                });
+                if (_assertiveTimer) return;
+                _assertiveTimer = setTimeout(flushAssertiveQueue, 40);
                 return;
             }
 
@@ -2090,4 +2124,3 @@
         }
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
-

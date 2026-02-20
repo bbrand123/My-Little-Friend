@@ -138,7 +138,12 @@
                                 var banner = document.createElement('div');
                                 banner.className = 'offline-update-banner';
                                 banner.setAttribute('role', 'status');
-                                banner.innerHTML = 'A new version is available. <button onclick="location.reload()" style="background:none;border:1px solid;padding:2px 8px;border-radius:4px;cursor:pointer;font-weight:700;color:inherit;margin-left:6px;">Refresh</button> <button onclick="this.parentNode.remove()" aria-label="Dismiss" style="background:none;border:none;cursor:pointer;font-weight:700;color:inherit;margin-left:4px;">✕</button>';
+                                banner.setAttribute('aria-live', 'polite');
+                                banner.innerHTML = '<span class="offline-banner-message">A new version is available.</span><span class="offline-banner-actions"><button type="button" class="offline-banner-action" data-banner-action="refresh">Refresh</button><button type="button" class="offline-banner-dismiss" data-banner-action="dismiss" aria-label="Dismiss update banner">Close</button></span>';
+                                var refreshBtn = banner.querySelector('[data-banner-action="refresh"]');
+                                if (refreshBtn) refreshBtn.addEventListener('click', function() { location.reload(); });
+                                var dismissBtn = banner.querySelector('[data-banner-action="dismiss"]');
+                                if (dismissBtn) dismissBtn.addEventListener('click', function() { banner.remove(); });
                                 document.body.appendChild(banner);
                             }
                         });

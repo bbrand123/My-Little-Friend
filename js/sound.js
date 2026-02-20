@@ -56,6 +56,71 @@
                 night: 'assets/audio/music/cozy_night_loop.wav'
             };
 
+            const ACCESSIBILITY_CUES = {
+                room: {
+                    label: 'Room chime',
+                    description: 'Plays when entering a room.',
+                    sampleName: 'roomTransition',
+                    generator: sfxRoomTransition
+                },
+                error: {
+                    label: 'Error',
+                    description: 'Plays when an action is unavailable.',
+                    sampleName: 'error-soft',
+                    generator: sfxMiss
+                },
+                reward: {
+                    label: 'Reward',
+                    description: 'Plays when you earn something.',
+                    sampleName: 'reward-pop',
+                    generator: sfxCelebration
+                }
+            };
+            const _captionLastByCue = new Map();
+
+            function getSoundCueCaptionsEnabled() {
+                try {
+                    return localStorage.getItem(STORAGE_KEYS.soundCueCaptions) === 'true';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function setSoundCueCaptionsEnabled(enabled) {
+                const next = !!enabled;
+                try {
+                    localStorage.setItem(STORAGE_KEYS.soundCueCaptions, next ? 'true' : 'false');
+                } catch (e) {}
+                return next;
+            }
+
+            function emitSoundCueCaption(cueId, force = false) {
+                const cue = ACCESSIBILITY_CUES[String(cueId || '').trim()];
+                if (!cue || !getSoundCueCaptionsEnabled()) return;
+                const now = Date.now();
+                const last = _captionLastByCue.get(cueId) || 0;
+                if (!force && now - last < 1400) return;
+                _captionLastByCue.set(cueId, now);
+                try {
+                    window.dispatchEvent(new CustomEvent('petcare:sound-cue-caption', {
+                        detail: {
+                            id: cueId,
+                            label: cue.label,
+                            description: cue.description
+                        }
+                    }));
+                } catch (e) {}
+            }
+
+            function inferCueIdFromSfxName(name) {
+                const key = String(name || '').trim().toLowerCase();
+                if (!key) return null;
+                if (key === 'roomtransition' || key === 'menu-open' || key === 'menuopen') return 'room';
+                if (key === 'error-soft' || key === 'errorsoft' || key === 'miss') return 'error';
+                if (key === 'reward-pop' || key === 'rewardpop' || key === 'celebration' || key === 'achievement' || key === 'coin-jingle' || key === 'coinjingle') return 'reward';
+                return null;
+            }
+
             function getContext() {
                 if (!_audioSupported) return null;
                 if (!audioCtx) {
@@ -459,6 +524,7 @@
                     osc.stop(st + 0.2);
                     osc.onended = () => { osc.disconnect(); g.disconnect(); };
                 });
+                emitSoundCueCaption('room');
             }
 
             function fadeIn(gainNode, ctx) {
@@ -706,17 +772,46 @@
             function playSFX(generator) {
                 const sfxName = getSfxNameFromGenerator(generator);
                 if (sfxName && playSampleSFXByName(sfxName, () => playProceduralSFX(generator))) {
+                    const cueId = inferCueIdFromSfxName(sfxName);
+                    if (cueId) emitSoundCueCaption(cueId);
                     return;
                 }
                 playProceduralSFX(generator);
+                const cueId = inferCueIdFromSfxName(sfxName);
+                if (cueId) emitSoundCueCaption(cueId);
             }
 
             function playSFXByName(name, generator) {
                 const key = String(name || '').trim();
                 if (key && playSampleSFXByName(key, () => playProceduralSFX(generator))) {
+                    const cueId = inferCueIdFromSfxName(key);
+                    if (cueId) emitSoundCueCaption(cueId);
                     return;
                 }
                 playProceduralSFX(generator);
+                const cueId = inferCueIdFromSfxName(key || getSfxNameFromGenerator(generator));
+                if (cueId) emitSoundCueCaption(cueId);
+            }
+
+            function getAccessibilityCueLegend() {
+                return Object.entries(ACCESSIBILITY_CUES).map(([id, cue]) => ({
+                    id,
+                    label: cue.label,
+                    description: cue.description
+                }));
+            }
+
+            function playAccessibilityCue(cueId) {
+                const normalizedCueId = String(cueId || '').trim();
+                const cue = ACCESSIBILITY_CUES[normalizedCueId];
+                if (!cue) return { ok: false, reason: 'unknown-cue' };
+                if (!isEnabled) return { ok: false, reason: 'sound-disabled', label: cue.label };
+                // Explicit user interaction happens via the test button click.
+                hasInteracted = true;
+                const ctx = getContext();
+                if (!ctx) return { ok: false, reason: 'audio-unavailable', label: cue.label };
+                playSFXByName(cue.sampleName, cue.generator);
+                return { ok: true, label: cue.label };
             }
 
             // Pitch variation helper: randomize frequency by +/- 5%
@@ -1501,6 +1596,10 @@
                 getMusicEnabled,
                 toggleSamplePack,
                 getSamplePackEnabled,
+                getAccessibilityCueLegend,
+                playAccessibilityCue,
+                getSoundCueCaptionsEnabled,
+                setSoundCueCaptionsEnabled,
                 sfx: {
                     feed: sfxFeed,
                     wash: sfxWash,

@@ -962,11 +962,16 @@
             overlay.setAttribute('aria-labelledby', 'naming-title');
 
             // Generate color options
-            let colorOptions = petData.colors.map((color) => `
-                <button class="color-option ${color === initialColor ? 'selected' : ''}" data-color="${color}" style="background-color: ${color};" aria-label="${getColorName(color)}${color === initialColor ? ', selected' : ''}">
-                    ${color === initialColor ? '✓' : ''}
+            let colorOptions = petData.colors.map((color) => {
+                const colorName = getColorName(color);
+                return `
+                <button class="color-option ${color === initialColor ? 'selected' : ''}" data-color="${color}" style="--swatch-color: ${color};" aria-label="${colorName}${color === initialColor ? ', selected' : ''}">
+                    <span class="color-option-swatch" aria-hidden="true"></span>
+                    <span class="color-option-name">${escapeHTML(colorName)}</span>
+                    <span class="color-option-check" aria-hidden="true">${color === initialColor ? '✓' : ''}</span>
                 </button>
-            `).join('');
+            `;
+            }).join('');
 
             // Generate pattern options
             let patternOptions = Object.entries(PET_PATTERNS).map(([id, pattern]) => `
@@ -1067,11 +1072,13 @@
                 btn.addEventListener('click', () => {
                     overlay.querySelectorAll('.color-option').forEach(b => {
                         b.classList.remove('selected');
-                        b.textContent = '';
+                        const check = b.querySelector('.color-option-check');
+                        if (check) check.textContent = '';
                         b.setAttribute('aria-label', getColorName(b.dataset.color));
                     });
                     btn.classList.add('selected');
-                    btn.textContent = '✓';
+                    const check = btn.querySelector('.color-option-check');
+                    if (check) check.textContent = '✓';
                     btn.setAttribute('aria-label', getColorName(btn.dataset.color) + ', selected');
                     selectedColor = btn.dataset.color;
                     updatePreview();
@@ -1180,6 +1187,7 @@
                     gameState.pet.accessories = selectedAccessory ? [selectedAccessory] : [];
                 }
 
+                syncProgressiveOnboardingMilestones({ firstPetCreated: true });
                 saveGame();
                 overlay.remove();
                 renderPetPhase();
@@ -1564,6 +1572,179 @@
             if (!pet) return false;
             if ((pet.careActions || 0) >= EARLY_SESSION_ACTION_LIMIT) return false;
             return getPetSessionCount() < EARLY_SESSION_LIMIT;
+        }
+
+        function getProgressiveOnboardingStorageKey() {
+            return (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.progressiveOnboarding)
+                ? STORAGE_KEYS.progressiveOnboarding
+                : 'petCareBuddy_progressiveOnboarding';
+        }
+
+        function getRovingHintDismissedKey() {
+            return (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.rovingHintDismissed)
+                ? STORAGE_KEYS.rovingHintDismissed
+                : 'petCareBuddy_rovingHintDismissed';
+        }
+
+        function getProgressiveOnboardingDefaults() {
+            return {
+                firstPetCreated: false,
+                firstCareAction: false,
+                advancedSystemsUnlocked: false
+            };
+        }
+
+        function getStoredProgressiveOnboarding() {
+            const defaults = getProgressiveOnboardingDefaults();
+            try {
+                const raw = localStorage.getItem(getProgressiveOnboardingStorageKey());
+                if (!raw) return defaults;
+                const parsed = JSON.parse(raw);
+                return {
+                    firstPetCreated: !!parsed.firstPetCreated,
+                    firstCareAction: !!parsed.firstCareAction,
+                    advancedSystemsUnlocked: !!parsed.advancedSystemsUnlocked
+                };
+            } catch (e) {
+                return defaults;
+            }
+        }
+
+        function getDerivedProgressiveOnboarding() {
+            const pet = gameState && gameState.pet;
+            const roomVisits = gameState && gameState.roomsVisited ? Object.keys(gameState.roomsVisited).length : 0;
+            const minigameCounts = gameState && gameState.minigamePlayCounts ? Object.values(gameState.minigamePlayCounts) : [];
+            const totalMinigamePlays = minigameCounts.reduce((sum, n) => sum + (Number(n) || 0), 0);
+            return {
+                firstPetCreated: !!(pet && gameState.phase === 'pet'),
+                firstCareAction: !!(pet && (Number(pet.careActions) || 0) > 0),
+                advancedSystemsUnlocked: roomVisits >= 2 || totalMinigamePlays > 0
+            };
+        }
+
+        function syncProgressiveOnboardingMilestones(partial = {}) {
+            const defaults = getProgressiveOnboardingDefaults();
+            const stored = getStoredProgressiveOnboarding();
+            const derived = getDerivedProgressiveOnboarding();
+            const next = {
+                firstPetCreated: !!(defaults.firstPetCreated || stored.firstPetCreated || derived.firstPetCreated || partial.firstPetCreated),
+                firstCareAction: !!(defaults.firstCareAction || stored.firstCareAction || derived.firstCareAction || partial.firstCareAction),
+                advancedSystemsUnlocked: !!(defaults.advancedSystemsUnlocked || stored.advancedSystemsUnlocked || derived.advancedSystemsUnlocked || partial.advancedSystemsUnlocked)
+            };
+            try {
+                localStorage.setItem(getProgressiveOnboardingStorageKey(), JSON.stringify(next));
+            } catch (e) {}
+            return next;
+        }
+
+        function getProgressiveOnboardingStage(state) {
+            const s = state || syncProgressiveOnboardingMilestones();
+            if (!s.firstPetCreated) return 0;
+            if (!s.firstCareAction) return 1;
+            if (!s.advancedSystemsUnlocked) return 2;
+            return 3;
+        }
+
+        function isRovingHintDismissed() {
+            try {
+                return localStorage.getItem(getRovingHintDismissedKey()) === 'true';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function dismissRovingHint() {
+            try {
+                localStorage.setItem(getRovingHintDismissedKey(), 'true');
+            } catch (e) {}
+            const tip = document.getElementById('roving-nav-tip');
+            if (tip) tip.remove();
+        }
+
+        function setElementVisible(el, visible) {
+            if (!el) return;
+            el.hidden = !visible;
+            if (visible) {
+                el.removeAttribute('aria-hidden');
+                if ('inert' in el) el.inert = false;
+                if (el.dataset.progressiveDisabled === 'true') {
+                    el.disabled = false;
+                }
+                if (el.dataset.progressiveTabindex === 'true') {
+                    el.removeAttribute('tabindex');
+                }
+                delete el.dataset.progressiveDisabled;
+                delete el.dataset.progressiveTabindex;
+                return;
+            }
+            el.setAttribute('aria-hidden', 'true');
+            if ('inert' in el) el.inert = true;
+            if (el.matches('button, [role="button"], a[href], input, select, textarea')) {
+                if ('disabled' in el) {
+                    if (!el.disabled) {
+                        el.dataset.progressiveDisabled = 'true';
+                        el.disabled = true;
+                    } else {
+                        el.dataset.progressiveDisabled = 'false';
+                    }
+                }
+                el.dataset.progressiveTabindex = 'true';
+                el.setAttribute('tabindex', '-1');
+            }
+        }
+
+        function renderRovingHelper(stage) {
+            const shouldShow = stage < 3 && getPetSessionCount() < EARLY_SESSION_LIMIT && !isRovingHintDismissed();
+            const existing = document.getElementById('roving-nav-tip');
+            if (!shouldShow) {
+                if (existing) existing.remove();
+                return;
+            }
+            if (existing) return;
+            const roomNav = document.getElementById('room-nav');
+            const anchor = roomNav && roomNav.parentElement ? roomNav.parentElement : document.getElementById('top-actions');
+            if (!anchor) return;
+            const tip = document.createElement('div');
+            tip.className = 'roving-nav-tip';
+            tip.id = 'roving-nav-tip';
+            tip.setAttribute('role', 'note');
+            tip.innerHTML = `
+                <span class="roving-nav-tip-text">Tip: Use arrow keys to move between toolbar and room buttons.</span>
+                <button class="roving-nav-tip-dismiss" id="roving-nav-tip-dismiss" type="button" aria-label="Dismiss keyboard navigation tip">Dismiss</button>
+            `;
+            if (roomNav && roomNav.parentNode) {
+                roomNav.insertAdjacentElement('afterend', tip);
+            } else {
+                anchor.appendChild(tip);
+            }
+            const dismissBtn = tip.querySelector('#roving-nav-tip-dismiss');
+            if (dismissBtn) dismissBtn.addEventListener('click', dismissRovingHint);
+        }
+
+        function applyProgressiveOnboardingUI() {
+            const state = syncProgressiveOnboardingMilestones();
+            const stage = getProgressiveOnboardingStage(state);
+            const showStage2 = stage >= 2;
+            const showStage3 = stage >= 3;
+
+            ['.care-quality-wrap', '.favorites-label', '.favorites-bar', '.more-actions-toggle'].forEach((selector) => {
+                setElementVisible(document.querySelector(selector), showStage2);
+            });
+            if (!showStage2) {
+                const morePanel = document.getElementById('more-actions-panel');
+                if (morePanel) morePanel.hidden = true;
+                const toggle = document.getElementById('more-actions-toggle');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+            }
+
+            ['.goal-ladder', '.room-coming-wrap', '#economy-btn', '#explore-btn', '#tools-btn', '#journey-btn'].forEach((selector) => {
+                setElementVisible(document.querySelector(selector), showStage3);
+            });
+            ['#top-meta-economy', '#top-meta-explore'].forEach((selector) => {
+                setElementVisible(document.querySelector(selector), showStage3);
+            });
+
+            renderRovingHelper(stage);
         }
 
         function getRecommendedNextAction(pet, currentRoom) {
@@ -2161,6 +2342,7 @@
                 </button>
             `;
             setCareActionsSkipLinkVisible(true);
+            applyProgressiveOnboardingUI();
 
             // Add event listeners
             // Emergency care button
@@ -2231,6 +2413,7 @@
             safeAddClick('pet-btn', () => careAction('cuddle'));
             safeAddClick('minigames-btn', () => {
                 markCoachChecklistProgress('open_minigame');
+                syncProgressiveOnboardingMilestones({ advancedSystemsUnlocked: true });
                 if (typeof openMiniGamesMenu === 'function') {
                     openMiniGamesMenu();
                 } else {
@@ -2817,12 +3000,25 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.setProperty('--toast-color', color);
+            const calmMode = document.body && document.body.classList.contains('calm-mode');
+            const toastDwellMs = calmMode ? 8200 : 6800;
+            toast.style.setProperty('--toast-dwell-ms', `${toastDwellMs}ms`);
             toast.innerHTML = `<span class="toast-icon">${renderUiIcon('state', '🔔', '')}</span><span class="toast-text">${wrapEmojiForAria(safeMessage)}</span>`;
             container.appendChild(toast);
-            setTimeout(() => {
+            let fallbackTimer = setTimeout(() => {
                 toast.remove();
                 setUiBusyState();
-            }, 3500);
+            }, toastDwellMs + 2800);
+            toast.addEventListener('animationend', (event) => {
+                if (!event || !event.animationName || event.animationName === 'toastOut' || event.animationName === 'toastSlideOut') {
+                    if (fallbackTimer) {
+                        clearTimeout(fallbackTimer);
+                        fallbackTimer = null;
+                    }
+                    if (toast.parentNode) toast.remove();
+                    setUiBusyState();
+                }
+            });
             setUiBusyState();
         }
 
@@ -2930,6 +3126,13 @@
                 }
             }
         }
+
+        window.addEventListener('petcare:sound-cue-caption', (event) => {
+            const detail = event && event.detail ? event.detail : null;
+            if (!detail || !detail.label) return;
+            const text = detail.description ? `${detail.label}: ${detail.description}` : `${detail.label} cue played.`;
+            showToast(`🔊 ${text}`, '#90A4AE', { announce: true });
+        });
 
         // ==================== EVENT BUS SUBSCRIPTIONS ====================
         // Wire EventBus to UI notification functions so game logic
@@ -3359,6 +3562,7 @@
                             cancelActionCooldownAndRestoreButtons();
                             return;
                         }
+                        syncProgressiveOnboardingMilestones({ firstCareAction: true });
                         markCoachChecklistProgress('feed');
                         return;
                     } else if (availableCrops.length > 1) {
@@ -3586,6 +3790,7 @@
             // Track care actions for growth
             if (typeof pet.careActions !== 'number') pet.careActions = 0;
             pet.careActions++;
+            syncProgressiveOnboardingMilestones({ firstCareAction: true });
             if (typeof trackCareAction === 'function') trackCareAction(action);
             markCoachChecklistProgress(action);
 
@@ -4502,6 +4707,7 @@
                     }
                     if (typeof currentPet.careActions !== 'number') currentPet.careActions = 0;
                     currentPet.careActions++;
+                    syncProgressiveOnboardingMilestones({ firstCareAction: true });
                     markCoachChecklistProgress('feed');
 
                     // Play pet voice sound
@@ -4590,7 +4796,10 @@
                     const cropId = btn.getAttribute('data-feed-crop');
                     closeMenu();
                     const fed = feedFromGarden(cropId);
-                    if (fed) markCoachChecklistProgress('feed');
+                    if (fed) {
+                        syncProgressiveOnboardingMilestones({ firstCareAction: true });
+                        markCoachChecklistProgress('feed');
+                    }
                 });
             });
 
@@ -8884,6 +9093,17 @@
             const hapticEnabled = !(localStorage.getItem(STORAGE_KEYS.hapticOff) === 'true');
             const ttsEnabled = !(localStorage.getItem(STORAGE_KEYS.ttsOff) === 'true');
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
+            const calmModeEnabled = document.body.classList.contains('calm-mode') || localStorage.getItem(STORAGE_KEYS.calmMode) === 'true';
+            const soundCueCaptionsEnabled = (typeof SoundManager !== 'undefined' && typeof SoundManager.getSoundCueCaptionsEnabled === 'function')
+                ? SoundManager.getSoundCueCaptionsEnabled()
+                : localStorage.getItem(STORAGE_KEYS.soundCueCaptions) === 'true';
+            const soundCueLegend = (typeof SoundManager !== 'undefined' && typeof SoundManager.getAccessibilityCueLegend === 'function')
+                ? SoundManager.getAccessibilityCueLegend()
+                : [
+                    { id: 'room', label: 'Room chime', description: 'Plays when entering a room.' },
+                    { id: 'error', label: 'Error', description: 'Plays when an action is unavailable.' },
+                    { id: 'reward', label: 'Reward', description: 'Plays when you earn something.' }
+                ];
             const srVerbosityDetailed = (localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed');
             const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
             const currentBalanceProfile = (typeof getBalanceProfileId === 'function') ? getBalanceProfileId() : 'NORMAL';
@@ -8894,6 +9114,10 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', 'Settings');
+            const soundCueSummary = soundCueLegend.map((cue) => `${cue.label}: ${cue.description}`).join(' ');
+            const soundCueButtons = soundCueLegend.map((cue) => `
+                <button class="settings-choice settings-sound-cue-test" type="button" data-sound-cue="${cue.id}" aria-label="Test ${escapeHTML(cue.label)} cue">${escapeHTML(cue.label)}</button>
+            `).join('');
             overlay.innerHTML = `
                 <div class="settings-modal">
                     <h2 class="settings-title">⚙️ Settings</h2>
@@ -8918,6 +9142,22 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                             <span class="settings-toggle-state" id="state-setting-sample-pack">${samplePackEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row settings-sound-cue-row">
+                            <div class="settings-sound-cue-meta">
+                                <span class="settings-row-label">🧪 Test Sound Cues</span>
+                                <small class="settings-row-help" id="settings-sound-cue-legend">${escapeHTML(soundCueSummary)}</small>
+                            </div>
+                            <div class="settings-sound-cue-buttons" role="group" aria-label="Sound cue legend and tests">
+                                ${soundCueButtons}
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">📝 Sound Cue Captions</span>
+                            <button class="settings-toggle ${soundCueCaptionsEnabled ? 'on' : ''}" id="setting-sound-captions" role="switch" aria-checked="${soundCueCaptionsEnabled}" aria-label="Sound cue captions">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-sound-captions">${soundCueCaptionsEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row settings-volume-row">
                             <div class="settings-volume-head">
@@ -8976,6 +9216,13 @@
                             <span class="settings-toggle-state" id="state-setting-reduced-motion">${reducedMotionEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row">
+                            <span class="settings-row-label">🌙 Calm Mode</span>
+                            <button class="settings-toggle ${calmModeEnabled ? 'on' : ''}" id="setting-calm-mode" role="switch" aria-checked="${calmModeEnabled}" aria-label="Calm mode">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-calm-mode">${calmModeEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
                             <span class="settings-row-label">🔔 Local Reactivation Reminders</span>
                             <button class="settings-toggle ${remindersEnabled ? 'on' : ''}" id="setting-reminders" role="switch" aria-checked="${remindersEnabled}" aria-label="Local reminders">
                                 <span class="settings-toggle-knob"></span>
@@ -9004,7 +9251,7 @@
                         <div class="settings-hint-row"><kbd>Tab</kbd> Navigate &nbsp; <kbd>Enter</kbd> / <kbd>Space</kbd> Activate</div>
                         <div class="settings-hint-row"><kbd>Escape</kbd> Close current dialog</div>
                     </div>
-                    <button class="settings-close" id="settings-close">Close</button>
+                    <button class="settings-close" id="settings-close" aria-label="Close settings">Close</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -9017,6 +9264,14 @@
             function updateVolumeLabel(id, value) {
                 const output = document.getElementById(`${id}-value`);
                 if (output) output.textContent = `${Math.round(value)}%`;
+            }
+
+            function setCalmModeEnabled(enabled) {
+                const next = !!enabled;
+                document.documentElement.setAttribute('data-calm-mode', next ? 'true' : 'false');
+                if (document.body) document.body.classList.toggle('calm-mode', next);
+                try { localStorage.setItem(STORAGE_KEYS.calmMode, next ? 'true' : 'false'); } catch (e) {}
+                return next;
             }
 
             function bindVolumeSlider(sliderId, setter) {
@@ -9075,6 +9330,57 @@
                     setSwitchStateText('setting-sample-pack', enabled);
                     showToast(enabled ? '🎧 Sample audio pack enabled' : '🎛️ Sample audio pack disabled', '#A8D8EA');
                 }
+            });
+
+            const soundCueCaptionBtn = document.getElementById('setting-sound-captions');
+            if (soundCueCaptionBtn) {
+                soundCueCaptionBtn.addEventListener('click', function() {
+                    const isOn = this.classList.toggle('on');
+                    this.setAttribute('aria-checked', String(isOn));
+                    setSwitchStateText('setting-sound-captions', isOn);
+                    if (typeof SoundManager !== 'undefined' && typeof SoundManager.setSoundCueCaptionsEnabled === 'function') {
+                        SoundManager.setSoundCueCaptionsEnabled(isOn);
+                    } else {
+                        try { localStorage.setItem(STORAGE_KEYS.soundCueCaptions, isOn ? 'true' : 'false'); } catch (e) {}
+                    }
+                    showToast(`Sound cue captions ${isOn ? 'enabled' : 'disabled'}.`, '#90A4AE', { announce: true });
+                });
+            }
+
+            const soundCueLegendById = soundCueLegend.reduce((acc, cue) => {
+                acc[cue.id] = cue;
+                return acc;
+            }, {});
+            overlay.querySelectorAll('[data-sound-cue]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const cueId = btn.getAttribute('data-sound-cue');
+                    const cue = soundCueLegendById[cueId] || { label: 'Sound cue', description: '' };
+                    if (typeof SoundManager === 'undefined' || typeof SoundManager.playAccessibilityCue !== 'function') {
+                        showToast('Sound testing is unavailable in this build.', '#FFA726', { announce: true });
+                        return;
+                    }
+                    const result = SoundManager.playAccessibilityCue(cueId);
+                    if (!result || !result.ok) {
+                        const reason = result && result.reason ? result.reason : 'unavailable';
+                        if (reason === 'sound-disabled') {
+                            showToast('Turn on Sound to test cue playback.', '#FFA726', { announce: true });
+                            return;
+                        }
+                        if (reason === 'audio-unavailable') {
+                            showToast('Audio is unavailable in this browser.', '#FFA726', { announce: true });
+                            return;
+                        }
+                        showToast('Could not play that cue right now.', '#FFA726', { announce: true });
+                        return;
+                    }
+                    const captionsOn = (typeof SoundManager.getSoundCueCaptionsEnabled === 'function')
+                        ? SoundManager.getSoundCueCaptionsEnabled()
+                        : localStorage.getItem(STORAGE_KEYS.soundCueCaptions) === 'true';
+                    const label = result.label || cue.label || 'Sound cue';
+                    if (!captionsOn) {
+                        showToast(`${label} cue played.`, '#4ECDC4', { announce: true });
+                    }
+                });
             });
             bindVolumeSlider(
                 'setting-sfx-volume',
@@ -9141,6 +9447,17 @@
                 document.documentElement.setAttribute('data-reduced-motion', isOn ? 'true' : 'false');
                 try { localStorage.setItem(STORAGE_KEYS.reducedMotion, isOn ? 'true' : 'false'); } catch (e) {}
             });
+
+            const calmModeBtn = document.getElementById('setting-calm-mode');
+            if (calmModeBtn) {
+                calmModeBtn.addEventListener('click', function() {
+                    const isOn = this.classList.toggle('on');
+                    this.setAttribute('aria-checked', String(isOn));
+                    setSwitchStateText('setting-calm-mode', isOn);
+                    setCalmModeEnabled(isOn);
+                    showToast(`Calm mode ${isOn ? 'enabled' : 'disabled'}.`, '#90A4AE', { announce: true });
+                });
+            }
 
             document.getElementById('setting-reminders').addEventListener('click', function() {
                 const isOn = this.classList.toggle('on');
@@ -9212,8 +9529,10 @@
                     if (soundBtn && soundBtn.classList.contains('on')) soundBtn.click();
                     const reducedBtn = document.getElementById('setting-reduced-motion');
                     if (reducedBtn && !reducedBtn.classList.contains('on')) reducedBtn.click();
+                    const calmBtn = document.getElementById('setting-calm-mode');
+                    if (calmBtn && !calmBtn.classList.contains('on')) calmBtn.click();
                     if (srBrief) srBrief.click();
-                    const presetSummary = 'Low stimulation preset applied: sound off, text-to-speech off, reduced motion on, screen reader verbosity set to brief.';
+                    const presetSummary = 'Low stimulation preset applied: sound off, text-to-speech off, reduced motion on, calm mode on, screen reader verbosity set to brief.';
                     showToast(presetSummary, '#66BB6A');
                     if (typeof announce === 'function') {
                         announce(presetSummary, { source: 'settings', dedupeMs: 1200 });
@@ -9332,6 +9651,7 @@
                     if (localStorage.getItem(STORAGE_KEYS.soundEnabled) === null) localStorage.setItem(STORAGE_KEYS.soundEnabled, 'false');
                     if (localStorage.getItem(STORAGE_KEYS.musicEnabled) === null) localStorage.setItem(STORAGE_KEYS.musicEnabled, 'false');
                     if (localStorage.getItem(STORAGE_KEYS.samplePackEnabled) === null) localStorage.setItem(STORAGE_KEYS.samplePackEnabled, 'false');
+                    if (localStorage.getItem(STORAGE_KEYS.calmMode) === null) localStorage.setItem(STORAGE_KEYS.calmMode, 'true');
                     if (localStorage.getItem(STORAGE_KEYS.coachChecklistMinimized) === null) localStorage.setItem(STORAGE_KEYS.coachChecklistMinimized, 'true');
                     localStorage.setItem(firstRunDefaultsKey, 'true');
                 }
@@ -9339,6 +9659,9 @@
                 if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
                 const reducedMotion = localStorage.getItem(STORAGE_KEYS.reducedMotion);
                 if (reducedMotion === 'true') document.documentElement.setAttribute('data-reduced-motion', 'true');
+                const calmMode = localStorage.getItem(STORAGE_KEYS.calmMode) === 'true';
+                document.documentElement.setAttribute('data-calm-mode', calmMode ? 'true' : 'false');
+                if (document.body) document.body.classList.toggle('calm-mode', calmMode);
                 if (shouldApplyFirstRunDefaults && typeof SoundManager !== 'undefined') {
                     if (typeof SoundManager.getEnabled === 'function' && SoundManager.getEnabled()) SoundManager.toggle();
                     if (typeof SoundManager.getMusicEnabled === 'function' && SoundManager.getMusicEnabled()) SoundManager.toggleMusic();

@@ -760,6 +760,183 @@
             return getPetSessionCount() < EARLY_SESSION_LIMIT;
         }
 
+        function getProgressiveOnboardingStorageKey() {
+            return (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.progressiveOnboarding)
+                ? STORAGE_KEYS.progressiveOnboarding
+                : 'petCareBuddy_progressiveOnboarding';
+        }
+
+        function getRovingHintDismissedKey() {
+            return (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.rovingHintDismissed)
+                ? STORAGE_KEYS.rovingHintDismissed
+                : 'petCareBuddy_rovingHintDismissed';
+        }
+
+        function getProgressiveOnboardingDefaults() {
+            return {
+                firstPetCreated: false,
+                firstCareAction: false,
+                advancedSystemsUnlocked: false
+            };
+        }
+
+        function getStoredProgressiveOnboarding() {
+            const defaults = getProgressiveOnboardingDefaults();
+            try {
+                const raw = localStorage.getItem(getProgressiveOnboardingStorageKey());
+                if (!raw) return defaults;
+                const parsed = JSON.parse(raw);
+                return {
+                    firstPetCreated: !!parsed.firstPetCreated,
+                    firstCareAction: !!parsed.firstCareAction,
+                    advancedSystemsUnlocked: !!parsed.advancedSystemsUnlocked
+                };
+            } catch (e) {
+                return defaults;
+            }
+        }
+
+        function getDerivedProgressiveOnboarding() {
+            const pet = gameState && gameState.pet;
+            const roomVisits = gameState && gameState.roomsVisited ? Object.keys(gameState.roomsVisited).length : 0;
+            const minigameCounts = gameState && gameState.minigamePlayCounts ? Object.values(gameState.minigamePlayCounts) : [];
+            const totalMinigamePlays = minigameCounts.reduce((sum, n) => sum + (Number(n) || 0), 0);
+            return {
+                firstPetCreated: !!(pet && gameState.phase === 'pet'),
+                firstCareAction: !!(pet && (Number(pet.careActions) || 0) > 0),
+                advancedSystemsUnlocked: roomVisits >= 2 || totalMinigamePlays > 0
+            };
+        }
+
+        function syncProgressiveOnboardingMilestones(partial = {}) {
+            const defaults = getProgressiveOnboardingDefaults();
+            const stored = getStoredProgressiveOnboarding();
+            const derived = getDerivedProgressiveOnboarding();
+            const next = {
+                firstPetCreated: !!(defaults.firstPetCreated || stored.firstPetCreated || derived.firstPetCreated || partial.firstPetCreated),
+                firstCareAction: !!(defaults.firstCareAction || stored.firstCareAction || derived.firstCareAction || partial.firstCareAction),
+                advancedSystemsUnlocked: !!(defaults.advancedSystemsUnlocked || stored.advancedSystemsUnlocked || derived.advancedSystemsUnlocked || partial.advancedSystemsUnlocked)
+            };
+            try {
+                localStorage.setItem(getProgressiveOnboardingStorageKey(), JSON.stringify(next));
+            } catch (e) {}
+            return next;
+        }
+
+        function getProgressiveOnboardingStage(state) {
+            const s = state || syncProgressiveOnboardingMilestones();
+            if (!s.firstPetCreated) return 0;
+            if (!s.firstCareAction) return 1;
+            if (!s.advancedSystemsUnlocked) return 2;
+            return 3;
+        }
+
+        function isRovingHintDismissed() {
+            try {
+                return localStorage.getItem(getRovingHintDismissedKey()) === 'true';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function dismissRovingHint() {
+            try {
+                localStorage.setItem(getRovingHintDismissedKey(), 'true');
+            } catch (e) {}
+            const tip = document.getElementById('roving-nav-tip');
+            if (tip) tip.remove();
+        }
+
+        function setElementVisible(el, visible) {
+            if (!el) return;
+            el.hidden = !visible;
+            if (visible) {
+                el.removeAttribute('aria-hidden');
+                if ('inert' in el) el.inert = false;
+                if (el.dataset.progressiveDisabled === 'true') {
+                    el.disabled = false;
+                }
+                if (el.dataset.progressiveTabindex === 'true') {
+                    el.removeAttribute('tabindex');
+                }
+                delete el.dataset.progressiveDisabled;
+                delete el.dataset.progressiveTabindex;
+                return;
+            }
+            el.setAttribute('aria-hidden', 'true');
+            if ('inert' in el) el.inert = true;
+            if (el.matches('button, [role="button"], a[href], input, select, textarea')) {
+                if ('disabled' in el) {
+                    if (!el.disabled) {
+                        el.dataset.progressiveDisabled = 'true';
+                        el.disabled = true;
+                    } else {
+                        el.dataset.progressiveDisabled = 'false';
+                    }
+                }
+                el.dataset.progressiveTabindex = 'true';
+                el.setAttribute('tabindex', '-1');
+            }
+        }
+
+        function renderRovingHelper(stage) {
+            const shouldShow = stage < 3 && getPetSessionCount() < EARLY_SESSION_LIMIT && !isRovingHintDismissed();
+            const existing = document.getElementById('roving-nav-tip');
+            if (!shouldShow) {
+                if (existing) existing.remove();
+                return;
+            }
+            if (existing) return;
+            const roomNav = document.getElementById('room-nav');
+            const anchor = roomNav && roomNav.parentElement ? roomNav.parentElement : document.getElementById('top-actions');
+            if (!anchor) return;
+            const tip = document.createElement('div');
+            tip.className = 'roving-nav-tip';
+            tip.id = 'roving-nav-tip';
+            tip.setAttribute('role', 'note');
+            tip.innerHTML = `
+                <span class="roving-nav-tip-text">Tip: Use arrow keys to move between toolbar and room buttons.</span>
+                <button class="roving-nav-tip-dismiss" id="roving-nav-tip-dismiss" type="button" aria-label="Dismiss keyboard navigation tip">Dismiss</button>
+            `;
+            if (roomNav && roomNav.parentNode) {
+                roomNav.insertAdjacentElement('afterend', tip);
+            } else {
+                anchor.appendChild(tip);
+            }
+            const dismissBtn = tip.querySelector('#roving-nav-tip-dismiss');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', dismissRovingHint);
+            }
+        }
+
+        function applyProgressiveOnboardingUI() {
+            const state = syncProgressiveOnboardingMilestones();
+            const stage = getProgressiveOnboardingStage(state);
+            const showStage2 = stage >= 2;
+            const showStage3 = stage >= 3;
+
+            // Stage 2: reveal extended care context.
+            ['.care-quality-wrap', '.favorites-label', '.favorites-bar', '.more-actions-toggle'].forEach((selector) => {
+                setElementVisible(document.querySelector(selector), showStage2);
+            });
+            if (!showStage2) {
+                const morePanel = document.getElementById('more-actions-panel');
+                if (morePanel) morePanel.hidden = true;
+                const toggle = document.getElementById('more-actions-toggle');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+            }
+
+            // Stage 3: reveal advanced systems and secondary navigation.
+            ['.goal-ladder', '.room-coming-wrap', '#economy-btn', '#explore-btn', '#tools-btn', '#journey-btn'].forEach((selector) => {
+                setElementVisible(document.querySelector(selector), showStage3);
+            });
+            ['#top-meta-economy', '#top-meta-explore'].forEach((selector) => {
+                setElementVisible(document.querySelector(selector), showStage3);
+            });
+
+            renderRovingHelper(stage);
+        }
+
         function getRecommendedNextAction(pet, currentRoom) {
             if (!pet) return null;
             const stats = [
@@ -1416,6 +1593,7 @@
                 </button>
             `;
             setCareActionsSkipLinkVisible(true);
+            applyProgressiveOnboardingUI();
 
             // Add event listeners
             // Emergency care button
@@ -1564,6 +1742,7 @@
             safeAddClick('pet-btn', () => careAction('cuddle'));
             safeAddClick('minigames-btn', () => {
                 markCoachChecklistProgress('open_minigame');
+                syncProgressiveOnboardingMilestones({ advancedSystemsUnlocked: true });
                 if (typeof openMiniGamesMenu === 'function') {
                     openMiniGamesMenu();
                 } else {

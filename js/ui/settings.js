@@ -34,6 +34,17 @@
             const hapticEnabled = !(localStorage.getItem(STORAGE_KEYS.hapticOff) === 'true');
             const ttsEnabled = !(localStorage.getItem(STORAGE_KEYS.ttsOff) === 'true');
             const reducedMotionEnabled = document.documentElement.getAttribute('data-reduced-motion') === 'true';
+            const calmModeEnabled = document.body.classList.contains('calm-mode') || localStorage.getItem(STORAGE_KEYS.calmMode) === 'true';
+            const soundCueCaptionsEnabled = (typeof SoundManager !== 'undefined' && typeof SoundManager.getSoundCueCaptionsEnabled === 'function')
+                ? SoundManager.getSoundCueCaptionsEnabled()
+                : localStorage.getItem(STORAGE_KEYS.soundCueCaptions) === 'true';
+            const soundCueLegend = (typeof SoundManager !== 'undefined' && typeof SoundManager.getAccessibilityCueLegend === 'function')
+                ? SoundManager.getAccessibilityCueLegend()
+                : [
+                    { id: 'room', label: 'Room chime', description: 'Plays when entering a room.' },
+                    { id: 'error', label: 'Error', description: 'Plays when an action is unavailable.' },
+                    { id: 'reward', label: 'Reward', description: 'Plays when you earn something.' }
+                ];
             const srVerbosityDetailed = (localStorage.getItem(STORAGE_KEYS.srVerbosity) === 'detailed');
 	            const remindersEnabled = !!(gameState.reminders && gameState.reminders.enabled);
 	            const autoFreezeEnabled = (typeof getStreakProtectionStatus === 'function')
@@ -46,6 +57,10 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-label', 'Settings');
+            const soundCueSummary = soundCueLegend.map((cue) => `${cue.label}: ${cue.description}`).join(' ');
+            const soundCueButtons = soundCueLegend.map((cue) => `
+                <button class="settings-choice settings-sound-cue-test" type="button" data-sound-cue="${cue.id}" aria-label="Test ${escapeHTML(cue.label)} cue">${escapeHTML(cue.label)}</button>
+            `).join('');
             overlay.innerHTML = `
                 <div class="settings-modal">
                     <h2 class="settings-title">⚙️ Settings</h2>
@@ -72,6 +87,22 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                             <span class="settings-toggle-state" id="state-setting-sample-pack">${samplePackEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row settings-sound-cue-row">
+                            <div class="settings-sound-cue-meta">
+                                <span class="settings-row-label">🧪 Test Sound Cues</span>
+                                <small class="settings-row-help" id="settings-sound-cue-legend">${escapeHTML(soundCueSummary)}</small>
+                            </div>
+                            <div class="settings-sound-cue-buttons" role="group" aria-label="Sound cue legend and tests">
+                                ${soundCueButtons}
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">📝 Sound Cue Captions</span>
+                            <button class="settings-toggle ${soundCueCaptionsEnabled ? 'on' : ''}" id="setting-sound-captions" role="switch" aria-checked="${soundCueCaptionsEnabled}" aria-label="Sound cue captions">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-sound-captions">${soundCueCaptionsEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row settings-volume-row">
                             <div class="settings-volume-head">
@@ -127,6 +158,13 @@
                                 <span class="settings-toggle-knob"></span>
                             </button>
                             <span class="settings-toggle-state" id="state-setting-reduced-motion">${reducedMotionEnabled ? 'On' : 'Off'}</span>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">🌙 Calm Mode</span>
+                            <button class="settings-toggle ${calmModeEnabled ? 'on' : ''}" id="setting-calm-mode" role="switch" aria-checked="${calmModeEnabled}" aria-label="Calm mode">
+                                <span class="settings-toggle-knob"></span>
+                            </button>
+                            <span class="settings-toggle-state" id="state-setting-calm-mode">${calmModeEnabled ? 'On' : 'Off'}</span>
                         </div>
                         <div class="settings-row settings-row-verbosity">
                             <span class="settings-row-label">🧏 Screen Reader Verbosity</span>
@@ -198,6 +236,14 @@
                 if (output) output.textContent = `${Math.round(value)}%`;
             }
 
+            function setCalmModeEnabled(enabled) {
+                const next = !!enabled;
+                document.documentElement.setAttribute('data-calm-mode', next ? 'true' : 'false');
+                if (document.body) document.body.classList.toggle('calm-mode', next);
+                try { localStorage.setItem(STORAGE_KEYS.calmMode, next ? 'true' : 'false'); } catch (e) {}
+                return next;
+            }
+
             function bindVolumeSlider(sliderId, setter) {
                 const slider = document.getElementById(sliderId);
                 if (!slider) return;
@@ -254,6 +300,57 @@
                     setSwitchStateText('setting-sample-pack', enabled);
                     showToast(enabled ? '🎧 Sample audio pack enabled' : '🎛️ Sample audio pack disabled', '#A8D8EA');
                 }
+            });
+
+            const soundCueCaptionBtn = document.getElementById('setting-sound-captions');
+            if (soundCueCaptionBtn) {
+                soundCueCaptionBtn.addEventListener('click', function() {
+                    const isOn = this.classList.toggle('on');
+                    this.setAttribute('aria-checked', String(isOn));
+                    setSwitchStateText('setting-sound-captions', isOn);
+                    if (typeof SoundManager !== 'undefined' && typeof SoundManager.setSoundCueCaptionsEnabled === 'function') {
+                        SoundManager.setSoundCueCaptionsEnabled(isOn);
+                    } else {
+                        try { localStorage.setItem(STORAGE_KEYS.soundCueCaptions, isOn ? 'true' : 'false'); } catch (e) {}
+                    }
+                    showToast(`Sound cue captions ${isOn ? 'enabled' : 'disabled'}.`, '#90A4AE', { announce: true });
+                });
+            }
+
+            const soundCueLegendById = soundCueLegend.reduce((acc, cue) => {
+                acc[cue.id] = cue;
+                return acc;
+            }, {});
+            overlay.querySelectorAll('[data-sound-cue]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const cueId = btn.getAttribute('data-sound-cue');
+                    const cue = soundCueLegendById[cueId] || { label: 'Sound cue', description: '' };
+                    if (typeof SoundManager === 'undefined' || typeof SoundManager.playAccessibilityCue !== 'function') {
+                        showToast('Sound testing is unavailable in this build.', '#FFA726', { announce: true });
+                        return;
+                    }
+                    const result = SoundManager.playAccessibilityCue(cueId);
+                    if (!result || !result.ok) {
+                        const reason = result && result.reason ? result.reason : 'unavailable';
+                        if (reason === 'sound-disabled') {
+                            showToast('Turn on Sound to test cue playback.', '#FFA726', { announce: true });
+                            return;
+                        }
+                        if (reason === 'audio-unavailable') {
+                            showToast('Audio is unavailable in this browser.', '#FFA726', { announce: true });
+                            return;
+                        }
+                        showToast('Could not play that cue right now.', '#FFA726', { announce: true });
+                        return;
+                    }
+                    const captionsOn = (typeof SoundManager.getSoundCueCaptionsEnabled === 'function')
+                        ? SoundManager.getSoundCueCaptionsEnabled()
+                        : localStorage.getItem(STORAGE_KEYS.soundCueCaptions) === 'true';
+                    const label = result.label || cue.label || 'Sound cue';
+                    if (!captionsOn) {
+                        showToast(`${label} cue played.`, '#4ECDC4', { announce: true });
+                    }
+                });
             });
             // D30: Volume slider audio preview (debounced)
             let _sfxPreviewTimer = null;
@@ -331,6 +428,17 @@
                 try { localStorage.setItem(STORAGE_KEYS.reducedMotion, isOn ? 'true' : 'false'); } catch (e) {}
             });
 
+            const calmModeBtn = document.getElementById('setting-calm-mode');
+            if (calmModeBtn) {
+                calmModeBtn.addEventListener('click', function() {
+                    const isOn = this.classList.toggle('on');
+                    this.setAttribute('aria-checked', String(isOn));
+                    setSwitchStateText('setting-calm-mode', isOn);
+                    setCalmModeEnabled(isOn);
+                    showToast(`Calm mode ${isOn ? 'enabled' : 'disabled'}.`, '#90A4AE', { announce: true });
+                });
+            }
+
 	            document.getElementById('setting-reminders').addEventListener('click', function() {
                 const isOn = this.classList.toggle('on');
                 this.setAttribute('aria-checked', String(isOn));
@@ -393,8 +501,10 @@
                     if (soundBtn && soundBtn.classList.contains('on')) soundBtn.click();
                     const reducedBtn = document.getElementById('setting-reduced-motion');
                     if (reducedBtn && !reducedBtn.classList.contains('on')) reducedBtn.click();
+                    const calmBtn = document.getElementById('setting-calm-mode');
+                    if (calmBtn && !calmBtn.classList.contains('on')) calmBtn.click();
                     if (srBrief) srBrief.click();
-                    const presetSummary = 'Low stimulation preset applied: sound off, text-to-speech off, reduced motion on, screen reader verbosity set to brief.';
+                    const presetSummary = 'Low stimulation preset applied: sound off, text-to-speech off, reduced motion on, calm mode on, screen reader verbosity set to brief.';
                     showToast(presetSummary, '#66BB6A');
                     if (typeof announce === 'function') {
                         announce(presetSummary, { source: 'settings', dedupeMs: 1200 });
@@ -425,13 +535,17 @@
                     document.documentElement.removeAttribute('data-theme');
                     document.documentElement.removeAttribute('data-text-size');
                     document.documentElement.setAttribute('data-reduced-motion', 'false');
+                    document.documentElement.setAttribute('data-calm-mode', 'false');
                     document.documentElement.setAttribute('data-high-contrast', 'false');
+                    if (document.body) document.body.classList.remove('calm-mode');
                     try {
                         localStorage.removeItem(STORAGE_KEYS.theme);
                         localStorage.removeItem(STORAGE_KEYS.reducedMotion);
                         localStorage.removeItem(STORAGE_KEYS.srVerbosity);
                         localStorage.removeItem(STORAGE_KEYS.hapticOff);
                         localStorage.removeItem(STORAGE_KEYS.ttsOff);
+                        localStorage.removeItem(STORAGE_KEYS.calmMode);
+                        localStorage.removeItem(STORAGE_KEYS.soundCueCaptions);
                         localStorage.removeItem('petcare_highContrast');
                         localStorage.removeItem(STORAGE_KEYS.textSize);
                     } catch (e) {}
@@ -441,6 +555,7 @@
 	                        if (typeof SoundManager.setSfxVolumeSetting === 'function') SoundManager.setSfxVolumeSetting(1);
 	                        if (typeof SoundManager.setAmbientVolumeSetting === 'function') SoundManager.setAmbientVolumeSetting(1);
 	                        if (typeof SoundManager.setMusicVolumeSetting === 'function') SoundManager.setMusicVolumeSetting(1);
+                            if (typeof SoundManager.setSoundCueCaptionsEnabled === 'function') SoundManager.setSoundCueCaptionsEnabled(false);
 	                    }
 	                    if (typeof setStreakFreezeAutoUse === 'function') setStreakFreezeAutoUse(true);
 	                    showToast('Settings reset to defaults.', '#66BB6A');
@@ -610,6 +725,7 @@
                     if (localStorage.getItem(STORAGE_KEYS.soundEnabled) === null) localStorage.setItem(STORAGE_KEYS.soundEnabled, 'false');
                     if (localStorage.getItem(STORAGE_KEYS.musicEnabled) === null) localStorage.setItem(STORAGE_KEYS.musicEnabled, 'false');
                     if (localStorage.getItem(STORAGE_KEYS.samplePackEnabled) === null) localStorage.setItem(STORAGE_KEYS.samplePackEnabled, 'false');
+                    if (localStorage.getItem(STORAGE_KEYS.calmMode) === null) localStorage.setItem(STORAGE_KEYS.calmMode, 'true');
                     if (localStorage.getItem(STORAGE_KEYS.coachChecklistMinimized) === null) localStorage.setItem(STORAGE_KEYS.coachChecklistMinimized, 'true');
                     localStorage.setItem(firstRunDefaultsKey, 'true');
                 }
@@ -617,6 +733,9 @@
                 if (size === 'large') document.documentElement.setAttribute('data-text-size', 'large');
                 const reducedMotion = localStorage.getItem(STORAGE_KEYS.reducedMotion);
                 if (reducedMotion === 'true') document.documentElement.setAttribute('data-reduced-motion', 'true');
+                const calmMode = localStorage.getItem(STORAGE_KEYS.calmMode) === 'true';
+                document.documentElement.setAttribute('data-calm-mode', calmMode ? 'true' : 'false');
+                if (document.body) document.body.classList.toggle('calm-mode', calmMode);
                 // D29: Restore high-contrast mode
                 const hc = localStorage.getItem('petcare_highContrast');
                 if (hc === 'true') document.documentElement.setAttribute('data-high-contrast', 'true');

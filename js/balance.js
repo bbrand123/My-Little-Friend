@@ -192,6 +192,10 @@ const STORAGE_KEYS = Object.freeze({
     balanceProfile: 'petCareBuddy_balanceProfile',
     /** Onboarding tooltips shown state */
     onboardingShown: 'petCareBuddy_onboardingShown',
+    /** Progressive onboarding disclosure milestones */
+    progressiveOnboarding: 'petCareBuddy_progressiveOnboarding',
+    /** Roving keyboard hint dismissed */
+    rovingHintDismissed: 'petCareBuddy_rovingHintDismissed',
     /** Coach checklist minimized state */
     coachChecklistMinimized: 'petCareBuddy_coachChecklistMinimized',
     /** Coach checklist data */
@@ -200,6 +204,10 @@ const STORAGE_KEYS = Object.freeze({
     petSessions: 'petCareBuddy_petSessions',
     /** First-run accessibility defaults applied flag */
     firstRunA11yDefaults: 'petCareBuddy_firstRunA11yDefaultsV1',
+    /** Calm mode preference */
+    calmMode: 'petCareBuddy_calmMode',
+    /** Sound cue captions preference */
+    soundCueCaptions: 'petCareBuddy_soundCueCaptions',
     /** Session-scoped: pet session seen this session */
     petSessionSeen: 'petCareBuddy_petSessionSeen'
 });

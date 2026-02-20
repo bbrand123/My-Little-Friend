@@ -211,7 +211,7 @@
 
 .color-option:hover,
 .color-option:focus-visible {
-    transform: scale(1.15);
+    transform: translateY(-1px);
     box-shadow: 0 0 0 3px var(--color-secondary);
 }
 
@@ -1235,28 +1235,69 @@ html[data-reduced-motion="true"] *::after {
     top: 0;
     left: 0;
     right: 0;
-    padding: 8px 16px;
+    padding: 8px 12px;
     font-size: 0.82rem;
-    font-weight: 600;
-    text-align: center;
+    font-weight: 700;
+    text-align: left;
     z-index: 10000;
-    background: #FFF3E0;
-    color: #E65100;
-    border-bottom: 1px solid #FFB74D;
+    background: #FFF4E5;
+    color: #7A2D00;
+    border-bottom: 1px solid #CC8A2E;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 .offline-update-banner.offline-banner {
-    background: #ECEFF1;
-    color: #455A64;
-    border-bottom-color: #B0BEC5;
+    background: #E8F1F6;
+    color: #1F3D4E;
+    border-bottom-color: #8AA7B6;
 }
 [data-theme="dark"] .offline-update-banner {
-    background: #3E2723;
-    color: #FFCC80;
-    border-bottom-color: #5D4037;
+    background: #5A3720;
+    color: #FFE3BE;
+    border-bottom-color: #7B4D2A;
 }
 [data-theme="dark"] .offline-update-banner.offline-banner {
-    background: #263238;
-    color: #B0BEC5;
-    border-bottom-color: #37474F;
+    background: #1D303B;
+    color: #D2E4EE;
+    border-bottom-color: #39596A;
 }
 
+.offline-banner-message {
+    flex: 1 1 220px;
+}
+
+.offline-banner-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.offline-banner-action,
+.offline-banner-dismiss {
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: 8px;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.offline-banner-dismiss {
+    width: 44px;
+    padding: 0;
+}
+
+.offline-banner-action:hover,
+.offline-banner-action:focus-visible,
+.offline-banner-dismiss:hover,
+.offline-banner-dismiss:focus-visible {
+    background: rgba(255, 255, 255, 0.2);
+}
